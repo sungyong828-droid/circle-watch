@@ -503,6 +503,81 @@ async function collectArcActivity() {
   return { daily };
 }
 
+// CRCL 공시(SEC, Nasdaq 제공 목록) · Circle 공식 발표 · 국내/해외 뉴스(구글 뉴스 RSS)
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
+const decodeXml = (s) => s
+  .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&amp;/g, '&');
+
+async function googleNews(q, lang) {
+  const loc = lang === 'ko' ? 'hl=ko&gl=KR&ceid=KR:ko' : 'hl=en-US&gl=US&ceid=US:en';
+  const res = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&${loc}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(30000) });
+  if (!res.ok) throw new Error('google news ' + res.status);
+  const xml = await res.text();
+  const tag = (it, t) => { const m = it.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)); return m ? decodeXml(m[1]).trim() : ''; };
+  return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, it]) => {
+    const source = tag(it, 'source');
+    let title = tag(it, 'title');
+    if (source && title.endsWith(' - ' + source)) title = title.slice(0, -(source.length + 3));
+    return { t: new Date(tag(it, 'pubDate')).toISOString(), title, source, url: tag(it, 'link') };
+  });
+}
+
+function dedupeNews(list, max = 40) {
+  const seen = new Set();
+  const key = (s) => s.toLowerCase().replace(/[^a-z0-9가-힣]/g, '').slice(0, 40);
+  const cutoff = Date.now() - 30 * DAY * 1000;
+  return list
+    .filter((n) => n.title && Date.parse(n.t) >= cutoff)
+    .sort((a, b) => b.t.localeCompare(a.t))
+    .filter((n) => { const k = key(n.title); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, max);
+}
+
+async function collectFilings() {
+  const res = await fetch('https://api.nasdaq.com/api/company/CRCL/sec-filings?limit=100&sortColumn=filed&sortOrder=desc&IsQuoteMedia=true', {
+    headers: { 'user-agent': BROWSER_UA, accept: 'application/json, text/plain, */*', origin: 'https://www.nasdaq.com', referer: 'https://www.nasdaq.com/' },
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) throw new Error('nasdaq ' + res.status);
+  const rows = (await res.json())?.data?.rows || [];
+  return rows.map((r) => {
+    const [m, d, y] = r.filed.split('/');
+    const link = r.view?.htmlLink || r.view?.pdfLink || '';
+    let desc = '';
+    try { desc = new URL(link).searchParams.get('formDescription') || ''; } catch {}
+    return { d: `${y}-${m}-${d}`, form: r.formType, owner: r.reportingOwner || '', desc, url: link };
+  });
+}
+
+async function collectNews() {
+  const [filings, kr, en, bw, site] = await Promise.allSettled([
+    collectFilings(),
+    googleNews('CRCL OR "써클 인터넷" OR (써클 USDC) OR (서클 USDC) OR (써클 스테이블코인) when:30d', 'ko'),
+    googleNews('"Circle Internet" OR CRCL OR (Circle USDC stablecoin) when:30d', 'en'),
+    googleNews('"Circle" site:businesswire.com when:60d', 'en'),
+    googleNews('site:circle.com when:60d', 'en'),
+  ]);
+  const ok = (r) => (r.status === 'fulfilled' ? r.value : []);
+  const official = dedupeNews([...ok(bw), ...ok(site)]
+    // 출처는 IR·circle.com·Business Wire만, 제목엔 대문자 Circle 또는 USDC·EURC·Arc가 있어야 한다
+    .filter((n) => /^(circle investor relations|circle\.com|businesswire\.com|business wire)$/i.test(n.source)
+      && /USDC|EURC|\bArc\b|Circle Internet|^Circle (?!Pharma|K\b|Health)|(with|in|and|by|from|,) Circle\b/.test(n.title)
+      && !/Circle (Pharma|K\b|Health|Model)|(Donor|Harraden) Circle|\b[Tt]erms\b/.test(n.title))
+    .map((n) => ({ ...n, title: n.title.replace(/^Circle Internet Group, Inc\. - /, '') })), 30);
+  const officialKeys = new Set(official.map((n) => n.title));
+  const out = {
+    filings: ok(filings),
+    official,
+    kr: dedupeNews(ok(kr)),
+    en: dedupeNews(ok(en).filter((n) => !officialKeys.has(n.title))),
+    failed: ['filings', 'kr', 'en', 'bw', 'site'].filter((_, i) => [filings, kr, en, bw, site][i].status === 'rejected'),
+  };
+  if (!out.filings.length && !out.kr.length && !out.en.length) throw new Error('뉴스·공시 모두 실패');
+  return out;
+}
+
 // ---------- main ----------
 async function main() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -523,6 +598,7 @@ async function main() {
     short: () => collectShort(state),
     rates: () => collectRates(),
     arcActivity: () => collectArcActivity(),
+    news: () => collectNews(),
   };
   for (const [k, fn] of Object.entries(sections)) {
     const t = Date.now();

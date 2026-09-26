@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=7">
+<link rel="stylesheet" href="assets/style.css?v=9">
 </head>
 <body>
 <header class="top">
@@ -72,8 +72,13 @@
     <article class="card" id="c-accounts"></article>
   </section>
 
+  <section class="view" id="view-news" data-view="news" hidden>
+    <article class="card" id="c-newssum"></article>
+    <article class="card news-card" id="c-news"></article>
+  </section>
+
   <footer class="foot">
-    <p>데이터: Binance · DefiLlama · Circle 공식 API · FINRA · 미 재무부 · Arc/Ethereum RPC · Arc 탐색기(Blockscout).</p>
+    <p>데이터: Binance · SEC(Nasdaq 제공) · 구글 뉴스 · DefiLlama · Circle 공식 API · FINRA · 미 재무부 · Arc/Ethereum RPC · Arc 탐색기(Blockscout).</p>
     <p>서버 수집기는 약 15분마다 실행되고, 우측 상단 새로고침을 누르면 이 화면에서 각 출처를 직접 조회해 즉시 동기화합니다. 🟢 표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
   </footer>
 </main>
@@ -93,9 +98,12 @@
   <button type="button" data-tab="arc">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19a8 8 0 0 1 16 0M8 19a4 4 0 0 1 8 0"/></svg><span>Arc</span>
   </button>
+  <button type="button" data-tab="news">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h11v14H6a1 1 0 0 1-1-1zM16 9h3v9a1 1 0 0 1-1 1h-2M8 9h5M8 12h5M8 15h3"/></svg><span>뉴스</span><b class="tab-badge" id="news-badge" hidden></b>
+  </button>
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="assets/app.js?v=7"></script>
+<script src="assets/app.js?v=9"></script>
 </body>
 </html>

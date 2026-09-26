@@ -47,6 +47,15 @@
 
   // ---------------------------------------------------------------- 설명(ⓘ)
   const INFO = {
+    news: `
+      <p>CRCL 관련 <b>공시 · Circle 공식 발표 · 국내/해외 뉴스</b>를 모아 최신순으로 보여줍니다. 서버가 15분마다 새로 모읍니다.</p>
+      <ul>
+        <li><b>공시</b>: 미국 SEC에 제출된 서류(Nasdaq 제공 목록). 주요 공시 = 8-K(합병·경영진 변경·실적 발표 등 중요한 일이 생기면 4영업일 내 제출), 10-Q(분기), 10-K(연간), 증권 발행(S-1·424B) 등.</li>
+        <li><b>내부자 거래</b>: Form 4 = 임원·대주주가 주식을 사고판 뒤 2영업일 내 신고, Form 144 = 내부자가 주식을 팔 예정이라는 사전 신고. 매도가 몰리면 수급 부담 신호로 봅니다.</li>
+        <li><b>Circle 발표</b>: Business Wire 보도자료와 circle.com·IR 게시물.</li>
+        <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 같은 제목은 하나로 합쳤습니다.</li>
+        <li><b>NEW</b>: 지난번 이 탭을 본 이후 새로 올라온 항목. 하단 탭의 숫자도 같은 기준입니다(내부자 거래 공시 제외).</li>
+      </ul>`,
     usdcflow: `
       <p>하루 동안 USDC가 <b>새로 발행된 양 − 소각(상환)된 양</b>입니다. DefiLlama 일별 공급량의 전날 대비 차이로 계산합니다.</p>
       <ul>
@@ -1072,6 +1081,14 @@
     const lastWeek = A?.weeks?.filter((w) => !w.approx).at(-1);
     if (lastDay) add('neu', 'arc:c-accounts', `Arc 활성 계정 <b>${nf(0).format(lastDay.active)}</b>(${lastDay.d.slice(5).replace('-', '/')}) · 신규 ${nf(0).format(lastDay.new)}${lastWeek ? ` · 주간 재방문 ${pctPlain(lastWeek.retRatio)}` : ''}`, null, 0);
 
+    const N = d.news;
+    if (N) {
+      const off = N.official?.[0];
+      const k8 = N.filings?.find((f) => /^8-K/.test(f.form));
+      const fresh8k = k8 && Date.now() - Date.parse(k8.d) < 3 * 86400000;
+      if (off || k8) add('neu', 'news:c-news', `${fresh8k ? `<b>8-K 공시</b>(${md(isoToTs(k8.d))}) · ` : ''}${off ? `최신 발표: ${esc(off.title.length > 48 ? off.title.slice(0, 47) + '…' : off.title)}` : ''}`, fresh8k ? '신규 8-K 공시' : null, 1);
+    }
+
     const tags = items.filter((i) => i.tag).sort((a, b) => b.weight - a.weight).slice(0, 3);
     const nPos = items.filter((i) => i.tone === 'pos').length, nNeg = items.filter((i) => i.tone === 'neg').length;
     const toneName = { pos: '긍정', neg: '주의', neu: '중립' };
@@ -1380,6 +1397,129 @@
     return { ok: parts.length - fail.length, fail };
   }
 
+  // ---------------------------------------------------------------- 뉴스 · 공시
+  // 공시 종류: [한글 설명, 중요도(hi/mid/low)]
+  const FORMS = {
+    '8-K': ['주요 사항 보고(수시공시)', 'hi'], '10-Q': ['분기 보고서', 'hi'], '10-K': ['연간 보고서', 'hi'],
+    'S-1': ['증권 신고서', 'hi'], 'S-3': ['증권 발행 등록', 'hi'], '424B': ['투자설명서(증권 발행)', 'hi'],
+    'S-3ASR': ['증권 발행 등록(자동 효력)', 'hi'], 'D': ['사모 증권 발행 신고', 'mid'],
+    'SC 13D': ['5% 이상 대주주 보고(경영 참여 목적)', 'hi'], 'SCHEDULE 13D': ['5% 이상 대주주 보고(경영 참여 목적)', 'hi'],
+    'SC 13G': ['5% 이상 대주주 보고', 'mid'], 'SCHEDULE 13G': ['5% 이상 대주주 보고', 'mid'],
+    'DEF 14A': ['주주총회 안건(위임장)', 'mid'], 'S-8': ['임직원 주식보상 등록', 'mid'], '11-K': ['임직원 저축제도 연간 보고', 'low'],
+    '144': ['내부자 주식 매도 예정 신고', 'low'], '4': ['임원·대주주 지분 변동', 'low'], '3': ['임원·대주주 최초 지분 보고', 'low'],
+    '5': ['임원·대주주 연간 지분 보고', 'low'],
+  };
+  function formInfo(form) {
+    const amend = /\/A$/.test(form);
+    const base = form.replace(/\/A$/, '');
+    const hit = FORMS[base] || (base.startsWith('424B') ? FORMS['424B'] : null) || [base + ' 공시', 'mid'];
+    return { label: hit[0] + (amend ? ' (정정)' : ''), level: hit[1] };
+  }
+  const NEWS_KINDS = { filing: '공시', official: 'Circle 발표', kr: '국내', en: '해외' };
+  const NEWS_FILTERS = [['all', '전체'], ['filing', '공시'], ['official', 'Circle 발표'], ['kr', '국내 뉴스'], ['en', '해외 뉴스']];
+  state.newsFilter = loadPref('newsFilter', 'all');
+  state.majorOnly = loadPref('majorOnly', '1') === '1';
+  let newsSeenAt = Number(loadPref('newsSeen', '0')) || 0; // 마지막으로 뉴스 탭을 본 시각
+  if (!newsSeenAt) { newsSeenAt = Date.now(); savePref('newsSeen', String(newsSeenAt)); } // 첫 방문엔 전부 NEW로 띄우지 않는다
+  let newsSeenPrev = newsSeenAt; // 이번 방문에서 NEW 표시 기준
+
+  function newsItems() {
+    const N = state.data?.news;
+    if (!N) return [];
+    const items = [];
+    for (const f of N.filings || []) {
+      const fi = formInfo(f.form);
+      const owner = f.owner ? ` · ${f.owner.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}` : '';
+      // 8-K는 같은 날 나온 Circle 공식 발표를 붙여 무슨 내용인지 보이게 한다
+      const rel = /^8-K/.test(f.form) ? (N.official || []).find((o) => Math.abs(Date.parse(o.t) - Date.parse(f.d + 'T20:00:00Z')) < 1.2 * 86400000) : null;
+      const [fy, fm, fd] = f.d.split('-').map(Number); // 제출일 그대로(현지 날짜로 바꾸지 않음)
+      items.push({ kind: 'filing', t: new Date(fy, fm - 1, fd, 12).getTime(), dateOnly: true, title: `${fi.label}${owner}${rel ? ' — ' + rel.title : ''}`, source: `SEC · Form ${f.form}`, url: f.url, form: f.form, level: fi.level });
+    }
+    for (const k of ['official', 'kr', 'en']) for (const n of N[k] || []) items.push({ kind: k, t: Date.parse(n.t), title: n.title, source: n.source, url: n.url, level: k === 'official' ? 'hi' : 'mid' });
+    return items.sort((a, b) => b.t - a.t);
+  }
+  const unseenCount = () => newsItems().filter((i) => i.t > newsSeenAt && i.level !== 'low').length;
+
+  function updateNewsBadge() {
+    const b = document.getElementById('news-badge');
+    if (!b) return;
+    const n = state.view === 'news' ? 0 : unseenCount();
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.hidden = n === 0;
+  }
+  function markNewsSeen() {
+    newsSeenPrev = newsSeenAt;
+    newsSeenAt = Date.now();
+    savePref('newsSeen', String(newsSeenAt));
+    updateNewsBadge();
+  }
+
+  const dayLabel = (ms) => {
+    const d = new Date(ms), today = new Date();
+    const diff = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+    if (diff === 0) return '오늘';
+    if (diff === 1) return '어제';
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`;
+  };
+  const timeLabel = (it) => {
+    if (it.dateOnly) return '';
+    const m = Math.round((Date.now() - it.t) / 60000);
+    if (m < 60) return `${Math.max(1, m)}분 전`;
+    if (m < 24 * 60) return `${Math.floor(m / 60)}시간 전`;
+    return hm(it.t);
+  };
+
+  function renderNewsSummary() {
+    const N = state.data?.news;
+    if (!N) return failed('newssum', '공시 · 발표 한눈에', state.data?.errors?.news);
+    const F = N.filings || [];
+    const since = Date.now() - 30 * 86400000;
+    const recent = F.filter((f) => Date.parse(f.d) >= since);
+    const cnt = (re) => recent.filter((f) => re.test(f.form)).length;
+    const last = (re) => F.find((f) => re.test(f.form));
+    const k8 = last(/^8-K/), q = last(/^10-[QK]/);
+    const off = (N.official || [])[0];
+    const unseen = newsItems().filter((i) => i.t > newsSeenPrev && i.level !== 'low').length;
+    card('newssum', {
+      title: '공시 · 발표 한눈에', sub: `서버 수집 ${ago(state.data.updatedAt)} 기준 · 15분마다 갱신`, info: INFO.news,
+      body: `<div class="ns-grid">
+          <div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>
+          <div><span>최근 실적 보고서</span><b>${q ? md(isoToTs(q.d)) : '–'}</b><small>${q ? formInfo(q.form).label : ''}</small></div>
+          <div><span>내부자 거래 공시</span><b>${cnt(/^4$|^4\/A$/) + cnt(/^144/)}건</b><small>30일 · Form 4 ${cnt(/^4$|^4\/A$/)} · 144 ${cnt(/^144/)}</small></div>
+          <div><span>새 소식</span><b>${unseen}건</b><small>지난 방문 이후</small></div>
+        </div>
+        ${off ? `<a class="ns-top" href="${esc(off.url)}" target="_blank" rel="noopener"><span class="nk official">최신 Circle 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}`,
+    });
+  }
+
+  function renderNews() {
+    const el = document.getElementById('c-news');
+    if (!el) return;
+    const all = newsItems();
+    const f = state.newsFilter;
+    let list = all.filter((i) => (f === 'all' ? (i.kind !== 'filing' || i.level !== 'low') : i.kind === f));
+    if (f === 'filing' && state.majorOnly) list = list.filter((i) => i.level !== 'low');
+    const counts = Object.fromEntries(NEWS_FILTERS.map(([k]) => [k, k === 'all' ? all.filter((i) => i.kind !== 'filing' || i.level !== 'low').length : all.filter((i) => i.kind === k).length]));
+    let lastDay = '';
+    const rows = list.slice(0, 80).map((i) => {
+      const dl = dayLabel(i.t);
+      const head = dl !== lastDay ? `<li class="nd">${dl}</li>` : '';
+      lastDay = dl;
+      const isNew = i.t > newsSeenPrev && newsSeenPrev > 0;
+      const kindCls = i.kind === 'filing' ? `filing ${i.level}` : i.kind;
+      const kindTxt = i.kind === 'filing' ? i.form : NEWS_KINDS[i.kind];
+      return `${head}<li><a href="${esc(i.url)}" target="_blank" rel="noopener">
+        <span class="nk ${kindCls}">${esc(kindTxt)}</span>
+        <span class="nt">${isNew ? '<i class="new">NEW</i>' : ''}${esc(i.title)}</span>
+        <span class="nm">${esc(i.source)}${timeLabel(i) ? ' · ' + timeLabel(i) : ''}</span></a></li>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="nf" role="group" aria-label="뉴스 종류">${NEWS_FILTERS.map(([k, label]) => `<button type="button" data-nf="${k}" aria-pressed="${k === f}">${label}<small>${counts[k]}</small></button>`).join('')}</div>
+      ${f === 'filing' ? `<label class="nf-opt"><input type="checkbox" id="major-only" ${state.majorOnly ? 'checked' : ''}> 주요 공시만 보기 <small>(임원 지분변동 Form 4·매도예정 144 숨김)</small></label>` : ''}
+      <ul class="nl">${rows || '<li class="empty">표시할 항목이 없습니다.</li>'}</ul>
+      <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시 원문은 SEC 제출 문서(QuoteMedia 제공)입니다.</p>`;
+  }
+
   // ---------------------------------------------------------------- 상태 표시
   function ago(t) {
     const ms = typeof t === 'number' ? t : Date.parse(t);
@@ -1404,7 +1544,7 @@
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp];
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderNewsSummary, renderNews, updateNewsBadge];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -1463,7 +1603,7 @@
   }
 
   // ---------------------------------------------------------------- 화면 전환 (하단 탭)
-  const VIEW_TITLES = { home: 'Circle Watch', crcl: 'CRCL 주가 · 공매도', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인' };
+  const VIEW_TITLES = { home: 'Circle Watch', crcl: 'CRCL 주가 · 공매도', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: 'CRCL 뉴스 · 공시' };
   const scrollMem = {};
   function showView(v, target) {
     if (!VIEW_TITLES[v]) v = 'home';
@@ -1475,6 +1615,7 @@
     try { history.replaceState(null, '', '#' + v); } catch {}
     savePref('view', v);
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
+    if (v === 'news') { markNewsSeen(); if (state.data) { renderNewsSummary(); renderNews(); } } else updateNewsBadge();
     if (target) {
       const el = document.getElementById(target);
       if (el) {
@@ -1512,6 +1653,9 @@
       else showView(tab.dataset.tab);
       return;
     }
+    const nf = ev.target.closest('[data-nf]');
+    if (nf) { state.newsFilter = nf.dataset.nf; savePref('newsFilter', state.newsFilter); renderNews(); return; }
+    if (ev.target.id === 'major-only') { state.majorOnly = ev.target.checked; savePref('majorOnly', state.majorOnly ? '1' : '0'); renderNews(); return; }
     const rg = ev.target.closest('[data-range]');
     if (rg) { state.range = rg.dataset.range; savePref('range', state.range); renderPriceChart(); return; }
     if (ev.target.closest('#basis')) {

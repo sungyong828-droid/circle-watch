@@ -359,3 +359,61 @@ button.kpi:active { background: var(--surface-2); }
 .pair .mini-h { margin-top: 12px; }
 #c-reserve .px-stats b { font-size: 13.5px; }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+
+/* ---------- 뉴스 · 공시 탭 ---------- */
+.tabbar { grid-template-columns: repeat(5, 1fr); }
+.tabbar button { position: relative; }
+.tab-badge {
+  position: absolute; top: 7px; left: calc(50% + 6px); min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px;
+  background: var(--up); color: #fff; font: 700 10px/17px var(--mono); text-align: center;
+}
+@media (min-width: 900px) { .tabbar { width: 560px; } }
+
+.ns-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-top: 12px; background: var(--line-soft); border: 1px solid var(--line-soft); border-radius: 8px; overflow: hidden; }
+@media (min-width: 720px) { .ns-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ns-grid div { background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ns-grid span { font-size: 11.5px; color: var(--muted); }
+.ns-grid b { font: 600 17px var(--mono); }
+.ns-grid small { font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-top { display: grid; gap: 4px; margin-top: 12px; padding: 12px; border-radius: 8px; border: 1px solid var(--line); text-decoration: none; color: var(--ink); background: var(--surface-2); }
+.ns-top .nt { font-size: 14.5px; font-weight: 600; line-height: 1.45; }
+
+.news-card { padding-bottom: 8px; }
+.nf { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; }
+.nf::-webkit-scrollbar { display: none; }
+.nf button {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 12px; border-radius: 17px;
+  border: 1px solid var(--line); background: transparent; color: var(--ink-2); font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.nf button small { font: 11px var(--mono); color: var(--faint); }
+.nf button[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+.nf button[aria-pressed="true"] small { color: var(--ground); opacity: 0.7; }
+.nf-opt { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+.nf-opt input { width: 18px; height: 18px; accent-color: var(--c-blue); }
+.nf-opt { flex-wrap: wrap; }
+.nf-opt small { color: var(--faint); font-size: 11px; flex-basis: 100%; padding-left: 24px; }
+
+.nl { list-style: none; margin: 8px -16px 0; padding: 0; }
+.nl li.nd { padding: 14px 16px 6px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nl li.empty { padding: 24px 16px; text-align: center; color: var(--faint); font-size: 13px; }
+.nl a {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: start;
+  padding: 11px 16px; text-decoration: none; color: inherit; border-top: 1px solid var(--line-soft);
+}
+.nl li.nd + li a { border-top: 0; }
+.nl a:active { background: var(--surface-2); }
+.nl .nt { font-size: 14.5px; line-height: 1.45; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.nl .nm { grid-column: 2; font-size: 11.5px; color: var(--muted); }
+.nk {
+  display: inline-block; min-width: 44px; padding: 3px 6px; border-radius: 5px; margin-top: 2px;
+  font: 600 10.5px/1.3 var(--sans); text-align: center; white-space: nowrap;
+  background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line);
+}
+.ns-top .nk { justify-self: start; }
+.nk.official { color: var(--c-blue); border-color: rgba(79, 143, 247, 0.45); background: rgba(79, 143, 247, 0.1); }
+.nk.kr { color: var(--ink-2); }
+.nk.en { color: var(--muted); }
+.nk.filing { font-family: var(--mono); }
+.nk.filing.hi { color: var(--warn); border-color: rgba(224, 164, 58, 0.5); background: rgba(224, 164, 58, 0.1); }
+.nk.filing.low { color: var(--faint); }
+.new { font-style: normal; font: 700 10px var(--mono); color: var(--up); margin-right: 6px; vertical-align: 1px; }
