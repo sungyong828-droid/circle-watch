@@ -27,6 +27,8 @@
     line: css.getPropertyValue('--line').trim(),
     lineSoft: css.getPropertyValue('--line-soft').trim(),
     surface2: css.getPropertyValue('--surface-2').trim(),
+    up: css.getPropertyValue('--up').trim(),
+    down: css.getPropertyValue('--down').trim(),
   };
 
   const state = {
@@ -35,11 +37,33 @@
     basis: loadPref('basis', 'prev'),
     openInfo: new Set(),
     cctpAll: false,
+    view: 'home',
+    range: loadPref('range', '1d'),
+    px: { t: null, mark: null, oi: null, klines: {}, via: null, at: 0 },
   };
   const charts = {};
 
   // ---------------------------------------------------------------- 설명(ⓘ)
   const INFO = {
+    price: `
+      <p>바이낸스 <b>CRCLUSDT 무기한 선물</b>(TradFi 주식 선물)의 실시간 체결가입니다. 바이낸스와 직접 연결(WebSocket)해 거래가 체결될 때마다 바로 바뀝니다.</p>
+      <ul>
+        <li>미국 증시(NYSE) 휴장 시간·주말에도 24시간 거래되므로, 다음 날 개장가를 미리 가늠하는 용도로 쓸 수 있습니다. 실제 NYSE 주가와 약간 차이가 날 수 있습니다.</li>
+        <li><b>24시간 변동</b>: 24시간 전 가격 대비 등락률(<span class="up">빨강=상승</span>, <span class="down">파랑=하락</span>).</li>
+        <li><b>펀딩비</b>: 선물 가격을 현물(지수)에 맞추려고 롱·숏끼리 주고받는 수수료. 양수면 롱(상승 베팅)이 숏에게 지불 → 상승 베팅이 많다는 뜻.</li>
+        <li><b>미결제약정</b>: 아직 청산되지 않은 선물 포지션 규모(달러 환산). 늘면 새 자금이 들어오는 중입니다.</li>
+      </ul>`,
+    summary: `
+      <p>아래 카드들의 숫자를 정해진 규칙으로 읽어 <b>자동으로 만든 요약</b>입니다(AI 해석이나 투자 조언이 아닙니다).</p>
+      <ul>
+        <li><span class="tone pos">긍정</span> CRCL 실적·주가에 우호적으로 볼 수 있는 변화 (예: USDC 유통량 증가, Arc 사용 증가)</li>
+        <li><span class="tone neg">주의</span> 부담이 될 수 있는 변화 (예: 공매도 비중 상승, Arc에서 자금 순유출)</li>
+        <li><span class="tone neu">중립</span> 뚜렷한 방향이 없는 상태</li>
+      </ul>
+      <p>각 줄을 누르면 해당 카드로 이동합니다.</p>`,
+    pricechart: `
+      <p>바이낸스 CRCLUSDT 선물의 가격 추이입니다. 기간을 바꾸면 봉 간격이 달라집니다(1일=15분, 1주=1시간, 1개월=4시간, 3개월=1일). 마지막 점은 실시간 가격입니다.</p>
+      <p>선이 <span class="up">빨강</span>이면 기간 시작보다 오른 상태, <span class="down">파랑</span>이면 내린 상태입니다.</p>`,
     short: `
       <p><b>공매도 비율</b> = 그날 CRCL 거래량 중 공매도(빌린 주식을 파는 거래)로 체결된 비중입니다. 출처는 FINRA 일별 공매도 거래량(Reg SHO)이며, 미국 장 마감 후 저녁(한국 시간 다음 날 아침)에 전날 값이 올라옵니다.</p>
       <ul>
@@ -263,28 +287,35 @@
 
   // ---------------------------------------------------------------- 섹션 렌더
   function renderKpis() {
-    const d = state.data;
-
     const tiles = [
-      { k: 'USDC 유통량', key: 'usdcTotal', f: usd, live: true },
-      { k: 'USDC 점유율', key: 'usdcShare', f: (v) => pctPlain(v, 2), mode: 'pp' },
-      { k: 'EURC 유통량', key: 'eurcTotal', f: eur, live: true },
-      { k: 'cirBTC 공급', key: 'cirbtc', f: (v) => btc(v), live: true },
-      { k: 'Arc DeFi TVL', key: 'tvl', f: usd },
-      { k: 'Arc 차입 잔액', key: 'borrow', f: usd },
-      { k: 'Arc DEX 24시간', key: 'dex24h', f: usd },
-      { k: 'CCTP 순유입 24h', key: 'cctpNet', f: usd, abs: true },
+      { k: 'USDC 유통량', key: 'usdcTotal', f: usd, go: 'usdc:c-usdc' },
+      { k: 'USDC 점유율', key: 'usdcShare', f: (v) => pctPlain(v, 2), mode: 'pp', go: 'usdc:c-stables' },
+      { k: 'CRCL 공매도 비율', key: 'shortRatio', f: (v) => pctPlain(v), mode: 'pp', go: 'crcl:c-short' },
+      { k: 'EURC 유통량', key: 'eurcTotal', f: eur, go: 'usdc:c-eurc' },
+      { k: 'cirBTC 공급', key: 'cirbtc', f: (v) => btc(v), go: 'arc:c-cirbtc' },
+      { k: 'Arc DeFi TVL', key: 'tvl', f: usd, go: 'arc:c-tvl' },
+      { k: 'Arc 차입 잔액', key: 'borrow', f: usd, go: 'arc:c-borrow' },
+      { k: 'Arc DEX 24시간', key: 'dex24h', f: usd, go: 'arc:c-dex' },
+      { k: 'CCTP 순유입 24h', key: 'cctpNet', f: usd, abs: true, go: 'arc:c-cctp' },
+      { k: 'Arc 위 USDC', key: 'arcUsdc', f: usd, go: 'arc:c-arcsupply' },
     ];
     document.getElementById('kpis').innerHTML = tiles.map((t) => {
       const x = delta(t.key, { mode: t.mode });
       let dh = x.html;
+      if (t.key === 'shortRatio') { // 일별 데이터라 전 거래일 대비로 표시
+        const sd = state.data.short?.daily || [];
+        const a = sd.at(-1), b = sd.at(-2);
+        x.c = { v: a?.ratio, live: false };
+        const dd = a && b ? a.ratio - b.ratio : null;
+        dh = `<span class="${cls(dd)}">${arrow(dd)} ${pp(dd, 1)}</span>`;
+      }
       if (t.abs) { // 순유입은 부호가 바뀔 수 있어 변화율 대신 증감액
         const b = x.c.v != null ? base(t.key, x.c.t) : null;
         const diff = b && b.v != null ? x.c.v - b.v : null;
         dh = `<span class="${cls(diff, 1)}">${arrow(diff)} ${diff == null ? '–' : (diff > 0 ? '+' : '') + usd(diff)}</span>`;
       }
-      return `<div class="kpi"><div class="k">${t.k}${x.c.live ? '<span class="live-dot" title="실시간"></span>' : ''}</div>
-        <div class="v">${t.f(x.c.v)}</div><div class="d">${dh}</div></div>`;
+      return `<button type="button" class="kpi" data-go="${t.go}"><div class="k">${t.k}${x.c.live ? '<span class="live-dot" title="실시간"></span>' : ''}</div>
+        <div class="v">${t.f(x.c.v)}</div><div class="d">${dh}</div></button>`;
     }).join('');
   }
 
@@ -502,14 +533,15 @@
         ${next ? `<div class="progress" role="progressbar" aria-valuenow="${Math.round((last.borrow / next.v) * 100)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${Math.min(100, (last.borrow / next.v) * 100)}%"></i></div>
         <div class="prog-note">현재 차입 <b>${usd(last.borrow)}</b> · 다음 단계 ${usd(next.v)}까지 ${usd(next.v - last.borrow)} 남음 · 최근 3일 하루 평균 ${avg3 >= 0 ? '' : '-'}${usd(Math.abs(avg3))} ${avg3 >= 0 ? '증가' : '감소'}${avg3 > 0 ? ` · 이 속도면 약 ${Math.ceil((next.v - last.borrow) / avg3)}일` : ''}</div>` : ''}
         <div class="tbl-wrap"><table>
-          <thead><tr><th>날짜</th><th>Morpho 차입</th><th>Aave V4 차입</th><th>차입 합계</th><th>전일 대비</th><th>예치 잔액</th><th>이용률</th></tr></thead>
+          <thead><tr><th>날짜</th><th class="opt">Morpho 차입</th><th class="opt">Aave V4 차입</th><th>차입 합계</th><th>전일 대비</th><th class="opt">예치 잔액</th><th>이용률</th></tr></thead>
           <tbody>${rows.map((r, i) => {
             const prev = days[days.length - 2 - i];
             const ch = prev && prev.borrow ? r.borrow / prev.borrow - 1 : null;
-            return `<tr${i === 0 ? ' class="today"' : ''}><td>${md(r.d)}${i === 0 ? ' <span class="dim" style="font-size:11px">현재</span>' : ''}</td><td>${usd(r.morphoB)}</td><td>${usd(r.aaveB)}</td>
+            return `<tr${i === 0 ? ' class="today"' : ''}><td>${md(r.d)}${i === 0 ? ' <span class="dim" style="font-size:11px">현재</span>' : ''}</td><td class="opt">${usd(r.morphoB)}</td><td class="opt">${usd(r.aaveB)}</td>
               <td class="strong">${usd(r.borrow)}</td><td class="${cls(ch)}">${ch == null ? '–' : (ch > 0 ? '+' : '') + (ch * 100).toFixed(0) + '%'}</td>
-              <td>${usd(r.tvl)}</td><td>${pctPlain(r.util)}</td></tr>`;
-          }).join('')}</tbody></table></div>`,
+              <td class="opt">${usd(r.tvl)}</td><td>${pctPlain(r.util)}</td></tr>`;
+          }).join('')}</tbody></table></div>
+        <p class="note only-narrow">프로토콜별 차입·예치 잔액 열은 화면을 가로로 돌리거나 넓은 화면에서 보입니다.</p>`,
     });
   }
 
@@ -702,21 +734,336 @@
     });
   }
 
+  // ---------------------------------------------------------------- CRCL 실시간 주가 (Binance CRCLUSDT 무기한 선물)
+  const BN = {
+    rest: 'https://fapi.binance.com/fapi/v1',
+    ws: 'wss://fstream.binance.com/market/stream?streams=crclusdt@aggTrade/crclusdt@ticker/crclusdt@markPrice@1s',
+    sym: 'CRCLUSDT',
+  };
+  const RANGES = {
+    '1d': { label: '1일', interval: '15m', limit: 96 },
+    '1w': { label: '1주', interval: '1h', limit: 168 },
+    '1m': { label: '1개월', interval: '4h', limit: 180 },
+    '3m': { label: '3개월', interval: '1d', limit: 90 },
+  };
+  const px = state.px;
+  const price = (v) => (v == null || !isFinite(v) ? '–' : '$' + nf(2).format(v));
+  const hm = (ms) => new Date(ms).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const mdLocal = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+  async function bnGet(path) {
+    const r = await fetch(`${BN.rest}/${path}`, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error('binance ' + r.status);
+    return r.json();
+  }
+  async function loadPxSnapshot() {
+    const [t, m, oi] = await Promise.all([
+      bnGet(`ticker/24hr?symbol=${BN.sym}`),
+      bnGet(`premiumIndex?symbol=${BN.sym}`),
+      bnGet(`openInterest?symbol=${BN.sym}`).catch(() => null),
+    ]);
+    px.t = { last: +t.lastPrice, open: +t.openPrice, high: +t.highPrice, low: +t.lowPrice, pct: +t.priceChangePercent / 100, qv: +t.quoteVolume, E: t.closeTime };
+    px.mark = { mark: +m.markPrice, index: +m.indexPrice, fund: +m.lastFundingRate, next: m.nextFundingTime };
+    if (oi) px.oi = +oi.openInterest;
+    px.at = Date.now();
+    px.err = null;
+  }
+  async function loadKlines(range) {
+    const r = RANGES[range];
+    const k = await bnGet(`klines?symbol=${BN.sym}&interval=${r.interval}&limit=${r.limit}`);
+    px.klines[range] = k.map((x) => [x[0], +x[4]]); // [시작 시각(ms), 종가]
+  }
+
+  // WebSocket으로 체결마다 갱신, 끊기면 5초 폴링으로 대체하고 재연결
+  let ws = null, wsRetry = 0, wsTimer = null, pollTimer = null, wsWatch = null;
+  // 연결은 됐는데 데이터가 끊기면(15초 무소식) 다시 연결한다
+  const armWatch = () => { clearTimeout(wsWatch); wsWatch = setTimeout(() => { try { ws?.close(); } catch {} }, 15000); };
+  function connectWs() {
+    if (ws || document.hidden || !('WebSocket' in window)) return;
+    try { ws = new WebSocket(BN.ws); } catch { startPoll(); return; }
+    ws.onopen = () => { armWatch(); };
+    ws.onmessage = (ev) => {
+      armWatch();
+      if (px.via !== 'ws') { wsRetry = 0; px.via = 'ws'; px.err = null; stopPoll(); }
+      let d;
+      try { d = JSON.parse(ev.data).data; } catch { return; }
+      if (!d) return;
+      if (d.e === 'aggTrade') {
+        if (!px.t) return;
+        const last = +d.p;
+        px.t = { ...px.t, last, pct: px.t.open ? last / px.t.open - 1 : px.t.pct, high: Math.max(px.t.high, last), low: Math.min(px.t.low, last), E: d.T };
+      } else if (d.e === '24hrTicker') px.t = { last: +d.c, open: +d.o, high: +d.h, low: +d.l, pct: +d.P / 100, qv: +d.q, E: d.E };
+      else if (d.e === 'markPriceUpdate') px.mark = { mark: +d.p, index: +d.i, fund: +d.r, next: d.T };
+      px.at = Date.now();
+      schedulePaint();
+    };
+    ws.onclose = () => {
+      ws = null;
+      clearTimeout(wsWatch);
+      if (px.via === 'ws') px.via = 'rest';
+      if (document.hidden) return;
+      startPoll();
+      clearTimeout(wsTimer);
+      wsTimer = setTimeout(connectWs, Math.min(30000, 2000 * 2 ** wsRetry++));
+    };
+    ws.onerror = () => { try { ws.close(); } catch {} };
+  }
+  function disconnectWs() {
+    clearTimeout(wsTimer);
+    clearTimeout(wsWatch);
+    if (ws) { ws.onclose = null; ws.close(); ws = null; }
+    stopPoll();
+  }
+  function startPoll() {
+    if (pollTimer) return;
+    pollTimer = setInterval(async () => {
+      try { await loadPxSnapshot(); if (px.via !== 'ws') px.via = 'rest'; schedulePaint(); } catch {}
+    }, 5000);
+  }
+  function stopPoll() { clearInterval(pollTimer); pollTimer = null; }
+
+  let paintQueued = false, lastPaint = 0, prevLast = null;
+  function schedulePaint() {
+    if (paintQueued) return;
+    paintQueued = true;
+    setTimeout(() => requestAnimationFrame(() => { paintQueued = false; lastPaint = Date.now(); paintPx(); }), Math.max(0, 600 - (Date.now() - lastPaint)));
+  }
+  const fundLeft = (T) => { const m = Math.max(0, Math.round((T - Date.now()) / 60000)); return `다음 ${Math.floor(m / 60)}시간 ${m % 60}분 후`; };
+
+  function paintPx() {
+    const t = px.t;
+    setHtml('px-via', px.err && !t ? '<span class="warn">바이낸스 연결 실패 · 다시 시도 중</span>' : px.via === 'ws' ? '<span class="live-dot"></span>실시간 체결' : px.via === 'rest' ? '5초마다 갱신' : '연결 중…');
+    if (!t) return;
+    const lastEl = document.getElementById('px-last');
+    if (lastEl) {
+      lastEl.textContent = price(t.last);
+      if (prevLast != null && t.last !== prevLast && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        lastEl.classList.remove('flash-up', 'flash-down');
+        void lastEl.offsetWidth;
+        lastEl.classList.add(t.last > prevLast ? 'flash-up' : 'flash-down');
+      }
+    }
+    prevLast = t.last;
+    const chg = t.last - t.open;
+    setHtml('px-chg', `<span class="${cls(t.pct)}">${arrow(t.pct)} ${chg >= 0 ? '+' : '-'}$${Math.abs(chg).toFixed(2)} (${pct(t.pct, 2)})</span>`);
+    const pos = t.high > t.low ? (t.last - t.low) / (t.high - t.low) : 0.5;
+    const rb = document.getElementById('px-range');
+    if (rb) rb.style.left = `${Math.min(100, Math.max(0, pos * 100))}%`;
+    setHtml('px-low', price(t.low));
+    setHtml('px-high', price(t.high));
+    setHtml('px-qv', usd(t.qv));
+    if (px.mark) {
+      setHtml('px-fund', `<span class="${cls(px.mark.fund)}">${px.mark.fund > 0 ? '+' : ''}${(px.mark.fund * 100).toFixed(4)}%</span>`);
+      setHtml('px-next', fundLeft(px.mark.next));
+    }
+    if (px.oi != null) setHtml('px-oi', usd(px.oi * (px.mark?.mark || t.last)));
+    setHtml('px-time', hm(t.E || px.at) + ' 기준');
+    setHtml('sum-px', price(t.last));
+    setHtml('sum-pxchg', `<span class="${cls(t.pct)}">${pct(t.pct, 1)}</span>`);
+    setHtml('pc-last', price(t.last));
+    const k = px.klines[state.range];
+    if (k?.length) {
+      const ch = t.last / k[0][1] - 1;
+      setHtml('pc-chg', `<span class="${cls(ch)}">${arrow(ch)} ${pct(ch, 2)}</span> <span class="lbl">${RANGES[state.range].label} 동안</span>`);
+    }
+    for (const id of ['spark', 'pricechart']) {
+      const c = charts[id];
+      if (!c) continue;
+      const ds = c.data.datasets[0];
+      ds.data[ds.data.length - 1] = t.last;
+      c.update('none');
+    }
+  }
+
+  function drawPriceLine(id, k, { compact = false, range = '1d' } = {}) {
+    if (!k?.length) return;
+    const labels = k.map((p) => p[0]);
+    const data = k.map((p) => p[1]);
+    if (px.t) data[data.length - 1] = px.t.last;
+    const col = data.at(-1) >= data[0] ? C.up : C.down;
+    const xf = range === '1d' ? hm : mdLocal;
+    const tip = (it) => {
+      const d = new Date(labels[it.dataIndex]);
+      return RANGES[range].interval === '1d' ? d.toLocaleDateString('ko-KR') : d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+    };
+    draw(id, {
+      type: 'line',
+      data: { labels, datasets: [lineDs('CRCL', data, col, { fill: 'start', backgroundColor: areaFill(col), pointRadius: endPoint(data.length, compact ? 3 : 4), borderWidth: compact ? 1.6 : 2, tension: 0.2 })] },
+      options: {
+        interaction,
+        plugins: { ...noLegend, tooltip: { ...tooltip(tip, price), enabled: !compact } },
+        scales: compact
+          ? { x: { display: false }, y: { display: false, grace: '8%' } }
+          : { x: axisX(labels, xf, 5), y: { ...axisY(price), grace: '5%' } },
+      },
+    });
+  }
+
+  function renderPriceCard() {
+    card('price', {
+      title: 'CRCL 실시간 주가',
+      sub: 'Binance CRCLUSDT 무기한 선물 · 24시간 거래',
+      info: INFO.price,
+      body: `
+        <div class="px-main"><span class="px-last" id="px-last">${price(px.t?.last)}</span><span class="px-chg" id="px-chg"></span></div>
+        <div class="px-meta"><span id="px-via">연결 중…</span><span id="px-time"></span></div>
+        <div class="chart spark"><canvas id="cv-spark" role="img" aria-label="CRCL 최근 24시간 가격"></canvas></div>
+        <div class="px-range" aria-label="24시간 가격 범위"><span id="px-low">–</span><div class="rb"><i id="px-range"></i></div><span id="px-high">–</span></div>
+        <div class="px-stats">
+          <div><span>24h 거래대금</span><b id="px-qv">–</b></div>
+          <div><span>펀딩비</span><b id="px-fund">–</b><small id="px-next"></small></div>
+          <div><span>미결제약정</span><b id="px-oi">–</b></div>
+        </div>
+        <button type="button" class="link-btn" data-go="crcl:c-pricechart">가격 차트 자세히 보기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`,
+    });
+    drawPriceLine('spark', px.klines['1d'], { compact: true });
+    paintPx();
+  }
+
+  function renderPriceChart() {
+    const r = state.range;
+    const k = px.klines[r];
+    let note = '';
+    if (k?.length) {
+      const vals = k.map((p) => p[1]);
+      note = `${RANGES[r].label} 최고 ${price(Math.max(...vals))} · 최저 ${price(Math.min(...vals))} · 시작 ${price(vals[0])} · ${RANGES[r].interval} 봉`;
+    }
+    card('pricechart', {
+      title: 'CRCL 가격 추이',
+      sub: 'Binance CRCLUSDT 무기한 선물',
+      info: INFO.pricechart,
+      body: `
+        <div class="seg range" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-range="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
+        <div class="px-main sm"><span class="px-last" id="pc-last">${price(px.t?.last)}</span><span class="px-chg" id="pc-chg"></span></div>
+        <div class="chart tall"><canvas id="cv-pricechart" role="img" aria-label="CRCL 가격 추이"></canvas></div>
+        <p class="note">${note || '불러오는 중…'}</p>`,
+    });
+    if (!k) {
+      loadKlines(r).then(() => { if (state.range === r) renderPriceChart(); }).catch(() => {});
+      return;
+    }
+    drawPriceLine('pricechart', k, { range: r });
+    paintPx();
+  }
+
+  async function initPrice() {
+    renderPriceCard();
+    renderPriceChart();
+    try {
+      await Promise.all([loadPxSnapshot(), loadKlines('1d'), state.range !== '1d' ? loadKlines(state.range) : null]);
+      if (!px.via) px.via = 'rest';
+    } catch (e) {
+      px.err = e.message;
+    }
+    renderPriceCard();
+    renderPriceChart();
+    if (state.data) renderSummary();
+    connectWs();
+    if (px.err) startPoll();
+  }
+
+  // ---------------------------------------------------------------- 현재 상황 요약 (규칙 기반)
+  function renderSummary() {
+    const d = state.data;
+    if (!d) return;
+    const items = [];
+    const sp = (v, dp = 1) => `<span class="${cls(v, 5e-5)}">${pct(v, dp)}</span>`;
+    const add = (tone, go, html, tag, weight = 1) => items.push({ tone, go, html, tag, weight });
+
+    const usdcRow = d.stables?.rows?.find((r) => r.sym === 'USDC');
+    const usdtRow = d.stables?.rows?.find((r) => r.sym === 'USDT');
+    if (usdcRow) {
+      const t = usdcRow.ch30 > 0.01 ? 'pos' : usdcRow.ch30 < -0.01 ? 'neg' : 'neu';
+      const vsT = usdtRow && usdcRow.ch30 != null && usdtRow.ch30 != null
+        ? (usdcRow.ch30 > usdtRow.ch30 ? ' · USDT보다 빠르게 성장' : ' · USDT보다 성장 느림') : '';
+      add(t, 'usdc:c-usdc', `USDC 유통량 <b>${usd(current('usdcTotal').v)}</b> · 7일 ${sp(usdcRow.ch7)} · 30일 ${sp(usdcRow.ch30)} · 점유율 ${pctPlain(usdcRow.share)}${vsT}`,
+        t === 'pos' ? 'USDC 증가세' : t === 'neg' ? 'USDC 감소세' : null, 3);
+    }
+
+    const S = d.short;
+    if (S?.daily?.length) {
+      const last = S.daily.at(-1), diff = last.ratio - S.avgRatio;
+      const t = diff > 0.05 ? 'neg' : diff < -0.05 ? 'pos' : 'neu';
+      const si = S.interest?.at(-1);
+      add(t, 'crcl:c-short', `공매도 비율 <b>${pctPlain(last.ratio)}</b>(${md(isoToTs(last.d))}) · 1개월 평균 ${pctPlain(S.avgRatio)}보다 ${Math.abs(diff * 100).toFixed(1)}%p ${diff >= 0 ? '높음' : '낮음'}${si ? ` · 잔고 ${si.d.slice(5).replace('-', '/')} ${si.chg > 0 ? '+' : ''}${si.chg.toFixed(1)}%` : ''}`,
+        t === 'neg' ? '공매도 비중↑' : t === 'pos' ? '공매도 비중↓' : null, 2);
+    }
+
+    const ld = lendingDays();
+    if (ld.length >= 2) {
+      const a = ld.at(-1), b = ld.at(-2), ch = b.borrow ? a.borrow / b.borrow - 1 : 0;
+      const t = ch > 0.1 ? 'pos' : ch < -0.1 ? 'neg' : 'neu';
+      add(t, 'arc:c-lending', `Arc 대출 차입 <b>${usd(a.borrow)}</b> · 전일 대비 ${sp(ch, 0)} · 이용률 ${pctPlain(a.util)}`,
+        t === 'pos' ? (ch > 0.3 ? 'Arc 대출 급증' : 'Arc 대출 증가') : t === 'neg' ? 'Arc 대출 감소' : null, 2);
+    }
+
+    const tv = d.arcTvl;
+    if (tv?.daily?.length > 8) {
+      const ago7 = tv.daily.at(-8)[1], ch = ago7 ? tv.now / ago7 - 1 : null;
+      const t = ch > 0.05 ? 'pos' : ch < -0.05 ? 'neg' : 'neu';
+      add(t, 'arc:c-tvl', `Arc TVL <b>${usd(tv.now)}</b> · 7일 ${sp(ch)} · DEX 24시간 ${usd(d.arcDex?.total24h)}`,
+        t === 'pos' ? 'Arc TVL 증가' : t === 'neg' ? 'Arc TVL 감소' : null, 1);
+    }
+
+    const cc = d.cctp;
+    if (cc?.rows) {
+      const out = cc.net < 0;
+      const top = cc.rows.slice().sort((a, b) => (out ? b.out - a.out : b.in - a.in))[0];
+      const t = cc.net < -1e7 ? 'neg' : cc.net > 1e7 ? 'pos' : 'neu';
+      add(t, 'arc:c-cctp', `CCTP 24시간 순${out ? '유출' : '유입'} <b>${usd(Math.abs(cc.net))}</b>${top ? ` · 최대 ${out ? '유출' : '유입'} ${esc(top.name)} ${usd(out ? top.out : top.in)}` : ''}`,
+        t === 'neg' ? 'Arc 자금 순유출' : t === 'pos' ? 'Arc 자금 순유입' : null, 1);
+    }
+
+    const oc = d.onchain;
+    if (oc?.days?.length > 7) {
+      const now = (current('cirbtcArc').v ?? 0) + (current('cirbtcEth').v ?? 0);
+      const w = oc.days.at(-7), ago7 = (w.arcBtc || 0) + (w.ethBtc || 0), ch = ago7 ? now / ago7 - 1 : null;
+      const t = ch > 0.05 ? 'pos' : ch < -0.05 ? 'neg' : 'neu';
+      add(t, 'arc:c-cirbtc', `cirBTC <b>${btc(now)}</b> · 7일 ${sp(ch)}`, t === 'pos' ? 'cirBTC 증가' : t === 'neg' ? 'cirBTC 감소' : null, 1);
+    }
+
+    const A = d.accounts;
+    const lastDay = A?.daily?.filter((r) => !r.approx).at(-1);
+    const lastWeek = A?.weeks?.filter((w) => !w.approx).at(-1);
+    if (lastDay) add('neu', 'arc:c-accounts', `Arc 활성 계정 <b>${nf(0).format(lastDay.active)}</b>(${lastDay.d.slice(5).replace('-', '/')}) · 신규 ${nf(0).format(lastDay.new)}${lastWeek ? ` · 주간 재방문 ${pctPlain(lastWeek.retRatio)}` : ''}`, null, 0);
+
+    const tags = items.filter((i) => i.tag).sort((a, b) => b.weight - a.weight).slice(0, 3);
+    const nPos = items.filter((i) => i.tone === 'pos').length, nNeg = items.filter((i) => i.tone === 'neg').length;
+    const toneName = { pos: '긍정', neg: '주의', neu: '중립' };
+    const chevron = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+    const pxLine = `<li><button type="button" data-go="crcl:c-pricechart"><span class="tone px"><span class="live-dot"></span>주가</span>
+      <span class="txt">CRCL <b id="sum-px">${price(px.t?.last)}</b> · 24시간 <span id="sum-pxchg">${px.t ? `<span class="${cls(px.t.pct)}">${pct(px.t.pct, 1)}</span>` : '–'}</span></span>${chevron}</button></li>`;
+    card('summary', {
+      title: '현재 상황 요약',
+      sub: `${ago(d.updatedAt)} 수집 데이터 기준 · 규칙 기반 자동 요약`,
+      info: INFO.summary,
+      body: `
+        <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
+        <div class="sum-count"><span class="tone pos">긍정 ${nPos}</span><span class="tone neg">주의 ${nNeg}</span><span class="tone neu">중립 ${items.length - nPos - nNeg}</span></div>
+        <ul class="sum-list">${pxLine}${items.map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
+    });
+  }
+
+  // ---------------------------------------------------------------- 상태 표시
+  function ago(t) {
+    const m = Math.max(0, Math.round((Date.now() - Date.parse(t)) / 60000));
+    return m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 ${m % 60}분 전`;
+  }
   function renderStatus() {
     const d = state.data;
+    if (!d) return;
     const errs = Object.keys(d.errors || {});
-    const age = (Date.now() - Date.parse(d.updatedAt)) / 60000;
-    const stale = age > 90;
+    const stale = (Date.now() - Date.parse(d.updatedAt)) / 60000 > 90;
     document.getElementById('status').innerHTML =
-      `${when(d.updatedAt)} 수집${stale ? ` <span class="warn">· ${Math.round(age / 60)}시간 전 (수집 지연)</span>` : ''}` +
-      (state.live ? ` · 실시간 ${when(state.live.at)}` : '') +
-      (errs.length ? ` <span class="warn">· 일부 실패: ${errs.join(', ')}</span>` : '');
-    document.getElementById('live-pill').hidden = !state.live;
+      `<span${stale ? ' class="warn"' : ''}>${ago(d.updatedAt)} 수집${stale ? '(지연)' : ''}</span>` +
+      (state.live ? ' · <span class="live-dot"></span>실시간' : '') +
+      (errs.length ? ` · <span class="warn">일부 실패 ${errs.length}</span>` : '');
   }
 
   function renderAll() {
     if (!state.data) return;
-    const jobs = [renderStatus, renderKpis, renderShort, renderStables,
+    const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
       renderProducts, renderChains, renderTvl, renderDex, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp];
@@ -780,15 +1127,50 @@
     const btn = document.getElementById('refresh');
     btn.classList.add('spin');
     try {
-      if (data || !state.data) await loadData().catch((e) => { if (!state.data) throw e; });
+      if (data || !state.data) {
+        await loadData().catch((e) => { if (!state.data) throw e; });
+        // 가격 차트 봉도 함께 새로 받는다
+        Promise.all([loadKlines('1d'), state.range !== '1d' ? loadKlines(state.range) : null])
+          .then(() => { renderPriceCard(); renderPriceChart(); }).catch(() => {});
+      }
       await loadLive().catch(() => {});
       renderAll();
     } catch (e) {
-      document.getElementById('status').innerHTML = `<span class="warn">데이터를 불러오지 못했습니다 (${esc(e.message)}). 새로고침을 눌러 다시 시도하세요.</span>`;
+      document.getElementById('status').innerHTML = '<span class="warn">데이터를 불러오지 못했습니다. 새로고침을 눌러 다시 시도하세요.</span>';
     } finally {
       btn.classList.remove('spin');
       busy = false;
     }
+  }
+
+  // ---------------------------------------------------------------- 화면 전환 (하단 탭)
+  const VIEW_TITLES = { home: 'Circle Watch', crcl: 'CRCL 주가 · 공매도', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인' };
+  const scrollMem = {};
+  function showView(v, target) {
+    if (!VIEW_TITLES[v]) v = 'home';
+    if (state.view !== v) scrollMem[state.view] = window.scrollY;
+    state.view = v;
+    document.querySelectorAll('.view').forEach((el) => { el.hidden = el.dataset.view !== v; });
+    document.querySelectorAll('[data-tab]').forEach((b) => (b.dataset.tab === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
+    document.getElementById('view-title').textContent = VIEW_TITLES[v];
+    try { history.replaceState(null, '', '#' + v); } catch {}
+    savePref('view', v);
+    for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
+    if (target) {
+      const el = document.getElementById(target);
+      if (el) {
+        const y = el.getBoundingClientRect().top + window.scrollY - document.querySelector('.top').offsetHeight - 10;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'instant' });
+        el.classList.remove('pulse-card');
+        void el.offsetWidth;
+        el.classList.add('pulse-card');
+      }
+    } else {
+      window.scrollTo({ top: scrollMem[v] || 0, behavior: 'instant' });
+    }
+  }
+  function updateBasisBtn() {
+    document.getElementById('basis').textContent = `비교 · ${state.basis === 'prev' ? '직전' : '24h'}`;
   }
 
   // ---------------------------------------------------------------- 이벤트
@@ -803,21 +1185,39 @@
       open ? state.openInfo.add(id) : state.openInfo.delete(id);
       return;
     }
-    const b = ev.target.closest('[data-basis]');
-    if (b) {
-      state.basis = b.dataset.basis;
+    const go = ev.target.closest('[data-go]');
+    if (go) { const [v, target] = go.dataset.go.split(':'); showView(v, target); return; }
+    const tab = ev.target.closest('[data-tab]');
+    if (tab) {
+      if (tab.dataset.tab === state.view) window.scrollTo({ top: 0, behavior: 'smooth' });
+      else showView(tab.dataset.tab);
+      return;
+    }
+    const rg = ev.target.closest('[data-range]');
+    if (rg) { state.range = rg.dataset.range; savePref('range', state.range); renderPriceChart(); return; }
+    if (ev.target.closest('#basis')) {
+      state.basis = state.basis === 'prev' ? '24h' : 'prev';
       savePref('basis', state.basis);
-      document.querySelectorAll('[data-basis]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      updateBasisBtn();
       renderAll();
       return;
     }
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
-    if (ev.target.closest('#refresh')) refresh();
+    if (ev.target.closest('#refresh')) { refresh(); loadPxSnapshot().then(schedulePaint).catch(() => {}); }
   });
-  document.querySelectorAll('[data-basis]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.basis === state.basis)));
 
+  if (!RANGES[state.range]) state.range = '1d';
+  updateBasisBtn();
+  showView(location.hash.slice(1) || loadPref('view', 'home'));
+  initPrice();
   refresh();
   setInterval(() => { if (!document.hidden) refresh({ data: false }); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh(); }, DATA_REFRESH_MS);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  setInterval(() => { if (!document.hidden) { renderStatus(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { disconnectWs(); return; }
+    loadPxSnapshot().then(schedulePaint).catch(() => {});
+    connectWs();
+    refresh();
+  });
 })();

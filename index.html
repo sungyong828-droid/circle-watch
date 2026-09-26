@@ -6,14 +6,17 @@
 <meta name="theme-color" content="#0d1015">
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Circle Watch">
 <title>Circle Watch</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%234f8ff7'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%230d1015' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="assets/icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=5">
 </head>
 <body>
 <header class="top">
@@ -21,60 +24,73 @@
     <div class="brand">
       <span class="mark" aria-hidden="true"></span>
       <div>
-        <h1>Circle Watch</h1>
+        <h1 id="view-title">Circle Watch</h1>
         <p class="status" id="status">데이터 불러오는 중…</p>
       </div>
     </div>
-    <button class="icon-btn" id="refresh" type="button" aria-label="지금 새로고침">
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-  </div>
-  <div class="top-row controls">
-    <div class="seg" role="group" aria-label="변화율 비교 기준">
-      <button type="button" data-basis="prev" aria-pressed="true">직전 수집 대비</button>
-      <button type="button" data-basis="24h" aria-pressed="false">24시간 전 대비</button>
+    <div class="top-actions">
+      <button class="chip-btn" id="basis" type="button" aria-label="변화율 비교 기준 바꾸기">비교 · 직전</button>
+      <button class="icon-btn" id="refresh" type="button" aria-label="지금 새로고침">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
-    <span class="live-pill" id="live-pill" hidden><i></i>LIVE</span>
   </div>
 </header>
 
 <main>
-  <section class="kpis" id="kpis" aria-label="핵심 지표"></section>
+  <section class="view" id="view-home" data-view="home">
+    <article class="card price-card" id="c-price"></article>
+    <article class="card" id="c-summary"></article>
+    <h2 class="group-h">핵심 지표 <span>누르면 자세히</span></h2>
+    <section class="kpis" id="kpis" aria-label="핵심 지표"></section>
+  </section>
 
-  <h2 class="group-h">CRCL 주식</h2>
-  <div class="grid">
-    <article class="card wide" id="c-short"></article>
-  </div>
+  <section class="view" id="view-crcl" data-view="crcl" hidden>
+    <article class="card" id="c-pricechart"></article>
+    <article class="card" id="c-short"></article>
+  </section>
 
-  <h2 class="group-h">Circle · 스테이블코인</h2>
-  <div class="grid">
-    <article class="card wide" id="c-stables"></article>
+  <section class="view" id="view-usdc" data-view="usdc" hidden>
+    <article class="card" id="c-stables"></article>
     <article class="card" id="c-usdc"></article>
     <article class="card" id="c-eurc"></article>
     <article class="card" id="c-products"></article>
     <article class="card" id="c-chains"></article>
-  </div>
+  </section>
 
-  <h2 class="group-h">Arc 체인</h2>
-  <div class="grid">
+  <section class="view" id="view-arc" data-view="arc" hidden>
     <article class="card" id="c-tvl"></article>
     <article class="card" id="c-dex"></article>
     <article class="card" id="c-borrow"></article>
+    <article class="card" id="c-lending"></article>
     <article class="card" id="c-arcsupply"></article>
-    <article class="card wide" id="c-lending"></article>
     <article class="card" id="c-cirbtc"></article>
+    <article class="card" id="c-cctp"></article>
     <article class="card" id="c-accounts"></article>
-    <article class="card wide" id="c-cctp"></article>
-  </div>
+  </section>
 
   <footer class="foot">
-    <p>데이터: DefiLlama · Circle 공식 API · Arc RPC · Arc 탐색기(Blockscout) · Ethereum RPC.</p>
-    <p>수집기는 약 15분마다 실행되고, 🟢 LIVE 표시 값은 이 화면에서 1분마다 직접 조회합니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
+    <p>데이터: Binance · DefiLlama · Circle 공식 API · FINRA · Arc/Ethereum RPC · Arc 탐색기(Blockscout).</p>
+    <p>수집기는 약 15분마다 실행되고, 🟢 표시 값은 이 화면에서 직접 실시간 조회합니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
   </footer>
 </main>
 
+<nav class="tabbar" aria-label="화면 전환">
+  <button type="button" data-tab="home" aria-current="page">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg><span>홈</span>
+  </button>
+  <button type="button" data-tab="crcl">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15l4-5 3 3 5-7"/></svg><span>CRCL</span>
+  </button>
+  <button type="button" data-tab="usdc">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M14.8 9.3c-.4-1-1.5-1.6-2.8-1.6-1.6 0-2.8.8-2.8 2.1 0 2.9 5.8 1.5 5.8 4.4 0 1.3-1.2 2.1-2.9 2.1-1.4 0-2.5-.6-2.9-1.7M12 6v1.7m0 8.6V18"/></svg><span>USDC</span>
+  </button>
+  <button type="button" data-tab="arc">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19a8 8 0 0 1 16 0M8 19a4 4 0 0 1 8 0"/></svg><span>Arc</span>
+  </button>
+</nav>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="assets/app.js"></script>
+<script src="assets/app.js?v=5"></script>
 </body>
 </html>
