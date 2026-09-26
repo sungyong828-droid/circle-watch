@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=5">
+<link rel="stylesheet" href="assets/style.css?v=7">
 </head>
 <body>
 <header class="top">
@@ -53,6 +53,8 @@
   <section class="view" id="view-usdc" data-view="usdc" hidden>
     <article class="card" id="c-stables"></article>
     <article class="card" id="c-usdc"></article>
+    <article class="card" id="c-usdcflow"></article>
+    <article class="card" id="c-reserve"></article>
     <article class="card" id="c-eurc"></article>
     <article class="card" id="c-products"></article>
     <article class="card" id="c-chains"></article>
@@ -61,6 +63,7 @@
   <section class="view" id="view-arc" data-view="arc" hidden>
     <article class="card" id="c-tvl"></article>
     <article class="card" id="c-dex"></article>
+    <article class="card" id="c-arcactivity"></article>
     <article class="card" id="c-borrow"></article>
     <article class="card" id="c-lending"></article>
     <article class="card" id="c-arcsupply"></article>
@@ -70,10 +73,12 @@
   </section>
 
   <footer class="foot">
-    <p>데이터: Binance · DefiLlama · Circle 공식 API · FINRA · Arc/Ethereum RPC · Arc 탐색기(Blockscout).</p>
-    <p>수집기는 약 15분마다 실행되고, 🟢 표시 값은 이 화면에서 직접 실시간 조회합니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
+    <p>데이터: Binance · DefiLlama · Circle 공식 API · FINRA · 미 재무부 · Arc/Ethereum RPC · Arc 탐색기(Blockscout).</p>
+    <p>서버 수집기는 약 15분마다 실행되고, 우측 상단 새로고침을 누르면 이 화면에서 각 출처를 직접 조회해 즉시 동기화합니다. 🟢 표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
   </footer>
 </main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <nav class="tabbar" aria-label="화면 전환">
   <button type="button" data-tab="home" aria-current="page">
@@ -91,6 +96,6 @@
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="assets/app.js?v=5"></script>
+<script src="assets/app.js?v=7"></script>
 </body>
 </html>

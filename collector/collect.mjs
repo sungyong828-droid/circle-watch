@@ -166,7 +166,7 @@ async function collectStables() {
     const cur = val(a.circulating);
     const w = val(a.circulatingPrevWeek), m = val(a.circulatingPrevMonth), dd = val(a.circulatingPrevDay);
     return {
-      sym: r.sym, issuer: r.issuer, circle: !!r.circle, cur: r.cur || 'USD',
+      id: r.id, sym: r.sym, issuer: r.issuer, circle: !!r.circle, cur: r.cur || 'USD',
       supply: cur,
       share: r.cur ? null : cur / totalUsd,
       ch1: dd ? cur / dd - 1 : null,
@@ -373,7 +373,8 @@ async function collectCctp(state) {
   }
   const rows = Object.values(by).sort((a, b) => b.in + b.out - (a.in + a.out));
   const tIn = rows.reduce((s, r) => s + r.in, 0), tOut = rows.reduce((s, r) => s + r.out, 0);
-  return { fromBlock: startBlock, toBlock: latest, totalIn: tIn, totalOut: tOut, net: tIn - tOut, rows };
+  const blockTime = DAY / Math.max(1, latest - startBlock);
+  return { fromBlock: startBlock, toBlock: latest, blockTime, totalIn: tIn, totalOut: tOut, net: tIn - tOut, rows, events: st.events.map((e) => [e[0], e[1], e[2], Math.round(e[3] * 100) / 100]) };
 }
 
 function parseCctp(logs) {
@@ -469,6 +470,39 @@ async function collectShort(state) {
 
 const isoToTs = (s) => Date.parse(s + 'T00:00:00Z') / 1000;
 
+// 미 재무부 13주 T-bill 금리(쿠폰 환산) — Circle 준비금 수익 추정용
+async function collectRates() {
+  const now = new Date();
+  const years = [now.getUTCFullYear()];
+  if (now.getUTCMonth() < 3) years.unshift(now.getUTCFullYear() - 1);
+  const rows = [];
+  for (const y of years) {
+    const res = await fetch(`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${y}/all?type=daily_treasury_bill_rates&field_tdr_date_value=${y}&page&_format=csv`, { signal: AbortSignal.timeout(60000) });
+    if (!res.ok) throw new Error('treasury ' + res.status);
+    const lines = (await res.text()).trim().split(/\r?\n/);
+    const head = lines[0].split(',').map((h) => h.replace(/"/g, ''));
+    const col = head.indexOf('13 WEEKS COUPON EQUIVALENT');
+    for (const l of lines.slice(1)) {
+      const c = l.split(',');
+      const [m, d, yy] = c[0].split('/');
+      const v = parseFloat(c[col]);
+      if (isFinite(v)) rows.push([`${yy}-${m}-${d}`, v / 100]);
+    }
+  }
+  rows.sort((a, b) => a[0].localeCompare(b[0]));
+  const daily = rows.slice(-90);
+  return { tenor: '13주', latest: daily.at(-1), daily };
+}
+
+// Arc 일별 트랜잭션 수 · 수수료(USDC)
+async function collectArcActivity() {
+  const base = 'https://explorer.arc.io/stats-service/api/v1/lines';
+  const [tx, fee] = await Promise.all([getJSON(`${base}/newTxns?resolution=DAY`), getJSON(`${base}/txnsFee?resolution=DAY`)]);
+  const feeMap = Object.fromEntries(fee.chart.map((p) => [p.date, Number(p.value)]));
+  const daily = tx.chart.map((p) => ({ d: p.date, txns: Number(p.value), fee: feeMap[p.date] ?? 0, approx: !!p.is_approximate })).slice(-30);
+  return { daily };
+}
+
 // ---------- main ----------
 async function main() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -487,6 +521,8 @@ async function main() {
     onchain: () => collectOnchainDaily(state),
     cctp: () => collectCctp(state),
     short: () => collectShort(state),
+    rates: () => collectRates(),
+    arcActivity: () => collectArcActivity(),
   };
   for (const [k, fn] of Object.entries(sections)) {
     const t = Date.now();

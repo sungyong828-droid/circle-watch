@@ -33,7 +33,9 @@
 
   const state = {
     data: null,
-    live: null,
+    live: {},
+    syncedAt: null,
+    usdcChains: null,
     basis: loadPref('basis', 'prev'),
     openInfo: new Set(),
     cctpAll: false,
@@ -45,6 +47,23 @@
 
   // ---------------------------------------------------------------- 설명(ⓘ)
   const INFO = {
+    usdcflow: `
+      <p>하루 동안 USDC가 <b>새로 발행된 양 − 소각(상환)된 양</b>입니다. DefiLlama 일별 공급량의 전날 대비 차이로 계산합니다.</p>
+      <ul>
+        <li><span class="up">빨강</span> = 순발행: 누군가 달러를 맡기고 USDC를 새로 받아감 → Circle 준비금 증가 → 이자수익 증가</li>
+        <li><span class="down">파랑</span> = 순소각: USDC를 달러로 돌려받음 → 준비금 감소</li>
+      </ul>
+      <p>유통량 그 자체보다 <b>방향과 속도</b>를 빨리 알아챌 수 있는 지표입니다.</p>`,
+    reserve: `
+      <p>Circle 매출의 대부분은 USDC 준비금(단기 미국 국채·현금)에서 나오는 이자입니다. 이 카드는 <b>USDC 유통량 × 미국 13주 국채 금리</b>로 연간 준비금 이자수익을 대략 추정합니다.</p>
+      <ul>
+        <li>금리는 미 재무부가 매일 발표하는 13주 T-bill 금리(쿠폰 환산)입니다.</li>
+        <li><b>총액 기준</b>입니다. 실제로는 준비금 일부가 현금이라 수익률이 약간 낮고, Coinbase 등 유통 파트너에게 상당 부분을 나눠 줍니다(유통 비용). 그래서 Circle 순수익은 이보다 작습니다.</li>
+        <li><b>금리 민감도</b>: 금리가 0.25%p 내려가면 연간 수익이 얼마나 줄어드는지, USDC가 $10억 늘면 얼마나 느는지 보여줍니다. CRCL 주가가 금리 인하 뉴스에 민감한 이유입니다.</li>
+      </ul>`,
+    arcactivity: `
+      <p>Arc 체인에서 하루 동안 처리된 <b>트랜잭션 수</b>와 사용자들이 낸 <b>수수료(가스비) 합계</b>입니다(Arc 탐색기 통계).</p>
+      <p>Arc는 수수료를 USDC로 받습니다. 트랜잭션·수수료가 꾸준히 늘면 Circle이 만든 체인이 실제로 쓰이고 있다는 신호입니다. 에어드롭 기대감으로 인한 일시적 급증인지 함께 보세요.</p>`,
     price: `
       <p>바이낸스 <b>CRCLUSDT 무기한 선물</b>(TradFi 주식 선물)의 실시간 체결가입니다. 바이낸스와 직접 연결(WebSocket)해 거래가 체결될 때마다 바로 바뀝니다.</p>
       <ul>
@@ -170,10 +189,9 @@
 
   // ---------------------------------------------------------------- 비교 기준(스냅샷)
   function current(key) {
-    const snaps = state.data?.snapshots || [];
-    const liveMap = { usdcTotal: 'usdcTotal', eurcTotal: 'eurcTotal', arcUsdc: 'arcUsdc', arcEurc: 'arcEurc', cirbtc: 'cirbtc', cirbtcArc: 'cirbtcArc', cirbtcEth: 'cirbtcEth' };
-    if (state.live && liveMap[key] && state.live[liveMap[key]] != null) return { v: state.live[liveMap[key]], t: state.live.at, live: true };
-    const last = snaps.at(-1);
+    const last = (state.data?.snapshots || []).at(-1);
+    const lv = state.live[key];
+    if (lv && (!last?.t || Date.parse(lv.t) >= Date.parse(last.t))) return { v: lv.v, t: lv.t, live: true };
     return { v: last?.[key], t: last?.t, live: false };
   }
   function base(key, curT) {
@@ -224,6 +242,7 @@
     Chart.defaults.font.size = 10.5;
     Chart.defaults.animation = false;
     Chart.defaults.maintainAspectRatio = false;
+    Chart.defaults.layout.padding = { right: 4 };
   }
   function axisX(labels, fmt, maxTicks = 6) {
     return {
@@ -291,6 +310,8 @@
       { k: 'USDC 유통량', key: 'usdcTotal', f: usd, go: 'usdc:c-usdc' },
       { k: 'USDC 점유율', key: 'usdcShare', f: (v) => pctPlain(v, 2), mode: 'pp', go: 'usdc:c-stables' },
       { k: 'CRCL 공매도 비율', key: 'shortRatio', f: (v) => pctPlain(v), mode: 'pp', go: 'crcl:c-short' },
+      { k: '연 준비금 수익(추정)', key: 'reserve', go: 'usdc:c-reserve' },
+      { k: 'USDC 7일 순발행', key: 'netMint7', go: 'usdc:c-usdcflow' },
       { k: 'EURC 유통량', key: 'eurcTotal', f: eur, go: 'usdc:c-eurc' },
       { k: 'cirBTC 공급', key: 'cirbtc', f: (v) => btc(v), go: 'arc:c-cirbtc' },
       { k: 'Arc DeFi TVL', key: 'tvl', f: usd, go: 'arc:c-tvl' },
@@ -302,6 +323,19 @@
     document.getElementById('kpis').innerHTML = tiles.map((t) => {
       const x = delta(t.key, { mode: t.mode });
       let dh = x.html;
+      if (t.key === 'reserve') {
+        const r = reserveEstimate();
+        x.c = { v: r?.annual, live: x.c.live };
+        t.f = usd;
+        dh = `<span class="flat">금리 ${r ? (r.rate * 100).toFixed(2) + '%' : '–'} 기준</span>`;
+      }
+      if (t.key === 'netMint7') {
+        const f = usdcNetMint();
+        const s7 = f.slice(-7).reduce((a, p) => a + p[1], 0), p7 = f.slice(-14, -7).reduce((a, p) => a + p[1], 0);
+        x.c = { v: s7, live: false };
+        t.f = (v) => (v < 0 ? '-' : '+') + usd(Math.abs(v));
+        dh = `<span class="flat">직전 7일 ${(p7 < 0 ? '-' : '+') + usd(Math.abs(p7))}</span>`;
+      }
       if (t.key === 'shortRatio') { // 일별 데이터라 전 거래일 대비로 표시
         const sd = state.data.short?.daily || [];
         const a = sd.at(-1), b = sd.at(-2);
@@ -403,7 +437,7 @@
   }
 
   function renderChains() {
-    const c = state.live?.usdcChains || state.data.circle?.usdcChains;
+    const c = state.usdcChains || state.data.circle?.usdcChains;
     if (!c?.length) return failed('chains', '체인별 USDC 유통량', state.data.errors?.circle);
     const top = c.slice(0, 10);
     const max = top[0].amount;
@@ -981,6 +1015,16 @@
         t === 'pos' ? 'USDC 증가세' : t === 'neg' ? 'USDC 감소세' : null, 3);
     }
 
+    const flow = usdcNetMint();
+    if (flow.length > 14) {
+      const s7 = flow.slice(-7).reduce((a, p) => a + p[1], 0), p7 = flow.slice(-14, -7).reduce((a, p) => a + p[1], 0);
+      const t = s7 > 5e8 ? 'pos' : s7 < -5e8 ? 'neg' : 'neu';
+      const sg = (v) => `<span class="${cls(v, 1)}">${v < 0 ? '-' : '+'}${usd(Math.abs(v))}</span>`;
+      add(t, 'usdc:c-usdcflow', `USDC 7일 순발행 ${sg(s7)} · 직전 7일 ${sg(p7)}`, t === 'pos' ? 'USDC 순발행' : t === 'neg' ? 'USDC 순소각' : null, 2);
+    }
+    const rv = reserveEstimate();
+    if (rv) add('neu', 'usdc:c-reserve', `준비금 이자수익 추정 연 <b>${usd(rv.annual)}</b> · 13주 국채 ${(rv.rate * 100).toFixed(2)}% 기준`, null, 0);
+
     const S = d.short;
     if (S?.daily?.length) {
       const last = S.daily.at(-1), diff = last.ratio - S.avgRatio;
@@ -1036,7 +1080,7 @@
       <span class="txt">CRCL <b id="sum-px">${price(px.t?.last)}</b> · 24시간 <span id="sum-pxchg">${px.t ? `<span class="${cls(px.t.pct)}">${pct(px.t.pct, 1)}</span>` : '–'}</span></span>${chevron}</button></li>`;
     card('summary', {
       title: '현재 상황 요약',
-      sub: `${ago(d.updatedAt)} 수집 데이터 기준 · 규칙 기반 자동 요약`,
+      sub: `${state.syncedAt ? ago(state.syncedAt) + ' 동기화' : ago(d.updatedAt) + ' 수집'} 데이터 기준 · 규칙 기반 자동 요약`,
       info: INFO.summary,
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
@@ -1045,9 +1089,301 @@
     });
   }
 
+  // ---------------------------------------------------------------- 추가 지표
+  // USDC 일별 순발행(발행 − 소각): DefiLlama 일별 공급량의 하루 차이
+  function usdcNetMint() {
+    const s = state.data.series?.usdc || [];
+    const out = [];
+    for (let i = 1; i < s.length; i++) out.push([s[i][0], s[i][1] - s[i - 1][1]]);
+    return out;
+  }
+  function renderUsdcFlow() {
+    const flow = usdcNetMint().slice(-30);
+    if (!flow.length) return failed('usdcflow', 'USDC 일별 순발행', state.data.errors?.series);
+    const sum = (n) => flow.slice(-n).reduce((a, p) => a + p[1], 0);
+    const s7 = sum(7), s30 = sum(30);
+    const up = flow.filter((p) => p[1] > 0).length;
+    const labels = flow.map((p) => p[0]);
+    const signed = (v) => `${v > 0 ? '+' : v < 0 ? '-' : ''}${usd(Math.abs(v))}`;
+    card('usdcflow', {
+      title: 'USDC 일별 순발행', sub: '발행 − 소각 · DefiLlama 일별 공급량 차이', info: INFO.usdcflow,
+      body: `<div class="headline"><span class="lbl">최근 7일</span><span class="big ${cls(s7, 1)}">${signed(s7)}</span><span class="lbl">하루 평균 ${signed(s7 / 7)}</span></div>
+        <div class="delta-line"><span class="when">30일 합계 ${signed(s30)} · 30일 중 ${up}일 순발행 · 최근(${md(labels.at(-1))}, 집계 중) ${signed(flow.at(-1)[1])}</span></div>
+        <div class="chart"><canvas id="cv-usdcflow" role="img" aria-label="USDC 일별 순발행"></canvas></div>
+        <div class="legend"><span><i style="background:${C.up}"></i>순발행(증가)</span><span><i style="background:${C.down}"></i>순소각(감소)</span></div>`,
+    });
+    draw('usdcflow', {
+      type: 'bar',
+      data: { labels, datasets: [{ label: '순발행', data: flow.map((p) => p[1]), backgroundColor: flow.map((p) => (p[1] >= 0 ? C.up : C.down)), borderRadius: 3, borderSkipped: false, maxBarThickness: 16 }] },
+      options: {
+        interaction, plugins: { ...noLegend, tooltip: tooltip((it) => fullDay(labels[it.dataIndex]), (v) => signed(v)) },
+        scales: { x: axisX(labels, md, 6), y: axisY((v) => (v < 0 ? '-' : '') + usd(Math.abs(v))) },
+      },
+    });
+  }
+
+  // Circle 준비금 이자수익 추정: USDC 유통량 × 13주 국채 금리
+  function reserveEstimate() {
+    const r = state.data.rates?.latest;
+    const u = current('usdcTotal');
+    if (!r || u.v == null) return null;
+    return { rate: r[1], rateDay: r[0], usdc: u.v, annual: u.v * r[1], t: u.t };
+  }
+  function renderReserve() {
+    const x = reserveEstimate();
+    const R = state.data.rates;
+    if (!x || !R?.daily?.length) return failed('reserve', 'Circle 준비금 이자수익 추정', state.data.errors?.rates);
+    const labels = R.daily.map((p) => isoToTs(p[0]));
+    const r90 = R.daily[0][1];
+    const flow7 = usdcNetMint().slice(-7).reduce((a, p) => a + p[1], 0);
+    card('reserve', {
+      title: 'Circle 준비금 이자수익 추정', sub: `USDC 유통량 × 미국 ${R.tenor} 국채 금리 · 연환산`, info: INFO.reserve,
+      body: `<div class="headline"><span class="lbl">연간</span><span class="big">${usd(x.annual)}</span><span class="lbl">분기 ${usd(x.annual / 4)} · 하루 ${usd(x.annual / 365)}</span></div>
+        <div class="delta-line"><span class="when">USDC ${usd(x.usdc)} × 금리 ${(x.rate * 100).toFixed(2)}% (${x.rateDay.slice(5).replace('-', '/')} 기준) · 유통 파트너 몫 차감 전</span></div>
+        <div class="px-stats">
+          <div><span>금리 0.25%p 인하 시</span><b class="down">-${usd(x.usdc * 0.0025)}</b><small>연간</small></div>
+          <div><span>USDC $10억 증가 시</span><b class="up">+${usd(1e9 * x.rate)}</b><small>연간</small></div>
+          <div><span>최근 7일 순발행 효과</span><b class="${cls(flow7, 1)}">${flow7 >= 0 ? '+' : '-'}${usd(Math.abs(flow7 * x.rate))}</b><small>연간</small></div>
+        </div>
+        <div class="mini-h" style="margin-top:14px;font-size:12px;color:var(--muted)">미국 ${R.tenor} 국채 금리 · 최근 90일 (${(r90 * 100).toFixed(2)}% → ${(x.rate * 100).toFixed(2)}%)</div>
+        <div class="chart short"><canvas id="cv-reserve" role="img" aria-label="국채 금리 추이"></canvas></div>`,
+    });
+    draw('reserve', {
+      type: 'line',
+      data: { labels, datasets: [lineDs(`${R.tenor} 금리`, R.daily.map((p) => p[1]), C.teal, { pointRadius: endPoint(labels.length), tension: 0.1 })] },
+      options: {
+        interaction, plugins: { ...noLegend, tooltip: tooltip((it) => fullDay(labels[it.dataIndex]), (v) => (v * 100).toFixed(2) + '%') },
+        scales: { x: axisX(labels, md, 5), y: { ...axisY((v) => (v * 100).toFixed(2) + '%'), grace: '10%' } },
+      },
+    });
+  }
+
+  // Arc 네트워크 활동: 일별 트랜잭션 수 · 수수료(USDC)
+  function renderArcActivity() {
+    const A = state.data.arcActivity;
+    if (!A?.daily?.length) return failed('arcactivity', 'Arc 네트워크 활동', state.data.errors?.arcActivity);
+    const days = A.daily;
+    const labels = days.map((r) => isoToTs(r.d));
+    const done = days.filter((r) => !r.approx);
+    const last = done.at(-1), prev = done.at(-2);
+    const fee30 = done.reduce((s, r) => s + r.fee, 0);
+    const ch = last && prev && prev.txns ? last.txns / prev.txns - 1 : null;
+    card('arcactivity', {
+      title: 'Arc 네트워크 활동', sub: '일별 트랜잭션 · 수수료(USDC) · Arc 탐색기', info: INFO.arcactivity,
+      body: `<div class="headline"><span class="lbl">${last ? md(isoToTs(last.d)) : ''} 트랜잭션</span><span class="big">${last ? unit(last.txns) : '–'}</span><span class="lbl">수수료 ${usd(last?.fee)}</span></div>
+        <div class="delta-line"><span class="${cls(ch)}">${arrow(ch)} ${pct(ch)}</span><span class="when">전일 대비 · 30일 수수료 합계 ${usd(fee30)} · 건당 평균 $${last && last.txns ? (last.fee / last.txns).toFixed(4) : '–'}</span></div>
+        <div class="pair">
+          <div><div class="mini-h">트랜잭션 수</div><div class="chart"><canvas id="cv-arctx" role="img" aria-label="Arc 일별 트랜잭션"></canvas></div></div>
+          <div><div class="mini-h">수수료 (USDC)</div><div class="chart"><canvas id="cv-arcfee" role="img" aria-label="Arc 일별 수수료"></canvas></div></div>
+        </div>
+        <p class="note">회색 막대는 탐색기가 아직 집계 중인 오늘 값입니다.</p>`,
+    });
+    const mini = (id, key, color, fmt) => draw(id, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: key === 'txns' ? '트랜잭션' : '수수료', data: days.map((r) => r[key]), backgroundColor: days.map((r) => (r.approx ? C.faint : color)), borderRadius: { topLeft: 3, topRight: 3 }, borderSkipped: 'bottom', maxBarThickness: 12 }] },
+      options: {
+        interaction, plugins: { ...noLegend, tooltip: tooltip((it) => fullDay(labels[it.dataIndex]) + (days[it.dataIndex].approx ? ' (집계 중)' : ''), fmt) },
+        scales: { x: axisX(labels, md, 3), y: axisY(fmt, { beginAtZero: true }) },
+      },
+    });
+    mini('arctx', 'txns', C.blue, (v) => unit(v));
+    mini('arcfee', 'fee', C.teal, usd);
+  }
+
+  // ---------------------------------------------------------------- 브라우저 직접 동기화
+  // 새로고침을 누르면 서버 수집(15분 간격)을 기다리지 않고 각 출처에서 지금 값을 받아온다.
+  const CCTP = {
+    tm: '0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d',
+    mt: '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64',
+    usdc: '3600000000000000000000000000000000000000',
+    depositForBurn: '0x0c8c1cbdc5190613ebd485511d4e2812cfa45eecb79d845893331fedad5130a5',
+    mintAndWithdraw: '0x50c55e915134d457debfa58eb6f4342956f8b0616d51a89a3659360178e1ab63',
+    messageReceived: '0xff48c13eda96b1cceacc6b9edeedc9e9db9d6226afbc30146b720c19d3addb1c',
+  };
+  const DOMAINS = {
+    0: 'Ethereum', 1: 'Avalanche', 2: 'OP Mainnet', 3: 'Arbitrum', 4: 'Noble', 5: 'Solana', 6: 'Base', 7: 'Polygon PoS', 8: 'Sui', 9: 'Aptos',
+    10: 'Unichain', 11: 'Linea', 12: 'Codex', 13: 'Sonic', 14: 'World Chain', 15: 'Monad', 16: 'Sei', 17: 'BNB Chain', 18: 'XDC', 19: 'HyperEVM',
+    21: 'Ink', 22: 'Plume', 25: 'Starknet', 26: 'Arc', 27: 'Stellar', 28: 'EDGE', 29: 'Injective', 30: 'Morph', 31: 'Pharos', 32: 'Cronos', 33: 'Plasma', 37: 'X Layer',
+  };
+  const hexN = (n) => '0x' + n.toString(16);
+  async function getJ(url, ms = 15000) {
+    const r = await fetch(url, { signal: AbortSignal.timeout(ms) });
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+  }
+  async function rpcJson(urls, method, params) {
+    let err;
+    for (const u of urls) {
+      try {
+        const r = await fetch(u, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(15000),
+        });
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message);
+        return j.result;
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+  async function supplyOf(urls, token, decimals) {
+    const r = await rpcJson(urls, 'eth_call', [{ to: token, data: '0x18160ddd' }, 'latest']);
+    return r && r !== '0x' ? Number(BigInt(r)) / 10 ** decimals : null;
+  }
+  function parseCctp(logs) {
+    const word = (data, i) => BigInt('0x' + data.slice(2 + i * 64, 2 + (i + 1) * 64));
+    const out = [];
+    const byTx = {};
+    for (const l of logs) (byTx[l.transactionHash] ||= []).push(l);
+    for (const list of Object.values(byTx)) {
+      list.sort((a, b) => parseInt(a.logIndex, 16) - parseInt(b.logIndex, 16));
+      const src = (i) => {
+        for (let j = i + 1; j < list.length; j++) if (list[j].topics[0] === CCTP.messageReceived) return Number(word(list[j].data, 0));
+        for (let j = i - 1; j >= 0; j--) if (list[j].topics[0] === CCTP.messageReceived) return Number(word(list[j].data, 0));
+        return -1;
+      };
+      list.forEach((l, i) => {
+        const b = parseInt(l.blockNumber, 16);
+        if (l.topics[0] === CCTP.depositForBurn && l.topics[1]?.toLowerCase().endsWith(CCTP.usdc)) {
+          out.push([b, 1, Number(word(l.data, 2)), Number(word(l.data, 0)) / 1e6]);
+        } else if (l.topics[0] === CCTP.mintAndWithdraw && l.topics[2]?.toLowerCase().endsWith(CCTP.usdc)) {
+          out.push([b, 0, src(i), Number(word(l.data, 0) + word(l.data, 1)) / 1e6]);
+        }
+      });
+    }
+    return out;
+  }
+
+  // 각 항목: (data, 결과값 모음) → data의 해당 섹션을 최신값으로 교체
+  const SYNC = {
+    async circle(d, L) {
+      const j = await getJ(LIVE.circle);
+      const pick = (s) => j.data.find((x) => x.symbol === s);
+      const u = pick('USDC'), e = pick('EURC');
+      const on = (c, n) => Number(c?.chains?.find((x) => x.chain === n)?.amount ?? NaN);
+      if (u) {
+        L.usdcTotal = Number(u.totalAmount);
+        L.arcUsdc = on(u, 'ARC');
+        state.usdcChains = u.chains.map((x) => ({ chain: x.chain, amount: Number(x.amount) })).sort((a, b) => b.amount - a.amount);
+      }
+      if (e) { L.eurcTotal = Number(e.totalAmount); L.arcEurc = on(e, 'ARC'); }
+    },
+    async cirbtc(d, L) {
+      const [a, e] = await Promise.all([supplyOf(LIVE.arcRpc, LIVE.arcCirbtc, 8), supplyOf(LIVE.ethRpc, LIVE.ethCirbtc, 8)]);
+      if (a != null) L.cirbtcArc = a;
+      if (e != null) L.cirbtcEth = e;
+      if (a != null && e != null) L.cirbtc = a + e;
+    },
+    async stables(d, L) {
+      if (!d.stables?.rows?.[0]?.id) return;
+      const j = await getJ('https://stablecoins.llama.fi/stablecoins?includePrices=true', 25000);
+      const byId = Object.fromEntries(j.peggedAssets.map((a) => [a.id, a]));
+      const val = (o) => (o ? Object.values(o)[0] || 0 : 0);
+      const totalUsd = j.peggedAssets.reduce((s, a) => s + (a.circulating?.peggedUSD || 0), 0);
+      const upd = (r) => {
+        const a = byId[r.id];
+        if (!a) return r;
+        const cur = val(a.circulating), w = val(a.circulatingPrevWeek), m = val(a.circulatingPrevMonth), dd = val(a.circulatingPrevDay);
+        return { ...r, supply: cur, share: r.cur === 'EUR' ? null : cur / totalUsd, ch1: dd ? cur / dd - 1 : null, ch7: w ? cur / w - 1 : null, ch30: m ? cur / m - 1 : null };
+      };
+      const rows = d.stables.rows.map(upd), products = d.stables.products.map(upd);
+      d.stables = { ...d.stables, totalUsd, rows, products, usdcShare: rows.find((r) => r.sym === 'USDC')?.share };
+      L.usdcShare = d.stables.usdcShare;
+      L.usycSupply = products.find((p) => p.sym === 'USYC')?.supply;
+    },
+    async dex(d, L) {
+      const j = await getJ('https://api.llama.fi/overview/dexs/Arc?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
+      const top = (j.protocols || []).filter((p) => p.total24h > 0).sort((a, b) => b.total24h - a.total24h).slice(0, 6).map((p) => ({ name: p.displayName || p.name, v: p.total24h }));
+      d.arcDex = { ...d.arcDex, total24h: j.total24h, total7d: j.total7d, total30d: j.total30d, change1d: j.change_1d, top };
+      L.dex24h = j.total24h;
+    },
+    async tvl(d, L) {
+      const j = await getJ('https://api.llama.fi/v2/chains');
+      const arc = j.find((c) => c.name === 'Arc');
+      if (!arc) return;
+      d.arcTvl = { ...d.arcTvl, now: arc.tvl };
+      L.tvl = arc.tvl;
+    },
+    async lending(d, L) { // 1.4MB라 새로고침 버튼을 눌렀을 때만
+      if (!d.lending?.days?.length) return;
+      const j = await getJ('https://api.llama.fi/lite/protocols2?b=2', 30000);
+      const get = (name) => j.protocols.find((p) => p.name === name)?.chainTvls || {};
+      const m = get('Morpho Blue'), a = get('Aave V4');
+      const row = { morphoT: m.Arc?.tvl || 0, morphoB: m['Arc-borrowed']?.tvl || 0, aaveT: a.Arc?.tvl || 0, aaveB: a['Arc-borrowed']?.tvl || 0 };
+      row.borrow = row.morphoB + row.aaveB;
+      row.tvl = row.morphoT + row.aaveT;
+      row.util = row.borrow + row.tvl > 0 ? row.borrow / (row.borrow + row.tvl) : 0;
+      const today = Math.floor(Date.now() / 86400000) * 86400;
+      const days = d.lending.days.slice();
+      if (days.at(-1).d === today) days[days.length - 1] = { ...days.at(-1), ...row };
+      else days.push({ d: today, ...row });
+      d.lending = { ...d.lending, days };
+      L.borrow = row.borrow;
+      L.util = row.util;
+    },
+    async accounts(d, L) {
+      const b = 'https://explorer.arc.io/stats-service/api/v1/lines';
+      const [a, n, aw, nw] = await Promise.all([
+        getJ(`${b}/activeAccounts?resolution=DAY`), getJ(`${b}/newAccounts?resolution=DAY`),
+        getJ(`${b}/activeAccounts?resolution=WEEK`), getJ(`${b}/newAccounts?resolution=WEEK`),
+      ]);
+      const nm = Object.fromEntries(n.chart.map((p) => [p.date, Number(p.value)]));
+      const daily = a.chart.map((p) => { const act = Number(p.value), nn = nm[p.date] ?? 0; return { d: p.date, active: act, new: Math.min(nn, act), ret: Math.max(act - nn, 0), approx: !!p.is_approximate }; });
+      const wm = Object.fromEntries(nw.chart.map((p) => [p.date, Number(p.value)]));
+      const weeks = aw.chart.map((p) => { const act = Number(p.value), nn = wm[p.date] ?? 0; return { d: p.date, active: act, new: nn, retRatio: act ? Math.max(act - nn, 0) / act : 0, approx: !!p.is_approximate }; }).slice(-8);
+      d.accounts = { ...d.accounts, daily, weeks };
+    },
+    async activity(d, L) {
+      const b = 'https://explorer.arc.io/stats-service/api/v1/lines';
+      const [tx, fee] = await Promise.all([getJ(`${b}/newTxns?resolution=DAY`), getJ(`${b}/txnsFee?resolution=DAY`)]);
+      const fm = Object.fromEntries(fee.chart.map((p) => [p.date, Number(p.value)]));
+      d.arcActivity = { daily: tx.chart.map((p) => ({ d: p.date, txns: Number(p.value), fee: fm[p.date] ?? 0, approx: !!p.is_approximate })).slice(-30) };
+    },
+    async cctp(d, L) { // 서버 수집 이후 새 블록만 추가로 읽는다
+      const c = d.cctp;
+      if (!c?.events) return;
+      const latest = Number(await rpcJson(LIVE.arcRpc, 'eth_blockNumber', []));
+      let from = (c.syncedTo || c.toBlock) + 1;
+      if (latest - from > 30000) return; // 너무 오래 벌어졌으면 다음 서버 수집을 기다린다
+      const events = c.events.slice();
+      while (from <= latest) {
+        const to = Math.min(from + 4900, latest);
+        const logs = await rpcJson(LIVE.arcRpc, 'eth_getLogs', [{ fromBlock: hexN(from), toBlock: hexN(to), address: [CCTP.tm, CCTP.mt], topics: [[CCTP.depositForBurn, CCTP.mintAndWithdraw, CCTP.messageReceived]] }]);
+        events.push(...parseCctp(logs));
+        from = to + 1;
+      }
+      const start = latest - Math.round(86400 / (c.blockTime || 0.5));
+      const kept = events.filter((e) => e[0] >= start);
+      const by = {};
+      for (const [, dir, dom, amt] of kept) {
+        const r = (by[dom] ||= { domain: dom, name: DOMAINS[dom] || `도메인 ${dom}`, in: 0, out: 0, nIn: 0, nOut: 0 });
+        if (dir === 0) { r.in += amt; r.nIn++; } else { r.out += amt; r.nOut++; }
+      }
+      const rows = Object.values(by).sort((a, b) => b.in + b.out - (a.in + a.out));
+      const totalIn = rows.reduce((s, r) => s + r.in, 0), totalOut = rows.reduce((s, r) => s + r.out, 0);
+      d.cctp = { ...c, fromBlock: start, toBlock: latest, syncedTo: latest, events: kept, rows, totalIn, totalOut, net: totalIn - totalOut };
+      L.cctpNet = totalIn - totalOut;
+    },
+  };
+  const SYNC_NAMES = { circle: 'Circle', cirbtc: 'cirBTC', stables: '스테이블코인', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP' };
+
+  // parts: 동기화할 항목 이름 목록
+  async function syncNow(parts) {
+    const d = state.data;
+    if (!d) return { ok: 0, fail: [] };
+    const L = {};
+    const res = await Promise.allSettled(parts.map((p) => SYNC[p](d, L)));
+    const fail = parts.filter((p, i) => res[i].status === 'rejected');
+    const t = new Date().toISOString();
+    for (const [k, v] of Object.entries(L)) if (v != null && isFinite(v)) state.live[k] = { v, t };
+    if (parts.length > 2) state.syncedAt = t;
+    return { ok: parts.length - fail.length, fail };
+  }
+
   // ---------------------------------------------------------------- 상태 표시
   function ago(t) {
-    const m = Math.max(0, Math.round((Date.now() - Date.parse(t)) / 60000));
+    const ms = typeof t === 'number' ? t : Date.parse(t);
+    const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
     return m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 ${m % 60}분 전`;
   }
   function renderStatus() {
@@ -1055,9 +1391,11 @@
     if (!d) return;
     const errs = Object.keys(d.errors || {});
     const stale = (Date.now() - Date.parse(d.updatedAt)) / 60000 > 90;
-    document.getElementById('status').innerHTML =
-      `<span${stale ? ' class="warn"' : ''}>${ago(d.updatedAt)} 수집${stale ? '(지연)' : ''}</span>` +
-      (state.live ? ' · <span class="live-dot"></span>실시간' : '') +
+    const main = state.syncedAt
+      ? `<span class="live-dot"></span>${ago(state.syncedAt)} 동기화`
+      : `${ago(d.updatedAt)} 수집`;
+    document.getElementById('status').innerHTML = main +
+      ` · <span${stale ? ' class="warn"' : ''}>서버 ${ago(d.updatedAt)}${stale ? '(지연)' : ''}</span>` +
       (errs.length ? ` · <span class="warn">일부 실패 ${errs.length}</span>` : '');
   }
 
@@ -1066,7 +1404,7 @@
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderProducts, renderChains, renderTvl, renderDex, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp];
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -1079,64 +1417,45 @@
     state.data = await res.json();
   }
 
-  async function rpcSupply(urls, token, decimals) {
-    for (const u of urls) {
-      try {
-        const r = await fetch(u, {
-          method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: token, data: '0x18160ddd' }, 'latest'] }),
-          signal: AbortSignal.timeout(10000),
-        });
-        const j = await r.json();
-        if (j.result && j.result !== '0x') return Number(BigInt(j.result)) / 10 ** decimals;
-      } catch {}
-    }
-    return null;
+  let busy = false, toastTimer = null;
+  function toast(msg, warn = false) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.innerHTML = msg;
+    el.classList.toggle('warn', warn);
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
   }
-
-  async function loadLive() {
-    const [circle, arcBtc, ethBtc] = await Promise.all([
-      fetch(LIVE.circle, { signal: AbortSignal.timeout(10000) }).then((r) => r.json()).catch(() => null),
-      rpcSupply(LIVE.arcRpc, LIVE.arcCirbtc, 8),
-      rpcSupply(LIVE.ethRpc, LIVE.ethCirbtc, 8),
-    ]);
-    const live = { at: new Date().toISOString() };
-    if (circle?.data) {
-      const pick = (s) => circle.data.find((x) => x.symbol === s);
-      const u = pick('USDC'), e = pick('EURC');
-      const onChain = (c, n) => Number(c?.chains?.find((x) => x.chain === n)?.amount ?? NaN);
-      if (u) {
-        live.usdcTotal = Number(u.totalAmount);
-        live.arcUsdc = onChain(u, 'ARC');
-        live.usdcChains = u.chains.map((x) => ({ chain: x.chain, amount: Number(x.amount) })).sort((a, b) => b.amount - a.amount);
-      }
-      if (e) { live.eurcTotal = Number(e.totalAmount); live.arcEurc = onChain(e, 'ARC'); }
-    }
-    if (arcBtc != null) live.cirbtcArc = arcBtc;
-    if (ethBtc != null) live.cirbtcEth = ethBtc;
-    if (arcBtc != null && ethBtc != null) live.cirbtc = arcBtc + ethBtc;
-    for (const k of Object.keys(live)) if (typeof live[k] === 'number' && !isFinite(live[k])) delete live[k];
-    const got = Object.keys(live).length > 1;
-    state.live = got ? live : state.live;
-  }
-
-  let busy = false;
-  async function refresh({ data = true } = {}) {
+  // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
+  const SYNC_SETS = {
+    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp'],
+    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp'],
+    light: ['circle', 'cirbtc'],
+  };
+  async function refresh(kind = 'auto') {
     if (busy) return;
     busy = true;
     const btn = document.getElementById('refresh');
     btn.classList.add('spin');
     try {
-      if (data || !state.data) {
+      if (kind !== 'light' || !state.data) {
         await loadData().catch((e) => { if (!state.data) throw e; });
-        // 가격 차트 봉도 함께 새로 받는다
         Promise.all([loadKlines('1d'), state.range !== '1d' ? loadKlines(state.range) : null])
           .then(() => { renderPriceCard(); renderPriceChart(); }).catch(() => {});
+        if (kind === 'manual') loadPxSnapshot().then(schedulePaint).catch(() => {});
       }
-      await loadLive().catch(() => {});
+      const r = await syncNow(SYNC_SETS[kind]);
       renderAll();
+      if (kind === 'manual') {
+        const now = new Date(), t = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+        toast(r.fail.length
+          ? `동기화 ${t} · ${r.ok}/${r.ok + r.fail.length}개 항목 (실패: ${r.fail.map((f) => SYNC_NAMES[f]).join(', ')})`
+          : `✓ 동기화 완료 ${t} · ${r.ok}개 항목 최신화`, r.fail.length > 0);
+      }
     } catch (e) {
       document.getElementById('status').innerHTML = '<span class="warn">데이터를 불러오지 못했습니다. 새로고침을 눌러 다시 시도하세요.</span>';
+      if (kind === 'manual') toast('동기화 실패 · 네트워크를 확인하세요', true);
     } finally {
       btn.classList.remove('spin');
       busy = false;
@@ -1203,21 +1522,21 @@
       return;
     }
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
-    if (ev.target.closest('#refresh')) { refresh(); loadPxSnapshot().then(schedulePaint).catch(() => {}); }
+    if (ev.target.closest('#refresh')) refresh('manual');
   });
 
   if (!RANGES[state.range]) state.range = '1d';
   updateBasisBtn();
   showView(location.hash.slice(1) || loadPref('view', 'home'));
   initPrice();
-  refresh();
-  setInterval(() => { if (!document.hidden) refresh({ data: false }); }, LIVE_REFRESH_MS);
-  setInterval(() => { if (!document.hidden) refresh(); }, DATA_REFRESH_MS);
+  refresh('auto');
+  setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
+  setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { disconnectWs(); return; }
     loadPxSnapshot().then(schedulePaint).catch(() => {});
     connectWs();
-    refresh();
+    refresh('auto');
   });
 })();

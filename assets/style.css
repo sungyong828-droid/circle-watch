@@ -342,3 +342,20 @@ button.kpi:active { background: var(--surface-2); }
   .pair { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .pair .chart { height: 130px; }
 }
+
+/* ---------- 동기화 알림 · 추가 카드 ---------- */
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+  bottom: calc(var(--tabbar-h) + 18px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink);
+  font-size: 13px; line-height: 1.4; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: toast-in 0.2s ease-out;
+}
+.toast.warn { border-color: rgba(224, 164, 58, 0.5); color: var(--warn); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.status .live-dot { margin-right: 4px; }
+@media (min-width: 720px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.pair .mini-h { margin-top: 12px; }
+#c-reserve .px-stats b { font-size: 13.5px; }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
