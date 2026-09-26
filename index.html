@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1015">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Circle Watch</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%234f8ff7'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%230d1015' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <h1>Circle Watch</h1>
+        <p class="status" id="status">데이터 불러오는 중…</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="refresh" type="button" aria-label="지금 새로고침">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="top-row controls">
+    <div class="seg" role="group" aria-label="변화율 비교 기준">
+      <button type="button" data-basis="prev" aria-pressed="true">직전 수집 대비</button>
+      <button type="button" data-basis="24h" aria-pressed="false">24시간 전 대비</button>
+    </div>
+    <span class="live-pill" id="live-pill" hidden><i></i>LIVE</span>
+  </div>
+</header>
+
+<main>
+  <section class="kpis" id="kpis" aria-label="핵심 지표"></section>
+
+  <h2 class="group-h">CRCL 주식</h2>
+  <div class="grid">
+    <article class="card wide" id="c-short"></article>
+  </div>
+
+  <h2 class="group-h">Circle · 스테이블코인</h2>
+  <div class="grid">
+    <article class="card wide" id="c-stables"></article>
+    <article class="card" id="c-usdc"></article>
+    <article class="card" id="c-eurc"></article>
+    <article class="card" id="c-products"></article>
+    <article class="card" id="c-chains"></article>
+  </div>
+
+  <h2 class="group-h">Arc 체인</h2>
+  <div class="grid">
+    <article class="card" id="c-tvl"></article>
+    <article class="card" id="c-dex"></article>
+    <article class="card" id="c-borrow"></article>
+    <article class="card" id="c-arcsupply"></article>
+    <article class="card wide" id="c-lending"></article>
+    <article class="card" id="c-cirbtc"></article>
+    <article class="card" id="c-accounts"></article>
+    <article class="card wide" id="c-cctp"></article>
+  </div>
+
+  <footer class="foot">
+    <p>데이터: DefiLlama · Circle 공식 API · Arc RPC · Arc 탐색기(Blockscout) · Ethereum RPC.</p>
+    <p>수집기는 약 15분마다 실행되고, 🟢 LIVE 표시 값은 이 화면에서 1분마다 직접 조회합니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
+  </footer>
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
