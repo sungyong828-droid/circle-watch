@@ -7,6 +7,7 @@
   const ON_PAGES = /\.pages\.dev$/.test(location.hostname);
   const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
   const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
+  const DATA_FALLBACK = 'https://sungyong828-droid.github.io/circle-watch/data/latest.json'; // /api/data가 막혔을 때만
   const DATA_REFRESH_MS = 5 * 60 * 1000;
   const LIVE_REFRESH_MS = 60 * 1000;
   const LIVE = {
@@ -187,6 +188,7 @@
   const pp = (v, dp = 2) => (v == null || !isFinite(v) ? '–' : (v > 0 ? '+' : '') + (v * 100).toFixed(dp) + '%p');
   const cls = (v, eps = 1e-6) => (v == null || !isFinite(v) || Math.abs(v) < eps ? 'flat' : v > 0 ? 'up' : 'down');
   const arrow = (v) => (v == null || !isFinite(v) || Math.abs(v) < 1e-6 ? '–' : v > 0 ? '▲' : '▼');
+  const safeUrl = (u) => (/^https?:\/\//i.test(String(u || '')) ? esc(u) : '#'); // javascript: 같은 주소 차단
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const dtf = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -683,8 +685,8 @@
     card('accounts', {
       title: '일별 활성 계정', sub: '재방문과 신규 · Arc 탐색기(Blockscout)', info: INFO.accounts,
       body: `<div class="headline"><span class="lbl">주간 재방문 비율</span><span class="big">${pctPlain(lastWeek?.retRatio)}</span></div>
-        <div class="delta-line">${x.html}<span class="when">${lastWeek ? `${lastWeek.d} 시작 주 · 활성 ${nf(0).format(lastWeek.active)} 중 재방문 ${nf(0).format(lastWeek.active - lastWeek.new)}` : ''}</span></div>
-        ${lastDone ? `<p class="note" style="margin-top:4px">${lastDone.d.slice(5).replace('-', '/')} 활성 ${nf(0).format(lastDone.active)} (신규 ${nf(0).format(lastDone.new)}) · 누적 계정 ${nf(0).format(A.totals?.accounts || 0)}</p>` : ''}
+        <div class="delta-line">${x.html}<span class="when">${lastWeek ? `${esc(lastWeek.d)} 시작 주 · 활성 ${nf(0).format(lastWeek.active)} 중 재방문 ${nf(0).format(lastWeek.active - lastWeek.new)}` : ''}</span></div>
+        ${lastDone ? `<p class="note" style="margin-top:4px">${esc(lastDone.d.slice(5).replace('-', '/'))} 활성 ${nf(0).format(lastDone.active)} (신규 ${nf(0).format(lastDone.new)}) · 누적 계정 ${nf(0).format(A.totals?.accounts || 0)}</p>` : ''}
         <div class="chart"><canvas id="cv-accounts" role="img" aria-label="일별 활성 계정"></canvas></div>
         <div class="legend"><span><i style="background:${C.blue}"></i>재방문 계정</span><span><i style="background:${C.orange}"></i>신규 계정</span><span><i style="background:${C.faint}"></i>집계 중(잠정)</span></div>`,
     });
@@ -763,7 +765,7 @@
         <div class="legend"><span><i style="background:${C.purple}"></i>일별 공매도 비율</span><span><i class="line" style="background:${C.ink2}"></i>1개월 평균</span></div>
         ${si.length ? `<div class="tbl-wrap"><table>
           <thead><tr><th>공매도 잔고 기준일</th><th>잔고</th><th>직전 대비</th><th>커버 일수</th></tr></thead>
-          <tbody>${si.map((r, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${r.d.slice(5).replace('-', '/')}</td><td class="strong">${shares(r.qty)}</td>
+          <tbody>${si.map((r, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${esc(r.d.slice(5).replace('-', '/'))}</td><td class="strong">${shares(r.qty)}</td>
             <td class="${cls(r.chg)}">${r.chg > 0 ? '+' : ''}${r.chg.toFixed(1)}%</td><td>${r.dtc.toFixed(2)}일</td></tr>`).join('')}</tbody></table></div>
           <p class="note">공매도 잔고는 FINRA가 한 달에 두 번(15일·월말 기준) 발표합니다.</p>` : ''}`,
     });
@@ -1056,7 +1058,7 @@
       const last = S.daily.at(-1), diff = last.ratio - S.avgRatio;
       const t = diff > 0.05 ? 'neg' : diff < -0.05 ? 'pos' : 'neu';
       const si = S.interest?.at(-1);
-      add(t, 'crcl:c-short', `공매도 비율 <b>${pctPlain(last.ratio)}</b>(${md(isoToTs(last.d))}) · 1개월 평균 ${pctPlain(S.avgRatio)}보다 ${Math.abs(diff * 100).toFixed(1)}%p ${diff >= 0 ? '높음' : '낮음'}${si ? ` · 잔고 ${si.d.slice(5).replace('-', '/')} ${si.chg > 0 ? '+' : ''}${si.chg.toFixed(1)}%` : ''}`,
+      add(t, 'crcl:c-short', `공매도 비율 <b>${pctPlain(last.ratio)}</b>(${md(isoToTs(last.d))}) · 1개월 평균 ${pctPlain(S.avgRatio)}보다 ${Math.abs(diff * 100).toFixed(1)}%p ${diff >= 0 ? '높음' : '낮음'}${si ? ` · 잔고 ${esc(si.d.slice(5).replace('-', '/'))} ${si.chg > 0 ? '+' : ''}${si.chg.toFixed(1)}%` : ''}`,
         t === 'neg' ? '공매도 비중↑' : t === 'pos' ? '공매도 비중↓' : null, 2);
     }
 
@@ -1096,7 +1098,7 @@
     const A = d.accounts;
     const lastDay = A?.daily?.filter((r) => !r.approx).at(-1);
     const lastWeek = A?.weeks?.filter((w) => !w.approx).at(-1);
-    if (lastDay) add('neu', 'arc:c-accounts', `Arc 활성 계정 <b>${nf(0).format(lastDay.active)}</b>(${lastDay.d.slice(5).replace('-', '/')}) · 신규 ${nf(0).format(lastDay.new)}${lastWeek ? ` · 주간 재방문 ${pctPlain(lastWeek.retRatio)}` : ''}`, null, 0);
+    if (lastDay) add('neu', 'arc:c-accounts', `Arc 활성 계정 <b>${nf(0).format(lastDay.active)}</b>(${esc(lastDay.d.slice(5).replace('-', '/'))}) · 신규 ${nf(0).format(lastDay.new)}${lastWeek ? ` · 주간 재방문 ${pctPlain(lastWeek.retRatio)}` : ''}`, null, 0);
 
     const N = d.news;
     if (N) {
@@ -1622,11 +1624,11 @@
       title: '공시 · 발표 한눈에', sub: `공시 ${N.filingsAt ? `SEC 직접 조회 ${ago(N.filingsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`} · 뉴스 ${N.newsAt ? `실시간 조회 ${ago(N.newsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`}`, info: INFO.news,
       body: `<div class="ns-grid">
           <div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>
-          <div><span>최근 실적 보고서</span><b>${q ? md(isoToTs(q.d)) : '–'}</b><small>${q ? formInfo(q.form).label : ''}</small></div>
+          <div><span>최근 실적 보고서</span><b>${q ? md(isoToTs(q.d)) : '–'}</b><small>${q ? esc(formInfo(q.form).label) : ''}</small></div>
           <div><span>내부자 거래 공시</span><b>${cnt(/^4$|^4\/A$/) + cnt(/^144/)}건</b><small>30일 · Form 4 ${cnt(/^4$|^4\/A$/)} · 144 ${cnt(/^144/)}</small></div>
           <div><span>새 소식</span><b>${unseen}건</b><small>지난 방문 이후</small></div>
         </div>
-        ${off ? `<a class="ns-top" href="${esc(off.url)}" target="_blank" rel="noopener"><span class="nk official">최신 Circle 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}`,
+        ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk official">최신 Circle 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}`,
     });
   }
 
@@ -1646,7 +1648,7 @@
       const isNew = i.t > newsSeenPrev && newsSeenPrev > 0;
       const kindCls = i.kind === 'filing' ? `filing ${i.level}` : i.kind;
       const kindTxt = i.kind === 'filing' ? i.form : NEWS_KINDS[i.kind];
-      return `${head}<li><a href="${esc(i.url)}" target="_blank" rel="noopener">
+      return `${head}<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener">
         <span class="nk ${kindCls}">${esc(kindTxt)}</span>
         <span class="nt">${isNew ? '<i class="new">NEW</i>' : ''}${esc(i.title)}</span>
         <span class="nm">${esc(i.source)}${timeLabel(i) ? ' · ' + timeLabel(i) : ''}</span></a></li>`;
@@ -1686,8 +1688,9 @@
 
   // ---------------------------------------------------------------- 데이터 로딩
   async function loadData() {
-    const res = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('data ' + res.status);
+    let res = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null);
+    if (ON_PAGES && !res?.ok) res = await fetch(`${DATA_FALLBACK}?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null);
+    if (!res?.ok) throw new Error('data ' + (res?.status || 'network'));
     state.data = await res.json();
   }
 

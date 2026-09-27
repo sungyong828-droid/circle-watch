@@ -1,0 +1,12 @@
+# Cloudflare Pages 보안 헤더 (circle-watch.pages.dev)
+# CSP: 이 사이트의 스크립트와 등록된 데이터 출처 외에는 실행·연결 불가.
+#      'unsafe-inline' 스크립트를 허용하지 않아, 외부 데이터에 스크립트가 섞여 와도 실행되지 않는다.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://fapi.binance.com wss://fstream.binance.com https://api.circle.com https://rpc.mainnet.arc.io https://rpc.blockdaemon.mainnet.arc.io https://ethereum-rpc.publicnode.com https://eth.drpc.org https://stablecoins.llama.fi https://api.llama.fi https://explorer.arc.io https://home.treasury.gov https://cdn.finra.org https://data.sec.gov https://sungyong828-droid.github.io; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Robots-Tag: noindex, nofollow

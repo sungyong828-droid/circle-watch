@@ -77,6 +77,20 @@ python -m http.server 8765
 - 서버 수집 데이터는 `/api/data`가 자동으로 받아 오므로 따로 배포할 필요가 없습니다.
 - **화면 코드를 고쳤을 때만** 다시 올립니다:
   ```bash
-  rm -rf dist && mkdir dist && cp -r index.html assets dist/
+  rm -rf dist && mkdir dist && cp -r index.html assets _headers dist/
   npx wrangler pages deploy dist --project-name circle-watch --branch main
   ```
+
+## 보안
+
+공유 링크로 누구나 볼 수 있다는 전제로 다음을 적용했습니다.
+
+| 위험 | 대응 |
+|---|---|
+| 외부 데이터(뉴스 제목 등)에 스크립트가 섞여 오는 공격(XSS) | 외부 문자열은 모두 이스케이프, 링크는 http(s)만 허용, CSP로 인라인 스크립트 실행 자체를 차단 (`_headers`) |
+| CDN 파일 변조 | Chart.js·Pretendard에 SRI 무결성 해시 |
+| 다른 사이트에 몰래 끼워 넣기(클릭재킹) | `frame-ancestors 'none'`, `X-Frame-Options: DENY` |
+| 다른 웹사이트가 `/api`를 끌어다 쓰기 | 같은 사이트 요청만 허용(`Sec-Fetch-Site`), CORS 미허용, GET만 허용 |
+| `/api` 반복 호출로 무료 한도(하루 10만 건) 소진 | 결과를 캐시해 외부 호출은 1분에 1회로 제한. 한도가 소진돼도 과금은 없고, 화면은 서버 원본 데이터·직접 조회로 계속 동작(뉴스만 서버 수집본으로 대체) |
+| 방문 주소 유출 | `Referrer-Policy: no-referrer`, 검색엔진 색인 금지 |
+| 비밀 값 유출 | 화면·저장소에 API 키나 토큰 없음 (Cloudflare 로그인 정보는 이 PC에만 있음) |
