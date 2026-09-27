@@ -4,6 +4,7 @@
   'use strict';
 
   const DATA_URL = 'data/latest.json';
+  const NEWS_API = 'https://circle-watch-news.sungyong828.workers.dev'; // Cloudflare Worker (뉴스 중계)
   const DATA_REFRESH_MS = 5 * 60 * 1000;
   const LIVE_REFRESH_MS = 60 * 1000;
   const LIVE = {
@@ -53,7 +54,7 @@
         <li><b>공시</b>: 미국 SEC EDGAR에서 새로고침 때마다 직접 받습니다(실패하면 서버가 모아 둔 목록). 주요 공시 = 8-K(합병·경영진 변경·실적 발표 등 중요한 일이 생기면 4영업일 내 제출), 10-Q(분기), 10-K(연간), 증권 발행(S-1·424B) 등.</li>
         <li><b>내부자 거래</b>: Form 4 = 임원·대주주가 주식을 사고판 뒤 2영업일 내 신고, Form 144 = 내부자가 주식을 팔 예정이라는 사전 신고. 매도가 몰리면 수급 부담 신호로 봅니다.</li>
         <li><b>Circle 발표</b>: Business Wire 보도자료와 circle.com·IR 게시물.</li>
-        <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 구글 뉴스는 휴대폰에서 직접 받을 수 없어 서버(GitHub)가 모아 둔 목록이라, 서버 실행 간격만큼 늦을 수 있습니다. 같은 제목은 하나로 합쳤습니다.</li>
+        <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 구글 뉴스는 휴대폰에서 직접 받을 수 없어, 개인 중계 서버(Cloudflare Worker)를 거쳐 새로고침 때마다 받습니다(최대 3분 캐시, 새로고침 버튼은 캐시 없이). 같은 제목은 하나로 합쳤습니다.</li>
         <li><b>NEW</b>: 지난번 이 탭을 본 이후 새로 올라온 항목. 하단 탭의 숫자도 같은 기준입니다(내부자 거래 공시 제외).</li>
       </ul>`,
     usdcflow: `
@@ -1397,6 +1398,14 @@
       d.short = { ...S, daily, avgRatio: sumS / sumT };
       L.shortRatio = daily.at(-1).ratio;
     },
+    async news(d) { // 구글 뉴스·Circle 발표: Cloudflare Worker가 중계 (새로고침 버튼은 캐시 없이)
+      if (!NEWS_API || NEWS_API.startsWith('WORKER')) return;
+      const j = await getJ(`${NEWS_API}/news${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 25000);
+      if (j.error) throw new Error(j.error);
+      const ownerMap = {};
+      for (const f of j.filings || []) (ownerMap[f.d + '|' + f.form] ||= []).push(f.owner);
+      d.news = { ...(d.news || {}), official: j.official, kr: j.kr, en: j.en, newsAt: j.at, ownerMap };
+    },
     async filings(d) { // SEC EDGAR에서 직접 (서버를 거치지 않음)
       const j = await getJ('https://data.sec.gov/submissions/CIK0001876042.json');
       const r = j.filings.recent;
@@ -1483,7 +1492,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: 'Circle', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시' };
+  const SYNC_NAMES = { circle: 'Circle', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스' };
 
   // parts: 동기화할 항목 이름 목록
   async function syncNow(parts) {
@@ -1535,8 +1544,12 @@
     const N = state.data?.news;
     if (!N) return [];
     const items = [];
+    const usedOwner = {};
     for (const f of N.filings || []) {
       const fi = formInfo(f.form);
+      const ok = f.d + '|' + f.form;
+      usedOwner[ok] = (usedOwner[ok] || 0) + 1;
+      if (!f.owner && N.ownerMap?.[ok]) f.owner = N.ownerMap[ok][usedOwner[ok] - 1] || '';
       const owner = f.owner ? ` · ${f.owner.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}` : '';
       // 8-K는 같은 날 나온 Circle 공식 발표를 붙여 무슨 내용인지 보이게 한다
       const rel = /^8-K/.test(f.form) ? (N.official || []).find((o) => Math.abs(Date.parse(o.t) - Date.parse(f.d + 'T20:00:00Z')) < 1.2 * 86400000) : null;
@@ -1590,7 +1603,7 @@
     const off = (N.official || [])[0];
     const unseen = newsItems().filter((i) => i.t > newsSeenPrev && i.level !== 'low').length;
     card('newssum', {
-      title: '공시 · 발표 한눈에', sub: `공시 ${N.filingsAt ? `SEC 직접 조회 ${ago(N.filingsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`} · 뉴스 서버 수집 ${ago(state.data.updatedAt)}`, info: INFO.news,
+      title: '공시 · 발표 한눈에', sub: `공시 ${N.filingsAt ? `SEC 직접 조회 ${ago(N.filingsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`} · 뉴스 ${N.newsAt ? `실시간 조회 ${ago(N.newsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`}`, info: INFO.news,
       body: `<div class="ns-grid">
           <div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>
           <div><span>최근 실적 보고서</span><b>${q ? md(isoToTs(q.d)) : '–'}</b><small>${q ? formInfo(q.form).label : ''}</small></div>
@@ -1626,7 +1639,7 @@
       <div class="nf" role="group" aria-label="뉴스 종류">${NEWS_FILTERS.map(([k, label]) => `<button type="button" data-nf="${k}" aria-pressed="${k === f}">${label}<small>${counts[k]}</small></button>`).join('')}</div>
       ${f === 'filing' ? `<label class="nf-opt"><input type="checkbox" id="major-only" ${state.majorOnly ? 'checked' : ''}> 주요 공시만 보기 <small>(임원 지분변동 Form 4·매도예정 144 숨김)</small></label>` : ''}
       <ul class="nl">${rows || '<li class="empty">표시할 항목이 없습니다.</li>'}</ul>
-      <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시는 새로고침 때 SEC EDGAR에서 직접 받고, 뉴스는 서버가 모아 둔 목록입니다.</p>`;
+      <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시는 SEC EDGAR, 뉴스는 구글 뉴스에서 새로고침 때마다 바로 받습니다.</p>`;
   }
 
   // ---------------------------------------------------------------- 상태 표시
@@ -1674,8 +1687,8 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings'],
-    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings'],
+    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news'],
+    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news'],
     light: ['circle', 'cirbtc'],
   };
   async function refresh(kind = 'auto') {
@@ -1690,6 +1703,7 @@
           .then(() => { renderPriceCard(); renderPriceChart(); }).catch(() => {});
         if (kind === 'manual') loadPxSnapshot().then(schedulePaint).catch(() => {});
       }
+      state.syncKind = kind;
       const r = await syncNow(SYNC_SETS[kind]);
       renderAll();
       if (kind === 'manual') {

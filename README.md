@@ -54,3 +54,13 @@ python -m http.server 8765
 - "직전 수집 대비 / 24시간 전 대비" 변화율은 수집 때마다 쌓이는 스냅샷(최근 약 8일치)으로 계산합니다. 처음 배포 직후에는 비교할 이전 수집이 적습니다.
 - 수집 중 일부 소스가 실패하면 그 항목은 직전 값을 유지하고, 화면 상단에 `일부 실패`로 표시됩니다.
 - 투자 조언이 아닌 개인 모니터링용입니다.
+
+## 뉴스 중계 Worker (Cloudflare)
+
+구글 뉴스·Nasdaq 공시 목록은 브라우저에서 직접 받을 수 없어서, Cloudflare Worker가 대신 받아 JSON으로 돌려줍니다.
+
+- 주소: `https://circle-watch-news.sungyong828.workers.dev/news` (이 대시보드 주소에서 온 요청만 응답)
+- 코드: `worker/news-proxy.js` · 설정: `worker/wrangler.toml`
+- 3분 캐시 · 새로고침 버튼은 1분 넘은 캐시를 다시 받음
+- 구글이 막히면 Bing 뉴스로 대체, 그래도 비면 마지막 성공 결과(최대 7일)를 사용
+- 수정 후 다시 배포: `cd worker && npx wrangler deploy`
