@@ -50,10 +50,10 @@
     news: `
       <p>CRCL 관련 <b>공시 · Circle 공식 발표 · 국내/해외 뉴스</b>를 모아 최신순으로 보여줍니다. 서버가 15분마다 새로 모읍니다.</p>
       <ul>
-        <li><b>공시</b>: 미국 SEC에 제출된 서류(Nasdaq 제공 목록). 주요 공시 = 8-K(합병·경영진 변경·실적 발표 등 중요한 일이 생기면 4영업일 내 제출), 10-Q(분기), 10-K(연간), 증권 발행(S-1·424B) 등.</li>
+        <li><b>공시</b>: 미국 SEC EDGAR에서 새로고침 때마다 직접 받습니다(실패하면 서버가 모아 둔 목록). 주요 공시 = 8-K(합병·경영진 변경·실적 발표 등 중요한 일이 생기면 4영업일 내 제출), 10-Q(분기), 10-K(연간), 증권 발행(S-1·424B) 등.</li>
         <li><b>내부자 거래</b>: Form 4 = 임원·대주주가 주식을 사고판 뒤 2영업일 내 신고, Form 144 = 내부자가 주식을 팔 예정이라는 사전 신고. 매도가 몰리면 수급 부담 신호로 봅니다.</li>
         <li><b>Circle 발표</b>: Business Wire 보도자료와 circle.com·IR 게시물.</li>
-        <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 같은 제목은 하나로 합쳤습니다.</li>
+        <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 구글 뉴스는 휴대폰에서 직접 받을 수 없어 서버(GitHub)가 모아 둔 목록이라, 서버 실행 간격만큼 늦을 수 있습니다. 같은 제목은 하나로 합쳤습니다.</li>
         <li><b>NEW</b>: 지난번 이 탭을 본 이후 새로 올라온 항목. 하단 탭의 숫자도 같은 기준입니다(내부자 거래 공시 제외).</li>
       </ul>`,
     usdcflow: `
@@ -203,8 +203,22 @@
     if (lv && (!last?.t || Date.parse(lv.t) >= Date.parse(last.t))) return { v: lv.v, t: lv.t, live: true };
     return { v: last?.[key], t: last?.t, live: false };
   }
+  // 서버가 늦어도 '직전/24시간 전 대비'가 맞도록, 동기화할 때마다 이 기기에 값을 기록해 둔다
+  const SNAP_KEYS = ['usdcShare', 'usdcTotal', 'eurcTotal', 'arcUsdc', 'arcEurc', 'usycSupply', 'dex24h', 'tvl', 'borrow', 'util', 'cirbtc', 'cirbtcArc', 'cirbtcEth', 'cctpNet', 'shortRatio'];
+  let localSnaps = [];
+  try { localSnaps = JSON.parse(localStorage.getItem('cw.snaps') || '[]'); } catch {}
+  function pushLocalSnap() {
+    const last = localSnaps.at(-1);
+    if (last && Date.now() - Date.parse(last.t) < 10 * 60 * 1000) localSnaps.pop(); // 10분 안의 기록은 최신 값으로 덮는다
+    const snap = { t: new Date().toISOString() };
+    for (const k of SNAP_KEYS) { const c = current(k); if (c.live && c.v != null) snap[k] = c.v; }
+    if (Object.keys(snap).length < 3) return;
+    const cutoff = Date.now() - 8 * 86400000;
+    localSnaps = localSnaps.filter((x) => Date.parse(x.t) >= cutoff).concat(snap).slice(-800);
+    try { localStorage.setItem('cw.snaps', JSON.stringify(localSnaps)); } catch {}
+  }
   function base(key, curT) {
-    const snaps = (state.data?.snapshots || []).filter((s) => s[key] != null);
+    const snaps = [...(state.data?.snapshots || []), ...localSnaps].filter((s) => s[key] != null).sort((a, b) => Date.parse(a.t) - Date.parse(b.t));
     const ct = Date.parse(curT);
     const older = snaps.filter((s) => Date.parse(s.t) < ct - 60 * 1000);
     if (!older.length) return null;
@@ -1306,20 +1320,98 @@
       const rows = d.stables.rows.map(upd), products = d.stables.products.map(upd);
       d.stables = { ...d.stables, totalUsd, rows, products, usdcShare: rows.find((r) => r.sym === 'USDC')?.share };
       L.usdcShare = d.stables.usdcShare;
+      const usdcNow = byId['2'] ? val(byId['2'].circulating) : null;
+      if (usdcNow && d.series?.usdc?.length) {
+        const today = Math.floor(Date.now() / 86400000) * 86400;
+        const usdc = d.series.usdc.slice();
+        if (usdc.at(-1)[0] === today) usdc[usdc.length - 1] = [today, usdcNow];
+        else if (usdc.at(-1)[0] < today) usdc.push([today, usdcNow]);
+        d.series = { ...d.series, usdc };
+      }
       L.usycSupply = products.find((p) => p.sym === 'USYC')?.supply;
     },
     async dex(d, L) {
-      const j = await getJ('https://api.llama.fi/overview/dexs/Arc?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true');
+      const j = await getJ('https://api.llama.fi/overview/dexs/Arc?excludeTotalDataChart=false&excludeTotalDataChartBreakdown=true');
+      const today = Math.floor(Date.now() / 86400000) * 86400;
+      const daily = (j.totalDataChart || []).filter(([t]) => t < today).slice(-30);
       const top = (j.protocols || []).filter((p) => p.total24h > 0).sort((a, b) => b.total24h - a.total24h).slice(0, 6).map((p) => ({ name: p.displayName || p.name, v: p.total24h }));
-      d.arcDex = { ...d.arcDex, total24h: j.total24h, total7d: j.total7d, total30d: j.total30d, change1d: j.change_1d, top };
+      d.arcDex = { ...d.arcDex, total24h: j.total24h, total7d: j.total7d, total30d: j.total30d, change1d: j.change_1d, top, ...(daily.length ? { daily } : {}) };
       L.dex24h = j.total24h;
     },
     async tvl(d, L) {
-      const j = await getJ('https://api.llama.fi/v2/chains');
+      const [j, hist] = await Promise.all([getJ('https://api.llama.fi/v2/chains'), getJ('https://api.llama.fi/v2/historicalChainTvl/Arc').catch(() => null)]);
       const arc = j.find((c) => c.name === 'Arc');
       if (!arc) return;
-      d.arcTvl = { ...d.arcTvl, now: arc.tvl };
+      let daily = d.arcTvl?.daily || [];
+      if (Array.isArray(hist) && hist.length) {
+        const first = hist.findIndex((p) => p.tvl > 1e5);
+        daily = hist.slice(Math.max(0, first - 1)).map((p) => [p.date, p.tvl]);
+      }
+      d.arcTvl = { ...d.arcTvl, now: arc.tvl, daily };
       L.tvl = arc.tvl;
+    },
+    async series(d) { // USDC·EURC·USYC 일별 공급량 추이
+      const start = Date.UTC(2025, 5, 1) / 1000;
+      const get = async (id) => (await getJ(`https://stablecoins.llama.fi/stablecoincharts/all?stablecoin=${id}`, 25000))
+        .map((p) => [Number(p.date), Object.values(p.totalCirculating || {})[0] || 0]).filter(([t]) => t >= start);
+      const [usdc, eurc, usyc] = await Promise.all([get(2), get(50), get(237)]);
+      if (usdc.length) d.series = { usdc, eurc, usyc };
+    },
+    async rates(d) { // 미 재무부 13주 국채 금리
+      const now = new Date();
+      const years = now.getUTCMonth() < 3 ? [now.getUTCFullYear() - 1, now.getUTCFullYear()] : [now.getUTCFullYear()];
+      const rows = [];
+      for (const y of years) {
+        const r = await fetch(`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${y}/all?type=daily_treasury_bill_rates&field_tdr_date_value=${y}&page&_format=csv`, { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) throw new Error('treasury ' + r.status);
+        const lines = (await r.text()).trim().split(/\r?\n/);
+        const col = lines[0].split(',').map((h) => h.replace(/"/g, '')).indexOf('13 WEEKS COUPON EQUIVALENT');
+        for (const l of lines.slice(1)) {
+          const c = l.split(','), [m, dd, yy] = c[0].split('/'), v = parseFloat(c[col]);
+          if (isFinite(v)) rows.push([`${yy}-${m}-${dd}`, v / 100]);
+        }
+      }
+      rows.sort((a, b) => a[0].localeCompare(b[0]));
+      if (rows.length) d.rates = { tenor: '13주', latest: rows.at(-1), daily: rows.slice(-90) };
+    },
+    async short(d, L) { // FINRA 일별 공매도: 서버에 없는 최근 거래일만 추가로 받는다
+      const S = d.short;
+      if (!S?.daily?.length) return;
+      const fmt = (ms) => new Date(ms).toISOString().slice(0, 10);
+      const add = [];
+      for (let ms = Date.parse(S.daily.at(-1).d + 'T00:00:00Z') + 86400000; ms <= Date.now(); ms += 86400000) {
+        const wd = new Date(ms).getUTCDay();
+        if (wd === 0 || wd === 6) continue;
+        const day = fmt(ms);
+        const r = await fetch(`https://cdn.finra.org/equity/regsho/daily/CNMSshvol${day.replaceAll('-', '')}.txt`, { signal: AbortSignal.timeout(20000) }).catch(() => null);
+        if (!r?.ok) continue;
+        const line = (await r.text()).split('\n').find((l) => l.split('|')[1] === 'CRCL');
+        if (!line) continue;
+        const [, , sv, sev, tv] = line.split('|');
+        add.push({ d: day, short: +sv, exempt: +sev, total: +tv, ratio: +sv / +tv });
+      }
+      if (!add.length) return;
+      const cutoff = Date.now() / 1000 - 31 * 86400;
+      const daily = [...S.daily, ...add].filter((r) => isoToTs(r.d) >= cutoff);
+      const sumS = daily.reduce((a, r) => a + r.short, 0), sumT = daily.reduce((a, r) => a + r.total, 0);
+      d.short = { ...S, daily, avgRatio: sumS / sumT };
+      L.shortRatio = daily.at(-1).ratio;
+    },
+    async filings(d) { // SEC EDGAR에서 직접 (서버를 거치지 않음)
+      const j = await getJ('https://data.sec.gov/submissions/CIK0001876042.json');
+      const r = j.filings.recent;
+      const owners = {};
+      for (const f of d.news?.filings || []) (owners[f.d + '|' + f.form] ||= []).push(f.owner);
+      const list = [];
+      for (let i = 0; i < Math.min(100, r.form.length); i++) {
+        const acc = r.accessionNumber[i];
+        list.push({
+          d: r.filingDate[i], form: r.form[i], owner: (owners[r.filingDate[i] + '|' + r.form[i]] || []).shift() || '',
+          desc: r.primaryDocDescription[i], items: r.items?.[i] || '',
+          url: `https://www.sec.gov/Archives/edgar/data/1876042/${acc.replace(/-/g, '')}/${r.primaryDocument[i]}`,
+        });
+      }
+      if (list.length) d.news = { ...(d.news || {}), filings: list, filingsAt: new Date().toISOString(), filingsSrc: 'SEC EDGAR' };
     },
     async lending(d, L) { // 1.4MB라 새로고침 버튼을 눌렀을 때만
       if (!d.lending?.days?.length) return;
@@ -1360,16 +1452,25 @@
       const c = d.cctp;
       if (!c?.events) return;
       const latest = Number(await rpcJson(LIVE.arcRpc, 'eth_blockNumber', []));
-      let from = (c.syncedTo || c.toBlock) + 1;
-      if (latest - from > 30000) return; // 너무 오래 벌어졌으면 다음 서버 수집을 기다린다
-      const events = c.events.slice();
-      while (from <= latest) {
-        const to = Math.min(from + 4900, latest);
-        const logs = await rpcJson(LIVE.arcRpc, 'eth_getLogs', [{ fromBlock: hexN(from), toBlock: hexN(to), address: [CCTP.tm, CCTP.mt], topics: [[CCTP.depositForBurn, CCTP.mintAndWithdraw, CCTP.messageReceived]] }]);
-        events.push(...parseCctp(logs));
-        from = to + 1;
-      }
       const start = latest - Math.round(86400 / (c.blockTime || 0.5));
+      let from = (c.syncedTo || c.toBlock) + 1;
+      let events = c.events.slice();
+      if (from < start) { from = start; events = []; } // 24시간 넘게 벌어졌으면 처음부터 다시 집계
+      const filter = { address: [CCTP.tm, CCTP.mt], topics: [[CCTP.depositForBurn, CCTP.mintAndWithdraw, CCTP.messageReceived]] };
+      while (from <= latest) {
+        let done = false;
+        for (const [url, span] of [['https://rpc.blockdaemon.mainnet.arc.io', 45000], ['https://rpc.mainnet.arc.io', 4900]]) {
+          const to = Math.min(from + span - 1, latest);
+          try {
+            const logs = await rpcJson([url], 'eth_getLogs', [{ ...filter, fromBlock: hexN(from), toBlock: hexN(to) }]);
+            events.push(...parseCctp(logs));
+            from = to + 1;
+            done = true;
+            break;
+          } catch {}
+        }
+        if (!done) throw new Error('cctp logs');
+      }
       const kept = events.filter((e) => e[0] >= start);
       const by = {};
       for (const [, dir, dom, amt] of kept) {
@@ -1382,7 +1483,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: 'Circle', cirbtc: 'cirBTC', stables: '스테이블코인', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP' };
+  const SYNC_NAMES = { circle: 'Circle', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시' };
 
   // parts: 동기화할 항목 이름 목록
   async function syncNow(parts) {
@@ -1393,7 +1494,7 @@
     const fail = parts.filter((p, i) => res[i].status === 'rejected');
     const t = new Date().toISOString();
     for (const [k, v] of Object.entries(L)) if (v != null && isFinite(v)) state.live[k] = { v, t };
-    if (parts.length > 2) state.syncedAt = t;
+    if (parts.length > 2) { state.syncedAt = t; state.syncFail = fail; pushLocalSnap(); }
     return { ok: parts.length - fail.length, fail };
   }
 
@@ -1409,6 +1510,13 @@
     '144': ['내부자 주식 매도 예정 신고', 'low'], '4': ['임원·대주주 지분 변동', 'low'], '3': ['임원·대주주 최초 지분 보고', 'low'],
     '5': ['임원·대주주 연간 지분 보고', 'low'],
   };
+  // 8-K 보고 항목 번호 → 내용
+  const ITEMS_8K = {
+    '1.01': '중요 계약 체결', '1.02': '중요 계약 해지', '2.01': '자산 인수·처분', '2.02': '실적 발표', '2.03': '채무 발생',
+    '2.05': '구조조정', '3.02': '미등록 증권 발행', '3.03': '주주 권리 변경', '5.02': '임원·이사 변동', '5.03': '정관 변경',
+    '5.07': '주총 결과', '7.01': '공정공시(Reg FD)', '8.01': '기타 중요 사항',
+  };
+  const itemsKo = (items) => (items || '').split(',').map((x) => ITEMS_8K[x.trim()]).filter(Boolean).join(', ');
   function formInfo(form) {
     const amend = /\/A$/.test(form);
     const base = form.replace(/\/A$/, '');
@@ -1433,7 +1541,8 @@
       // 8-K는 같은 날 나온 Circle 공식 발표를 붙여 무슨 내용인지 보이게 한다
       const rel = /^8-K/.test(f.form) ? (N.official || []).find((o) => Math.abs(Date.parse(o.t) - Date.parse(f.d + 'T20:00:00Z')) < 1.2 * 86400000) : null;
       const [fy, fm, fd] = f.d.split('-').map(Number); // 제출일 그대로(현지 날짜로 바꾸지 않음)
-      items.push({ kind: 'filing', t: new Date(fy, fm - 1, fd, 12).getTime(), dateOnly: true, title: `${fi.label}${owner}${rel ? ' — ' + rel.title : ''}`, source: `SEC · Form ${f.form}`, url: f.url, form: f.form, level: fi.level });
+      const it = itemsKo(f.items);
+      items.push({ kind: 'filing', t: new Date(fy, fm - 1, fd, 12).getTime(), dateOnly: true, title: `${fi.label}${it ? ' · ' + it : ''}${owner}${rel ? ' — ' + rel.title : ''}`, source: `SEC · Form ${f.form}`, url: f.url, form: f.form, level: fi.level });
     }
     for (const k of ['official', 'kr', 'en']) for (const n of N[k] || []) items.push({ kind: k, t: Date.parse(n.t), title: n.title, source: n.source, url: n.url, level: k === 'official' ? 'hi' : 'mid' });
     return items.sort((a, b) => b.t - a.t);
@@ -1481,7 +1590,7 @@
     const off = (N.official || [])[0];
     const unseen = newsItems().filter((i) => i.t > newsSeenPrev && i.level !== 'low').length;
     card('newssum', {
-      title: '공시 · 발표 한눈에', sub: `서버 수집 ${ago(state.data.updatedAt)} 기준 · 15분마다 갱신`, info: INFO.news,
+      title: '공시 · 발표 한눈에', sub: `공시 ${N.filingsAt ? `SEC 직접 조회 ${ago(N.filingsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`} · 뉴스 서버 수집 ${ago(state.data.updatedAt)}`, info: INFO.news,
       body: `<div class="ns-grid">
           <div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>
           <div><span>최근 실적 보고서</span><b>${q ? md(isoToTs(q.d)) : '–'}</b><small>${q ? formInfo(q.form).label : ''}</small></div>
@@ -1517,7 +1626,7 @@
       <div class="nf" role="group" aria-label="뉴스 종류">${NEWS_FILTERS.map(([k, label]) => `<button type="button" data-nf="${k}" aria-pressed="${k === f}">${label}<small>${counts[k]}</small></button>`).join('')}</div>
       ${f === 'filing' ? `<label class="nf-opt"><input type="checkbox" id="major-only" ${state.majorOnly ? 'checked' : ''}> 주요 공시만 보기 <small>(임원 지분변동 Form 4·매도예정 144 숨김)</small></label>` : ''}
       <ul class="nl">${rows || '<li class="empty">표시할 항목이 없습니다.</li>'}</ul>
-      <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시 원문은 SEC 제출 문서(QuoteMedia 제공)입니다.</p>`;
+      <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시는 새로고침 때 SEC EDGAR에서 직접 받고, 뉴스는 서버가 모아 둔 목록입니다.</p>`;
   }
 
   // ---------------------------------------------------------------- 상태 표시
@@ -1529,14 +1638,10 @@
   function renderStatus() {
     const d = state.data;
     if (!d) return;
-    const errs = Object.keys(d.errors || {});
-    const stale = (Date.now() - Date.parse(d.updatedAt)) / 60000 > 90;
-    const main = state.syncedAt
-      ? `<span class="live-dot"></span>${ago(state.syncedAt)} 동기화`
-      : `${ago(d.updatedAt)} 수집`;
-    document.getElementById('status').innerHTML = main +
-      ` · <span${stale ? ' class="warn"' : ''}>서버 ${ago(d.updatedAt)}${stale ? '(지연)' : ''}</span>` +
-      (errs.length ? ` · <span class="warn">일부 실패 ${errs.length}</span>` : '');
+    const fails = state.syncFail || [];
+    document.getElementById('status').innerHTML = state.syncedAt
+      ? `<span class="live-dot"></span>${ago(state.syncedAt)} 동기화 · 휴대폰에서 직접 조회` + (fails.length ? ` · <span class="warn">일부 실패 ${fails.length}</span>` : '')
+      : `${ago(d.updatedAt)} 수집 · 동기화 중…`;
   }
 
   function renderAll() {
@@ -1569,8 +1674,8 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp'],
-    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp'],
+    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings'],
+    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings'],
     light: ['circle', 'cirbtc'],
   };
   async function refresh(kind = 'auto') {
