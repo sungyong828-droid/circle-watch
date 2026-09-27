@@ -155,6 +155,34 @@ function corsHeaders(origin) {
   };
 }
 
+// Circle 공식 USDC·EURC 유통량: Circle API는 IP당 요청 제한이 엄격해서(429, 약 20분 대기)
+// 1분 캐시로 몇 번을 눌러도 Circle에는 1분에 한 번만 묻고, 막히면 마지막 성공 값(최대 1일)을 돌려준다.
+async function circleSupply(url, cache, cors, ctx) {
+  const key = new Request(`${url.origin}/circle`);
+  const lastKey = new Request(`${url.origin}/circle-last-good`);
+  let res = await cache.match(key);
+  if (!res) {
+    let body, stale = false;
+    try {
+      const r = await fetch('https://api.circle.com/v1/stablecoins', { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error('circle ' + r.status);
+      const j = await r.json();
+      body = JSON.stringify({ at: new Date().toISOString(), data: (j.data || []).filter((x) => x.symbol === 'USDC' || x.symbol === 'EURC') });
+      ctx.waitUntil(cache.put(lastKey, new Response(body, { headers: { 'cache-control': 'public, max-age=86400' } })));
+    } catch (e) {
+      const last = await cache.match(lastKey);
+      if (!last) return json({ error: String(e.message || e) }, cors, 502);
+      body = JSON.stringify({ ...(await last.json()), stale: true, error: String(e.message || e) });
+      stale = true;
+    }
+    res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${stale ? 30 : 60}` } });
+    ctx.waitUntil(cache.put(key, res.clone()));
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+
 const json = (obj, headers = {}, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } });
 
@@ -164,11 +192,12 @@ export default {
     const origin = request.headers.get('origin') || '';
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-    if (url.pathname !== '/news') return new Response('Circle Watch news proxy · GET /news', { headers: cors });
+    if (url.pathname !== '/news' && url.pathname !== '/circle') return new Response('Circle Watch proxy · GET /news, /circle', { headers: cors });
     // 등록된 화면(GitHub Pages·로컬)에서 온 요청만 받는다
     if (origin && !ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
 
     const cache = caches.default;
+    if (url.pathname === '/circle') return circleSupply(url, cache, cors, ctx);
     const cacheKey = new Request(`${url.origin}/news`);
     const lastKey = new Request(`${url.origin}/news-last-good`);
     // fresh(새로고침 버튼)여도 1분 안에 받아 둔 결과가 있으면 그대로 쓴다

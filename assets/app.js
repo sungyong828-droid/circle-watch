@@ -1287,9 +1287,23 @@
   }
 
   // 각 항목: (data, 결과값 모음) → data의 해당 섹션을 최신값으로 교체
+  let circleBlockedUntil = 0; // Circle API 직접 조회가 429로 막혔을 때 쉬는 시각
   const SYNC = {
     async circle(d, L) {
-      const j = await getJ(LIVE.circle);
+      // Circle API는 IP당 제한이 엄격해(429 → 약 20분 대기) Worker의 1분 캐시를 먼저 쓰고, 직접 조회는 예비로만
+      let j = null;
+      try { j = await getJ(`${NEWS_API}/circle`, 20000); } catch {}
+      if (!j?.data && Date.now() > circleBlockedUntil) {
+        try { j = await getJ(LIVE.circle); } catch (e) {
+          if (String(e.message) === '429') circleBlockedUntil = Date.now() + 20 * 60000;
+        }
+      }
+      if (!j?.data) {
+        // 직전 값이 30분 안이면 실패로 치지 않고 그 값을 계속 쓴다
+        const lv = state.live.usdcTotal;
+        if (lv && Date.now() - Date.parse(lv.t) < 30 * 60000) return;
+        throw new Error('circle');
+      }
       const pick = (s) => j.data.find((x) => x.symbol === s);
       const u = pick('USDC'), e = pick('EURC');
       const on = (c, n) => Number(c?.chains?.find((x) => x.chain === n)?.amount ?? NaN);
