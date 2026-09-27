@@ -51,32 +51,40 @@
 
   // ---------------------------------------------------------------- 설명(ⓘ)
   const INFO = {
+    earnings: `
+      <p>서클이 분기마다 발표하는 <b>실적</b>입니다(미국 SEC 제출 재무제표 + Nasdaq 집계).</p>
+      <ul>
+        <li><b>매출(총수익)</b>: 서클은 '총수익 및 준비금 수익'으로 보고합니다. 대부분(약 95%)이 USDC 준비금에서 나오는 <b>준비금 이자수익</b>이고, 나머지가 구독·서비스·거래 수수료 같은 <b>기타 매출</b>입니다.</li>
+        <li><b>순이익·순이익률</b>: 모든 비용과 세금을 뺀 이익. 매출의 절반가량은 Coinbase 등에 주는 유통 비용으로 나갑니다.</li>
+        <li><b>EPS(주당순이익)</b>와 <b>시장 예상</b>: 발표 전 애널리스트 평균 예상치와 비교합니다. 실적이 예상을 넘으면(상회) 보통 주가에 긍정적입니다.</li>
+        <li><b>다음 실적 발표</b>: 서클이 날짜를 공식 공지하기 전에는 과거 발표 패턴으로 추정한 날짜(Zacks)이며 "예상일"로 표시됩니다. 보통 미국 장 마감 전 오전(한국 시간 저녁~밤)에 발표합니다.</li>
+      </ul>`,
     news: `
-      <p>CRCL 관련 <b>공시 · Circle 공식 발표 · 국내/해외 뉴스</b>를 모아 최신순으로 보여줍니다. 서버가 15분마다 새로 모읍니다.</p>
+      <p>서클 관련 <b>공시 · 서클 공식 발표 · 국내/해외 뉴스</b>를 모아 최신순으로 보여줍니다. 서버가 15분마다 새로 모읍니다.</p>
       <ul>
         <li><b>공시</b>: 미국 SEC EDGAR에서 새로고침 때마다 직접 받습니다(실패하면 서버가 모아 둔 목록). 주요 공시 = 8-K(합병·경영진 변경·실적 발표 등 중요한 일이 생기면 4영업일 내 제출), 10-Q(분기), 10-K(연간), 증권 발행(S-1·424B) 등.</li>
         <li><b>내부자 거래</b>: Form 4 = 임원·대주주가 주식을 사고판 뒤 2영업일 내 신고, Form 144 = 내부자가 주식을 팔 예정이라는 사전 신고. 매도가 몰리면 수급 부담 신호로 봅니다.</li>
-        <li><b>Circle 발표</b>: Business Wire 보도자료와 circle.com·IR 게시물.</li>
+        <li><b>서클 발표</b>: Business Wire 보도자료와 circle.com·IR 게시물.</li>
         <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 구글 뉴스는 휴대폰에서 직접 받을 수 없어, 개인 중계 서버(Cloudflare Worker)를 거쳐 새로고침 때마다 받습니다(최대 3분 캐시, 새로고침 버튼은 캐시 없이). 같은 제목은 하나로 합쳤습니다.</li>
         <li><b>NEW</b>: 지난번 이 탭을 본 이후 새로 올라온 항목. 하단 탭의 숫자도 같은 기준입니다(내부자 거래 공시 제외).</li>
       </ul>`,
     usdcflow: `
       <p>하루 동안 USDC가 <b>새로 발행된 양 − 소각(상환)된 양</b>입니다. DefiLlama 일별 공급량의 전날 대비 차이로 계산합니다.</p>
       <ul>
-        <li><span class="up">빨강</span> = 순발행: 누군가 달러를 맡기고 USDC를 새로 받아감 → Circle 준비금 증가 → 이자수익 증가</li>
+        <li><span class="up">빨강</span> = 순발행: 누군가 달러를 맡기고 USDC를 새로 받아감 → 서클 준비금 증가 → 이자수익 증가</li>
         <li><span class="down">파랑</span> = 순소각: USDC를 달러로 돌려받음 → 준비금 감소</li>
       </ul>
       <p>유통량 그 자체보다 <b>방향과 속도</b>를 빨리 알아챌 수 있는 지표입니다.</p>`,
     reserve: `
-      <p>Circle 매출의 대부분은 USDC 준비금(단기 미국 국채·현금)에서 나오는 이자입니다. 이 카드는 <b>USDC 유통량 × 미국 13주 국채 금리</b>로 연간 준비금 이자수익을 대략 추정합니다.</p>
+      <p>서클 매출의 대부분은 USDC 준비금(단기 미국 국채·현금)에서 나오는 이자입니다. 이 카드는 <b>USDC 유통량 × 미국 13주 국채 금리</b>로 연간 준비금 이자수익을 대략 추정합니다.</p>
       <ul>
         <li>금리는 미 재무부가 매일 발표하는 13주 T-bill 금리(쿠폰 환산)입니다.</li>
-        <li><b>총액 기준</b>입니다. 실제로는 준비금 일부가 현금이라 수익률이 약간 낮고, Coinbase 등 유통 파트너에게 상당 부분을 나눠 줍니다(유통 비용). 그래서 Circle 순수익은 이보다 작습니다.</li>
-        <li><b>금리 민감도</b>: 금리가 0.25%p 내려가면 연간 수익이 얼마나 줄어드는지, USDC가 $10억 늘면 얼마나 느는지 보여줍니다. CRCL 주가가 금리 인하 뉴스에 민감한 이유입니다.</li>
+        <li><b>총액 기준</b>입니다. 실제로는 준비금 일부가 현금이라 수익률이 약간 낮고, Coinbase 등 유통 파트너에게 상당 부분을 나눠 줍니다(유통 비용). 그래서 서클 순수익은 이보다 작습니다.</li>
+        <li><b>금리 민감도</b>: 금리가 0.25%p 내려가면 연간 수익이 얼마나 줄어드는지, USDC가 $10억 늘면 얼마나 느는지 보여줍니다. 서클 주가(CRCL)가 금리 인하 뉴스에 민감한 이유입니다.</li>
       </ul>`,
     arcactivity: `
       <p>Arc 체인에서 하루 동안 처리된 <b>트랜잭션 수</b>와 사용자들이 낸 <b>수수료(가스비) 합계</b>입니다(Arc 탐색기 통계).</p>
-      <p>Arc는 수수료를 USDC로 받습니다. 트랜잭션·수수료가 꾸준히 늘면 Circle이 만든 체인이 실제로 쓰이고 있다는 신호입니다. 에어드롭 기대감으로 인한 일시적 급증인지 함께 보세요.</p>`,
+      <p>Arc는 수수료를 USDC로 받습니다. 트랜잭션·수수료가 꾸준히 늘면 서클이 만든 체인이 실제로 쓰이고 있다는 신호입니다. 에어드롭 기대감으로 인한 일시적 급증인지 함께 보세요.</p>`,
     price: `
       <p>바이낸스 <b>CRCLUSDT 무기한 선물</b>(TradFi 주식 선물)의 실시간 체결가입니다. 바이낸스와 직접 연결(WebSocket)해 거래가 체결될 때마다 바로 바뀝니다.</p>
       <ul>
@@ -88,7 +96,7 @@
     summary: `
       <p>아래 카드들의 숫자를 정해진 규칙으로 읽어 <b>자동으로 만든 요약</b>입니다(AI 해석이나 투자 조언이 아닙니다).</p>
       <ul>
-        <li><span class="tone pos">긍정</span> CRCL 실적·주가에 우호적으로 볼 수 있는 변화 (예: USDC 유통량 증가, Arc 사용 증가)</li>
+        <li><span class="tone pos">긍정</span> 서클 실적·주가에 우호적으로 볼 수 있는 변화 (예: USDC 유통량 증가, Arc 사용 증가)</li>
         <li><span class="tone neg">주의</span> 부담이 될 수 있는 변화 (예: 공매도 비중 상승, Arc에서 자금 순유출)</li>
         <li><span class="tone neu">중립</span> 뚜렷한 방향이 없는 상태</li>
       </ul>
@@ -97,7 +105,7 @@
       <p>바이낸스 CRCLUSDT 선물의 가격 추이입니다. 기간을 바꾸면 봉 간격이 달라집니다(1일=15분, 1주=1시간, 1개월=4시간, 3개월=1일). 마지막 점은 실시간 가격입니다.</p>
       <p>선이 <span class="up">빨강</span>이면 기간 시작보다 오른 상태, <span class="down">파랑</span>이면 내린 상태입니다.</p>`,
     short: `
-      <p><b>공매도 비율</b> = 그날 CRCL 거래량 중 공매도(빌린 주식을 파는 거래)로 체결된 비중입니다. 출처는 FINRA 일별 공매도 거래량(Reg SHO)이며, 미국 장 마감 후 저녁(한국 시간 다음 날 아침)에 전날 값이 올라옵니다.</p>
+      <p><b>공매도 비율</b> = 그날 서클 주식(CRCL) 거래량 중 공매도(빌린 주식을 파는 거래)로 체결된 비중입니다. 출처는 FINRA 일별 공매도 거래량(Reg SHO)이며, 미국 장 마감 후 저녁(한국 시간 다음 날 아침)에 전날 값이 올라옵니다.</p>
       <ul>
         <li><b>해석 주의</b>: 이 수치엔 시장조성자(마켓메이커)가 매수 주문을 받아주면서 잠깐 하는 공매도가 포함돼, 보통 종목도 40~50%대가 흔합니다. <b>절대 수준보다 평소(1개월 평균) 대비 얼마나 높아졌는지</b>를 보세요.</li>
         <li><b>전체 거래량</b>은 FINRA에 보고된 장외·대체거래소 거래 기준이라, 거래소 전체 거래량보다 작습니다.</li>
@@ -106,29 +114,29 @@
       </ul>`,
     stables: `
       <p><b>달러 스테이블코인 공급량</b>은 1달러에 가치를 고정한 토큰이 시장에 얼마나 풀려 있는지 보여줍니다. 1토큰 ≈ $1이므로 공급량 = 시가총액입니다.</p>
-      <p><b>USDC 점유율</b> = USDC 공급량 ÷ 전체 달러 스테이블코인 공급량(DefiLlama 집계). Circle 매출의 대부분은 USDC 준비금(단기국채·현금)에서 나오는 이자라서, <b>USDC 유통량과 점유율은 CRCL 실적의 가장 직접적인 선행지표</b>입니다.</p>
+      <p><b>USDC 점유율</b> = USDC 공급량 ÷ 전체 달러 스테이블코인 공급량(DefiLlama 집계). 서클 매출의 대부분은 USDC 준비금(단기국채·현금)에서 나오는 이자라서, <b>USDC 유통량과 점유율은 서클 실적의 가장 직접적인 선행지표</b>입니다.</p>
       <ul>
         <li><b>7일 / 30일</b>: 7일·30일 전 대비 공급량 변화율. <span class="up">빨강=증가</span>, <span class="down">파랑=감소</span>.</li>
-        <li><b>USYC</b>: Circle의 토큰화 단기국채 머니마켓펀드(이자가 붙는 토큰). 기관 담보·예치 수요를 보여줍니다.</li>
-        <li><b>EURC</b>: Circle의 유로 스테이블코인(€ 기준, Circle 공식 발행량).</li>
+        <li><b>USYC</b>: 서클의 토큰화 단기국채 머니마켓펀드(이자가 붙는 토큰). 기관 담보·예치 수요를 보여줍니다.</li>
+        <li><b>EURC</b>: 서클의 유로 스테이블코인(€ 기준, 서클 공식 발행량).</li>
         <li><b>BUIDL</b>: BlackRock 토큰화 MMF — USYC와 비교용.</li>
       </ul>
       <p>USYC·BUIDL은 점유율 계산에 포함되지만 결제용 스테이블코인과 성격이 달라 아래에 따로 표시합니다.</p>`,
     usdc: `
-      <p>시장에 유통 중인 <b>USDC 총량</b>입니다. 헤드라인 숫자는 Circle 공식 API의 현재 값(1분마다 갱신), 차트는 DefiLlama 일별 추이입니다.</p>
-      <p>USDC가 1개 발행될 때마다 Circle은 $1를 준비금으로 보관하고 그 이자를 수익으로 가져갑니다. 대략 <b>Circle 준비금 수익 ≈ 평균 유통량 × 단기금리</b>이므로(여기서 Coinbase 등 유통 파트너 몫이 차감), 유통량 추세가 곧 매출 추세입니다.</p>`,
+      <p>시장에 유통 중인 <b>USDC 총량</b>입니다. 헤드라인 숫자는 서클 공식 API의 현재 값(1분마다 갱신), 차트는 DefiLlama 일별 추이입니다.</p>
+      <p>USDC가 1개 발행될 때마다 서클은 $1를 준비금으로 보관하고 그 이자를 수익으로 가져갑니다. 대략 <b>서클 준비금 수익 ≈ 평균 유통량 × 단기금리</b>이므로(여기서 Coinbase 등 유통 파트너 몫이 차감), 유통량 추세가 곧 매출 추세입니다.</p>`,
     eurc: `
-      <p>Circle이 발행한 <b>유로 스테이블코인 EURC</b>의 총 유통량(€)입니다. 헤드라인은 Circle 공식 API 현재 값, 차트는 DefiLlama 일별 추이입니다.</p>
+      <p>서클이 발행한 <b>유로 스테이블코인 EURC</b>의 총 유통량(€)입니다. 헤드라인은 서클 공식 API 현재 값, 차트는 DefiLlama 일별 추이입니다.</p>
       <p>유럽 MiCA 규제 하에서 허가받은 유로 스테이블코인으로, USDC 외 사업 다각화 지표로 볼 수 있습니다.</p>`,
     products: `
-      <p>Circle 자체 상품인 <b>USYC(토큰화 MMF)</b>와 <b>EURC(유로 코인)</b>의 성장 속도를 비교합니다.</p>
+      <p>서클 자체 상품인 <b>USYC(토큰화 MMF)</b>와 <b>EURC(유로 코인)</b>의 성장 속도를 비교합니다.</p>
       <p>규모가 크게 달라서 두 상품 모두 <b>기간 첫날 공급량을 100</b>으로 맞춘 지수로 그렸습니다. 예) 지수 600 = 시작 시점 대비 6배.</p>
       <p>USYC는 거래소·기관이 담보나 대기자금으로 쓰는 경우가 많아 크게 출렁일 수 있습니다.</p>`,
     chains: `
-      <p>Circle 공식 API 기준 <b>체인별 USDC 유통량</b> 상위 목록입니다. 어떤 블록체인에서 USDC가 많이 쓰이는지, Arc가 어느 위치까지 올라왔는지 확인할 수 있습니다.</p>`,
+      <p>서클 공식 API 기준 <b>체인별 USDC 유통량</b> 상위 목록입니다. 어떤 블록체인에서 USDC가 많이 쓰이는지, Arc가 어느 위치까지 올라왔는지 확인할 수 있습니다.</p>`,
     tvl: `
       <p><b>TVL(Total Value Locked)</b>은 Arc 체인 위 DeFi 서비스(대출·DEX 등)에 예치된 자산의 달러 합계입니다(DefiLlama 일별).</p>
-      <p>DefiLlama 기본 기준이라 <b>빌려 나간 금액은 제외</b>된 순수 예치 잔액입니다. Arc는 Circle이 직접 만든 L1 블록체인으로, TVL이 늘수록 Arc 생태계에 돈이 모이고 있다는 뜻입니다.</p>`,
+      <p>DefiLlama 기본 기준이라 <b>빌려 나간 금액은 제외</b>된 순수 예치 잔액입니다. Arc는 서클이 직접 만든 L1 블록체인으로, TVL이 늘수록 Arc 생태계에 돈이 모이고 있다는 뜻입니다.</p>`,
     dex: `
       <p>Arc 위 탈중앙화 거래소(Uniswap 등)에서 하루 동안 체결된 <b>거래 금액 합계</b>입니다(DefiLlama).</p>
       <p>헤드라인은 최근 24시간, 막대는 UTC 기준 하루 합계입니다. 거래가 많을수록 Arc가 실제로 "쓰이고" 있다는 신호이며, 가스비(USDC)도 함께 늘어납니다.</p>`,
@@ -147,7 +155,7 @@
         <li><b>마일스톤</b>: 차입 합계가 각 금액을 처음 넘은 날. 초록 = 달성, 점선 = 다음 목표.</li>
       </ul>`,
     cirbtc: `
-      <p><b>cirBTC</b>는 Circle이 발행하는 래핑 비트코인으로, 실제 BTC를 1:1로 보관하고 발행합니다(8자리 소수, 준비금은 Chainlink 준비금 증명으로 공개).</p>
+      <p><b>cirBTC</b>는 서클이 발행하는 래핑 비트코인으로, 실제 BTC를 1:1로 보관하고 발행합니다(8자리 소수, 준비금은 Chainlink 준비금 증명으로 공개).</p>
       <p>Arc와 Ethereum 컨트랙트의 발행량(totalSupply)을 날짜별로 조회해 그렸고, 마지막 점은 현재 공급량입니다. 늘어나면 BTC를 맡기고 cirBTC를 받아간(발행) 것, 줄면 BTC로 돌려받은(소각) 것입니다. 체인 간 이동이 있으면 한쪽이 줄고 다른 쪽이 늘 수 있어 <b>합계</b>를 함께 봅니다.</p>`,
     accounts: `
       <p>Arc에서 <b>하루 1회 이상 트랜잭션을 보낸 계정 수</b>입니다(Arc 탐색기 Blockscout 통계).</p>
@@ -158,7 +166,7 @@
         <li><b>회색 막대</b>: 탐색기가 아직 집계 중인 잠정값(보통 다음 수집 때 확정되며 더 커집니다).</li>
       </ul>`,
     cctp: `
-      <p><b>CCTP(Cross-Chain Transfer Protocol)</b>는 Circle의 공식 USDC 브리지입니다. 한 체인에서 USDC를 소각하고 다른 체인에서 같은 양을 새로 발행하는 방식이라, 래핑 토큰 없이 네이티브 USDC가 이동합니다.</p>
+      <p><b>CCTP(Cross-Chain Transfer Protocol)</b>는 서클의 공식 USDC 브리지입니다. 한 체인에서 USDC를 소각하고 다른 체인에서 같은 양을 새로 발행하는 방식이라, 래핑 토큰 없이 네이티브 USDC가 이동합니다.</p>
       <p>최근 24시간 동안 Arc 온체인 이벤트를 직접 집계했습니다.</p>
       <ul>
         <li><span style="color:var(--c-blue)">■</span> <b>Arc로 유입</b>: 다른 체인에서 소각 → Arc에서 발행된 USDC.</li>
@@ -337,7 +345,7 @@
     const tiles = [
       { k: 'USDC 유통량', key: 'usdcTotal', f: usd, go: 'usdc:c-usdc' },
       { k: 'USDC 점유율', key: 'usdcShare', f: (v) => pctPlain(v, 2), mode: 'pp', go: 'usdc:c-stables' },
-      { k: 'CRCL 공매도 비율', key: 'shortRatio', f: (v) => pctPlain(v), mode: 'pp', go: 'crcl:c-short' },
+      { k: '서클 공매도 비율', key: 'shortRatio', f: (v) => pctPlain(v), mode: 'pp', go: 'crcl:c-short' },
       { k: '연 준비금 수익(추정)', key: 'reserve', go: 'usdc:c-reserve' },
       { k: 'USDC 7일 순발행', key: 'netMint7', go: 'usdc:c-usdcflow' },
       { k: 'EURC 유통량', key: 'eurcTotal', f: eur, go: 'usdc:c-eurc' },
@@ -395,7 +403,7 @@
     const x = delta('usdcShare', { mode: 'pp' });
     card('stables', {
       title: '달러 스테이블코인 공급량',
-      sub: '경쟁 코인과 Circle 자체 상품 · DefiLlama',
+      sub: '경쟁 코인과 서클 자체 상품 · DefiLlama',
       info: INFO.stables,
       body: `
         <div class="headline"><span class="lbl">USDC 점유율</span><span class="big">${pctPlain(x.c.v)}</span>${x.html.replace('class="', 'style="font:500 13px var(--mono)" class="')}</div>
@@ -403,7 +411,7 @@
         <div class="tbl-wrap"><table>
           <thead><tr><th>달러 스테이블코인</th><th>공급량</th><th>점유율</th><th>7일</th><th>30일</th></tr></thead>
           <tbody>${s.rows.map((r) => row(r, false)).join('')}
-            <tr class="sub-h"><th>Circle 자체 상품 · 비교</th><th>공급량</th><th></th><th>7일</th><th>30일</th></tr>
+            <tr class="sub-h"><th>서클 자체 상품 · 비교</th><th>공급량</th><th></th><th>7일</th><th>30일</th></tr>
             ${s.products.map((r) => row(r, true)).join('')}
           </tbody></table></div>`,
     });
@@ -434,14 +442,14 @@
 
   function renderProducts() {
     const s = state.data.series;
-    if (!s?.usyc?.length) return failed('products', 'Circle 자체 상품: USYC · EURC', state.data.errors?.series);
+    if (!s?.usyc?.length) return failed('products', '서클 자체 상품: USYC · EURC', state.data.errors?.series);
     const eMap = new Map(s.eurc.map((p) => [p[0], p[1]]));
     const joined = s.usyc.filter((p) => eMap.has(p[0]) && p[1] > 0 && eMap.get(p[0]) > 0);
     const b0u = joined[0][1], b0e = eMap.get(joined[0][0]);
     const labels = joined.map((p) => p[0]);
     const usycNow = state.data.stables?.products?.find((p) => p.sym === 'USYC')?.supply ?? joined.at(-1)[1];
     card('products', {
-      title: 'Circle 자체 상품: USYC · EURC',
+      title: '서클 자체 상품: USYC · EURC',
       sub: `기간 시작(${fullDay(labels[0])})을 100으로 맞춘 공급량 지수 · DefiLlama`,
       info: INFO.products,
       body: `<div class="headline"><span class="big" style="font-size:clamp(20px,5.6vw,26px)">USYC ${usd(usycNow)} · EURC ${eur(current('eurcTotal').v)}</span><span class="lbl">현재 공급량</span></div>
@@ -474,7 +482,7 @@
     const name = (k) => ({ ETH: 'Ethereum', SOL: 'Solana', BASE: 'Base', ARB: 'Arbitrum', ARC: 'Arc', AVAX: 'Avalanche', MATIC: 'Polygon', POLY: 'Polygon', OP: 'OP Mainnet', APTOS: 'Aptos', ALGO: 'Algorand', XLM: 'Stellar', SUI: 'Sui', NOBLE: 'Noble', HBAR: 'Hedera', WORLDCHAIN: 'World Chain', UNI: 'Unichain', LINEA: 'Linea', SEI: 'Sei', CELO: 'Celo', HYPEREVM: 'HyperEVM', ZKS: 'ZKsync', NEAR: 'NEAR', SONIC: 'Sonic', PLASMA: 'Plasma', MONAD: 'Monad', INK: 'Ink', XDC: 'XDC', CODEX: 'Codex', PLUME: 'Plume', BNB: 'BNB Chain' }[k] || k);
     card('chains', {
       title: '체인별 USDC 유통량',
-      sub: 'Circle 공식 API · 상위 10개 체인',
+      sub: '서클 공식 API · 상위 10개 체인',
       info: INFO.chains,
       body: `${arc ? `<div class="headline"><span class="lbl">Arc 순위</span><span class="big">${rank}위</span><span class="lbl">${usd(arc.amount)}</span></div>` : ''}
         <div class="chain-list">${top.map((x) => `<div class="chain-row"><span class="cn">${esc(name(x.chain))}</span><span class="cb"><i style="width:${(x.amount / max) * 100}%;${x.chain === 'ARC' ? `background:${C.teal}` : ''}"></i></span><span class="cv">${usd(x.amount)}</span></div>`).join('')}</div>`,
@@ -651,7 +659,7 @@
     const eth = days.map((r) => r.ethBtc).concat(e.v);
     const sum = arc.map((v, i) => v + eth[i]);
     card('cirbtc', {
-      title: 'cirBTC 공급량', sub: 'Circle 래핑 비트코인 · 체인별 온체인 발행량', info: INFO.cirbtc,
+      title: 'cirBTC 공급량', sub: '서클 래핑 비트코인 · 체인별 온체인 발행량', info: INFO.cirbtc,
       body: `<div class="headline"><span class="big">${btc(tot)}</span><span class="lbl">Arc ${btc(a.v, 1)} · Ethereum ${btc(e.v, 1)}</span></div>${deltaLine('cirbtc')}
         <div class="chart"><canvas id="cv-cirbtc" role="img" aria-label="cirBTC 체인별 공급량"></canvas></div>
         <div class="legend"><span><i class="line" style="background:${C.orange}"></i>합계</span><span><i class="line" style="background:${C.teal}"></i>Arc</span><span><i class="line" style="background:${C.purple}"></i>Ethereum</span></div>`,
@@ -749,7 +757,7 @@
 
   function renderShort() {
     const S = state.data.short;
-    if (!S?.daily?.length) return failed('short', 'CRCL 공매도 비율', state.data.errors?.short);
+    if (!S?.daily?.length) return failed('short', '서클 공매도 비율', state.data.errors?.short);
     const days = S.daily;
     const last = days.at(-1), prev = days.at(-2);
     const d1 = prev ? last.ratio - prev.ratio : null;
@@ -758,10 +766,10 @@
     const hi = days.reduce((a, r) => (r.ratio > a.ratio ? r : a)), lo = days.reduce((a, r) => (r.ratio < a.ratio ? r : a));
     const si = (S.interest || []).slice(-3).reverse();
     card('short', {
-      title: 'CRCL 공매도 비율', sub: '최근 1개월 · 일별 공매도 거래 비중 · FINRA', info: INFO.short,
+      title: '서클 공매도 비율', sub: '최근 1개월 · 일별 공매도 거래 비중 · FINRA', info: INFO.short,
       body: `<div class="headline"><span class="lbl">${md(labels.at(-1))} 공매도 비율</span><span class="big">${pctPlain(last.ratio)}</span><span class="lbl">1개월 평균 ${pctPlain(S.avgRatio)}</span></div>
         <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비 · 공매도 ${shares(last.short)} / 전체 ${shares(last.total)} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
-        <div class="chart"><canvas id="cv-short" role="img" aria-label="CRCL 일별 공매도 비율"></canvas></div>
+        <div class="chart"><canvas id="cv-short" role="img" aria-label="서클 일별 공매도 비율"></canvas></div>
         <div class="legend"><span><i style="background:${C.purple}"></i>일별 공매도 비율</span><span><i class="line" style="background:${C.ink2}"></i>1개월 평균</span></div>
         ${si.length ? `<div class="tbl-wrap"><table>
           <thead><tr><th>공매도 잔고 기준일</th><th>잔고</th><th>직전 대비</th><th>커버 일수</th></tr></thead>
@@ -1158,7 +1166,7 @@
     });
   }
 
-  // Circle 준비금 이자수익 추정: USDC 유통량 × 13주 국채 금리
+  // 서클 준비금 이자수익 추정: USDC 유통량 × 13주 국채 금리
   function reserveEstimate() {
     const r = state.data.rates?.latest;
     const u = current('usdcTotal');
@@ -1168,12 +1176,12 @@
   function renderReserve() {
     const x = reserveEstimate();
     const R = state.data.rates;
-    if (!x || !R?.daily?.length) return failed('reserve', 'Circle 준비금 이자수익 추정', state.data.errors?.rates);
+    if (!x || !R?.daily?.length) return failed('reserve', '서클 준비금 이자수익 추정', state.data.errors?.rates);
     const labels = R.daily.map((p) => isoToTs(p[0]));
     const r90 = R.daily[0][1];
     const flow7 = usdcNetMint().slice(-7).reduce((a, p) => a + p[1], 0);
     card('reserve', {
-      title: 'Circle 준비금 이자수익 추정', sub: `USDC 유통량 × 미국 ${R.tenor} 국채 금리 · 연환산`, info: INFO.reserve,
+      title: '서클 준비금 이자수익 추정', sub: `USDC 유통량 × 미국 ${R.tenor} 국채 금리 · 연환산`, info: INFO.reserve,
       body: `<div class="headline"><span class="lbl">연간</span><span class="big">${usd(x.annual)}</span><span class="lbl">분기 ${usd(x.annual / 4)} · 하루 ${usd(x.annual / 365)}</span></div>
         <div class="delta-line"><span class="when">USDC ${usd(x.usdc)} × 금리 ${(x.rate * 100).toFixed(2)}% (${x.rateDay.slice(5).replace('-', '/')} 기준) · 유통 파트너 몫 차감 전</span></div>
         <div class="px-stats">
@@ -1416,7 +1424,19 @@
       d.short = { ...S, daily, avgRatio: sumS / sumT };
       L.shortRatio = daily.at(-1).ratio;
     },
-    async news(d) { // 구글 뉴스·Circle 발표: Cloudflare Worker가 중계 (새로고침 버튼은 캐시 없이)
+    async earnings() { // 분기 실적·다음 발표일 (서버에서 6시간 캐시)
+      try {
+        const j = await getJ(`${NEWS_API}/earnings`, 25000);
+        if (j.error) throw new Error(j.error);
+        state.earnings = j;
+        state.earningsErr = false;
+        try { renderEarnings(); } catch {}
+      } catch (e) {
+        state.earningsErr = true;
+        if (!state.earnings) throw e;
+      }
+    },
+    async news(d) { // 구글 뉴스·서클 발표: Cloudflare Worker가 중계 (새로고침 버튼은 캐시 없이)
       if (!NEWS_API || NEWS_API.startsWith('WORKER')) return;
       const j = await getJ(`${NEWS_API}/news${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 25000);
       if (j.error) throw new Error(j.error);
@@ -1510,7 +1530,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: 'Circle', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스' };
+  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적' };
 
   // parts: 동기화할 항목 이름 목록
   async function syncNow(parts) {
@@ -1523,6 +1543,114 @@
     for (const [k, v] of Object.entries(L)) if (v != null && isFinite(v)) state.live[k] = { v, t };
     if (parts.length > 2) { state.syncedAt = t; state.syncFail = fail; pushLocalSnap(); }
     return { ok: parts.length - fail.length, fail };
+  }
+
+  // ---------------------------------------------------------------- 서클 실적 (뉴스 탭 상단)
+  const qLabel = (end) => { const [y, m] = end.split('-'); return `'${y.slice(2)} ${Math.ceil(+m / 3)}Q`; };
+  const qLabelLong = (end) => { const [y, m] = end.split('-'); return `${y}년 ${Math.ceil(+m / 3)}분기`; };
+  const dday = (iso) => Math.ceil((Date.parse(iso + 'T00:00:00') - new Date(new Date().toDateString()).getTime()) / 86400000);
+  const krDate = (iso) => { const d = new Date(iso + 'T00:00:00'); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`; };
+  const usdS = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
+
+  function renderEarnings() {
+    const E = state.earnings;
+    if (!E) {
+      card('earnings', { title: '서클 실적', sub: '분기 실적 · 다음 발표일', info: INFO.earnings, body: `<p class="skeleton">${state.earningsErr ? '실적 데이터를 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` });
+      return;
+    }
+    const Q = E.quarters || [];
+    const last = Q.at(-1), prev = Q.at(-2);
+    const yearAgo = last ? Q.find((q) => q.end === `${+last.end.slice(0, 4) - 1}${last.end.slice(4)}`) : null;
+    const chg = (a, b) => (a != null && b ? a / b - 1 : null);
+    const N = E.next;
+    const dd = N?.date ? dday(N.date) : null;
+    const sp = (v) => (v == null ? '' : `<span class="${cls(v)}">${pct(v)}</span>`);
+    // 기준값이 음수면 변화율이 왜곡되므로 흑자/적자 전환으로 표시
+    const spTurn = (a, b) => (a == null || b == null ? '–' : b < 0 && a >= 0 ? '<span class="up">흑자 전환</span>' : b >= 0 && a < 0 ? '<span class="down">적자 전환</span>' : b < 0 ? '적자 지속' : sp(chg(a, b)));
+    const lastSur = (E.surprises || []).find((s) => s.end === last?.end);
+
+    const nextHtml = N?.date ? `
+      <div class="er-next">
+        <div class="er-next-h"><span>다음 실적 발표</span>${N.estimated ? '<span class="tone neu">예상일</span>' : '<span class="tone pos">확정</span>'}</div>
+        <div class="er-next-d"><b>${krDate(N.date)}</b><span class="er-dday">${dd > 0 ? `D-${dd}` : dd === 0 ? 'D-DAY' : '발표 완료'}</span></div>
+        <div class="er-next-m">${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}예상 EPS <b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b>${N.low != null ? ` (범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}${N.analysts ? `, ${N.analysts}명` : ''})` : ''}${N.lastYearEps != null ? ` · 작년 같은 분기 $${N.lastYearEps.toFixed(2)}` : ''}</div>
+        ${N.estimated ? '<p class="note">서클이 날짜를 공식 발표하기 전까지는 과거 발표 패턴으로 추정한 날짜입니다(Zacks).</p>' : ''}
+      </div>` : '';
+
+    const tiles = last ? `
+      <div class="ns-grid er-grid">
+        <div><span>매출(총수익)</span><b>${usdS(last.revenue)}</b><small>전년 ${sp(chg(last.revenue, yearAgo?.revenue)) || '–'} · 전분기 ${sp(chg(last.revenue, prev?.revenue)) || '–'}</small></div>
+        <div><span>준비금 이자수익</span><b>${usdS(last.reserve)}</b><small>${last.reserve && last.revenue ? `매출의 ${pctPlain(last.reserve / last.revenue, 0)}` : 'USDC 준비금 이자'}</small></div>
+        <div><span>순이익</span><b class="${last.netIncome < 0 ? 'down' : ''}">${usdS(last.netIncome)}</b><small>순이익률 ${last.netIncome != null && last.revenue ? pctPlain(last.netIncome / last.revenue) : '–'} · 전년 ${spTurn(last.netIncome, yearAgo?.netIncome)}</small></div>
+        <div><span>EPS(주당순이익)</span><b>${last.eps != null ? '$' + last.eps.toFixed(2) : '–'}</b><small>${lastSur ? `예상 $${lastSur.consensus.toFixed(2)} · ${lastSur.surprise >= 0 ? '상회' : '하회'} ${sp(lastSur.surprise)}` : '예상치 없음'}</small></div>
+      </div>` : '';
+
+    card('earnings', {
+      title: '서클 실적',
+      sub: last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq',
+      info: INFO.earnings,
+      body: `${nextHtml}${tiles}
+        <div class="mini-h er-h">분기 매출 구성</div>
+        <div class="chart"><canvas id="cv-er-rev" role="img" aria-label="분기별 매출"></canvas></div>
+        <div class="legend"><span><i style="background:${C.blue}"></i>준비금 이자수익</span><span><i style="background:${C.teal}"></i>기타 매출</span></div>
+        <div class="pair er-pair">
+          <div><div class="mini-h er-h">분기 순이익</div><div class="chart"><canvas id="cv-er-ni" role="img" aria-label="분기별 순이익"></canvas></div></div>
+          <div><div class="mini-h er-h">EPS 실적 vs 예상</div><div class="chart"><canvas id="cv-er-eps" role="img" aria-label="EPS 실적과 예상"></canvas></div></div>
+        </div>
+        <div class="legend"><span><i style="background:${C.purple}"></i>EPS 실적</span><span><i class="line" style="background:${C.ink2}"></i>시장 예상</span></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>분기</th><th>매출</th><th>전년 대비</th><th>순이익</th><th>EPS</th></tr></thead>
+          <tbody>${Q.slice().reverse().map((q, i) => {
+            const ya = Q.find((x) => x.end === `${+q.end.slice(0, 4) - 1}${q.end.slice(4)}`);
+            const y = chg(q.revenue, ya?.revenue);
+            return `<tr${i === 0 ? ' class="today"' : ''}><td>${qLabel(q.end)}</td><td class="strong">${usdS(q.revenue)}</td><td class="${cls(y)}">${y == null ? '–' : pct(y)}</td>
+              <td class="${q.netIncome < 0 ? 'down' : ''}">${usdS(q.netIncome)}</td><td>${q.eps != null ? '$' + q.eps.toFixed(2) : '–'}${q.consensus != null ? `<span class="dim" style="font-size:11px"> / ${q.consensus.toFixed(2)}</span>` : ''}</td></tr>`;
+          }).join('')}</tbody></table></div>
+        <p class="note">EPS 칸의 회색 숫자는 발표 전 시장 예상치. '25 2Q 적자는 상장(IPO) 관련 일회성 비용 영향입니다.</p>`,
+    });
+
+    const labels = Q.map((q) => qLabel(q.end));
+    const tipQ = (it) => qLabelLong(Q[it.dataIndex].end);
+    draw('er-rev', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '준비금 이자수익', data: Q.map((q) => q.reserve ?? q.revenue), backgroundColor: C.blue, stack: 's', borderColor: '#141920', borderWidth: { top: 2 }, borderSkipped: 'bottom', maxBarThickness: 30 },
+          { label: '기타 매출', data: Q.map((q) => (q.reserve != null ? Math.max(0, q.revenue - q.reserve) : 0)), backgroundColor: C.teal, stack: 's', borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 30 },
+        ],
+      },
+      options: {
+        interaction,
+        plugins: { ...noLegend, tooltip: { ...tooltip(tipQ, usdS), callbacks: { title: (items) => tipQ(items[0]), label: (it) => ` ${it.dataset.label}: ${usdS(it.raw)}`, footer: (items) => `매출 합계 ${usdS(Q[items[0].dataIndex].revenue)}` } } },
+        scales: { x: { ...axisX(labels, (v) => v, 5), stacked: true }, y: { ...axisY(usd, { beginAtZero: true }), stacked: true } },
+      },
+    });
+    draw('er-ni', {
+      type: 'bar',
+      data: { labels, datasets: [{ label: '순이익', data: Q.map((q) => q.netIncome), backgroundColor: Q.map((q) => (q.netIncome < 0 ? C.orange : C.teal)), borderRadius: 3, borderSkipped: false, maxBarThickness: 18 }] },
+      options: {
+        interaction, plugins: { ...noLegend, tooltip: tooltip(tipQ, usdS) },
+        scales: { x: { ...axisX(labels, (v) => v, 4) }, y: axisY((v) => usdS(v)) },
+      },
+    });
+    const S = (E.surprises || []).slice().sort((a, b) => a.end.localeCompare(b.end));
+    const sl = S.map((s) => qLabel(s.end));
+    draw('er-eps', {
+      type: 'bar',
+      data: {
+        labels: sl,
+        datasets: [
+          { type: 'bar', label: 'EPS 실적', data: S.map((s) => s.eps), backgroundColor: C.purple, borderRadius: 3, maxBarThickness: 18, order: 2 },
+          { type: 'line', label: '시장 예상', data: S.map((s) => s.consensus), borderColor: C.ink2, backgroundColor: C.ink2, borderWidth: 0, pointRadius: 5, pointStyle: 'line', pointBorderWidth: 3, showLine: false, order: 1 },
+        ],
+      },
+      options: {
+        interaction,
+        plugins: { ...noLegend, tooltip: { ...tooltip((it) => qLabelLong(S[it.dataIndex].end), (v) => '$' + (+v).toFixed(2)), callbacks: { title: (items) => qLabelLong(S[items[0].dataIndex].end), label: (it) => ` ${it.dataset.label}: $${(+it.raw).toFixed(2)}`, footer: (items) => `예상 대비 ${pct(S[items[0].dataIndex].surprise)}` } } },
+        scales: { x: { ...axisX(sl, (v) => v, 4) }, y: axisY((v) => '$' + (+v).toFixed(2), { beginAtZero: true }) },
+      },
+    });
   }
 
   // ---------------------------------------------------------------- 뉴스 · 공시
@@ -1550,8 +1678,8 @@
     const hit = FORMS[base] || (base.startsWith('424B') ? FORMS['424B'] : null) || [base + ' 공시', 'mid'];
     return { label: hit[0] + (amend ? ' (정정)' : ''), level: hit[1] };
   }
-  const NEWS_KINDS = { filing: '공시', official: 'Circle 발표', kr: '국내', en: '해외' };
-  const NEWS_FILTERS = [['all', '전체'], ['filing', '공시'], ['official', 'Circle 발표'], ['kr', '국내 뉴스'], ['en', '해외 뉴스']];
+  const NEWS_KINDS = { filing: '공시', official: '서클 발표', kr: '국내', en: '해외' };
+  const NEWS_FILTERS = [['all', '전체'], ['filing', '공시'], ['official', '서클 발표'], ['kr', '국내 뉴스'], ['en', '해외 뉴스']];
   state.newsFilter = loadPref('newsFilter', 'all');
   state.majorOnly = loadPref('majorOnly', '1') === '1';
   let newsSeenAt = Number(loadPref('newsSeen', '0')) || 0; // 마지막으로 뉴스 탭을 본 시각
@@ -1569,7 +1697,7 @@
       usedOwner[ok] = (usedOwner[ok] || 0) + 1;
       if (!f.owner && N.ownerMap?.[ok]) f.owner = N.ownerMap[ok][usedOwner[ok] - 1] || '';
       const owner = f.owner ? ` · ${f.owner.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}` : '';
-      // 8-K는 같은 날 나온 Circle 공식 발표를 붙여 무슨 내용인지 보이게 한다
+      // 8-K는 같은 날 나온 서클 공식 발표를 붙여 무슨 내용인지 보이게 한다
       const rel = /^8-K/.test(f.form) ? (N.official || []).find((o) => Math.abs(Date.parse(o.t) - Date.parse(f.d + 'T20:00:00Z')) < 1.2 * 86400000) : null;
       const [fy, fm, fd] = f.d.split('-').map(Number); // 제출일 그대로(현지 날짜로 바꾸지 않음)
       const it = itemsKo(f.items);
@@ -1628,7 +1756,7 @@
           <div><span>내부자 거래 공시</span><b>${cnt(/^4$|^4\/A$/) + cnt(/^144/)}건</b><small>30일 · Form 4 ${cnt(/^4$|^4\/A$/)} · 144 ${cnt(/^144/)}</small></div>
           <div><span>새 소식</span><b>${unseen}건</b><small>지난 방문 이후</small></div>
         </div>
-        ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk official">최신 Circle 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}`,
+        ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk official">최신 서클 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}`,
     });
   }
 
@@ -1678,9 +1806,9 @@
   function renderAll() {
     if (!state.data) return;
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
-      () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
-      () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 Circle 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderNewsSummary, renderNews, updateNewsBadge];
+      () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
+      () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, renderNewsSummary, renderNews, updateNewsBadge];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -1706,8 +1834,8 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news'],
-    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news'],
+    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings'],
+    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings'],
     light: ['circle', 'cirbtc'],
   };
   async function refresh(kind = 'auto') {
@@ -1718,6 +1846,7 @@
     try {
       if (kind !== 'light' || !state.data) {
         await loadData().catch((e) => { if (!state.data) throw e; });
+        renderAll(); // 먼저 서버 데이터로 그리고, 아래 동기화가 끝나면 다시 그린다
         Promise.all([loadKlines('1d'), state.range !== '1d' ? loadKlines(state.range) : null])
           .then(() => { renderPriceCard(); renderPriceChart(); }).catch(() => {});
         if (kind === 'manual') loadPxSnapshot().then(schedulePaint).catch(() => {});
@@ -1741,7 +1870,7 @@
   }
 
   // ---------------------------------------------------------------- 화면 전환 (하단 탭)
-  const VIEW_TITLES = { home: 'Circle Watch', crcl: 'CRCL 주가 · 공매도', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: 'CRCL 뉴스 · 공시' };
+  const VIEW_TITLES = { home: 'Circle Watch', crcl: '서클 주가 · 공매도', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: '서클 뉴스 · 공시' };
   const scrollMem = {};
   function showView(v, target) {
     if (!VIEW_TITLES[v]) v = 'home';
@@ -1753,7 +1882,7 @@
     try { history.replaceState(null, '', '#' + v); } catch {}
     savePref('view', v);
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
-    if (v === 'news') { markNewsSeen(); if (state.data) { renderNewsSummary(); renderNews(); } } else updateNewsBadge();
+    if (v === 'news') { markNewsSeen(); renderEarnings(); if (state.data) { renderNewsSummary(); renderNews(); } } else updateNewsBadge();
     if (target) {
       const el = document.getElementById(target);
       if (el) {

@@ -187,6 +187,150 @@ async function circleSupply(url, cache, cors, ctx) {
 const json = (obj, headers = {}, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } });
 
+// ---------------------------------------------------------------- 서클 실적 (분기)
+// Nasdaq: 최근 4분기 손익계산서 · EPS 실적/예상 · 다음 발표일(Zacks 추정)
+// SEC XBRL: 더 오래된 분기와 준비금 이자수익(가능할 때만 — 막히면 Nasdaq만으로)
+const NASDAQ_HEADERS = { 'user-agent': BROWSER_UA, accept: 'application/json, text/plain, */*', origin: 'https://www.nasdaq.com', referer: 'https://www.nasdaq.com/' };
+const nasdaqJson = async (path) => {
+  const r = await fetch(`https://api.nasdaq.com/api/${path}`, { headers: NASDAQ_HEADERS, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('nasdaq ' + r.status);
+  return (await r.json()).data;
+};
+// "$701,315"(천 달러) → 701315000, "($1,234)"·"-$1,234" → 음수, "--" → null
+const money = (s) => {
+  if (s == null) return null;
+  const t = String(s).trim();
+  if (!t || t === '--' || t === 'N/A') return null;
+  const neg = /^\(|^-/.test(t);
+  const n = parseFloat(t.replace(/[^0-9.]/g, ''));
+  return isFinite(n) ? (neg ? -n : n) * 1000 : null;
+};
+const mdy = (s) => { const m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : null; };
+const MON = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+// "Jun 2026" → 해당 분기 말일 "2026-06-30"
+const qtrEnd = (s) => { const m = String(s || '').match(/([A-Z][a-z]{2}) (\d{4})/); if (!m) return null; const mo = MON[m[1]]; const last = new Date(Date.UTC(+m[2], mo, 0)).getUTCDate(); return `${m[2]}-${String(mo).padStart(2, '0')}-${last}`; };
+
+async function secQuarterly() {
+  const r = await fetch('https://data.sec.gov/api/xbrl/companyfacts/CIK0001876042.json', {
+    headers: { 'user-agent': 'CircleWatch personal dashboard (https://circle-watch.pages.dev)', accept: 'application/json' },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!r.ok) throw new Error('sec ' + r.status);
+  const g = (await r.json()).facts['us-gaap'];
+  const days = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
+  const series = (concept) => {
+    const u = g[concept]?.units; if (!u) return {};
+    const vals = u[Object.keys(u)[0]];
+    const q = {}, fy = {};
+    for (const v of vals) {
+      if (!v.start) continue;
+      const d = days(v.start, v.end);
+      if (d >= 80 && d <= 100) q[v.end] = v.val;
+      else if (d >= 350 && d <= 380) fy[v.end] = v.val;
+    }
+    // 4분기 = 연간 − 1~3분기 (10-K에는 4분기 단독 수치가 없음)
+    for (const [end, total] of Object.entries(fy)) {
+      if (q[end] != null) continue;
+      const y = +end.slice(0, 4), mo = end.slice(5, 7);
+      const prev = [`${y}-03-31`, `${y}-06-30`, `${y}-09-30`].filter(() => mo === '12');
+      if (prev.length === 3 && prev.every((p) => q[p] != null)) q[end] = total - prev.reduce((s, p) => s + q[p], 0);
+    }
+    return q;
+  };
+  return {
+    revenue: series('Revenues'),
+    reserve: series('InterestAndDividendIncomeOperating'),
+    otherRevenue: series('RevenueFromContractWithCustomerExcludingAssessedTax'),
+    opIncome: series('OperatingIncomeLoss'),
+    netIncome: series('NetIncomeLoss'),
+    eps: series('EarningsPerShareDiluted'),
+  };
+}
+
+export async function buildEarnings() {
+  const [fin, sur, dt, fc, sec] = await Promise.allSettled([
+    nasdaqJson('company/CRCL/financials?frequency=2'),
+    nasdaqJson('company/CRCL/earnings-surprise'),
+    nasdaqJson('analyst/CRCL/earnings-date'),
+    nasdaqJson('analyst/CRCL/earnings-forecast'),
+    secQuarterly(),
+  ]);
+  const Q = {}; // 분기 말일 → 값
+  const put = (end, k, v) => { if (end && v != null && isFinite(v)) (Q[end] ||= { end })[k] = v; };
+
+  if (sec.status === 'fulfilled') {
+    const s = sec.value;
+    for (const [k, map] of Object.entries(s)) for (const [end, v] of Object.entries(map)) put(end, k, k === 'eps' && v === 0 ? null : v);
+  }
+  if (fin.status === 'fulfilled') {
+    const t = fin.value?.incomeStatementTable;
+    const cols = Object.entries(t?.headers || {}).filter(([k]) => k !== 'value1').map(([k, v]) => [k, mdy(v)]);
+    const row = (name) => t?.rows?.find((r) => r.value1 === name);
+    const map = { revenue: 'Total Revenue', cost: 'Cost of Revenue', grossProfit: 'Gross Profit', opIncome: 'Operating Income', netIncome: 'Net Income' };
+    for (const [key, name] of Object.entries(map)) {
+      const r = row(name);
+      if (r) for (const [col, end] of cols) put(end, key, money(r[col])); // Nasdaq 값이 있으면 SEC 값을 덮어쓴다(4분기 포함)
+    }
+  }
+  const surprises = [];
+  if (sur.status === 'fulfilled') {
+    for (const r of sur.value?.earningsSurpriseTable?.rows || []) {
+      const end = qtrEnd(r.fiscalQtrEnd);
+      const item = { end, reported: mdy(r.dateReported), eps: +r.eps, consensus: parseFloat(r.consensusForecast), surprise: parseFloat(r.percentageSurprise) / 100 };
+      surprises.push(item);
+      put(end, 'eps', item.eps);
+      put(end, 'consensus', item.consensus);
+      if (Q[end]) Q[end].reportedOn = item.reported;
+    }
+  }
+  let next = null;
+  if (dt.status === 'fulfilled') {
+    const text = dt.value?.reportText || '';
+    const m = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+    const cons = text.match(/consensus EPS forecast for the quarter is \$(-?\d+(?:\.\d+)?)/);
+    const ly = text.match(/same quarter last year was \$(-?\d+(?:\.\d+)?)/);
+    const n = text.match(/based on\s+(\d+) analysts/);
+    next = {
+      date: m ? mdy(m[1]) : null,
+      estimated: /estimated|algorithm/i.test(text),
+      consensus: cons ? +cons[1] : null,
+      lastYearEps: ly ? +ly[1] : null,
+      analysts: n ? +n[1] : null,
+    };
+  }
+  if (fc.status === 'fulfilled' && next) {
+    const r0 = fc.value?.quarterlyForecast?.rows?.[0];
+    if (r0) Object.assign(next, { quarter: qtrEnd(r0.fiscalEnd), high: +r0.highEPSForecast, low: +r0.lowEPSForecast, analysts: next.analysts ?? +r0.noOfEstimates });
+  }
+  const quarters = Object.values(Q).filter((q) => q.revenue != null).sort((a, b) => a.end.localeCompare(b.end)).slice(-8);
+  if (!quarters.length && !next) throw new Error('실적 데이터를 받지 못했습니다');
+  return {
+    at: new Date().toISOString(),
+    quarters,
+    surprises,
+    next,
+    sources: { nasdaq: fin.status === 'fulfilled', sec: sec.status === 'fulfilled' },
+  };
+}
+
+// 실적은 자주 바뀌지 않아 6시간 캐시 (발표일 전후에도 충분)
+export async function handleEarnings(url, cache, cors, ctx) {
+  const key = new Request(`${url.origin}/earnings`);
+  let res = await cache.match(key);
+  if (!res) {
+    try {
+      const body = JSON.stringify(await buildEarnings());
+      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=21600' } });
+      ctx.waitUntil(cache.put(key, res.clone()));
+    } catch (e) {
+      return json({ error: String(e.message || e) }, cors, 502);
+    }
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+
 // 뉴스 응답 (Worker와 Cloudflare Pages Functions가 함께 쓴다)
 export async function handleNews(url, cache, cors, ctx) {
   const cacheKey = new Request(`${url.origin}/news`);
@@ -226,11 +370,12 @@ export default {
     const origin = request.headers.get('origin') || '';
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-    if (url.pathname !== '/news' && url.pathname !== '/circle') return new Response('Circle Watch proxy · GET /news, /circle', { headers: cors });
+    if (!['/news', '/circle', '/earnings'].includes(url.pathname)) return new Response('Circle Watch proxy · GET /news, /circle, /earnings', { headers: cors });
     // 등록된 화면에서 온 요청만 받는다
     if (origin && !ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
     if (url.pathname === '/circle') return circleSupply(url, cache, cors, ctx);
+    if (url.pathname === '/earnings') return handleEarnings(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx);
   },
 };
