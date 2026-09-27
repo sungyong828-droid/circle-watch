@@ -1,5 +1,7 @@
 # Circle Watch
 
+**공유용 주소: https://circle-watch.pages.dev** (Cloudflare Pages)
+
 Circle(CRCL)의 USDC·EURC·USYC·cirBTC와 Arc 체인 현황을 휴대폰에서 보는 개인용 대시보드.
 
 ## 구조
@@ -64,3 +66,17 @@ python -m http.server 8765
 - 3분 캐시 · 새로고침 버튼은 1분 넘은 캐시를 다시 받음
 - 구글이 막히면 Bing 뉴스로 대체, 그래도 비면 마지막 성공 결과(최대 7일)를 사용
 - 수정 후 다시 배포: `cd worker && npx wrangler deploy`
+
+## 공유용 주소 (Cloudflare Pages)
+
+`https://circle-watch.pages.dev` 는 개인 계정 이름이 드러나지 않는 공유용 주소입니다.
+
+- 화면 파일(`index.html`, `assets/`)과 중계 기능(`functions/api/`)이 함께 올라갑니다.
+  - `/api/data`: 서버 수집기 결과(GitHub Pages의 `data/latest.json`)를 대신 받아 줌
+  - `/api/news`, `/api/circle`: 뉴스·Circle 유통량 중계 (`worker/news-proxy.js` 코드를 같이 씀)
+- 서버 수집 데이터는 `/api/data`가 자동으로 받아 오므로 따로 배포할 필요가 없습니다.
+- **화면 코드를 고쳤을 때만** 다시 올립니다:
+  ```bash
+  rm -rf dist && mkdir dist && cp -r index.html assets dist/
+  npx wrangler pages deploy dist --project-name circle-watch --branch main
+  ```

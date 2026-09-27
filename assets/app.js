@@ -3,8 +3,10 @@
 (() => {
   'use strict';
 
-  const DATA_URL = 'data/latest.json';
-  const NEWS_API = 'https://circle-watch-news.sungyong828.workers.dev'; // Cloudflare Worker (뉴스 중계)
+  // Cloudflare Pages(공유용 주소)에서는 같은 주소의 /api 중계를 쓰고, GitHub Pages에서는 Worker를 쓴다
+  const ON_PAGES = /\.pages\.dev$/.test(location.hostname);
+  const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
+  const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
   const DATA_REFRESH_MS = 5 * 60 * 1000;
   const LIVE_REFRESH_MS = 60 * 1000;
   const LIVE = {

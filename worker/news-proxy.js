@@ -111,7 +111,8 @@ async function buildNews() {
   const [kr, en, bw, site, filings] = await Promise.all([
     settle(deadline(withFallback(() => googleNews(Q.kr, 'ko'), () => bingNews(Q.krBing, 'ko'), 'kr', notes))),
     settle(deadline(withFallback(() => googleNews(Q.en, 'en'), () => bingNews(Q.enBing, 'en'), 'en', notes))),
-    settle(deadline(withFallback(() => googleNews('"Circle" site:businesswire.com when:60d', 'en'), null, 'bw', notes))),
+    settle(deadline(withFallback(() => googleNews('"Circle" site:businesswire.com when:60d', 'en'),
+      () => bingNews(['"Circle Internet Group" Business Wire', 'Circle announces USDC'], 'en').then((l) => l.map((n) => ({ ...n, source: /business ?wire/i.test(n.source) ? 'businesswire.com' : n.source }))), 'bw', notes))),
     settle(deadline(withFallback(() => googleNews('site:circle.com when:60d', 'en'), null, 'site', notes))),
     settle(deadline(nasdaqFilings())),
   ]);
@@ -186,6 +187,39 @@ async function circleSupply(url, cache, cors, ctx) {
 const json = (obj, headers = {}, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } });
 
+// 뉴스 응답 (Worker와 Cloudflare Pages Functions가 함께 쓴다)
+export async function handleNews(url, cache, cors, ctx) {
+  const cacheKey = new Request(`${url.origin}/news`);
+  const lastKey = new Request(`${url.origin}/news-last-good`);
+  // fresh(새로고침 버튼)여도 1분 안에 받아 둔 결과가 있으면 그대로 쓴다
+  let res = await cache.match(cacheKey);
+  if (res && url.searchParams.has('fresh')) {
+    const at = Date.parse((await res.clone().json()).at || 0);
+    if (!(Date.now() - at < 60000)) res = null;
+  }
+  if (!res) {
+    let data;
+    try {
+      data = await buildNews();
+    } catch (e) {
+      data = { at: new Date().toISOString(), official: [], kr: [], en: [], filings: [], failed: ['all'], notes: [String(e.message || e)] };
+    }
+    const lastRes = await cache.match(lastKey);
+    const last = lastRes ? await lastRes.json() : null;
+    data = mergeLastGood(data, last);
+    if (!data.kr.length && !data.en.length && !data.official.length) return json({ error: '뉴스 출처를 모두 받지 못했습니다', notes: data.notes }, cors, 502);
+    const body = JSON.stringify(data);
+    res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${CACHE_SECONDS}` } });
+    ctx.waitUntil(cache.put(cacheKey, res.clone()));
+    if (!data.stale) ctx.waitUntil(cache.put(lastKey, new Response(body, { headers: { 'cache-control': 'public, max-age=604800' } })));
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+
+export { circleSupply };
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -193,37 +227,10 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (url.pathname !== '/news' && url.pathname !== '/circle') return new Response('Circle Watch proxy · GET /news, /circle', { headers: cors });
-    // 등록된 화면(GitHub Pages·로컬)에서 온 요청만 받는다
+    // 등록된 화면에서 온 요청만 받는다
     if (origin && !ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
-
     const cache = caches.default;
     if (url.pathname === '/circle') return circleSupply(url, cache, cors, ctx);
-    const cacheKey = new Request(`${url.origin}/news`);
-    const lastKey = new Request(`${url.origin}/news-last-good`);
-    // fresh(새로고침 버튼)여도 1분 안에 받아 둔 결과가 있으면 그대로 쓴다
-    let res = await cache.match(cacheKey);
-    if (res && url.searchParams.has('fresh')) {
-      const at = Date.parse((await res.clone().json()).at || 0);
-      if (!(Date.now() - at < 60000)) res = null;
-    }
-    if (!res) {
-      let data;
-      try {
-        data = await buildNews();
-      } catch (e) {
-        data = { at: new Date().toISOString(), official: [], kr: [], en: [], filings: [], failed: ['all'], notes: [String(e.message || e)] };
-      }
-      const lastRes = await cache.match(lastKey);
-      const last = lastRes ? await lastRes.json() : null;
-      data = mergeLastGood(data, last);
-      if (!data.kr.length && !data.en.length && !data.official.length) return json({ error: '뉴스 출처를 모두 받지 못했습니다', notes: data.notes }, cors, 502);
-      const body = JSON.stringify(data);
-      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${CACHE_SECONDS}` } });
-      ctx.waitUntil(cache.put(cacheKey, res.clone()));
-      if (!data.stale) ctx.waitUntil(cache.put(lastKey, new Response(body, { headers: { 'cache-control': 'public, max-age=604800' } })));
-    }
-    const out = new Response(res.body, res);
-    for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-    return out;
+    return handleNews(url, cache, cors, ctx);
   },
 };
