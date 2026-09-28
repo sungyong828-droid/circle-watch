@@ -78,6 +78,7 @@
         <li><b>공시</b>: 미국 SEC EDGAR에서 새로고침 때마다 직접 받습니다(실패하면 서버가 모아 둔 목록). 주요 공시 = 8-K(합병·경영진 변경·실적 발표 등 중요한 일이 생기면 4영업일 내 제출), 10-Q(분기), 10-K(연간), 증권 발행(S-1·424B) 등.</li>
         <li><b>내부자 거래</b>: Form 4 = 임원·대주주가 주식을 사고판 뒤 2영업일 내 신고, Form 144 = 내부자가 주식을 팔 예정이라는 사전 신고. 매도가 몰리면 수급 부담 신호로 봅니다.</li>
         <li><b>서클 발표</b>: Business Wire 보도자료와 circle.com·IR 게시물.</li>
+        <li><b>암호화폐</b>: 서클 외 암호화폐 시장 전반 뉴스. 스팸·가짜 기사를 막기 위해 검색 대신 <b>검증된 전문 매체의 공식 RSS만</b> 받습니다(CoinDesk·Cointelegraph·Decrypt·The Block·블록미디어·토큰포스트). 매체 자기 도메인 링크만 허용하고, 광고·보도자료·프리세일·"100배" 같은 홍보성 문구가 있는 기사와 3일 지난 기사는 뺍니다.</li>
         <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 구글 뉴스는 휴대폰에서 직접 받을 수 없어, 개인 중계 서버(Cloudflare Worker)를 거쳐 새로고침 때마다 받습니다(최대 3분 캐시, 새로고침 버튼은 캐시 없이). 같은 제목은 하나로 합쳤습니다.</li>
         <li><b>NEW</b>: 지난번 이 탭을 본 이후 새로 올라온 항목. 하단 탭의 숫자도 같은 기준입니다(내부자 거래 공시 제외).</li>
       </ul>`,
@@ -129,7 +130,7 @@
       <p><b>달러 스테이블코인 공급량</b>은 1달러에 가치를 고정한 토큰이 시장에 얼마나 풀려 있는지 보여줍니다. 1토큰 ≈ $1이므로 공급량 = 시가총액입니다.</p>
       <p><b>USDC 점유율</b> = USDC 공급량 ÷ 전체 달러 스테이블코인 공급량(DefiLlama 집계). 서클 매출의 대부분은 USDC 준비금(단기국채·현금)에서 나오는 이자라서, <b>USDC 유통량과 점유율은 서클 실적의 가장 직접적인 선행지표</b>입니다.</p>
       <ul>
-        <li><b>7일 / 30일</b>: 7일·30일 전 대비 공급량 변화율. <span class="up">빨강=증가</span>, <span class="down">파랑=감소</span>.</li>
+        <li><b>1일 / 7일 / 30일</b>: 하루·7일·30일 전 대비 공급량 변화율. <span class="up">빨강=증가</span>, <span class="down">파랑=감소</span>.</li>
         <li><b>USYC</b>: 서클의 토큰화 단기국채 머니마켓펀드(이자가 붙는 토큰). 기관 담보·예치 수요를 보여줍니다.</li>
         <li><b>EURC</b>: 서클의 유로 스테이블코인(€ 기준, 서클 공식 발행량).</li>
         <li><b>BUIDL</b>: BlackRock 토큰화 MMF — USYC와 비교용.</li>
@@ -411,7 +412,7 @@
       const supply = r.cur === 'EUR' ? eur(r.sym === 'EURC' && eurcOfficial ? eurcOfficial : r.supply) : usd(r.supply);
       const share = isProduct ? '<td class="dim">–</td>' : `<td>${pctPlain(r.share)}<span class="share-bar"><i style="width:${Math.min(100, r.share * 100 / 0.6)}%"></i></span></td>`;
       return `<tr${hl}><td class="name"><b>${r.sym}</b><span>${esc(r.issuer)}</span></td><td>${supply}</td>${share}
-        <td class="${cls(r.ch7, 5e-5)}">${pct(r.ch7)}</td><td class="${cls(r.ch30, 5e-5)}">${pct(r.ch30)}</td></tr>`;
+        <td class="${cls(r.ch1, 5e-5)}">${r.ch1 == null ? '–' : Math.abs(r.ch1) < 5e-5 ? '0.00%' : pct(r.ch1, Math.abs(r.ch1) < 0.001 ? 2 : 1)}</td><td class="${cls(r.ch7, 5e-5)}">${pct(r.ch7)}</td><td class="${cls(r.ch30, 5e-5)}">${pct(r.ch30)}</td></tr>`;
     };
     const x = delta('usdcShare', { mode: 'pp' });
     card('stables', {
@@ -422,9 +423,9 @@
         <div class="headline"><span class="lbl">USDC 점유율</span><span class="big">${pctPlain(x.c.v)}</span>${x.html.replace('class="', 'style="font:500 13px var(--mono)" class="')}</div>
         <div class="delta-line"><span class="when">${x.when} · 전체 달러 스테이블코인 ${usd(s.totalUsd)}</span></div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>달러 스테이블코인</th><th>공급량</th><th>점유율</th><th>7일</th><th>30일</th></tr></thead>
+          <thead><tr><th>달러 스테이블코인</th><th>공급량</th><th>점유율</th><th>1일</th><th>7일</th><th>30일</th></tr></thead>
           <tbody>${s.rows.map((r) => row(r, false)).join('')}
-            <tr class="sub-h"><th>서클 자체 상품 · 비교</th><th>공급량</th><th></th><th>7일</th><th>30일</th></tr>
+            <tr class="sub-h"><th>서클 자체 상품 · 비교</th><th>공급량</th><th></th><th>1일</th><th>7일</th><th>30일</th></tr>
             ${s.products.map((r) => row(r, true)).join('')}
           </tbody></table></div>`,
     });
@@ -1459,7 +1460,7 @@
       if (j.error) throw new Error(j.error);
       const ownerMap = {};
       for (const f of j.filings || []) (ownerMap[f.d + '|' + f.form] ||= []).push(f.owner);
-      d.news = { ...(d.news || {}), official: j.official, kr: j.kr, en: j.en, newsAt: j.at, ownerMap };
+      d.news = { ...(d.news || {}), official: j.official, kr: j.kr, en: j.en, crypto: j.crypto || [], newsAt: j.at, ownerMap };
     },
     async filings(d) { // SEC EDGAR에서 직접 (서버를 거치지 않음)
       const j = await getJ('https://data.sec.gov/submissions/CIK0001876042.json');
@@ -1923,8 +1924,8 @@
     const hit = FORMS[base] || (base.startsWith('424B') ? FORMS['424B'] : null) || [base + ' 공시', 'mid'];
     return { label: hit[0] + (amend ? ' (정정)' : ''), level: hit[1] };
   }
-  const NEWS_KINDS = { filing: '공시', official: '서클 발표', kr: '국내', en: '해외' };
-  const NEWS_FILTERS = [['all', '전체'], ['filing', '공시'], ['official', '서클 발표'], ['kr', '국내 뉴스'], ['en', '해외 뉴스']];
+  const NEWS_KINDS = { filing: '공시', official: '서클 발표', kr: '국내', en: '해외', crypto: '코인' };
+  const NEWS_FILTERS = [['all', '전체'], ['filing', '공시'], ['official', '서클 발표'], ['kr', '국내 뉴스'], ['en', '해외 뉴스'], ['crypto', '암호화폐']];
   state.newsFilter = loadPref('newsFilter', 'all');
   state.majorOnly = loadPref('majorOnly', '1') === '1';
   let newsSeenAt = Number(loadPref('newsSeen', '0')) || 0; // 마지막으로 뉴스 탭을 본 시각
@@ -1949,6 +1950,14 @@
       items.push({ kind: 'filing', t: new Date(fy, fm - 1, fd, 12).getTime(), dateOnly: true, title: `${fi.label}${it ? ' · ' + it : ''}${owner}${rel ? ' — ' + rel.title : ''}`, source: `SEC · Form ${f.form}`, url: f.url, form: f.form, level: fi.level });
     }
     for (const k of ['official', 'kr', 'en']) for (const n of N[k] || []) items.push({ kind: k, t: Date.parse(n.t), title: n.title, source: n.source, url: n.url, level: k === 'official' ? 'hi' : 'mid' });
+    // 암호화폐 전반 뉴스(신뢰 매체 RSS) — 서클 뉴스와 같은 기사는 한 번만
+    const seenT = new Set(items.map((i) => i.title.toLowerCase().replace(/[^a-z0-9가-힣]/g, '').slice(0, 40)));
+    for (const n of N.crypto || []) {
+      const k = n.title.toLowerCase().replace(/[^a-z0-9가-힣]/g, '').slice(0, 40);
+      if (seenT.has(k)) continue;
+      seenT.add(k);
+      items.push({ kind: 'crypto', t: Date.parse(n.t), title: n.title, source: n.source + (n.lang === 'ko' ? '' : ' · 해외'), url: n.url, level: 'mid' });
+    }
     return items.sort((a, b) => b.t - a.t);
   }
   const unseenCount = () => newsItems().filter((i) => i.t > newsSeenAt && i.level !== 'low').length;

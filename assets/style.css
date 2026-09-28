@@ -484,3 +484,21 @@ button.kpi:active { background: var(--surface-2); }
 .btn-primary, .btn-ghost { height: 44px; padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .btn-primary { flex: 1; border: 0; background: var(--c-orange); color: #fff; }
 .btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--ink-2); }
+
+/* 스테이블코인 표: 달러 스테이블코인 ↔ 서클 자체 상품 구분선 */
+tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(--line); padding-top: 14px; color: var(--ink); font-weight: 700; }
+#c-stables thead th { border-bottom: 2px solid var(--ink-2); color: var(--ink); font-weight: 700; }
+/* 뉴스: 암호화폐 */
+.nk.crypto { color: var(--c-purple); border-color: rgba(143, 122, 238, 0.45); background: rgba(143, 122, 238, 0.1); }
+/* 홈: 핵심 지표가 위로 오면서 간격 */
+#view-home .group-h { margin-top: 4px; }
+
+/* 휴대폰: 스테이블코인 표 6열을 한 화면에 */
+@media (max-width: 440px) {
+  #c-stables th, #c-stables td { padding: 7px 3px; }
+  #c-stables td { font-size: 11px; letter-spacing: -0.02em; }
+  #c-stables th { font-size: 10.5px; }
+  #c-stables td.name b { font-size: 12px; }
+  #c-stables td.name span { font-size: 9.5px; max-width: 78px; }
+  #c-stables td.name, #c-stables th:first-child { max-width: 82px; }
+}

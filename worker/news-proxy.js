@@ -103,18 +103,62 @@ async function withFallback(primary, fallback, label, notes) {
   }
 }
 
+// ---------------------------------------------------------------- 암호화폐 뉴스 (신뢰 매체 RSS만)
+// 검색 결과가 아니라 검증된 전문 매체의 공식 RSS만 받아 스팸·가짜 기사 유입을 막는다.
+// needKw: 암호화폐 외 기사도 섞인 매체는 제목에 관련 키워드가 있을 때만 수집
+// (제외: DL News — 피드 갱신 중단, coindeskkorea.com — 광고성 사이트로 바뀜, 블록체인투데이 — 홍보성 글 다수)
+const CRYPTO_FEEDS = [
+  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', source: 'CoinDesk', lang: 'en', host: 'coindesk.com' },
+  { url: 'https://cointelegraph.com/rss', source: 'Cointelegraph', lang: 'en', host: 'cointelegraph.com' },
+  { url: 'https://decrypt.co/feed', source: 'Decrypt', lang: 'en', host: 'decrypt.co' },
+  { url: 'https://www.theblock.co/rss.xml', source: 'The Block', lang: 'en', host: 'theblock.co' },
+  { url: 'https://www.blockmedia.co.kr/feed', source: '블록미디어', lang: 'ko', host: 'blockmedia.co.kr' },
+  { url: 'https://www.tokenpost.kr/rss', source: '토큰포스트', lang: 'ko', host: 'tokenpost.kr', needKw: true },
+];
+// 광고·보도자료·과장 홍보·프리세일 등 스팸성 문구
+const SPAM_RE = /sponsored|press release|partner content|advertorial|paid (post|content)|presale|pre-sale|giveaway|free (crypto|tokens?)|airdrop (claim|now|live)|guaranteed|\b\d{3,}x\b|price prediction|how to buy|best (crypto|coins?) to buy|\[(ad|pr|광고|홍보|보도자료)\]|보도자료|협찬|광고|에어드랍 (받|참여)|무료 (코인|토큰)|폭등 예정|지금 사야/i;
+const CRYPTO_KW = /비트코인|이더리움|코인|가상자산|암호화폐|블록체인|스테이블|디지털자산|디지털 자산|거래소|업비트|빗썸|코인베이스|바이낸스|토큰|NFT|디파이|DeFi|XRP|리플|솔라나|USDC|USDT|테더|서클|CBDC|웹3|Web3|채굴|ETF|BTC|ETH/i;
+
+async function cryptoFeed(f) {
+  const xml = await fetchText(f.url, 2);
+  const cutoff = Date.now() - 3 * DAY_MS;
+  return rssItems(xml).map((it) => {
+    const cats = [...it.matchAll(/<category[^>]*>([\s\S]*?)<\/category>/g)].map((m) => decodeXml(m[1]));
+    const t = Date.parse(rssTag(it, 'pubDate') || rssTag(it, 'dc:date'));
+    return { t: isFinite(t) ? new Date(t).toISOString() : '', title: rssTag(it, 'title').replace(/<[^>]+>/g, '').trim(), source: f.source, url: rssTag(it, 'link'), lang: f.lang, cats: cats.join(' ') };
+  }).filter((n) => {
+    if (!n.title || !n.t || Date.parse(n.t) < cutoff) return false;
+    let host = '';
+    try { const u = new URL(n.url); if (u.protocol !== 'https:' && u.protocol !== 'http:') return false; host = u.hostname; } catch { return false; }
+    if (!(host === f.host || host.endsWith('.' + f.host))) return false; // 매체 자기 도메인 링크만
+    if (SPAM_RE.test(n.title) || SPAM_RE.test(n.cats)) return false;
+    if (f.needKw && !CRYPTO_KW.test(n.title)) return false;
+    return true;
+  }).map(({ cats, ...n }) => n);
+}
+
+async function cryptoNews() {
+  const res = await Promise.allSettled(CRYPTO_FEEDS.map((f) => cryptoFeed(f)));
+  const all = res.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  const ko = dedupe(all.filter((n) => n.lang === 'ko'), 25);
+  const en = dedupe(all.filter((n) => n.lang === 'en'), 30);
+  const failed = CRYPTO_FEEDS.filter((_, i) => res[i].status === 'rejected').map((f) => f.source);
+  return { list: [...ko, ...en].sort((a, b) => b.t.localeCompare(a.t)), failed };
+}
+
 async function buildNews() {
   const notes = [];
   const settle = async (p) => { try { return { ok: true, v: await p } } catch (e) { return { ok: false, e } } };
   // 모든 출처를 동시에 요청하고, 14초 안에 못 받은 항목은 비워 둔다(마지막 성공 결과로 채워짐)
   const deadline = (p) => Promise.race([p, sleep(14000).then(() => { throw new Error('시간 초과'); })]);
-  const [kr, en, bw, site, filings] = await Promise.all([
+  const [kr, en, bw, site, filings, crypto] = await Promise.all([
     settle(deadline(withFallback(() => googleNews(Q.kr, 'ko'), () => bingNews(Q.krBing, 'ko'), 'kr', notes))),
     settle(deadline(withFallback(() => googleNews(Q.en, 'en'), () => bingNews(Q.enBing, 'en'), 'en', notes))),
     settle(deadline(withFallback(() => googleNews('"Circle" site:businesswire.com when:60d', 'en'),
       () => bingNews(['"Circle Internet Group" Business Wire', 'Circle announces USDC'], 'en').then((l) => l.map((n) => ({ ...n, source: /business ?wire/i.test(n.source) ? 'businesswire.com' : n.source }))), 'bw', notes))),
     settle(deadline(withFallback(() => googleNews('site:circle.com when:60d', 'en'), null, 'site', notes))),
     settle(deadline(nasdaqFilings())),
+    settle(deadline(cryptoNews())),
   ]);
   const v = (r) => (r.ok ? r.v : []);
   // 출처는 IR·circle.com·Business Wire만, 이름만 같은 다른 회사(Circle K 등)는 제외
@@ -130,7 +174,9 @@ async function buildNews() {
     kr: dedupe(v(kr)),
     en: dedupe(v(en).filter((n) => !officialTitles.has(n.title))),
     filings: v(filings),
-    failed: Object.entries({ kr, en, bw, site, filings }).filter(([, r]) => !r.ok).map(([k]) => k),
+    crypto: crypto.ok ? crypto.v.list : [],
+    cryptoFailed: crypto.ok ? crypto.v.failed : ['all'],
+    failed: Object.entries({ kr, en, bw, site, filings, crypto }).filter(([, r]) => !r.ok).map(([k]) => k),
     notes,
   };
 }
@@ -139,7 +185,7 @@ async function buildNews() {
 function mergeLastGood(cur, last) {
   if (!last) return cur;
   const stale = [];
-  for (const k of ['official', 'kr', 'en', 'filings']) {
+  for (const k of ['official', 'kr', 'en', 'filings', 'crypto']) {
     if (!cur[k]?.length && last[k]?.length) { cur[k] = last[k]; stale.push(k); }
   }
   if (stale.length) cur.stale = { keys: stale, at: last.at };
