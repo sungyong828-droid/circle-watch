@@ -51,6 +51,19 @@
 
   // ---------------------------------------------------------------- 설명(ⓘ)
   const INFO = {
+    fire: `
+      <p>보유한 주식의 <b>현재 원화 평가금액 ÷ 목표 금액</b>으로 퇴사(경제적 자유) 목표까지 얼마나 왔는지 보여줍니다.</p>
+      <ul>
+        <li><b>평가금액</b> = 보유 수량 × 실시간 주가(Nasdaq, 장전·장중·장후 포함) × 실시간 원·달러 환율.</li>
+        <li><b>평가손익</b>: 매수 금액(수량 × 평균 단가)과 비교. 평균 매수 환율을 입력하지 않으면 현재 환율로 환산합니다.</li>
+        <li><b>목표 달성 가격</b>: 지금 환율이 그대로일 때 목표 금액이 되는 주가.</li>
+        <li><b>24시간 추정</b>: 미국 장이 닫힌 주말·야간에도 바이낸스에서 24시간 거래되는 CRCL 가격으로, 다음 장 시작 시 예상 가격을 계산합니다(CRCA는 하루 수익률 2배 가정). 실제 개장가와 다를 수 있습니다.</li>
+        <li><b>세후 기준</b>(선택): 해외주식 양도소득세(연 250만원 공제 후 22%)를 뺀 금액으로 계산합니다. 실제 세금은 다른 해외주식 손익·환율에 따라 달라집니다.</li>
+      </ul>
+      <p>⚠️ CRCA는 CRCL 하루 수익률의 2배를 따라가는 레버리지 ETF라, 오래 보유하면 등락이 반복될 때 CRCL 수익률의 2배와 차이가 나고(변동성 손실), 운용보수가 매일 빠집니다. 투자 조언이 아닌 개인 계산 도구입니다.</p>
+      <p>🔒 보유 정보는 이 기기의 브라우저에만 저장됩니다.</p>`,
+    fireSim: `
+      <p>슬라이더를 움직이거나 버튼을 눌러, 주가가 그 값이 되면 <b>평가금액·달성률·손익</b>이 어떻게 되는지 확인할 수 있습니다(현재 환율 기준).</p>`,
     earnings: `
       <p>서클이 분기마다 발표하는 <b>실적</b>입니다(미국 SEC 제출 재무제표 + Nasdaq 집계).</p>
       <ul>
@@ -1122,6 +1135,9 @@
     const chevron = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
     const pxLine = `<li><button type="button" data-go="crcl:c-pricechart"><span class="tone px"><span class="live-dot"></span>주가</span>
       <span class="txt">CRCL <b id="sum-px">${price(px.t?.last)}</b> · 24시간 <span id="sum-pxchg">${px.t ? `<span class="${cls(px.t.pct)}">${pct(px.t.pct, 1)}</span>` : '–'}</span></span>${chevron}</button></li>`;
+    const fc = fireCfg ? fireCalc() : null;
+    const fireLine = fc ? `<li><button type="button" data-go="fire:c-fire"><span class="tone px">🔥 Fire</span>
+      <span class="txt">퇴사까지 <b>${(Math.max(0, fc.progress) * 100).toFixed(1)}%</b> · ${wonFull(fc.basis)} / ${wonFull(fc.F.goal)}</span>${chevron}</button></li>` : '';
     card('summary', {
       title: '현재 상황 요약',
       sub: `${state.syncedAt ? ago(state.syncedAt) + ' 동기화' : ago(d.updatedAt) + ' 수집'} 데이터 기준 · 규칙 기반 자동 요약`,
@@ -1129,7 +1145,7 @@
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
         <div class="sum-count"><span class="tone pos">긍정 ${nPos}</span><span class="tone neg">주의 ${nNeg}</span><span class="tone neu">중립 ${items.length - nPos - nNeg}</span></div>
-        <ul class="sum-list">${pxLine}${items.map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
+        <ul class="sum-list">${pxLine}${fireLine}${items.map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
     });
   }
 
@@ -1424,6 +1440,7 @@
       d.short = { ...S, daily, avgRatio: sumS / sumT };
       L.shortRatio = daily.at(-1).ratio;
     },
+    async quote() { await loadQuote(); }, // Fire 탭 시세·환율
     async earnings() { // 분기 실적·다음 발표일 (서버에서 6시간 캐시)
       try {
         const j = await getJ(`${NEWS_API}/earnings`, 25000);
@@ -1530,7 +1547,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적' };
+  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율' };
 
   // parts: 동기화할 항목 이름 목록
   async function syncNow(parts) {
@@ -1543,6 +1560,234 @@
     for (const [k, v] of Object.entries(L)) if (v != null && isFinite(v)) state.live[k] = { v, t };
     if (parts.length > 2) { state.syncedAt = t; state.syncFail = fail; pushLocalSnap(); }
     return { ok: parts.length - fail.length, fail };
+  }
+
+  // ---------------------------------------------------------------- Fire (퇴사 목표 진행률)
+  // 보유 정보는 이 기기(브라우저)에만 저장한다. 코드·서버·링크에는 개인 보유 현황이 들어가지 않는다.
+  const FIRE_KEY = 'cw.fire', FIRE_HIST = 'cw.fireHist';
+  const readJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+  const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  let fireCfg = readJSON(FIRE_KEY, null);
+  let fireHist = readJSON(FIRE_HIST, []);
+  let fireSim = null; // 시뮬레이터 가격
+  let fireConfirmDelete = false;
+
+  // 설정 링크(#fire&shares=..&avg=..&goal=..)로 한 번에 입력 — 저장 후 주소에서 바로 지운다
+  (function importFireFromHash() {
+    const h = location.hash.slice(1);
+    if (!h.startsWith('fire&')) return;
+    const p = new URLSearchParams(h.slice(5));
+    const n = (k) => { const v = parseFloat(p.get(k)); return isFinite(v) && v > 0 ? v : null; };
+    if (n('shares') && n('avg')) {
+      fireCfg = { ticker: /^(CRCA|CRCL)$/.test(p.get('ticker') || '') ? p.get('ticker') : 'CRCA', shares: n('shares'), avg: n('avg'), goal: n('goal') || 1.5e9, buyFx: n('fx'), afterTax: false };
+      writeJSON(FIRE_KEY, fireCfg);
+    }
+    try { history.replaceState(null, '', location.pathname + '#fire'); } catch {}
+  })();
+
+  // ₩2억 4,712만 처럼 억·만 단위로 자세히 (Fire 탭)
+  const wonFull = (v) => {
+    if (v == null || !isFinite(v)) return '–';
+    const a = Math.abs(v), sg = v < 0 ? '-' : '';
+    let eok = Math.floor(a / 1e8), man = Math.round((a - eok * 1e8) / 1e4);
+    if (man >= 10000) { eok += 1; man -= 10000; }
+    return sg + '₩' + (eok ? `${eok}억${man ? ' ' + nf(0).format(man) + '만' : ''}` : `${nf(0).format(man)}만`);
+  };
+  const won = (v) => (v == null || !isFinite(v) ? '–' : (v < 0 ? '-₩' : '₩') + unit(Math.abs(v)));
+  const dollar = (v, dp = 0) => (v == null || !isFinite(v) ? '–' : (v < 0 ? '-$' : '$') + nf(dp).format(Math.abs(v)));
+  const signed = (v, f) => (v == null || !isFinite(v) ? '–' : (v > 0 ? '+' : v < 0 ? '-' : '') + f(Math.abs(v)).replace(/^-/, ''));
+
+  // 해외주식 양도소득세: 연 250만원 공제 후 22%(지방세 포함) — 이익일 때만
+  const taxOf = (gainKrw) => Math.max(0, gainKrw - 2.5e6) * 0.22;
+
+  function fireCalc(priceOverride) {
+    const F = fireCfg, Q = state.quote;
+    if (!F || !Q?.fx?.rate) return null;
+    const q = Q[F.ticker];
+    if (!q?.price && priceOverride == null) return null;
+    const px = priceOverride ?? q.price;
+    const fx = Q.fx.rate;
+    const valueUsd = F.shares * px, valueKrw = valueUsd * fx;
+    const costUsd = F.shares * F.avg, costKrw = costUsd * (F.buyFx || fx);
+    const gainUsd = valueUsd - costUsd, gainKrw = valueKrw - costKrw;
+    const tax = taxOf(gainKrw), netKrw = valueKrw - tax;
+    const basis = F.afterTax ? netKrw : valueKrw;
+    // 목표 달성에 필요한 가격 (세후 기준이면 세금을 감안해 역산)
+    const needValueKrw = F.afterTax
+      ? Math.max(F.goal, (F.goal - 0.22 * (costKrw + 2.5e6)) / 0.78)
+      : F.goal;
+    const needPx = needValueKrw / (fx * F.shares);
+    const ref = q?.regularClose ?? q?.prevClose;
+    const todayKrw = q?.prevClose != null ? F.shares * (px - q.prevClose) * fx : null;
+    return { F, q, px, fx, valueUsd, valueKrw, costUsd, costKrw, gainUsd, gainKrw, gainPct: gainUsd / costUsd, tax, netKrw, basis, progress: basis / F.goal, remainKrw: F.goal - basis, needPx, needPct: needPx / px - 1, todayKrw, ref };
+  }
+
+  // 주말·야간: 24시간 거래되는 바이낸스 CRCL로 CRCA 추정 (하루 수익률 2배 가정)
+  function fireEstimate() {
+    const Q = state.quote, b = px.t?.last;
+    if (!Q?.CRCA || !Q?.CRCL || !b) return null;
+    const crclClose = Q.CRCL.regularClose ?? Q.CRCL.prevClose, crcaClose = Q.CRCA.regularClose ?? Q.CRCA.prevClose;
+    if (!crclClose || !crcaClose) return null;
+    const r = b / crclClose - 1;
+    return { crcl: b, crclClose, crcaClose, move: r, crca: crcaClose * (1 + (fireCfg?.ticker === 'CRCL' ? 1 : 2) * r) };
+  }
+
+  function recordFireHistory(c) {
+    if (!c) return;
+    const d = new Date(), key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const row = { d: key, p: +c.progress.toFixed(5), v: Math.round(c.basis) };
+    if (fireHist.at(-1)?.d === key) fireHist[fireHist.length - 1] = row; else fireHist.push(row);
+    fireHist = fireHist.slice(-400);
+    writeJSON(FIRE_HIST, fireHist);
+  }
+
+  function fireForm(open) {
+    const F = fireCfg || { ticker: 'CRCA', goal: 1.5e9, afterTax: false };
+    return `<details class="fire-set" ${open ? 'open' : ''}>
+      <summary>${fireCfg ? '보유 정보 수정' : '보유 정보 입력'}</summary>
+      <form id="fire-form" autocomplete="off">
+        <label>종목<select id="f-ticker"><option value="CRCA" ${F.ticker === 'CRCA' ? 'selected' : ''}>CRCA · ProShares Ultra CRCL (2배)</option><option value="CRCL" ${F.ticker === 'CRCL' ? 'selected' : ''}>CRCL · Circle Internet Group</option></select></label>
+        <label>보유 수량(주)<input id="f-shares" inputmode="decimal" value="${F.shares ?? ''}" placeholder="예: 1000" required></label>
+        <label>평균 단가(달러)<input id="f-avg" inputmode="decimal" value="${F.avg ?? ''}" placeholder="예: 23.30" required></label>
+        <label>목표 금액(원)<input id="f-goal" inputmode="numeric" value="${F.goal ?? 1.5e9}" required><small id="f-goal-hint">${wonFull(F.goal ?? 1.5e9)}</small></label>
+        <label>평균 매수 환율(원, 선택)<input id="f-fx" inputmode="decimal" value="${F.buyFx ?? ''}" placeholder="비우면 현재 환율로 손익 계산"></label>
+        <label class="chk"><input type="checkbox" id="f-tax" ${F.afterTax ? 'checked' : ''}> 세후 기준으로 계산 (해외주식 양도세 22%, 연 250만원 공제)</label>
+        <div class="fire-btns"><button type="submit" class="btn-primary">저장</button>${fireCfg ? `<button type="button" id="f-del" class="btn-ghost">${fireConfirmDelete ? '정말 삭제' : '이 기기에서 삭제'}</button>` : ''}</div>
+        <p class="note">🔒 입력한 값은 <b>이 기기(브라우저)에만</b> 저장돼요. 서버나 공유 링크로 전송되지 않아서, 같은 링크를 받은 다른 사람에게는 보이지 않아요.</p>
+      </form>
+    </details>`;
+  }
+
+  function renderFire() {
+    const el = document.getElementById('c-fire');
+    if (!el) return;
+    const c = fireCalc();
+    if (!fireCfg) {
+      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요.</p>` });
+      ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; });
+      return;
+    }
+    ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = false; });
+    if (!c) {
+      card('fire', { title: '퇴사까지', sub: '시세 불러오는 중…', info: INFO.fire, body: `<p class="skeleton">${state.quoteErr ? '시세를 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실시간 시세·환율 불러오는 중…'}</p>` });
+      return;
+    }
+    recordFireHistory(c);
+    const F = c.F, q = c.q, pctDone = Math.max(0, c.progress);
+    const est = fireEstimate();
+    const estC = est ? fireCalc(est.crca) : null;
+    const status = { 'Pre-Market': '장전', 'Open': '장중', 'Market Open': '장중', 'After-Hours': '장후', 'Closed': '장 마감' }[q.status] || q.status || '';
+    const marks = [0.25, 0.5, 0.75].map((m) => `<i style="left:${m * 100}%"></i>`).join('');
+    card('fire', {
+      title: '퇴사까지', sub: `${F.ticker} ${nf(0).format(F.shares)}주 · 목표 ${wonFull(F.goal)}${F.afterTax ? ' · 세후 기준' : ''}`, info: INFO.fire,
+      body: `
+        <div class="fire-hero">
+          <div class="fire-pct"><span id="fire-pct">${(pctDone * 100).toFixed(1)}</span><small>%</small></div>
+          <div class="fire-remain">목표까지 <b>${(Math.max(0, 1 - pctDone) * 100).toFixed(1)}%</b> 남음 · <b>${wonFull(Math.max(0, c.remainKrw))}</b> 부족</div>
+          <div class="fire-bar" role="progressbar" aria-valuenow="${Math.round(pctDone * 100)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${Math.min(100, pctDone * 100)}%"></span>${marks}</div>
+          <div class="fire-scale"><span>₩0</span><span>${won(F.goal * 0.5)}</span><span>${won(F.goal)}</span></div>
+        </div>
+        <div class="ns-grid fire-grid">
+          <div><span>평가금액${F.afterTax ? '(세후)' : ''}</span><b>${wonFull(c.basis)}</b><small>${dollar(c.valueUsd)}${F.afterTax ? ` · 세전 ${wonFull(c.valueKrw)}` : ''}</small></div>
+          <div><span>평가손익</span><b class="${cls(c.gainKrw)}">${signed(c.gainKrw, wonFull)}</b><small><span class="${cls(c.gainPct)}">${pct(c.gainPct)}</span> · ${signed(c.gainUsd, dollar)}</small></div>
+          <div><span>오늘 변동</span><b class="${cls(c.todayKrw)}">${signed(c.todayKrw, wonFull)}</b><small>${F.ticker} <span class="${cls(q.pct)}">${pct(q.pct, 2)}</span> · 전일 종가 대비</small></div>
+          <div><span>${F.ticker} 현재가</span><b>$${c.px.toFixed(2)}</b><small>${esc(status)} · 평균 $${F.avg.toFixed(2)}</small></div>
+          <div><span>목표 달성 가격</span><b>$${c.needPx.toFixed(2)}</b><small>현재가 대비 <span class="up">+${(c.needPct * 100).toFixed(0)}%</span></small></div>
+          <div><span>원·달러 환율</span><b>₩${nf(2).format(c.fx)}</b><small>10원 오르면 ${signed(c.valueUsd * 10, wonFull)}</small></div>
+        </div>
+        ${est ? `<div class="fire-est"><span class="tone px"><span class="live-dot"></span>24시간 추정</span>
+          <div>바이낸스 CRCL <b>$${est.crcl.toFixed(2)}</b> (<span class="${cls(est.move)}">${pct(est.move, 2)}</span>, 정규장 종가 대비) → ${F.ticker} 추정 <b>$${est.crca.toFixed(2)}</b> · 달성률 <b>${estC ? (Math.max(0, estC.progress) * 100).toFixed(1) + '%' : '–'}</b></div></div>` : ''}
+        <p class="note">시세 ${esc(q.time)} · 환율 ${esc(state.quote.fx.source || '')} ${state.quote.fx.time ? hm(Date.parse(state.quote.fx.time)) : ''} 기준${F.buyFx ? '' : ' · 손익은 현재 환율로 환산'}${c.tax > 0 ? ` · 예상 양도세 ${wonFull(c.tax)}` : ''}</p>`,
+    });
+    // 슬라이더를 끄는 중이면 시뮬레이터는 다시 그리지 않는다
+    if (document.activeElement?.id !== 'sim-range') renderFireSim(c);
+    renderFireHist();
+  }
+
+  function renderFireSet() {
+    const el = document.getElementById('c-fire-set');
+    if (!el) return;
+    el.innerHTML = fireForm(!fireCfg);
+  }
+
+  function simTopHtml(p) {
+    const s = fireCalc(p);
+    if (!s) return '';
+    return `<b>$${p.toFixed(2)}</b><span>${wonFull(s.basis)} · 달성률 <b>${(Math.max(0, s.progress) * 100).toFixed(1)}%</b> · 손익 <span class="${cls(s.gainKrw)}">${signed(s.gainKrw, wonFull)}</span></span>`;
+  }
+  function renderFireSim(c) {
+    const F = fireCfg;
+    const max = Math.max(Math.ceil(c.needPx * 1.25 / 10) * 10, Math.ceil(c.px * 3));
+    const p = fireSim ?? c.px;
+    const chips = [['현재가', c.px], ['+50%', c.px * 1.5], ['2배', c.px * 2], ['평균 단가', F.avg], ['목표가', Math.ceil(c.needPx * 100) / 100]];
+    card('fire-sim', {
+      title: '가격 시뮬레이터', sub: `${F.ticker} 가격이 이렇게 되면 · 현재 환율 기준`, info: INFO.fireSim,
+      body: `<div class="sim-top" id="sim-top">${simTopHtml(p)}</div>
+        <input type="range" id="sim-range" min="1" max="${max}" step="0.5" value="${p.toFixed(1)}" aria-label="${F.ticker} 가격">
+        <div class="sim-scale"><span>$1</span><span>$${max}</span></div>
+        <div class="sim-chips">${chips.map(([l, v]) => `<button type="button" data-sim="${v.toFixed(2)}">${l}<small>$${v.toFixed(2)}</small></button>`).join('')}</div>`,
+    });
+  }
+
+  function renderFireHist() {
+    const H = fireHist;
+    card('fire-hist', {
+      title: '진행률 기록', sub: '이 기기에서 하루 한 번(마지막 값) 기록 · 최대 400일', info: '',
+      body: H.length < 2
+        ? `<p class="note" style="margin-top:12px">기록이 쌓이는 중이에요. 내일부터 추이 그래프가 보여요. (오늘 ${H[0] ? (H[0].p * 100).toFixed(1) + '%' : '–'})</p>`
+        : `<div class="chart short"><canvas id="cv-fire-hist" role="img" aria-label="퇴사 진행률 기록"></canvas></div>`,
+    });
+    if (H.length < 2) return;
+    const labels = H.map((r) => Date.parse(r.d + 'T12:00:00') / 1000);
+    draw('fire-hist', {
+      type: 'line',
+      data: { labels, datasets: [lineDs('달성률', H.map((r) => r.p), C.orange, { fill: 'start', backgroundColor: areaFill(C.orange), pointRadius: endPoint(H.length), tension: 0.2 })] },
+      options: {
+        interaction, plugins: { ...noLegend, tooltip: tooltip((it) => H[it.dataIndex].d, (v, it) => `${(v * 100).toFixed(1)}% (${won(H[it.dataIndex].v)})`) },
+        scales: { x: axisX(labels, (t) => { const d = new Date(t * 1000); return `${d.getMonth() + 1}/${d.getDate()}`; }, 5), y: axisY((v) => (v * 100).toFixed(0) + '%', { beginAtZero: true }) },
+      },
+    });
+  }
+
+  // 시세: Fire 탭을 보고 있을 때 15초마다
+  async function loadQuote() {
+    try {
+      const j = await getJ(`${NEWS_API}/quote`, 15000);
+      if (j.error) throw new Error(j.error);
+      state.quote = j;
+      state.quoteErr = false;
+    } catch (e) {
+      state.quoteErr = true;
+      if (!state.quote) throw e;
+    }
+  }
+  let fireTimer = null;
+  function fireLoop(on) {
+    clearInterval(fireTimer);
+    if (!on) return;
+    fireTimer = setInterval(() => { if (!document.hidden) loadQuote().then(() => { renderFire(); renderSummary(); }).catch(() => {}); }, 15000);
+  }
+
+  function saveFireForm() {
+    const v = (id) => document.getElementById(id)?.value.trim().replace(/,/g, '');
+    const shares = parseFloat(v('f-shares')), avg = parseFloat(v('f-avg')), goal = parseFloat(v('f-goal')), fx = parseFloat(v('f-fx'));
+    if (!(shares > 0) || !(avg > 0) || !(goal > 0)) { toast('보유 수량·평균 단가·목표 금액을 숫자로 입력해 주세요', true); return; }
+    fireCfg = { ticker: v('f-ticker') === 'CRCL' ? 'CRCL' : 'CRCA', shares, avg, goal, buyFx: fx > 0 ? fx : null, afterTax: document.getElementById('f-tax')?.checked || false };
+    writeJSON(FIRE_KEY, fireCfg);
+    fireSim = null;
+    fireConfirmDelete = false;
+    toast('✓ 이 기기에 저장했어요');
+    renderFireSet();
+    if (!state.quote) loadQuote().then(() => { renderFire(); renderSummary(); }).catch(() => renderFire());
+    renderFire();
+    renderSummary();
+  }
+  function deleteFire() {
+    if (!fireConfirmDelete) { fireConfirmDelete = true; renderFireSet(); return; }
+    fireCfg = null; fireHist = []; fireSim = null; fireConfirmDelete = false;
+    try { localStorage.removeItem(FIRE_KEY); localStorage.removeItem(FIRE_HIST); } catch {}
+    toast('이 기기에서 보유 정보를 지웠어요');
+    renderFireSet(); renderFire(); renderSummary();
   }
 
   // ---------------------------------------------------------------- 서클 실적 (뉴스 탭 상단)
@@ -1808,7 +2053,7 @@
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, renderNewsSummary, renderNews, updateNewsBadge];
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, renderNewsSummary, renderNews, updateNewsBadge, renderFire];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -1834,9 +2079,9 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings'],
-    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings'],
-    light: ['circle', 'cirbtc'],
+    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    light: ['circle', 'cirbtc', 'quote'],
   };
   async function refresh(kind = 'auto') {
     if (busy) return;
@@ -1870,7 +2115,7 @@
   }
 
   // ---------------------------------------------------------------- 화면 전환 (하단 탭)
-  const VIEW_TITLES = { home: 'Circle Watch', crcl: '서클 주가 · 공매도', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: '서클 뉴스 · 공시' };
+  const VIEW_TITLES = { home: 'Circle Watch', crcl: '서클 주가 · 공매도', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: '서클 뉴스 · 공시', fire: 'Fire · 퇴사까지' };
   const scrollMem = {};
   function showView(v, target) {
     if (!VIEW_TITLES[v]) v = 'home';
@@ -1882,6 +2127,7 @@
     try { history.replaceState(null, '', '#' + v); } catch {}
     savePref('view', v);
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
+    if (v === 'fire') { renderFire(); fireLoop(true); if (!state.quote) loadQuote().then(renderFire).catch(() => renderFire()); } else fireLoop(false);
     if (v === 'news') { markNewsSeen(); renderEarnings(); if (state.data) { renderNewsSummary(); renderNews(); } } else updateNewsBadge();
     if (target) {
       const el = document.getElementById(target);
@@ -1901,6 +2147,20 @@
   }
 
   // ---------------------------------------------------------------- 이벤트
+  document.addEventListener('submit', (ev) => {
+    if (ev.target.id === 'fire-form') { ev.preventDefault(); saveFireForm(); }
+  });
+  document.addEventListener('input', (ev) => {
+    if (ev.target.id === 'sim-range') {
+      fireSim = parseFloat(ev.target.value);
+      const t = document.getElementById('sim-top');
+      if (t) t.innerHTML = simTopHtml(fireSim);
+    } else if (ev.target.id === 'f-goal') {
+      const h = document.getElementById('f-goal-hint');
+      const g = parseFloat(ev.target.value.replace(/,/g, ''));
+      if (h) h.textContent = g > 0 ? wonFull(g) : '';
+    }
+  });
   document.addEventListener('click', (ev) => {
     const info = ev.target.closest('[data-info]');
     if (info) {
@@ -1920,6 +2180,9 @@
       else showView(tab.dataset.tab);
       return;
     }
+    const simBtn = ev.target.closest('[data-sim]');
+    if (simBtn) { fireSim = parseFloat(simBtn.dataset.sim); const c = fireCalc(); if (c) renderFireSim(c); return; }
+    if (ev.target.closest('#f-del')) { deleteFire(); return; }
     const nf = ev.target.closest('[data-nf]');
     if (nf) { state.newsFilter = nf.dataset.nf; savePref('newsFilter', state.newsFilter); renderNews(); return; }
     if (ev.target.id === 'major-only') { state.majorOnly = ev.target.checked; savePref('majorOnly', state.majorOnly ? '1' : '0'); renderNews(); return; }
@@ -1938,7 +2201,8 @@
 
   if (!RANGES[state.range]) state.range = '1d';
   updateBasisBtn();
-  showView(location.hash.slice(1) || loadPref('view', 'home'));
+  renderFireSet();
+  showView(location.hash.slice(1).split('&')[0] || loadPref('view', 'home'));
   initPrice();
   refresh('auto');
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);

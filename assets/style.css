@@ -431,3 +431,56 @@ button.kpi:active { background: var(--surface-2); }
 .er-grid small { white-space: normal; }
 .er-h { font-size: 12px; color: var(--muted); margin-top: 14px; }
 .er-pair .chart { height: 150px; }
+
+/* ---------- Fire (퇴사까지) ---------- */
+.tabbar { grid-template-columns: repeat(6, 1fr); }
+.tabbar button span { font-size: 10.5px; }
+@media (min-width: 900px) { .tabbar { width: 640px; } }
+.fire-card { background: linear-gradient(180deg, rgba(208, 122, 18, 0.10), transparent 55%), var(--surface); border-color: rgba(208, 122, 18, 0.35); }
+.fire-empty { font-size: 14px; color: var(--ink-2); margin: 12px 0 0; line-height: 1.6; }
+.fire-hero { margin-top: 10px; }
+.fire-pct { font: 700 clamp(52px, 17vw, 72px)/1 var(--mono); letter-spacing: -0.04em; color: var(--ink); }
+.fire-pct small { font-size: 0.45em; margin-left: 2px; color: var(--muted); }
+.fire-remain { margin-top: 6px; font-size: 14px; color: var(--ink-2); }
+.fire-remain b { color: var(--ink); font-family: var(--mono); }
+.fire-bar { position: relative; height: 12px; margin-top: 14px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.fire-bar span { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, #b8660c, var(--c-orange) 60%, #f2a33a); }
+.fire-bar i { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(13, 16, 21, 0.6); }
+.fire-scale { display: flex; justify-content: space-between; margin-top: 4px; font: 11px var(--mono); color: var(--faint); }
+.fire-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 720px) { .fire-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.fire-grid b { font-size: 16px; }
+.fire-grid small { white-space: normal; }
+.fire-est { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+.fire-est b { font-family: var(--mono); color: var(--ink); }
+
+.sim-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 12px; }
+.sim-top > b { font: 700 28px var(--mono); letter-spacing: -0.02em; }
+.sim-top span { font-size: 13px; color: var(--ink-2); }
+.sim-top span b { font-family: var(--mono); color: var(--ink); }
+#sim-range { width: 100%; margin: 16px 0 4px; accent-color: var(--c-orange); height: 28px; }
+.sim-scale { display: flex; justify-content: space-between; font: 11px var(--mono); color: var(--faint); }
+.sim-chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.sim-chips button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 2px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); font-size: 12px; cursor: pointer; }
+.sim-chips button small { font: 10.5px var(--mono); color: var(--faint); }
+.sim-chips button:active { background: var(--surface-2); }
+
+.fire-set > summary { cursor: pointer; font-size: 15px; font-weight: 700; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+.fire-set > summary::after { content: '⌄'; color: var(--muted); font-size: 18px; }
+.fire-set[open] > summary::after { content: '⌃'; }
+.fire-set > summary::-webkit-details-marker { display: none; }
+#fire-form { display: grid; gap: 12px; margin-top: 14px; }
+#fire-form label { display: grid; gap: 5px; font-size: 12.5px; color: var(--muted); }
+#fire-form label small { font: 11.5px var(--mono); color: var(--faint); }
+#fire-form input:not([type="checkbox"]), #fire-form select {
+  width: 100%; height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2);
+  color: var(--ink); font: 15px var(--mono); -webkit-appearance: none; appearance: none;
+}
+#fire-form select { font-family: var(--sans); font-size: 14px; }
+#fire-form input:focus, #fire-form select:focus { outline: 2px solid var(--c-orange); outline-offset: 0; border-color: transparent; }
+#fire-form label.chk { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13px; }
+#fire-form label.chk input { width: 18px; height: 18px; accent-color: var(--c-orange); }
+.fire-btns { display: flex; gap: 8px; }
+.btn-primary, .btn-ghost { height: 44px; padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-primary { flex: 1; border: 0; background: var(--c-orange); color: #fff; }
+.btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--ink-2); }

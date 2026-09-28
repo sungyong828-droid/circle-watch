@@ -331,6 +331,65 @@ export async function handleEarnings(url, cache, cors, ctx) {
   return out;
 }
 
+// ---------------------------------------------------------------- 주식 시세 · 환율 (Fire 탭)
+// Nasdaq: 장전·장중·장후 실시간 체결가와 정규장 종가 / Yahoo: 원·달러 환율 (실패 시 open.er-api 일별 환율)
+const QUOTE_SYMBOLS = { CRCA: 'etf', CRCL: 'stocks' };
+const num = (s) => { const n = parseFloat(String(s ?? '').replace(/[^0-9.\-]/g, '')); return isFinite(n) ? n : null; };
+
+async function nasdaqQuote(sym, cls) {
+  const d = await nasdaqJson(`quote/${sym}/info?assetclass=${cls}`);
+  const p = d?.primaryData || {}, s = d?.secondaryData || {};
+  const price = num(p.lastSalePrice);
+  const change = num(p.netChange);
+  const status = d?.marketStatus || '';
+  // 장전·장후에는 secondaryData가 정규장 종가, 정규장 중에는 전일 종가 = 현재가 − 변동
+  const regularClose = /pre|after|closed/i.test(status) ? num(s.lastSalePrice) ?? (price != null && change != null ? price - change : null) : null;
+  const prevClose = price != null && change != null ? price - change : null;
+  return {
+    symbol: sym, name: d?.companyName || sym, price, change, pct: num(p.percentageChange) / 100,
+    prevClose, regularClose, status, time: p.lastTradeTimestamp || '', realtime: !!p.isRealTime,
+  };
+}
+
+async function usdKrw() {
+  try {
+    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/KRW=X?interval=1m&range=1d', { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error('yahoo ' + r.status);
+    const m = (await r.json()).chart.result[0].meta;
+    return { rate: m.regularMarketPrice, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, time: new Date(m.regularMarketTime * 1000).toISOString(), source: 'Yahoo Finance(실시간)' };
+  } catch {
+    const r = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(6000) });
+    const j = await r.json();
+    return { rate: j.rates.KRW, prevClose: null, time: new Date(j.time_last_update_unix * 1000).toISOString(), source: 'ExchangeRate-API(일별)' };
+  }
+}
+
+export async function buildQuote() {
+  const [crca, crcl, fx] = await Promise.allSettled([nasdaqQuote('CRCA', QUOTE_SYMBOLS.CRCA), nasdaqQuote('CRCL', QUOTE_SYMBOLS.CRCL), usdKrw()]);
+  const v = (r) => (r.status === 'fulfilled' ? r.value : null);
+  const out = { at: new Date().toISOString(), CRCA: v(crca), CRCL: v(crcl), fx: v(fx) };
+  if (!out.CRCA && !out.fx) throw new Error('시세를 받지 못했습니다');
+  return out;
+}
+
+// 실시간성이 중요해서 10초만 캐시
+export async function handleQuote(url, cache, cors, ctx) {
+  const key = new Request(`${url.origin}/quote`);
+  let res = await cache.match(key);
+  if (!res) {
+    try {
+      const body = JSON.stringify(await buildQuote());
+      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=10' } });
+      ctx.waitUntil(cache.put(key, res.clone()));
+    } catch (e) {
+      return json({ error: String(e.message || e) }, cors, 502);
+    }
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+
 // 뉴스 응답 (Worker와 Cloudflare Pages Functions가 함께 쓴다)
 export async function handleNews(url, cache, cors, ctx) {
   const cacheKey = new Request(`${url.origin}/news`);
@@ -370,12 +429,13 @@ export default {
     const origin = request.headers.get('origin') || '';
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-    if (!['/news', '/circle', '/earnings'].includes(url.pathname)) return new Response('Circle Watch proxy · GET /news, /circle, /earnings', { headers: cors });
+    if (!['/news', '/circle', '/earnings', '/quote'].includes(url.pathname)) return new Response('Circle Watch proxy · GET /news, /circle, /earnings, /quote', { headers: cors });
     // 등록된 화면에서 온 요청만 받는다
     if (origin && !ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
     if (url.pathname === '/circle') return circleSupply(url, cache, cors, ctx);
     if (url.pathname === '/earnings') return handleEarnings(url, cache, cors, ctx);
+    if (url.pathname === '/quote') return handleQuote(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx);
   },
 };
