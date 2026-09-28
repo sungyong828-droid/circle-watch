@@ -1141,7 +1141,7 @@
       <span class="txt">퇴사까지 <b>${(Math.max(0, fc.progress) * 100).toFixed(1)}%</b> · ${wonFull(fc.basis)} / ${wonFull(fc.F.goal)}</span>${chevron}</button></li>` : '';
     card('summary', {
       title: '현재 상황 요약',
-      sub: `${state.syncedAt ? ago(state.syncedAt) + ' 동기화' : ago(d.updatedAt) + ' 수집'} 데이터 기준 · 규칙 기반 자동 요약`,
+      sub: `${state.syncedAt ? ago(state.syncedAt) : ago(d.updatedAt)} 업데이트 기준 · 규칙 기반 자동 요약`,
       info: INFO.summary,
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
@@ -2003,7 +2003,7 @@
     const off = (N.official || [])[0];
     const unseen = newsItems().filter((i) => i.t > newsSeenPrev && i.level !== 'low').length;
     card('newssum', {
-      title: '공시 · 발표 한눈에', sub: `공시 ${N.filingsAt ? `SEC 직접 조회 ${ago(N.filingsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`} · 뉴스 ${N.newsAt ? `실시간 조회 ${ago(N.newsAt)}` : `서버 수집 ${ago(state.data.updatedAt)}`}`, info: INFO.news,
+      title: '공시 · 발표 한눈에', sub: `공시 ${N.filingsAt ? `${ago(N.filingsAt)} 업데이트` : `${ago(state.data.updatedAt)} 업데이트`} · 뉴스 ${N.newsAt ? `${ago(N.newsAt)} 업데이트` : `${ago(state.data.updatedAt)} 업데이트`}`, info: INFO.news,
       body: `<div class="ns-grid">
           <div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>
           <div><span>최근 실적 보고서</span><b>${q ? md(isoToTs(q.d)) : '–'}</b><small>${q ? esc(formInfo(q.form).label) : ''}</small></div>
@@ -2051,10 +2051,11 @@
   function renderStatus() {
     const d = state.data;
     if (!d) return;
+    if (manualRunning) return; // 새로고침 중에는 '업데이트 중…' 유지
     const fails = state.syncFail || [];
     document.getElementById('status').innerHTML = state.syncedAt
-      ? `<span class="live-dot"></span>${ago(state.syncedAt)} 동기화 · 휴대폰에서 직접 조회` + (fails.length ? ` · <span class="warn">일부 실패 ${fails.length}</span>` : '')
-      : `${ago(d.updatedAt)} 수집 · 동기화 중…`;
+      ? `<span class="live-dot"></span>${ago(state.syncedAt)} 업데이트` + (fails.length ? ` · <span class="warn">일부 항목 실패</span>` : '')
+      : '불러오는 중…';
   }
 
   function renderAll() {
@@ -2092,11 +2093,30 @@
     auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
     light: ['circle', 'cirbtc', 'quote'],
   };
+  let manualRunning = false, manualQueued = false, doneTimer = null;
+  function setRefreshUi(mode) { // 'loading' | 'done' | 'fail' | 'idle'
+    const btn = document.getElementById('refresh');
+    const bar = document.getElementById('top-progress');
+    clearTimeout(doneTimer);
+    btn.classList.remove('loading', 'done', 'fail');
+    if (mode !== 'idle') btn.classList.add(mode);
+    btn.setAttribute('aria-busy', String(mode === 'loading'));
+    btn.setAttribute('aria-label', mode === 'loading' ? '업데이트 중' : '지금 새로고침');
+    if (bar) bar.hidden = mode !== 'loading';
+    if (mode === 'loading') document.getElementById('status').innerHTML = '<span class="spin-dot"></span>업데이트 중…';
+    if (mode === 'done' || mode === 'fail') doneTimer = setTimeout(() => setRefreshUi('idle'), 1500);
+  }
+  function manualRefresh() {
+    try { navigator.vibrate?.(12); } catch {}
+    if (manualRunning) return; // 이미 진행 중이면 그대로 둔다
+    manualRunning = true;
+    setRefreshUi('loading');
+    if (busy) { manualQueued = true; return; } // 자동 갱신이 끝나면 이어서 실행
+    refresh('manual');
+  }
   async function refresh(kind = 'auto') {
     if (busy) return;
     busy = true;
-    const btn = document.getElementById('refresh');
-    btn.classList.add('spin');
     try {
       if (kind !== 'light' || !state.data) {
         await loadData().catch((e) => { if (!state.data) throw e; });
@@ -2110,16 +2130,19 @@
       renderAll();
       if (kind === 'manual') {
         const now = new Date(), t = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+        manualRunning = false;
+        setRefreshUi(r.fail.length ? 'fail' : 'done');
+        renderStatus();
         toast(r.fail.length
-          ? `동기화 ${t} · ${r.ok}/${r.ok + r.fail.length}개 항목 (실패: ${r.fail.map((f) => SYNC_NAMES[f]).join(', ')})`
-          : `✓ 동기화 완료 ${t} · ${r.ok}개 항목 최신화`, r.fail.length > 0);
+          ? `업데이트 ${t} · 일부 항목을 받지 못했어요(${r.fail.map((f) => SYNC_NAMES[f]).join(', ')}) · 이전 값을 보여줘요`
+          : `✓ 업데이트 완료 · ${t}`, r.fail.length > 0);
       }
     } catch (e) {
-      document.getElementById('status').innerHTML = '<span class="warn">데이터를 불러오지 못했습니다. 새로고침을 눌러 다시 시도하세요.</span>';
-      if (kind === 'manual') toast('동기화 실패 · 네트워크를 확인하세요', true);
+      if (kind === 'manual') { manualRunning = false; setRefreshUi('fail'); toast('업데이트 실패 · 인터넷 연결을 확인하세요', true); }
+      document.getElementById('status').innerHTML = '<span class="warn">데이터를 불러오지 못했어요 · 새로고침을 눌러 다시 시도하세요</span>';
     } finally {
-      btn.classList.remove('spin');
       busy = false;
+      if (manualQueued) { manualQueued = false; refresh('manual'); }
     }
   }
 
@@ -2205,7 +2228,7 @@
       return;
     }
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
-    if (ev.target.closest('#refresh')) refresh('manual');
+    if (ev.target.closest('#refresh')) manualRefresh();
   });
 
   if (!RANGES[state.range]) state.range = '1d';
