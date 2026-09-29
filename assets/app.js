@@ -74,7 +74,7 @@
         <li><b>매출</b>: 2025년 3분기부터 인수한 헬기 여객 사업(Blade) 매출이 포함돼요.</li>
         <li><b>EPS</b>: 적자라 음수예요. 예상보다 손실이 적으면 "양호".</li>
       </ul>`,
-    sprice: (sym) => `
+    sprice: (sym) => BN24[sym] ? INFO.price.replaceAll('CRCLUSDT', BN24[sym]).replace('미국 증시(NYSE)', '미국 증시(Nasdaq)').replace('실제 NYSE 주가', '실제 Nasdaq 주가') : `
       <p><b>${STOCK_INFO[sym].name}(${sym})</b>의 실시간 주가입니다. 미국 장전·장중·장후에는 <b>체결될 때마다 바로</b> 바뀌어요(Yahoo Finance 실시간 스트림). 스트림이 끊기면 Nasdaq 시세로 15초마다 갱신돼요.</p>
       <ul>
         ${BN24[sym] ? `<li><b>바이낸스 24시간</b>: 바이낸스의 ${sym}USDT 주식 선물(TradFi) 가격이에요. 미국 장이 닫힌 밤·주말에도 거래돼 다음 장 분위기를 미리 볼 수 있어요. 선물이라 실제 주가와 조금 차이가 나요("주가와 차이").</li>` : '<li>바이낸스에서 24시간 거래되지 않아, 미국 장이 닫힌 주말·새벽에는 마지막 거래 가격이 보여요.</li>'}
@@ -1060,7 +1060,7 @@
           <div><span>펀딩비</span><b id="px-fund">–</b><small id="px-next"></small></div>
           <div><span>미결제약정</span><b id="px-oi">–</b></div>
         </div>
-        <button type="button" class="link-btn" data-go="crcl:c-pricechart">가격 차트 자세히 보기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`,
+        <button type="button" class="link-btn" data-go="crcl:c-pricechart">가격 차트 · 공매도 · 기관 보유 보기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`,
     });
     drawPriceLine('spark', px.klines['1d'], { compact: true });
     paintPx();
@@ -1518,6 +1518,7 @@
     async schart() {
       const s = state.stock, x = st(s);
       if (!isOther(s)) return;
+      if (BN24[s]) { await Promise.all([bxSnapshot(s), bxKlines(s, '1d'), bxRange() !== '1d' ? bxKlines(s, bxRange()) : null]); return; }
       const fresh = (r) => x.chart[r] && Date.now() - Date.parse(x.chart[r].at || 0) < 3600000; // 1주 이상 차트·52주 값은 1시간마다 새로
       await Promise.all([loadSChart(s, '1d'), state.srange !== '1d' && !fresh(state.srange) ? loadSChart(s, state.srange) : null, fresh('1y') ? null : loadSChart(s, '1y').catch(() => {})]);
     },
@@ -2332,10 +2333,19 @@
   }
   const viewAllowed = (v) => v === 'fire' || TAB_SETS[state.stock].some(([t]) => t === v);
 
+  // 종목 시세: 바이낸스 선물이 있는 종목(SPCX·TEM)은 CRCL처럼 바이낸스 값만, 나머지(JOBY)는 Nasdaq + Yahoo 실시간 체결
+  function pq(sym) {
+    if (BN24[sym]) {
+      const t = bx[sym]?.t;
+      return t ? { price: t.last, pct: t.pct, change: t.last - t.open, prevClose: t.open, status: 'BN24', time: t.E } : null;
+    }
+    return state.quote?.[sym] || null;
+  }
+  const statusLabel = (q) => (q?.status === 'BN24' ? '바이낸스 24시간' : mktStatus(q?.status));
   function stockPx(sym) {
     if (sym === 'CRCL' && px.t) return { price: px.t.last, pct: px.t.pct, live: true };
-    const q = state.quote?.[sym];
-    return q ? { price: q.price, pct: q.pct, live: false } : null;
+    const q = pq(sym);
+    return q ? { price: q.price, pct: q.pct, live: !!BN24[sym] } : null;
   }
   // 종목 선택: 모든 종목이 한눈에 보이는 격자 칩(한 줄 4개, 종목이 늘면 줄이 늘어남).
   // 15초마다 시세를 바꿀 때 버튼을 새로 만들지 않고 값만 바꾼다(누르는 순간 버튼이 바뀌어 터치가 씹히지 않게).
@@ -2387,8 +2397,8 @@
   function paintStock() {
     const sym = state.stock;
     if (!isOther(sym)) return;
-    const q = state.quote?.[sym];
-    if (!q) return;
+    const q = pq(sym);
+    if (!q) { if (BN24[sym]) setHtml('spx-via', bx[sym]?.err ? '<span class="warn">바이낸스 연결 실패 · 다시 시도 중</span>' : '연결 중…'); return; }
     const last = document.getElementById('spx-last');
     if (last) {
       last.textContent = price(q.price);
@@ -2398,16 +2408,38 @@
     }
     sPrev = { sym, px: q.price };
     setHtml('spx-chg', `<span class="${cls(q.pct)}">${arrow(q.pct)} ${q.change >= 0 ? '+' : '-'}$${Math.abs(q.change ?? 0).toFixed(2)} (${pct(q.pct, 2)})</span>`);
-    setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · ${isLive(sym) ? '실시간 체결' : '15초마다 갱신'}`);
-    const bx = bn24[sym];
-    if (BN24[sym] && bx?.price) {
-      const gap = q.price ? bx.price / q.price - 1 : null;
-      setHtml('spx-bn', `<span class="tone px"><span class="live-dot"></span>24시간</span><span>바이낸스 ${sym}USDT <b>${price(bx.price)}</b>${bx.pct24 != null ? ` <span class="${cls(bx.pct24)}">${pct(bx.pct24, 2)}</span><small>(24h)</small>` : ''}${gap != null ? ` · 주가와 차이 <span class="${cls(gap)}">${pct(gap, 2)}</span>` : ''}</span>`);
-    }
-    setHtml('spx-time', esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
     setHtml('spc-last', price(q.price));
-    const S = STOCK_INFO[sym], pq = state.quote?.[S.peer[0]];
-    if (pq) setHtml('spx-peer', `$${pq.price?.toFixed(2)} <span class="${cls(pq.pct)}">${pct(pq.pct, 1)}</span>`);
+    if (BN24[sym]) {
+      // CRCL 가격 카드와 같은 항목: 24시간 범위·거래대금·펀딩비·미결제약정
+      const X = bx[sym], t = X.t;
+      setHtml('spx-via', X.via === 'ws' ? '<span class="live-dot"></span>실시간 체결' : X.via === 'rest' ? '5초마다 갱신' : '연결 중…');
+      setHtml('spx-time', hm(t.E || X.at) + ' 기준');
+      const pos = t.high > t.low ? (t.last - t.low) / (t.high - t.low) : 0.5;
+      const rb = document.getElementById('spx-rb');
+      if (rb) rb.style.left = `${Math.min(100, Math.max(0, pos * 100))}%`;
+      setHtml('spx-low', price(t.low));
+      setHtml('spx-high', price(t.high));
+      setHtml('spx-qv', usd(t.qv));
+      if (X.mark) {
+        setHtml('spx-fund', `<span class="${cls(X.mark.fund)}">${X.mark.fund > 0 ? '+' : ''}${(X.mark.fund * 100).toFixed(4)}%</span>`);
+        setHtml('spx-next', fundLeft(X.mark.next));
+      }
+      if (X.oi != null) setHtml('spx-oi', usd(X.oi * (X.mark?.mark || t.last)));
+      const k = X.klines[bxRange()];
+      if (k?.length) { const ch = t.last / k[0][1] - 1; setHtml('spc-chg', `<span class="${cls(ch)}">${arrow(ch)} ${pct(ch, 2)}</span> <span class="lbl">${RANGES[bxRange()].label} 동안</span>`); }
+      for (const id of ['sspark', 'spricechart']) {
+        const c = charts[id];
+        if (!c) continue;
+        const ds = c.data.datasets[0];
+        ds.data[ds.data.length - 1] = t.last;
+        c.update('none');
+      }
+      return;
+    }
+    setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · ${isLive(sym) ? '실시간 체결' : '15초마다 갱신'}`);
+    setHtml('spx-time', esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
+    const S = STOCK_INFO[sym], pr = state.quote?.[S.peer[0]];
+    if (pr) setHtml('spx-peer', `$${pr.price?.toFixed(2)} <span class="${cls(pr.pct)}">${pct(pr.pct, 1)}</span>`);
     if (sym === 'SPCX' && ipoPx()) setHtml('spx-ipo', `<span class="${cls(q.price / ipoPx() - 1)}">${pct(q.price / ipoPx() - 1, 1)}</span>`);
     for (const id of ['sspark', 'spricechart']) {
       const c = charts[id];
@@ -2420,11 +2452,12 @@
     if (!pts?.length) return;
     const labels = pts.map((p) => p[0]);
     const data = pts.map((p) => p[1]);
-    const q = state.quote?.[sym];
+    const q = pq(sym);
     if (q?.price && range === '1d') data[data.length - 1] = q.price;
+    if (range === 'bn' && q?.price) data[data.length - 1] = q.price;
     const base = range === '1d' && (q?.prevClose || prevClose) ? (q?.prevClose || prevClose) : data[0];
     const col = data.at(-1) >= base ? C.up : C.down;
-    const xf = range === '1d' ? hm : mdLocal;
+    const xf = range === '1d' || range === 'bn' ? hm : mdLocal;
     const tip = (it) => { const d = new Date(labels[it.dataIndex]); return range === '1d' || range === '1w' ? d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString('ko-KR'); };
     draw(id, {
       type: 'line',
@@ -2437,7 +2470,28 @@
     });
   }
 
+  const bxRange = () => (RANGES[state.srange] ? state.srange : '1d'); // 바이낸스 캔들은 1일~3개월
   function renderSPriceCard(sym = state.stock) {
+    if (BN24[sym]) {
+      const X = bxOf(sym);
+      card('sprice', {
+        title: `${sym} 실시간 주가`, sub: `Binance ${BN24[sym]} 무기한 선물 · 24시간 거래`, info: INFO.sprice(sym),
+        body: `
+          <div class="px-main"><span class="px-last" id="spx-last">${price(X.t?.last)}</span><span class="px-chg" id="spx-chg"></span></div>
+          <div class="px-meta"><span id="spx-via">연결 중…</span><span id="spx-time"></span></div>
+          <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 최근 24시간 가격"></canvas></div>
+          <div class="px-range" aria-label="24시간 가격 범위"><span id="spx-low">–</span><div class="rb"><i id="spx-rb"></i></div><span id="spx-high">–</span></div>
+          <div class="px-stats">
+            <div><span>24h 거래대금</span><b id="spx-qv">–</b></div>
+            <div><span>펀딩비</span><b id="spx-fund">–</b><small id="spx-next"></small></div>
+            <div><span>미결제약정</span><b id="spx-oi">–</b></div>
+          </div>
+          <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
+      });
+      sLine('sspark', X.klines['1d'], { compact: true, sym, range: 'bn' });
+      paintStock();
+      return;
+    }
     const S = STOCK_INFO[sym], q = state.quote?.[sym], ch = st(sym).chart['1d'];
     const pts = ch?.points || [];
     const lo = pts.length ? Math.min(...pts.map((p) => p[1])) : null, hi = pts.length ? Math.max(...pts.map((p) => p[1])) : null;
@@ -2453,7 +2507,6 @@
         <div class="px-meta"><span id="spx-via">불러오는 중…</span><span id="spx-time"></span></div>
         <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 오늘 가격"></canvas></div>
         <div class="px-range" aria-label="오늘 가격 범위"><span>${price(lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${price(hi)}</span></div>
-        ${BN24[sym] ? `<div class="px-bn" id="spx-bn"><span class="tone px">24시간</span><span>바이낸스 ${sym}USDT 연결 중…</span></div>` : ''}
         <div class="px-stats">${stats}<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div></div>
         <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
     });
@@ -2462,6 +2515,23 @@
   }
 
   function renderSPriceChart(sym = state.stock) {
+    if (BN24[sym]) {
+      const X = bxOf(sym), r = bxRange(), k = X.klines[r];
+      let note = '';
+      if (k?.length) { const v = k.map((p) => p[1]); note = `${RANGES[r].label} 최고 ${price(Math.max(...v))} · 최저 ${price(Math.min(...v))} · 시작 ${price(v[0])} · ${RANGES[r].interval} 봉`; }
+      card('spricechart', {
+        title: `${sym} 가격 추이`, sub: `Binance ${BN24[sym]} 무기한 선물`, info: INFO.pricechart,
+        body: `
+          <div class="seg range" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-srange="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
+          <div class="px-main sm"><span class="px-last" id="spc-last">${price(X.t?.last)}</span><span class="px-chg" id="spc-chg"></span></div>
+          <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
+          <p class="note">${note || '불러오는 중…'}</p>`,
+      });
+      if (!k) { bxKlines(sym, r).then(() => { if (bxRange() === r && state.stock === sym) renderSPriceChart(sym); }).catch(() => {}); return; }
+      sLine('spricechart', k, { range: r === '1d' ? 'bn' : r, sym });
+      paintStock();
+      return;
+    }
     const r = state.srange, ch = st(sym).chart[r];
     const pts = ch?.points || [];
     let note = '';
@@ -2632,7 +2702,7 @@
     const F = state.spcx;
     if (!F) { card('lockup', { title: '보호예수 해제 일정', body: '<p class="skeleton">불러오는 중…</p>' }); return; }
     const ev = lockupEvents(), t = todayIso(), nx = nextLockup();
-    const q = state.quote?.SPCX, ip = F.ipo;
+    const q = pq('SPCX'), ip = F.ipo;
     const done = ev.filter((e) => !e.skipped && e.date && e.date < t).reduce((s, e) => s + e.shares, 0);
     const left = ev.filter((e) => !e.skipped && !(e.date && e.date < t)).reduce((s, e) => s + e.shares, 0);
     const dd = nx ? dday(nx.date) : null;
@@ -2781,12 +2851,12 @@
     const S = STOCK_INFO[sym], sh = shortOf(sym), sd = sh?.daily || [];
     const a = sd.at(-1), b = sd.at(-2);
     const N = st(sym).earn?.next, H = state.holders[sym];
-    const q = state.quote?.[sym], pq = state.quote?.[S.peer[0]];
+    const q = pq(sym), pr = state.quote?.[S.peer[0]];
     return {
       short: tile(`${S.short} 공매도 비율`, a ? pctPlain(a.ratio) : '–', a && b ? `<span class="${cls(a.ratio - b.ratio)}">${arrow(a.ratio - b.ratio)} ${pp(a.ratio - b.ratio, 1)}</span> <span class="flat">평균 ${pctPlain(sh.avgRatio)}</span>` : '', 'sprice:c-sshort'),
       inst: tile('기관 보유 비율', H ? pctPlain(H.ownershipPct) : '–', H ? `<span class="flat">늘림 ${nf(0).format(H.increased?.holders || 0)} · 줄임 ${nf(0).format(H.decreased?.holders || 0)}곳</span>` : '', 'sprice:c-sholders'),
       next: tile('다음 실적 발표', N?.date ? `D-${Math.max(0, dday(N.date))}` : '–', N?.date ? `<span class="flat">${md(isoToTs(N.date))}${N.estimated ? ' (예상)' : ''}</span>` : '', 'searn:c-searnings'),
-      peer: tile(`경쟁사 ${S.peer[1]}`, pq?.price != null ? price(pq.price) : '–', pq ? `<span class="${cls(pq.pct)}">${arrow(pq.pct)} ${pct(pq.pct, 1)}</span> <span class="flat">vs ${sym} ${q ? pct(q.pct, 1) : '–'}</span>` : '', 'sprice:c-spricechart'),
+      peer: tile(`경쟁사 ${S.peer[1]}`, pr?.price != null ? price(pr.price) : '–', pr ? `<span class="${cls(pr.pct)}">${arrow(pr.pct)} ${pct(pr.pct, 1)}</span> <span class="flat">vs ${sym} ${q ? pct(q.pct, 1) : '–'}</span>` : '', 'sprice:c-spricechart'),
     };
   }
   function renderSKpis(sym = state.stock) {
@@ -2804,7 +2874,7 @@
         tile('분기 현금 소진', last?.burn != null ? usd(-last.burn) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'searn:c-searnings'),
       ];
     } else if (sym === 'SPCX') {
-      const q = state.quote?.SPCX, ip = ipoPx(), nx = nextLockup(), yoy = yoyQ(Q, last);
+      const q = pq('SPCX'), ip = ipoPx(), nx = nextLockup(), yoy = yoyQ(Q, last);
       own = [
         tile('공모가 대비', q?.price && ip ? `<span class="${cls(q.price / ip - 1)}">${pct(q.price / ip - 1, 1)}</span>` : '–', ip ? `<span class="flat">공모가 ${price(ip)} · 6/12 상장</span>` : '', 'searn:c-lockup'),
         tile('다음 보호예수 해제', nx ? (dday(nx.date) === 0 ? '오늘' : `D-${dday(nx.date)}`) : '–', nx ? `<span class="flat">${md(isoToTs(nx.date))}${nx.est ? '(예상)' : ''} · ${unit(nx.shares)}주</span>` : '', 'searn:c-lockup'),
@@ -2846,7 +2916,7 @@
         const d = dday(nx.date), t = d <= 14 ? 'neg' : 'neu';
         add(t, 'searn:c-lockup', `보호예수 해제 <b>${krDate(nx.date)}${nx.est ? '(예상)' : ''}</b> · D-${d} · 최대 ${unit(nx.shares)}주(${esc(nx.label)})`, d <= 14 ? '보호예수 해제 임박' : null, 3);
       }
-      const q = state.quote?.SPCX, ip = ipoPx();
+      const q = pq('SPCX'), ip = ipoPx();
       if (q?.price && ip) { const r = q.price / ip - 1; add(r >= 0 ? 'pos' : 'neg', 'searn:c-lockup', `공모가 ${price(ip)} 대비 <b class="${cls(r)}">${pct(r, 1)}</b>`, r < 0 ? '공모가 하회' : null, 1); }
     }
     if (sym !== 'JOBY' && last) {
@@ -2877,9 +2947,9 @@
     }
     const NE = E?.next;
     if (NE?.date) add('neu', 'searn:c-searnings', `다음 실적 발표 <b>${krDate(NE.date)}</b>${NE.estimated ? '(예상)' : ''} · D-${Math.max(0, dday(NE.date))} · 예상 EPS ${NE.consensus != null ? '$' + NE.consensus.toFixed(2) : '–'}`, null, 0);
-    const q = state.quote?.[sym];
+    const q = pq(sym);
     const pxLine = `<li><button type="button" data-go="sprice:c-spricechart"><span class="tone px"><span class="live-dot"></span>주가</span>
-      <span class="txt">${sym} <b>${price(q?.price)}</b> · 오늘 ${q ? `<span class="${cls(q.pct)}">${pct(q.pct, 1)}</span>` : '–'} · ${esc(mktStatus(q?.status))}</span>${chevron}</button></li>`;
+      <span class="txt">${sym} <b>${price(q?.price)}</b> · ${BN24[sym] ? '24시간' : '오늘'} ${q ? `<span class="${cls(q.pct)}">${pct(q.pct, 1)}</span>` : '–'} · ${esc(statusLabel(q))}</span>${chevron}</button></li>`;
     const tags = items.filter((i) => i.tag).sort((a, b) => b.weight - a.weight).slice(0, 3);
     const nPos = items.filter((i) => i.tone === 'pos').length, nNeg = items.filter((i) => i.tone === 'neg').length;
     const toneName = { pos: '긍정', neg: '주의', neu: '중립' };
@@ -2965,30 +3035,69 @@
   }
   function yDisconnect() { clearTimeout(ywsTimer); if (yws) { yws.onclose = null; try { yws.close(); } catch {} yws = null; } }
 
-  // 바이낸스 24시간 주식 선물 (SPCXUSDT·TEMUSDT)
-  const BN24 = { SPCX: 'spcxusdt', TEM: 'temusdt' };
-  const bn24 = {}; // 티커 → { price, pct24, at }
-  let bws = null, bwsTries = 0, bwsTimer = null;
+  // 바이낸스 TradFi 주식 선물이 있는 종목(SPCX·TEM): CRCL과 같은 구조로 바이낸스 값만 쓴다(24시간 거래)
+  const BN24 = { SPCX: 'SPCXUSDT', TEM: 'TEMUSDT' };
+  const bx = {}; // 티커 → { t, mark, oi, klines, via, at, err }
+  const bxOf = (sym) => (bx[sym] ||= { t: null, mark: null, oi: null, klines: {}, via: null, at: 0, err: null });
+  async function bxSnapshot(sym) {
+    const s = BN24[sym], X = bxOf(sym);
+    try {
+      const [t, m, oi] = await Promise.all([bnGet(`ticker/24hr?symbol=${s}`), bnGet(`premiumIndex?symbol=${s}`), bnGet(`openInterest?symbol=${s}`).catch(() => null)]);
+      X.t = { last: +t.lastPrice, open: +t.openPrice, high: +t.highPrice, low: +t.lowPrice, pct: +t.priceChangePercent / 100, qv: +t.quoteVolume, E: t.closeTime };
+      X.mark = { mark: +m.markPrice, index: +m.indexPrice, fund: +m.lastFundingRate, next: m.nextFundingTime };
+      if (oi) X.oi = +oi.openInterest;
+      X.at = Date.now(); X.err = null;
+      if (!X.via) X.via = 'rest';
+    } catch (e) { X.err = e.message; throw e; }
+  }
+  async function bxKlines(sym, range) {
+    const r = RANGES[range];
+    const k = await bnGet(`klines?symbol=${BN24[sym]}&interval=${r.interval}&limit=${r.limit}`);
+    bxOf(sym).klines[range] = k.map((x) => [x[0], +x[4]]);
+  }
+  let bws = null, bwsTries = 0, bwsTimer = null, bwsWatch = null, bPollTimer = null;
+  const bArm = () => { clearTimeout(bwsWatch); bwsWatch = setTimeout(() => { try { bws?.close(); } catch {} }, 15000); };
   function bConnect() {
     if (bws || document.hidden || !('WebSocket' in window)) return;
-    const streams = Object.values(BN24).flatMap((s) => [`${s}@aggTrade`, `${s}@ticker`]).join('/');
-    try { bws = new WebSocket(`wss://fstream.binance.com/market/stream?streams=${streams}`); } catch { return; }
-    bws.onopen = () => { bwsTries = 0; };
+    const streams = Object.values(BN24).map((s) => s.toLowerCase()).flatMap((s) => [`${s}@aggTrade`, `${s}@ticker`, `${s}@markPrice@1s`]).join('/');
+    try { bws = new WebSocket(`wss://fstream.binance.com/market/stream?streams=${streams}`); } catch { bStartPoll(); return; }
+    bws.onopen = () => { bArm(); };
     bws.onmessage = (ev) => {
-      let m;
-      try { m = JSON.parse(ev.data); } catch { return; }
-      const d = m.data, sym = d?.s && Object.keys(BN24).find((k) => BN24[k] === d.s.toLowerCase());
+      bArm();
+      let d;
+      try { d = JSON.parse(ev.data).data; } catch { return; }
+      const sym = d?.s && Object.keys(BN24).find((k) => BN24[k] === d.s);
       if (!sym) return;
-      const x = (bn24[sym] ||= {});
-      if (d.e === 'aggTrade') x.price = +d.p;
-      else if (d.e === '24hrTicker') { x.pct24 = +d.P / 100; if (x.price == null) x.price = +d.c; }
-      x.at = Date.now();
-      if (sym === state.stock) scheduleLivePaint();
+      const X = bxOf(sym);
+      if (X.via !== 'ws') { bwsTries = 0; X.via = 'ws'; X.err = null; }
+      if (d.e === 'aggTrade') {
+        if (!X.t) return;
+        const last = +d.p;
+        X.t = { ...X.t, last, pct: X.t.open ? last / X.t.open - 1 : X.t.pct, high: Math.max(X.t.high, last), low: Math.min(X.t.low, last), E: d.T };
+      } else if (d.e === '24hrTicker') X.t = { last: +d.c, open: +d.o, high: +d.h, low: +d.l, pct: +d.P / 100, qv: +d.q, E: d.E };
+      else if (d.e === 'markPriceUpdate') X.mark = { mark: +d.p, index: +d.i, fund: +d.r, next: d.T };
+      X.at = Date.now();
+      if (Object.values(bx).every((x) => x.via === 'ws')) bStopPoll();
+      scheduleLivePaint();
     };
     bws.onerror = () => { try { bws?.close(); } catch {} };
-    bws.onclose = () => { bws = null; if (!document.hidden) { clearTimeout(bwsTimer); bwsTimer = setTimeout(bConnect, Math.min(60000, 2000 * 2 ** bwsTries++)); } };
+    bws.onclose = () => {
+      bws = null;
+      clearTimeout(bwsWatch);
+      for (const X of Object.values(bx)) if (X.via === 'ws') X.via = 'rest';
+      if (document.hidden) return;
+      bStartPoll();
+      clearTimeout(bwsTimer);
+      bwsTimer = setTimeout(bConnect, Math.min(30000, 2000 * 2 ** bwsTries++));
+    };
   }
-  function bDisconnect() { clearTimeout(bwsTimer); if (bws) { bws.onclose = null; try { bws.close(); } catch {} bws = null; } }
+  // 웹소켓이 끊기면 5초마다 REST로 대신 받는다
+  function bStartPoll() {
+    if (bPollTimer) return;
+    bPollTimer = setInterval(() => { for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(scheduleLivePaint).catch(() => scheduleLivePaint()); }, 5000);
+  }
+  function bStopPoll() { clearInterval(bPollTimer); bPollTimer = null; }
+  function bDisconnect() { clearTimeout(bwsTimer); clearTimeout(bwsWatch); bStopPoll(); if (bws) { bws.onclose = null; try { bws.close(); } catch {} bws = null; } }
 
   // 체결이 몰려도 화면은 한 프레임에 한 번만 다시 그린다(Fire 카드는 2초에 한 번)
   let livePaintQueued = false, lastFirePaint = 0;
@@ -3203,7 +3312,7 @@
     const stk = ev.target.closest('[data-stock]');
     if (stk) { setStock(stk.dataset.stock); return; }
     const sr = ev.target.closest('[data-srange]');
-    if (sr) { state.srange = sr.dataset.srange; savePref('jrange', state.srange); renderSPriceChart(); return; }
+    if (sr) { state.srange = sr.dataset.srange; savePref('jrange', state.srange); renderSPriceChart(); paintStock(); return; }
     const ht = ev.target.closest('[data-htab]');
     if (ht) { state.holdTab = ht.dataset.htab; savePref('holdTab', state.holdTab); renderHolders(state.stock); return; }
     if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: 'JOBY' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
@@ -3243,6 +3352,7 @@
   loadQuote().then(() => { renderStockSwitch(); if (isOther()) { renderSPriceCard(); renderSKpis(); } updateFireChip(); }).catch(() => {});
   yConnect();
   bConnect();
+  for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
   refresh('auto');
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
