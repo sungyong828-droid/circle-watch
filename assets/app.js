@@ -86,7 +86,7 @@
       <ul>
         <li><b>기관 보유 비율</b>: 발행 주식 중 기관이 가진 비율. 높을수록 큰손 수급 영향이 커요.</li>
         <li><b>직전 13F 대비</b>: 지난 분기 신고보다 주식을 늘린/줄인 기관 수와 주식 수. 늘린 곳이 많으면 기관 매수 우위로 봐요.</li>
-        <li><b>상위 보유</b>: 보유 금액 순. <b>주요 금융사</b>: 이름이 알려진 대형 금융사만. <b>많이 산/판 곳</b>: 직전 분기 대비 주식 수 변화 순.</li>
+        <li><b>상위 보유</b>: 보유 금액 순. <b>주요 금융사</b>: 이름이 알려진 대형 금융사만. <b>많이 산/판 곳</b>: 직전 분기 대비 주식 수 변화 순. 왼쪽 숫자는 순위예요(주요 금융사도 전체 보유 금액 기준 순위, 1~3위는 금색).</li>
         <li><b>지분</b>: 그 기관의 보유 주식 ÷ 발행 주식 수(Nasdaq 기준).</li>
       </ul>
       <p>⚠️ 분기 말 기준이고 45일 뒤에 신고하므로 <b>최대 4개월 늦은 정보</b>예요. 그 사이 사고판 것은 반영되지 않고, 공매도·옵션 포지션은 빠져 있어요.</p>`,
@@ -2507,10 +2507,12 @@
     const inc = H.increased, dec = H.decreased;
     const chgTxt = (r) => (r.isNew ? '<span class="h-new">신규</span>' : r.soldOut ? '<span class="h-out">전량 매도</span>'
       : r.chg == null ? '–' : `<span class="${cls(r.chg)}">${r.chg > 0 ? '+' : ''}${unit(r.chg)}주</span>${r.chgPct != null ? `<small class="${cls(r.chgPct)}">${pct(r.chgPct, 1)}</small>` : ''}`);
-    const list = rows.map((r) => {
+    const list = rows.map((r, i) => {
       const inst = instOf(r.name);
       const old = r.date && latest && r.date < latest;
-      return `<li><div class="h-name"><b>${esc(inst ? inst[1] : titleCase(r.name))}</b><small>${inst ? esc(titleCase(r.name)) + ' · ' : ''}${r.date ? md(isoToTs(r.date)) + ' 기준' : ''}${old ? ' <i class="h-old">지난 분기</i>' : ''}</small></div>
+      // 순위: 상위 보유·주요 금융사는 전체 보유 금액 순위, 많이 산/판 곳은 그 목록 안의 순위
+      const rank = tab === 'top' || tab === 'major' ? H.top.indexOf(r) + 1 : i + 1;
+      return `<li><span class="h-rank${rank <= 3 ? ' top3' : ''}" aria-label="${rank}위">${rank}</span><div class="h-name"><b>${esc(inst ? inst[1] : titleCase(r.name))}</b><small>${inst ? esc(titleCase(r.name)) + ' · ' : ''}${r.date ? md(isoToTs(r.date)) + ' 기준' : ''}${old ? ' <i class="h-old">지난 분기</i>' : ''}</small></div>
         <div class="h-sh"><b>${r.soldOut ? '0주' : unit(r.shares) + '주'}</b><small>${shareOf(r) != null && !r.soldOut ? '지분 ' + pctPlain(shareOf(r), 2) : r.value != null ? usd(r.value) : ''}</small></div>
         <div class="h-chg">${chgTxt(r)}</div></li>`;
     }).join('');
@@ -3087,6 +3089,8 @@
     if (go) {
       // 🔥 Fire 버튼: Fire 화면에서 다시 누르면 직전 화면으로
       if (go.id === 'fire-chip' && state.view === 'fire') { showView(state.prevView && viewAllowed(state.prevView) ? state.prevView : 'home'); return; }
+      // 왼쪽 위 개미 로고: 홈으로(이미 홈이면 맨 위로)
+      if (go.dataset.go === 'home' && state.view === 'home') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
       const [v, target] = go.dataset.go.split(':');
       showView(v, target);
       return;
