@@ -411,6 +411,8 @@ function parseCctp(logs) {
 }
 
 // CRCL 공매도: FINRA 일별 공매도 거래량(Reg SHO) + 반월별 공매도 잔고
+const OTHER_SHORT = ['JOBY', 'SPCX', 'TEM'];
+const OTHER_V = OTHER_SHORT.join(',');
 async function collectShort(state) {
   const store = (state.shortDaily ||= {});
   const now = Date.now() / 1000;
@@ -424,8 +426,8 @@ async function collectShort(state) {
     const key = isoDay(d).replaceAll('-', '');
     if (wd === 0 || wd === 6) continue;
     // 확정된 날(값 있음, 또는 3일 넘게 파일이 없던 휴장일)은 다시 받지 않는다
-    // JOBY 추가 전에 받아 둔 날은 JOBY 값(J)이 없으니 한 번 더 받는다
-    if (store[key] && ((store[key].t && store[key].J) || (store[key].none && now - d > 3 * DAY))) continue;
+    // 종목 추가 전에 받아 둔 날은 새 종목 값(O)이 없으니 한 번 더 받는다
+    if (store[key] && ((store[key].t && store[key].O?.v === OTHER_V) || (store[key].none && now - d > 3 * DAY))) continue;
     todo.push({ d, key });
   }
   await pool(todo, 4, async ({ d, key }) => {
@@ -434,9 +436,9 @@ async function collectShort(state) {
       if (!res.ok) { if (now - d > 3 * DAY) store[key] = { none: true }; return; }
       const lines = (await res.text()).split('\n');
       const pick = (sym) => { const l = lines.find((x) => x.split('|')[1] === sym); if (!l) return null; const [, , sv, sev, tv] = l.split('|'); return { s: Number(sv), se: Number(sev), t: Number(tv) }; };
-      const crcl = pick('CRCL'), joby = pick('JOBY');
-      if (!crcl && !joby) return;
-      store[key] = { ...(crcl || {}), J: joby || { none: true } };
+      const crcl = pick('CRCL');
+      if (!crcl) return;
+      store[key] = { ...crcl, O: { v: OTHER_V, ...Object.fromEntries(OTHER_SHORT.map((s) => [s, pick(s) || { none: true }])) } };
     } catch (e) { log('finra 일별 실패', key, e.message); }
   });
   const dailyOf = (get) => Object.entries(store)
@@ -445,7 +447,6 @@ async function collectShort(state) {
     .map(([k, r]) => ({ d: `${k.slice(0, 4)}-${k.slice(4, 6)}-${k.slice(6)}`, short: r.s, exempt: r.se, total: r.t, ratio: r.s / r.t }))
     .filter((r) => isoToTs(r.d) >= now - 31 * DAY);
   const daily = dailyOf((r) => r);
-  const jobyDaily = dailyOf((r) => r.J);
   const interestOf = async (sym) => {
     try {
       const res = await fetch('https://api.finra.org/data/group/otcMarket/name/consolidatedShortInterest', {
@@ -463,7 +464,12 @@ async function collectShort(state) {
     } catch (e) { log('finra 잔고 실패', sym, e.message); return []; }
   };
   const avgOf = (d) => d.reduce((s, r) => s + r.short, 0) / (d.reduce((s, r) => s + r.total, 0) || 1);
-  const joby = { daily: jobyDaily, avgRatio: avgOf(jobyDaily), interest: await interestOf('JOBY') };
+  // 다른 보유 종목(JOBY·SPCX·TEM)도 같은 파일에서 뽑는다
+  const by = {};
+  for (const sym of OTHER_SHORT) {
+    const dd = dailyOf((r) => r.O?.[sym]);
+    by[sym] = { daily: dd, avgRatio: avgOf(dd), interest: await interestOf(sym) };
+  }
 
   let interest = [];
   try {
@@ -487,7 +493,7 @@ async function collectShort(state) {
 
   if (!daily.length) throw new Error('FINRA 일별 공매도 데이터 없음');
   const sumS = daily.reduce((s, r) => s + r.short, 0), sumT = daily.reduce((s, r) => s + r.total, 0);
-  return { daily, avgRatio: sumS / sumT, interest, joby };
+  return { daily, avgRatio: sumS / sumT, interest, by, joby: by.JOBY };
 }
 
 const isoToTs = (s) => Date.parse(s + 'T00:00:00Z') / 1000;

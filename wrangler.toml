@@ -1,0 +1,13 @@
+# Cloudflare Pages 프로젝트 (공유용 주소 https://yongs-portfolio.pages.dev)
+# 배포: dist 폴더를 만든 뒤 `npx wrangler pages deploy` (README 참고)
+name = "yongs-portfolio"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-01"
+
+# 뉴스 한 줄 요약: Workers AI + 요약 보관(KV, Worker와 같은 저장소)
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "SUMS"
+id = "a8b6d687f1e140d38b1d720e20afb360"

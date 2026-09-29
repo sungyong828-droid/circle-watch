@@ -2,3 +2,15 @@ name = "circle-watch-news"
 main = "news-proxy.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
+
+# 뉴스 한 줄 요약: Workers AI + 요약 보관(KV)
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "SUMS"
+id = "a8b6d687f1e140d38b1d720e20afb360"
+
+# 5분마다 종목 하나씩 새 기사 요약
+[triggers]
+crons = ["*/5 * * * *"]

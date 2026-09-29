@@ -1,5 +1,5 @@
-/* Circle Watch — 화면 렌더링
- * data/latest.json(수집기 결과)을 그리고, 일부 값은 1분마다 Circle API·RPC에서 직접 갱신한다. */
+/* Yong's Portfolio — 화면 렌더링
+ * data/latest.json(수집기 결과)을 그리고, 시세·뉴스·실적·기관 보유는 중계 서버와 각 출처에서 직접 갱신한다. */
 (() => {
   'use strict';
 
@@ -74,6 +74,39 @@
         <li><b>매출</b>: 2025년 3분기부터 인수한 헬기 여객 사업(Blade) 매출이 포함돼요.</li>
         <li><b>EPS</b>: 적자라 음수예요. 예상보다 손실이 적으면 "양호".</li>
       </ul>`,
+    sprice: (sym) => `
+      <p><b>${STOCK_INFO[sym].name}(${sym})</b>의 실시간 주가입니다(Nasdaq 제공, 장전·장중·장후 거래 포함). 15초마다 갱신돼요.</p>
+      <ul>
+        <li>바이낸스에서 24시간 거래되지 않아, 미국 장이 닫힌 주말·새벽에는 마지막 거래 가격이 보여요.</li>
+        <li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>
+        ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : ''}
+      </ul>`,
+    holders: `
+      <p>블랙록·뱅가드·JP모건 같은 <b>기관 투자자</b>가 이 종목을 얼마나 갖고 있는지입니다. 미국은 운용자산 1억 달러 이상 기관이 분기마다 <b>13F 보고서</b>로 보유 주식을 신고해야 해요(Nasdaq 집계).</p>
+      <ul>
+        <li><b>기관 보유 비율</b>: 발행 주식 중 기관이 가진 비율. 높을수록 큰손 수급 영향이 커요.</li>
+        <li><b>직전 13F 대비</b>: 지난 분기 신고보다 주식을 늘린/줄인 기관 수와 주식 수. 늘린 곳이 많으면 기관 매수 우위로 봐요.</li>
+        <li><b>상위 보유</b>: 보유 금액 순. <b>주요 금융사</b>: 이름이 알려진 대형 금융사만. <b>많이 산/판 곳</b>: 직전 분기 대비 주식 수 변화 순.</li>
+        <li><b>지분</b>: 그 기관의 보유 주식 ÷ 발행 주식 수(Nasdaq 기준).</li>
+      </ul>
+      <p>⚠️ 분기 말 기준이고 45일 뒤에 신고하므로 <b>최대 4개월 늦은 정보</b>예요. 그 사이 사고판 것은 반영되지 않고, 공매도·옵션 포지션은 빠져 있어요.</p>`,
+    lockup: `
+      <p><b>보호예수(락업)</b>는 상장 전부터 주식을 가진 임직원·투자자가 상장 후 일정 기간 주식을 팔지 못하게 한 약속이에요. 풀리는 날엔 팔 수 있는 주식이 한꺼번에 늘어 <b>주가에 부담</b>이 될 수 있어요.</p>
+      <ul>
+        <li>스페이스X는 한 번에 풀지 않고 <b>여러 번 나눠서</b> 풉니다(투자설명서 424B4 기준). 일부는 날짜가 아니라 <b>실적 발표 2거래일 뒤</b>에 풀려요 — 이 날짜는 다음 실적 발표 예정일로 계산한 추정치예요.</li>
+        <li>표시된 수량은 <b>최대</b> 해제 물량이에요. 실제로 시장에 파는 양은 훨씬 적을 수 있어요.</li>
+        <li><b>추가 해제 조건</b>: 첫 실적 발표일까지 10거래일 중 5일 이상 종가가 공모가보다 30% 높으면(= $175.5 이상) 4.56억 주를 더 풀 수 있었는데, 종가가 $108~125여서 풀리지 않았어요.</li>
+        <li>일론 머스크 보유분(64억 주)은 상장 366일 뒤인 2027년 6월 12일까지 묶여 있어요.</li>
+      </ul>`,
+    searnings: `
+      <p>분기마다 발표하는 <b>실적</b>입니다(미국 SEC 제출 재무제표 + Nasdaq 집계).</p>
+      <ul>
+        <li><b>매출·전년 대비</b>: 작년 같은 분기와 비교한 성장률이 성장주의 핵심 지표예요.</li>
+        <li><b>매출총이익률</b>: (매출 − 매출원가) ÷ 매출. 높을수록 팔수록 남는 구조예요.</li>
+        <li><b>영업이익·순이익</b>: 적자 → 흑자로 바뀌면 "흑자 전환"으로 표시해요.</li>
+        <li><b>EPS와 예상</b>: 애널리스트 평균 예상치(Nasdaq·Zacks)와 비교해요. Nasdaq EPS는 일회성 비용을 뺀 조정 기준일 수 있어요.</li>
+        <li><b>다음 실적 발표</b>: 회사가 공지하기 전에는 과거 패턴으로 추정한 날짜라 "예상일"로 표시돼요.</li>
+      </ul>`,
     fire: `
       <p>보유한 주식의 <b>현재 원화 평가금액 ÷ 목표 금액</b>으로 퇴사(경제적 자유) 목표까지 얼마나 왔는지 보여줍니다.</p>
       <ul>
@@ -102,6 +135,8 @@
         <li><b>내부자 거래</b>: Form 4 = 임원·대주주가 주식을 사고판 뒤 2영업일 내 신고, Form 144 = 내부자가 주식을 팔 예정이라는 사전 신고. 매도가 몰리면 수급 부담 신호로 봅니다.</li>
         <li><b>○○ 관련</b>: 회사 공식 발표(Business Wire·회사 사이트)와, 제목에 회사 이름이 들어간 뉴스를 모았어요. 국내/해외 뉴스는 언어별 보기라 같은 기사가 겹칠 수 있어요.</li>
         <li><b>FAA 인증</b>(조비): FAA·인증·TIA·eIPP 같은 인증 관련 단어가 들어간 공시·뉴스만 모은 보기.</li>
+        <li><b>한 줄 요약</b>: 기사 제목 아래 회색 글씨는 AI(Cloudflare Workers AI)가 기사 앞부분을 읽고 만든 한국어 요약이에요. 기사 원문을 못 받은 경우엔 제목만으로 풀어 쓴 것이라, 중요한 내용은 원문을 확인하세요. 새 기사는 요약이 붙기까지 몇 분 걸려요.</li>
+        <li><b>업계 뉴스</b>: 조비 = UAM 전문 매체(eVTOL Insights·Urban Air Mobility News·FlightGlobal), 스페이스X = 우주 전문 매체(SpaceNews·NASASpaceflight·Spaceflight Now), 템퍼스 = 의료 전문 매체(STAT·MedCity News·Fierce Healthcare)의 AI·유전체·암 진단 기사만 받아요.</li>
         <li><b>암호화폐</b>: 서클 외 암호화폐 시장 전반 뉴스. 스팸·가짜 기사를 막기 위해 검색 대신 <b>검증된 전문 매체의 공식 RSS만</b> 받습니다(CoinDesk·Cointelegraph·Decrypt·The Block·블록미디어·토큰포스트). 매체 자기 도메인 링크만 허용하고, 광고·보도자료·프리세일·"100배" 같은 홍보성 문구가 있는 기사와 3일 지난 기사는 뺍니다.</li>
         <li><b>국내/해외 뉴스</b>: 구글 뉴스 검색 결과(최근 30일). 구글 뉴스는 휴대폰에서 직접 받을 수 없어, 개인 중계 서버(Cloudflare Worker)를 거쳐 새로고침 때마다 받습니다(최대 3분 캐시, 새로고침 버튼은 캐시 없이). 같은 제목은 하나로 합쳤습니다.</li>
         <li><b>NEW</b>: 지난번 이 탭을 본 이후 새로 올라온 항목. 하단 탭의 숫자도 같은 기준입니다(내부자 거래 공시 제외).</li>
@@ -968,8 +1003,8 @@
     setHtml('px-time', hm(t.E || px.at) + ' 기준');
     setHtml('sum-px', price(t.last));
     setHtml('sum-pxchg', `<span class="${cls(t.pct)}">${pct(t.pct, 1)}</span>`);
-    const sw = document.querySelector('[data-stock="CRCL"] .ss-px');
-    if (sw) sw.innerHTML = `${price(t.last)} <em class="${cls(t.pct)}">${pct(t.pct, 1)}</em>`;
+    const sw = document.querySelector('[data-stock="CRCL"]');
+    if (sw) { const a = sw.querySelector('.ss-px'), b = sw.querySelector('.ss-ch'); if (a) a.textContent = price(t.last); if (b) { b.className = `ss-ch ${cls(t.pct)}`; b.textContent = pct(t.pct, 1); } }
     setHtml('pc-last', price(t.last));
     const k = px.klines[state.range];
     if (k?.length) {
@@ -1447,18 +1482,18 @@
       const S = d.short;
       if (!S?.daily?.length) return;
       const fmt = (ms) => new Date(ms).toISOString().slice(0, 10);
-      const add = [], addJ = [];
+      const add = [], addO = {};
       for (let ms = Date.parse(S.daily.at(-1).d + 'T00:00:00Z') + 86400000; ms <= Date.now(); ms += 86400000) {
         const wd = new Date(ms).getUTCDay();
-        if (wd === 0 || wd === 6) continue;
+        if (wd === 0 || wd === 6 || ms + 22 * 3600000 > Date.now()) continue; // 당일 파일은 미국 저녁에 올라온다
         const day = fmt(ms);
         const r = await fetch(`https://cdn.finra.org/equity/regsho/daily/CNMSshvol${day.replaceAll('-', '')}.txt`, { signal: AbortSignal.timeout(20000) }).catch(() => null);
         if (!r?.ok) continue;
         const lines = (await r.text()).split('\n');
         const pick = (sym) => { const l = lines.find((x) => x.split('|')[1] === sym); if (!l) return null; const [, , sv, sev, tv] = l.split('|'); return { d: day, short: +sv, exempt: +sev, total: +tv, ratio: +sv / +tv }; };
-        const c = pick('CRCL'), jb = pick('JOBY');
+        const c = pick('CRCL');
         if (c) add.push(c);
-        if (jb) addJ.push(jb);
+        for (const s of OTHER) { const r = pick(s); if (r) (addO[s] ||= []).push(r); }
       }
       const cutoff = Date.now() / 1000 - 31 * 86400;
       const merge = (base, extra) => {
@@ -1466,41 +1501,59 @@
         const sumS = daily.reduce((a, r) => a + r.short, 0), sumT = daily.reduce((a, r) => a + r.total, 0);
         return { ...base, daily, avgRatio: sumT ? sumS / sumT : 0 };
       };
-      if (addJ.length && S.joby) S.joby = merge(S.joby, addJ);
-      if (!add.length) { d.short = { ...S }; return; }
-      d.short = { ...merge(S, add), joby: S.joby };
+      const by = { ...(S.by || (S.joby ? { JOBY: S.joby } : {})) };
+      for (const s of OTHER) if (addO[s]?.length && by[s]) by[s] = merge(by[s], addO[s]);
+      if (!add.length) { d.short = { ...S, by, joby: by.JOBY }; return; }
+      d.short = { ...merge(S, add), by, joby: by.JOBY };
       L.shortRatio = d.short.daily.at(-1).ratio;
     },
-    async quote() { await loadQuote(); }, // Fire·JOBY 시세·환율
-    // ---- JOBY (조비를 선택했을 때만 받는다)
+    async quote() { await loadQuote(); }, // 종목 카드·Fire 시세·환율
+    // ---- 선택한 종목만 받는다 (sym을 먼저 잡아 두어 도중에 종목을 바꿔도 섞이지 않게)
     async faa() { state.faa = await getJ(`data/faa-joby.json?t=${Math.floor(Date.now() / 600000)}`); },
-    async jchart() {
-      await Promise.all([loadJChart('1d'), state.jrange !== '1d' ? loadJChart(state.jrange) : null, state.jchart['1y'] ? null : loadJChart('1y').catch(() => {})]);
+    async sfacts() { state.spcx = await getJ(`data/spcx-facts.json?t=${Math.floor(Date.now() / 600000)}`); },
+    async schart() {
+      const s = state.stock, x = st(s);
+      if (!isOther(s)) return;
+      await Promise.all([loadSChart(s, '1d'), state.srange !== '1d' ? loadSChart(s, state.srange) : null, x.chart['1y'] ? null : loadSChart(s, '1y').catch(() => {})]);
     },
-    async jearn() {
+    async searn() {
+      const s = state.stock, x = st(s);
+      if (!isOther(s)) return;
       try {
-        const j = await getJ(`${NEWS_API}/earnings?s=JOBY`, 25000);
+        const j = await getJ(`${NEWS_API}/earnings?s=${s}`, 25000);
         if (j.error) throw new Error(j.error);
-        state.jearn = j; state.jearnErr = false;
-      } catch (e) { state.jearnErr = true; if (!state.jearn) throw e; }
+        x.earn = j; x.earnErr = false;
+      } catch (e) { x.earnErr = true; if (!x.earn) throw e; }
     },
-    async jnews() {
-      const j = await getJ(`${NEWS_API}/news?s=JOBY${state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
+    async snews() {
+      const s = state.stock, x = st(s);
+      if (!isOther(s)) return;
+      const j = await getJ(`${NEWS_API}/news?s=${s}${state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
       if (j.error) throw new Error(j.error);
       const ownerMap = {};
       for (const f of j.filings || []) (ownerMap[f.d + '|' + f.form] ||= []).push(f.owner);
-      const cur = state.jnews || {};
-      const fallback = (j.filings || []).map((f) => ({ ...f, url: 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0001819848&type=&dateb=&owner=include&count=40' }));
-      state.jnews = { ...cur, official: j.official, kr: j.kr, en: j.en, crypto: j.crypto || [], newsAt: j.at, ownerMap, filings: cur.filings || fallback };
+      const cur = x.news || {};
+      const fallback = (j.filings || []).map((f) => ({ ...f, url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${STOCK_INFO[s].cik}&type=&dateb=&owner=include&count=40` }));
+      x.news = { ...cur, official: j.official, kr: j.kr, en: j.en, crypto: j.crypto || [], newsAt: j.at, ownerMap, filings: cur.filings || fallback };
     },
-    async jfilings() { // SEC EDGAR에서 직접
-      const j = await getJ('https://data.sec.gov/submissions/CIK0001819848.json');
+    async sfilings() { // SEC EDGAR에서 직접
+      const s = state.stock, x = st(s), cik = STOCK_INFO[s]?.cik;
+      if (!isOther(s) || !cik) return;
+      const j = await getJ(`https://data.sec.gov/submissions/CIK${cik}.json`);
       const r = j.filings.recent, list = [];
       for (let i = 0; i < Math.min(100, r.form.length); i++) {
         const acc = r.accessionNumber[i];
-        list.push({ d: r.filingDate[i], form: r.form[i], owner: '', desc: r.primaryDocDescription[i], items: r.items?.[i] || '', url: `https://www.sec.gov/Archives/edgar/data/1819848/${acc.replace(/-/g, '')}/${r.primaryDocument[i]}` });
+        list.push({ d: r.filingDate[i], form: r.form[i], owner: '', desc: r.primaryDocDescription[i], items: r.items?.[i] || '', url: `https://www.sec.gov/Archives/edgar/data/${+cik}/${acc.replace(/-/g, '')}/${r.primaryDocument[i]}` });
       }
-      state.jnews = { ...(state.jnews || {}), filings: list, filingsAt: new Date().toISOString() };
+      x.news = { ...(x.news || {}), filings: list, filingsAt: new Date().toISOString() };
+    },
+    async holders() { // 기관 보유(13F) — 서버 6시간 캐시
+      const s = state.stock;
+      try {
+        const j = await getJ(`${NEWS_API}/holders?s=${s}`, 20000);
+        if (j.error) throw new Error(j.error);
+        state.holders[s] = j;
+      } catch (e) { if (!state.holders[s]) throw e; }
     },
     async earnings() { // 분기 실적·다음 발표일 (서버에서 6시간 캐시)
       try {
@@ -1608,7 +1661,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', jchart: '조비 차트', jearn: '조비 실적', jnews: '조비 뉴스', jfilings: '조비 공시' };
+  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유' };
 
   // parts: 동기화할 항목 이름 목록
   async function syncNow(parts) {
@@ -1626,7 +1679,7 @@
   // ---------------------------------------------------------------- Fire (퇴사 목표 진행률 · 포트폴리오 전체)
   // 보유 정보는 이 기기(브라우저)에만 저장한다. 코드·서버·링크에는 개인 보유 현황이 들어가지 않는다.
   const FIRE_KEY = 'cw.fire', FIRE_HIST = 'cw.fireHist';
-  const FIRE_TICKERS = { CRCA: 'CRCA · ProShares Ultra CRCL (2배)', CRCL: 'CRCL · 서클 인터넷 그룹', JOBY: 'JOBY · 조비 에비에이션' };
+  const FIRE_TICKERS = { CRCA: 'CRCA · ProShares Ultra CRCL (2배)', CRCL: 'CRCL · 서클 인터넷 그룹', JOBY: 'JOBY · 조비 에비에이션', SPCX: 'SPCX · 스페이스X', TEM: 'TEM · 템퍼스 AI' };
   const readJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
   const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
   // 예전 형식({ticker, shares, avg})은 종목 목록 형식으로 바꿔 읽는다
@@ -1770,7 +1823,7 @@
     if (!el) return;
     const c = fireCalc();
     if (!fireCfg) {
-      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 여러 종목(CRCA·CRCL·JOBY)을 함께 넣을 수 있어요.</p>` });
+      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 여러 종목(CRCA·CRCL·JOBY·SPCX·TEM)을 함께 넣을 수 있어요.</p>` });
       ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; });
       return;
     }
@@ -1864,7 +1917,7 @@
     });
   }
 
-  // 시세(CRCA·CRCL·JOBY·ACHR·환율): Fire·JOBY 화면을 보고 있을 때 15초마다
+  // 시세(보유 종목·경쟁사·환율): Fire 화면이거나 CRCL 외 종목을 보고 있을 때 15초마다
   async function loadQuote() {
     try {
       const j = await getJ(`${NEWS_API}/quote`, 15000);
@@ -1882,7 +1935,7 @@
     if (!on) return;
     fireTimer = setInterval(() => {
       if (document.hidden) return;
-      loadQuote().then(() => { renderFire(); renderSummary(); renderStockSwitch(); if (state.stock === 'JOBY') { paintJoby(); renderJSummary(); } }).catch(() => {});
+      loadQuote().then(() => { renderFire(); renderSummary(); renderStockSwitch(); if (isOther()) { paintStock(); renderSSummary(); } }).catch(() => {});
     }, 15000);
   }
 
@@ -2050,6 +2103,28 @@
     return { label: hit[0] + (amend ? ' (정정)' : ''), level: hit[1] };
   }
   const FAA_RE = /FAA|type certif|형식 ?인증|인증|certification|\bTIA\b|for-credit|Part 1(35|41|45)|eIPP|airworth|감항/i;
+  // 종목 설정 (CRCL은 전용 화면, 나머지는 공통 틀)
+  const STOCK_INFO = {
+    CRCL: { name: '서클 인터넷 그룹', short: '서클', mark: 'C', color: '#3f7ef6' },
+    JOBY: {
+      name: '조비 에비에이션', short: '조비', mark: 'J', color: '#22b07d', cik: '0001819848', peer: ['ACHR', 'Archer'], peerNote: '같은 전기 에어택시(eVTOL) 업체',
+      mode: 'burn', earnTitle: '조비 실적 · FAA 인증', industry: 'UAM 업계', industryBadge: 'UAM', relBadge: '조비', relRe: /조비|Joby|JOBY/i,
+    },
+    SPCX: {
+      name: '스페이스X', short: '스페이스X', mark: 'X', color: '#aab4c3', cik: '0001181412', peer: ['RKLB', 'Rocket Lab'], peerNote: '상장된 우주 발사체 업체',
+      mode: 'growth', earnTitle: '스페이스X 실적 · 보호예수', industry: '우주 업계', industryBadge: '우주', relBadge: 'SpaceX', relRe: /스페이스X|스페이스엑스|SpaceX|SPCX|스타링크|Starlink|스타십|Starship/i,
+      earnNote: '스페이스X는 2026년 6월 상장이라 SEC 분기 자료가 일부 분기만 있어요(1분기 = 상반기 − 2분기로 계산). 스타십·스타링크 위성 등 <b>설비투자가 매우 커서</b> 영업으로 번 현금보다 투자에 쓰는 돈이 훨씬 많아요. 매출 성장과 이익률 개선이 핵심이에요.',
+    },
+    TEM: {
+      name: '템퍼스 AI', short: '템퍼스', mark: 'T', color: '#8b7cf6', cik: '0001717115', peer: ['GH', 'Guardant'], peerNote: '액체생검·암 유전체 검사 업체',
+      mode: 'growth', earnTitle: '템퍼스 실적', industry: '헬스케어 AI', industryBadge: '헬스AI', relBadge: '템퍼스', relRe: /템퍼스|Tempus|\bTEM\b/,
+      earnNote: '템퍼스는 유전체 검사(Genomics)와 의료 데이터·AI 서비스(Data and services)로 돈을 벌어요. <b>매출 성장률</b>과 <b>흑자 전환 여부</b>가 핵심이에요. EPS는 Nasdaq 집계(조정 기준)라 회계상 순이익과 다를 수 있어요.',
+    },
+  };
+  const OTHER = ['JOBY', 'SPCX', 'TEM'];
+  const isOther = (s = state.stock) => s !== 'CRCL' && !!STOCK_INFO[s];
+  state.st = {};
+  const st = (sym) => (state.st[sym] ||= { chart: {}, earn: null, earnErr: false, news: null });
   // 종목별 뉴스 화면 설정. 필터는 겹칠 수 있다(예: 서클 관련이면서 국내 기사).
   const NEWS_UI = {
     CRCL: {
@@ -2058,13 +2133,17 @@
       filters: [['all', '전체'], ['filing', '공시'], ['related', '서클 관련'], ['kr', '국내 뉴스'], ['en', '해외 뉴스'], ['industry', '암호화폐']],
       badges: { related: '서클', kr: '국내', en: '해외', industry: '코인' },
     },
-    JOBY: {
-      name: '조비', view: 'jnews', list: 'c-jnews', sum: 'c-jnewssum', badge: 'news-badge', seenKey: 'jnewsSeen', filterKey: 'jnewsFilter',
-      relRe: /조비|Joby|JOBY/i, getN: () => state.jnews,
-      filters: [['all', '전체'], ['filing', '공시'], ['related', '조비 관련'], ['faa', 'FAA 인증'], ['kr', '국내 뉴스'], ['en', '해외 뉴스'], ['industry', 'UAM 업계']],
-      badges: { related: '조비', kr: '국내', en: '해외', industry: 'UAM' },
-    },
   };
+  for (const sym of OTHER) {
+    const S = STOCK_INFO[sym];
+    NEWS_UI[sym] = {
+      name: S.short, view: 'snews', list: 'c-snews', sum: 'c-snewssum', badge: 'news-badge',
+      seenKey: sym === 'JOBY' ? 'jnewsSeen' : `newsSeen.${sym}`, filterKey: sym === 'JOBY' ? 'jnewsFilter' : `newsFilter.${sym}`,
+      relRe: S.relRe, getN: () => st(sym).news,
+      filters: [['all', '전체'], ['filing', '공시'], ['related', `${S.short} 관련`], ...(sym === 'JOBY' ? [['faa', 'FAA 인증']] : []), ['kr', '국내 뉴스'], ['en', '해외 뉴스'], ['industry', S.industry]],
+      badges: { related: S.relBadge, kr: '국내', en: '해외', industry: S.industryBadge },
+    };
+  }
   state.majorOnly = loadPref('majorOnly', '1') === '1';
   const seen = {};
   for (const [sym, U] of Object.entries(NEWS_UI)) {
@@ -2103,7 +2182,7 @@
       // 회사 공식 발표이거나 제목에 회사 이름이 있으면 '○○ 관련'으로 분류
       const related = base === 'official' || U.relRe.test(n.title);
       const kind = related ? 'related' : base;
-      items.push({ kind, base, lang, t: Date.parse(n.t), title: n.title, source: n.source + (base === 'industry' && lang !== 'ko' ? ' · 해외' : ''), url: n.url, level: base === 'official' ? 'hi' : 'mid', official: base === 'official', faa: FAA_RE.test(n.title) });
+      items.push({ kind, base, lang, t: Date.parse(n.t), title: n.title, sum: n.sum || '', source: n.source + (base === 'industry' && lang !== 'ko' ? ' · 해외' : ''), url: n.url, level: base === 'official' ? 'hi' : 'mid', official: base === 'official', faa: FAA_RE.test(n.title) });
     };
     for (const n of N.official || []) push(n, 'official', 'en');
     for (const n of N.kr || []) push(n, 'kr', 'ko');
@@ -2200,20 +2279,18 @@
       return `${head}<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener">
         <span class="nk ${kindCls}${i.official ? ' official' : ''}">${esc(kindTxt)}</span>
         <span class="nt">${isNew ? '<i class="new">NEW</i>' : ''}${i.faa && sym === 'JOBY' ? '<i class="faa-tag">FAA</i>' : ''}${esc(i.title)}</span>
+        ${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}
         <span class="nm">${esc(i.source)}${timeLabel(i) ? ' · ' + timeLabel(i) : ''}</span></a></li>`;
     }).join('');
     el.innerHTML = `
       <div class="nf" role="group" aria-label="뉴스 종류">${U.filters.map(([k, label]) => `<button type="button" data-nf="${k}" aria-pressed="${k === f}">${label}<small>${counts[k]}</small></button>`).join('')}</div>
       ${f === 'filing' ? `<label class="nf-opt"><input type="checkbox" id="major-only" ${state.majorOnly ? 'checked' : ''}> 주요 공시만 보기 <small>(임원 지분변동 Form 4·매도예정 144 숨김)</small></label>` : ''}
       <ul class="nl">${rows || '<li class="empty">표시할 항목이 없습니다.</li>'}</ul>
-      <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시는 SEC EDGAR, 뉴스는 구글 뉴스·전문 매체 RSS에서 새로고침 때마다 받습니다.</p>`;
+      <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시는 SEC EDGAR, 뉴스는 구글 뉴스·전문 매체 RSS에서 새로고침 때마다 받습니다. 회색 한 줄 요약은 AI가 기사 앞부분을 읽고 만든 것이라 틀릴 수 있어요.</p>`;
   }
 
   // ---------------------------------------------------------------- 종목 선택 · 하단 탭 (Yong's Portfolio)
-  const STOCK_INFO = {
-    CRCL: { name: '서클 인터넷 그룹', short: '서클' },
-    JOBY: { name: '조비 에비에이션', short: '조비' },
-  };
+  // CRCL은 전용 화면, 나머지 종목(JOBY·SPCX·TEM)은 같은 틀(sprice·searn·snews)에 종목별 설정으로 그린다.
   const ICONS = {
     home: '<path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>',
     chart: '<path d="M4 19h16M6 15l4-5 3 3 5-7"/>',
@@ -2223,12 +2300,20 @@
     news: '<path d="M5 5h11v14H6a1 1 0 0 1-1-1zM16 9h3v9a1 1 0 0 1-1 1h-2M8 9h5M8 12h5M8 15h3"/>',
   };
   const TAB_SETS = {
-    CRCL: [['home', 'Home', 'home'], ['crcl', 'CRCL', 'chart'], ['earn', 'Earnings', 'earn'], ['usdc', 'USDC', 'usdc'], ['arc', 'Arc', 'arc'], ['news', 'News', 'news']],
-    JOBY: [['home', 'Home', 'home'], ['jprice', 'JOBY', 'chart'], ['jearn', 'Earnings', 'earn'], ['jnews', 'News', 'news']],
+    CRCL: [['home', 'Home', 'home'], ['crcl', 'CRCL', 'chart'], ['usdc', 'USDC', 'usdc'], ['arc', 'Arc', 'arc'], ['earn', 'Earnings', 'earn'], ['news', 'News', 'news']],
   };
+  for (const s of OTHER) TAB_SETS[s] = [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']];
+  const OLD_VIEWS = { jprice: 'sprice', jearn: 'searn', jnews: 'snews' }; // 예전 주소(#jprice 등) 호환
   state.stock = STOCK_INFO[loadPref('stock', 'CRCL')] ? loadPref('stock', 'CRCL') : 'CRCL';
-  state.jchart = {};
-  state.jrange = loadPref('jrange', '1d');
+  state.srange = loadPref('jrange', '1d');
+  state.holders = {};
+  state.holdTab = loadPref('holdTab', 'top');
+  const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null);
+  const stockParts = (sym) => (sym === 'CRCL' ? ['holders'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', ...(sym === 'JOBY' ? ['faa'] : []), ...(sym === 'SPCX' ? ['sfacts'] : [])]);
+  const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
+  const sp = (v) => (v == null || !isFinite(v) ? '–' : `<span class="${cls(v)}">${pct(v)}</span>`);
+  const chevron = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
 
   function renderTabbar() {
     const nav = document.getElementById('tabbar');
@@ -2246,69 +2331,82 @@
     const q = state.quote?.[sym];
     return q ? { price: q.price, pct: q.pct, live: false } : null;
   }
-  function renderStockSwitch() {
+  // 종목 카드: 옆으로 밀어서 고르는 가로 스크롤(선택한 카드는 가운데로)
+  function renderStockSwitch(scroll = false) {
     const el = document.getElementById('stock-switch');
     if (!el) return;
     el.innerHTML = Object.entries(STOCK_INFO).map(([sym, s]) => {
       const p = stockPx(sym);
-      return `<button type="button" role="tab" data-stock="${sym}" aria-selected="${sym === state.stock}">
-        <span class="ss-tk">${sym}</span><span class="ss-nm">${s.name}</span>
-        <span class="ss-px">${p?.price != null ? price(p.price) : '–'} <em class="${cls(p?.pct)}">${p?.pct != null ? pct(p.pct, 1) : ''}</em></span></button>`;
+      return `<button type="button" role="tab" class="ss" data-stock="${sym}" aria-selected="${sym === state.stock}" style="--sc:${s.color}">
+        <span class="ss-top"><i class="ss-logo" aria-hidden="true">${s.mark}</i><span class="ss-tk">${sym}</span></span>
+        <span class="ss-nm">${s.name}</span>
+        <span class="ss-bot"><span class="ss-px">${p?.price != null ? price(p.price) : '–'}</span><em class="ss-ch ${cls(p?.pct)}">${p?.pct != null ? pct(p.pct, 1) : ''}</em></span></button>`;
     }).join('');
+    if (scroll) el.querySelector('[aria-selected="true"]')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    updateSwitchFade();
+  }
+  function updateSwitchFade() {
+    const el = document.getElementById('stock-switch');
+    if (!el) return;
+    el.classList.toggle('more-r', el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    el.classList.toggle('more-l', el.scrollLeft > 4);
   }
   function setStock(sym) {
     if (!STOCK_INFO[sym] || sym === state.stock) return;
     state.stock = sym;
     savePref('stock', sym);
-    document.getElementById('home-crcl').hidden = sym !== 'CRCL';
-    document.getElementById('home-joby').hidden = sym !== 'JOBY';
+    document.getElementById('home-crcl').hidden = isOther(sym);
+    document.getElementById('home-stock').hidden = !isOther(sym);
     renderTabbar();
-    renderStockSwitch();
+    renderStockSwitch(true);
     if (!viewAllowed(state.view)) showView('home');
-    if (sym === 'JOBY') {
-      fireLoop(true);
-      renderJoby();
-      if (!state.jearn || !state.jnews) syncNow(['quote', 'faa', 'jchart', 'jearn', 'jnews', 'jfilings']).then(renderJoby).catch(() => {});
-    } else if (state.view !== 'fire') fireLoop(false);
+    else document.getElementById('view-title').textContent = viewTitle(state.view);
+    fireLoop(state.view === 'fire' || isOther());
+    renderStock();
+    syncNow(['quote', ...stockParts(sym)]).then(() => { if (state.stock === sym) renderStock(); }).catch(() => {});
   }
 
-  // ---------------------------------------------------------------- JOBY: 시세 · 차트
-  const JRANGES = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '1y': '1년' };
-  async function loadJChart(r) {
-    const j = await getJ(`${NEWS_API}/chart?s=JOBY&r=${r}`, 15000);
+  // ---------------------------------------------------------------- 종목: 시세 · 차트
+  const SRANGES = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '1y': '1년' };
+  async function loadSChart(sym, r) {
+    const j = await getJ(`${NEWS_API}/chart?s=${sym}&r=${r}`, 15000);
     if (j.error) throw new Error(j.error);
-    state.jchart[r] = j;
+    st(sym).chart[r] = j;
   }
-  let jPrevLast = null;
-  function paintJoby() {
-    const q = state.quote?.JOBY;
+  const ipoPx = () => state.spcx?.ipo?.price ?? null;
+  let sPrev = { sym: null, px: null };
+  function paintStock() {
+    const sym = state.stock;
+    if (!isOther(sym)) return;
+    const q = state.quote?.[sym];
     if (!q) return;
-    const last = document.getElementById('jpx-last');
+    const last = document.getElementById('spx-last');
     if (last) {
       last.textContent = price(q.price);
-      if (jPrevLast != null && q.price !== jPrevLast && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        last.classList.remove('flash-up', 'flash-down'); void last.offsetWidth; last.classList.add(q.price > jPrevLast ? 'flash-up' : 'flash-down');
+      if (sPrev.sym === sym && sPrev.px != null && q.price !== sPrev.px && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        last.classList.remove('flash-up', 'flash-down'); void last.offsetWidth; last.classList.add(q.price > sPrev.px ? 'flash-up' : 'flash-down');
       }
     }
-    jPrevLast = q.price;
-    setHtml('jpx-chg', `<span class="${cls(q.pct)}">${arrow(q.pct)} ${q.change >= 0 ? '+' : '-'}$${Math.abs(q.change ?? 0).toFixed(2)} (${pct(q.pct, 2)})</span>`);
-    setHtml('jpx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · 15초마다 갱신`);
-    setHtml('jpx-time', esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
-    setHtml('jpc-last', price(q.price));
-    const a = state.quote?.ACHR;
-    if (a) setHtml('jpx-achr', `$${a.price?.toFixed(2)} <span class="${cls(a.pct)}">${pct(a.pct, 1)}</span>`);
-    for (const id of ['jspark', 'jpricechart']) {
+    sPrev = { sym, px: q.price };
+    setHtml('spx-chg', `<span class="${cls(q.pct)}">${arrow(q.pct)} ${q.change >= 0 ? '+' : '-'}$${Math.abs(q.change ?? 0).toFixed(2)} (${pct(q.pct, 2)})</span>`);
+    setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · 15초마다 갱신`);
+    setHtml('spx-time', esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
+    setHtml('spc-last', price(q.price));
+    const S = STOCK_INFO[sym], pq = state.quote?.[S.peer[0]];
+    if (pq) setHtml('spx-peer', `$${pq.price?.toFixed(2)} <span class="${cls(pq.pct)}">${pct(pq.pct, 1)}</span>`);
+    if (sym === 'SPCX' && ipoPx()) setHtml('spx-ipo', `<span class="${cls(q.price / ipoPx() - 1)}">${pct(q.price / ipoPx() - 1, 1)}</span>`);
+    for (const id of ['sspark', 'spricechart']) {
       const c = charts[id];
       if (!c) continue;
       const ds = c.data.datasets[0];
-      if (state.jrange === '1d' || id === 'jspark') { ds.data[ds.data.length - 1] = q.price; c.update('none'); }
+      if (state.srange === '1d' || id === 'sspark') { ds.data[ds.data.length - 1] = q.price; c.update('none'); }
     }
   }
-  function jLine(id, pts, { compact = false, range = '1d', prevClose = null } = {}) {
+  function sLine(id, pts, { compact = false, range = '1d', prevClose = null, sym = state.stock } = {}) {
     if (!pts?.length) return;
     const labels = pts.map((p) => p[0]);
     const data = pts.map((p) => p[1]);
-    const q = state.quote?.JOBY;
+    const q = state.quote?.[sym];
     if (q?.price && range === '1d') data[data.length - 1] = q.price;
     const base = range === '1d' && (q?.prevClose || prevClose) ? (q?.prevClose || prevClose) : data[0];
     const col = data.at(-1) >= base ? C.up : C.down;
@@ -2316,7 +2414,7 @@
     const tip = (it) => { const d = new Date(labels[it.dataIndex]); return range === '1d' || range === '1w' ? d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString('ko-KR'); };
     draw(id, {
       type: 'line',
-      data: { labels, datasets: [lineDs('JOBY', data, col, { fill: 'start', backgroundColor: areaFill(col), pointRadius: endPoint(data.length, compact ? 3 : 4), borderWidth: compact ? 1.6 : 2, tension: 0.2 })] },
+      data: { labels, datasets: [lineDs(sym, data, col, { fill: 'start', backgroundColor: areaFill(col), pointRadius: endPoint(data.length, compact ? 3 : 4), borderWidth: compact ? 1.6 : 2, tension: 0.2 })] },
       options: {
         interaction,
         plugins: { ...noLegend, tooltip: { ...tooltip(tip, price), enabled: !compact } },
@@ -2325,55 +2423,112 @@
     });
   }
 
-  function renderJPriceCard() {
-    const q = state.quote?.JOBY, ch = state.jchart['1d'];
+  function renderSPriceCard(sym = state.stock) {
+    const S = STOCK_INFO[sym], q = state.quote?.[sym], ch = st(sym).chart['1d'];
     const pts = ch?.points || [];
     const lo = pts.length ? Math.min(...pts.map((p) => p[1])) : null, hi = pts.length ? Math.max(...pts.map((p) => p[1])) : null;
     const pos = q?.price != null && hi > lo ? (q.price - lo) / (hi - lo) : 0.5;
-    const y1 = state.jchart['1y'] || state.jchart['1d'];
-    card('jprice', {
-      title: 'JOBY 실시간 주가', sub: '조비 에비에이션 · Nasdaq 실시간(장전·장중·장후)', info: INFO.jprice,
+    const y1 = st(sym).chart['1y'] || ch;
+    const stats = sym === 'SPCX'
+      ? `<div><span>상장 후 최고</span><b>${price(y1?.high52)}</b></div><div><span>공모가 대비</span><b id="spx-ipo">–</b><small>공모가 ${price(ipoPx())}</small></div>`
+      : `<div><span>52주 최고</span><b>${price(y1?.high52)}</b></div><div><span>52주 최저</span><b>${price(y1?.low52)}</b></div>`;
+    card('sprice', {
+      title: `${sym} 실시간 주가`, sub: `${S.name} · Nasdaq 실시간(장전·장중·장후)`, info: INFO.sprice(sym),
       body: `
-        <div class="px-main"><span class="px-last" id="jpx-last">${price(q?.price)}</span><span class="px-chg" id="jpx-chg"></span></div>
-        <div class="px-meta"><span id="jpx-via">불러오는 중…</span><span id="jpx-time"></span></div>
-        <div class="chart spark"><canvas id="cv-jspark" role="img" aria-label="JOBY 오늘 가격"></canvas></div>
+        <div class="px-main"><span class="px-last" id="spx-last">${price(q?.price)}</span><span class="px-chg" id="spx-chg"></span></div>
+        <div class="px-meta"><span id="spx-via">불러오는 중…</span><span id="spx-time"></span></div>
+        <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 오늘 가격"></canvas></div>
         <div class="px-range" aria-label="오늘 가격 범위"><span>${price(lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${price(hi)}</span></div>
-        <div class="px-stats">
-          <div><span>52주 최고</span><b>${price(y1?.high52)}</b></div>
-          <div><span>52주 최저</span><b>${price(y1?.low52)}</b></div>
-          <div><span>경쟁사 Archer</span><b id="jpx-achr">–</b><small>ACHR</small></div>
-        </div>
-        <button type="button" class="link-btn" data-go="jprice:c-jpricechart">가격 차트 자세히 보기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`,
+        <div class="px-stats">${stats}<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div></div>
+        <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
     });
-    jLine('jspark', pts, { compact: true, prevClose: ch?.prevClose });
-    paintJoby();
+    sLine('sspark', pts, { compact: true, prevClose: ch?.prevClose, sym });
+    paintStock();
   }
 
-  function renderJPriceChart() {
-    const r = state.jrange, ch = state.jchart[r];
+  function renderSPriceChart(sym = state.stock) {
+    const r = state.srange, ch = st(sym).chart[r];
     const pts = ch?.points || [];
     let note = '';
     if (pts.length) {
       const v = pts.map((p) => p[1]);
-      note = `${JRANGES[r]} 최고 ${price(Math.max(...v))} · 최저 ${price(Math.min(...v))} · 시작 ${price(v[0])}${ch.high52 ? ` · 52주 ${price(ch.low52)}~${price(ch.high52)}` : ''}`;
+      note = `${SRANGES[r]} 최고 ${price(Math.max(...v))} · 최저 ${price(Math.min(...v))} · 시작 ${price(v[0])}${ch.high52 ? ` · 52주 ${price(ch.low52)}~${price(ch.high52)}` : ''}`;
     }
-    const q = state.quote?.JOBY;
+    const q = state.quote?.[sym];
     const chg = pts.length && q?.price ? q.price / (r === '1d' && (q.prevClose || ch.prevClose) ? (q.prevClose || ch.prevClose) : pts[0][1]) - 1 : null;
-    card('jpricechart', {
-      title: 'JOBY 가격 추이', sub: '조비 에비에이션 · Yahoo Finance', info: '',
+    card('spricechart', {
+      title: `${sym} 가격 추이`, sub: `${STOCK_INFO[sym].name} · Yahoo Finance`, info: '',
       body: `
-        <div class="seg range jr" role="group" aria-label="기간 선택">${Object.entries(JRANGES).map(([k, v]) => `<button type="button" data-jrange="${k}" aria-pressed="${k === r}">${v}</button>`).join('')}</div>
-        <div class="px-main sm"><span class="px-last" id="jpc-last">${price(q?.price)}</span><span class="px-chg">${chg == null ? '' : `<span class="${cls(chg)}">${arrow(chg)} ${pct(chg, 2)}</span> <span class="lbl">${JRANGES[r]} 동안</span>`}</span></div>
-        <div class="chart tall"><canvas id="cv-jpricechart" role="img" aria-label="JOBY 가격 추이"></canvas></div>
+        <div class="seg range jr" role="group" aria-label="기간 선택">${Object.entries(SRANGES).map(([k, v]) => `<button type="button" data-srange="${k}" aria-pressed="${k === r}">${v}</button>`).join('')}</div>
+        <div class="px-main sm"><span class="px-last" id="spc-last">${price(q?.price)}</span><span class="px-chg">${chg == null ? '' : `<span class="${cls(chg)}">${arrow(chg)} ${pct(chg, 2)}</span> <span class="lbl">${SRANGES[r]} 동안</span>`}</span></div>
+        <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
         <p class="note">${note || '불러오는 중…'}</p>`,
     });
-    if (!ch) { loadJChart(r).then(() => { if (state.jrange === r) renderJPriceChart(); }).catch(() => {}); return; }
-    jLine('jpricechart', pts, { range: r, prevClose: ch.prevClose });
+    if (!ch) { loadSChart(sym, r).then(() => { if (state.srange === r && state.stock === sym) renderSPriceChart(sym); }).catch(() => {}); return; }
+    sLine('spricechart', pts, { range: r, prevClose: ch.prevClose, sym });
+  }
+
+  // ---------------------------------------------------------------- 기관 보유 현황 (13F)
+  // 널리 알려진 기관은 한글 이름을 같이 보여준다. major: '주요 금융사' 보기에 넣을지
+  const INSTITUTIONS = [
+    [/blackrock/i, '블랙록', 1], [/vanguard/i, '뱅가드', 1], [/state street/i, '스테이트 스트리트', 1], [/^fmr\b|fidelity/i, '피델리티', 1],
+    [/jpmorgan|j\.p\. ?morgan/i, 'JP모건', 1], [/morgan stanley/i, '모건스탠리', 1], [/goldman/i, '골드만삭스', 1], [/citadel/i, '시타델', 1],
+    [/ark invest/i, '아크 인베스트(캐시 우드)', 1], [/bank of america|merrill/i, '뱅크오브아메리카', 1], [/\bubs\b/i, 'UBS', 1], [/geode/i, '지오드 캐피털', 1],
+    [/capital (research|world|international)/i, '캐피털 그룹', 1], [/norges/i, '노르웨이 국부펀드', 1], [/public investment fund/i, '사우디 국부펀드(PIF)', 1],
+    [/charles schwab/i, '찰스 슈왑', 1], [/northern trust/i, '노던 트러스트', 1], [/invesco/i, '인베스코', 1], [/t\. ?rowe/i, 'T. 로우 프라이스', 1],
+    [/wellington/i, '웰링턴', 1], [/citigroup/i, '씨티그룹', 1], [/wells fargo/i, '웰스파고', 1], [/barclays/i, '바클레이즈', 1], [/deutsche bank/i, '도이체방크', 1],
+    [/jane street/i, '제인 스트리트', 1], [/susquehanna/i, '서스퀘하나', 1], [/two sigma/i, '투 시그마', 1], [/millennium/i, '밀레니엄', 1],
+    [/d\. ?e\. shaw/i, 'D.E. 쇼', 1], [/renaissance/i, '르네상스', 1], [/baillie gifford/i, '베일리 기포드', 1], [/softbank/i, '소프트뱅크', 1],
+    [/marshall wace/i, '마셜 웨이스', 0], [/\bidg\b/i, 'IDG 캐피털', 0], [/valor/i, '밸러 에퀴티', 0], [/vy capital/i, 'Vy 캐피털', 0],
+    [/gigafund/i, '기가펀드', 0], [/a16z|andreessen/i, '안드리센 호로위츠(a16z)', 0], [/sc us \(ttgp\)|sequoia/i, '세쿼이아 캐피털', 0], [/bamco|baron capital/i, '배런 캐피털', 0], [/d1 capital/i, 'D1 캐피털', 0], [/founders fund/i, '파운더스 펀드', 0], [/toyota/i, '도요타', 0], [/coatue/i, '코투', 0], [/tiger global/i, '타이거 글로벌', 0],
+  ];
+  const instOf = (name) => INSTITUTIONS.find(([re]) => re.test(name || ''));
+  const titleCase = (s) => String(s || '').replace(/\s*\/[a-z]{2,3}\/?\s*$/i, '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bLlc\b/g, 'LLC').replace(/\bL\.p\./g, 'L.P.').replace(/\bInc\b/g, 'Inc');
+  const HOLD_TABS = [['top', '상위 보유'], ['major', '주요 금융사'], ['buy', '많이 산 곳'], ['sell', '많이 판 곳']];
+
+  function renderHolders(sym = state.stock, id = sym === 'CRCL' ? 'holders' : 'sholders') {
+    if (!document.getElementById('c-' + id)) return;
+    const H = state.holders[sym], S = STOCK_INFO[sym];
+    const title = '기관 보유 현황';
+    if (!H) { card(id, { title, info: INFO.holders, body: '<p class="skeleton">기관 보유 현황 불러오는 중…</p>' }); return; }
+    const latest = H.top.reduce((m, r) => (r.date > m ? r.date : m), '');
+    const tab = HOLD_TABS.some(([k]) => k === state.holdTab) ? state.holdTab : 'top';
+    let rows = tab === 'buy' ? H.buyers : tab === 'sell' ? H.sellers : tab === 'major' ? H.top.filter((r) => instOf(r.name)?.[2]) : H.top.slice(0, 12);
+    if (tab === 'major' && !rows.length) rows = [];
+    const shareOf = (r) => (H.sharesOut && r.shares != null ? r.shares / H.sharesOut : null);
+    const inc = H.increased, dec = H.decreased;
+    const chgTxt = (r) => (r.isNew ? '<span class="h-new">신규</span>' : r.soldOut ? '<span class="h-out">전량 매도</span>'
+      : r.chg == null ? '–' : `<span class="${cls(r.chg)}">${r.chg > 0 ? '+' : ''}${unit(r.chg)}주</span>${r.chgPct != null ? `<small class="${cls(r.chgPct)}">${pct(r.chgPct, 1)}</small>` : ''}`);
+    const list = rows.map((r) => {
+      const inst = instOf(r.name);
+      const old = r.date && latest && r.date < latest;
+      return `<li><div class="h-name"><b>${esc(inst ? inst[1] : titleCase(r.name))}</b><small>${inst ? esc(titleCase(r.name)) + ' · ' : ''}${r.date ? md(isoToTs(r.date)) + ' 기준' : ''}${old ? ' <i class="h-old">지난 분기</i>' : ''}</small></div>
+        <div class="h-sh"><b>${r.soldOut ? '0주' : unit(r.shares) + '주'}</b><small>${shareOf(r) != null && !r.soldOut ? '지분 ' + pctPlain(shareOf(r), 2) : r.value != null ? usd(r.value) : ''}</small></div>
+        <div class="h-chg">${chgTxt(r)}</div></li>`;
+    }).join('');
+    // 다음 13F 마감: 분기 말 + 45일
+    const qEnd = latest ? new Date(latest + 'T00:00:00') : null;
+    const nextQ = qEnd ? new Date(qEnd.getFullYear(), qEnd.getMonth() + 4, 0) : null;
+    const nextDue = nextQ ? new Date(nextQ.getTime() + 45 * 86400000) : null;
+    const flow = inc && dec ? (inc.shares || 0) - (dec.shares || 0) : null;
+    card(id, {
+      title, sub: `${S.short} · 13F 신고 기준 · Nasdaq · ${latest ? md(isoToTs(latest)) + ' 분기 말' : ''}`, info: INFO.holders,
+      body: `<div class="ns-grid h-grid">
+          <div><span>기관 보유 비율</span><b>${pctPlain(H.ownershipPct)}</b><small>발행 주식 ${unit(H.sharesOut)}주 중</small></div>
+          <div><span>보유 기관 수</span><b>${H.holders != null ? nf(0).format(H.holders) + '곳' : '–'}</b><small>보유 ${unit(H.totalShares?.shares)}주 · ${usd(H.totalValue)}</small></div>
+          <div><span>직전 13F 대비 늘린 곳</span><b class="up">${inc ? nf(0).format(inc.holders) + '곳' : '–'}</b><small>+${unit(inc?.shares)}주${H.newPos ? ` · 신규 ${nf(0).format(H.newPos.holders)}곳` : ''}</small></div>
+          <div><span>줄인 곳</span><b class="down">${dec ? nf(0).format(dec.holders) + '곳' : '–'}</b><small>-${unit(dec?.shares)}주${H.soldOut ? ` · 전량 매도 ${nf(0).format(H.soldOut.holders)}곳` : ''}</small></div>
+        </div>
+        ${flow != null ? `<div class="h-flow"><span>기관 순매수(직전 분기 대비)</span><b class="${cls(flow)}">${flow > 0 ? '+' : ''}${unit(flow)}주</b></div>` : ''}
+        <div class="nf h-tabs" role="group" aria-label="기관 목록 보기">${HOLD_TABS.map(([k, l]) => `<button type="button" data-htab="${k}" aria-pressed="${k === tab}">${l}</button>`).join('')}</div>
+        <ul class="h-list">${list || '<li class="empty">해당하는 기관이 없어요.</li>'}</ul>
+        <p class="note">13F는 운용자산 1억 달러 이상 기관이 분기가 끝나고 45일 안에 내는 보유 보고서라 <b>최대 4개월 전 기준</b>이에요. 공매도·옵션 포지션은 빠져 있고, 일부 기관은 신고가 늦어 이전 분기 값이 보여요(지난 분기 표시).${nextDue ? ` 다음 신고 마감: ${nextDue.getMonth() + 1}/${nextDue.getDate()}경(${nextQ.getMonth() + 1}/${nextQ.getDate()} 기준).` : ''}</p>`,
+    });
   }
 
   // ---------------------------------------------------------------- JOBY: FAA 형식 인증 현황
   function faaUpdateNotice() {
-    const F = state.faa, fl = state.jnews?.filings || [];
+    const F = state.faa, fl = st('JOBY').news?.filings || [];
     if (!F) return '';
     const er = fl.find((f) => /^8-K/.test(f.form) && /2\.02/.test(f.items || ''));
     if (er && Date.parse(er.d) > Date.parse(F.source.date) + 3 * 86400000) {
@@ -2408,40 +2563,89 @@
         ${trend}
         <div class="mini-h er-h">주요 이정표</div>
         <ul class="faa-ms">${ms}</ul>
-        ${faaNews.length ? `<div class="mini-h er-h">최근 FAA·인증 관련 소식</div><ul class="nl faa-nl">${faaNews.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(i.title)}</span><span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
+        ${faaNews.length ? `<div class="mini-h er-h">최근 FAA·인증 관련 소식</div><ul class="nl faa-nl">${faaNews.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
         <p class="note"><a href="${safeUrl(F.source.url)}" target="_blank" rel="noopener">출처: ${esc(F.source.label)}</a> · ${esc(F.caveat || '')}</p>`,
     });
   }
 
-  // ---------------------------------------------------------------- JOBY: 실적 (적자 성장 기업 — 현금·소진 속도가 핵심)
-  function jRunway(E = state.jearn) {
+  // ---------------------------------------------------------------- SPCX: 보호예수(락업) 해제 일정
+  const addTradingDays = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); let k = 0; while (k < n) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) k++; } return d.toISOString().slice(0, 10); };
+  // 실적 발표에 연동된 해제일은 다음 실적 발표 예정일 + 2거래일로 추정
+  function lockupEvents() {
+    const F = state.spcx;
+    if (!F) return [];
+    const N = st('SPCX').earn?.next;
+    return F.lockup.map((e) => {
+      if (e.date) return { ...e, est: false };
+      if (N?.date && N.quarter === e.quarter) return { ...e, date: addTradingDays(N.date, 2), est: true };
+      return { ...e, date: null, est: true };
+    });
+  }
+  const nextLockup = () => { const t = todayIso(); return lockupEvents().filter((e) => !e.skipped && e.date && e.date >= t).sort((a, b) => a.date.localeCompare(b.date))[0] || null; };
+  function renderLockup() {
+    const F = state.spcx;
+    if (!F) { card('lockup', { title: '보호예수 해제 일정', body: '<p class="skeleton">불러오는 중…</p>' }); return; }
+    const ev = lockupEvents(), t = todayIso(), nx = nextLockup();
+    const q = state.quote?.SPCX, ip = F.ipo;
+    const done = ev.filter((e) => !e.skipped && e.date && e.date < t).reduce((s, e) => s + e.shares, 0);
+    const left = ev.filter((e) => !e.skipped && !(e.date && e.date < t)).reduce((s, e) => s + e.shares, 0);
+    const dd = nx ? dday(nx.date) : null;
+    const dLabel = (e) => (e.date ? `${md(isoToTs(e.date))}${e.est ? '(예상)' : ''}` : '실적 발표 후');
+    const list = ev.map((e) => {
+      const isDone = e.date && e.date < t;
+      const k = e.skipped ? 'skip' : isDone ? 'done' : e === nx || (nx && e.date === nx.date && e.shares === nx.shares) ? 'next' : 'todo';
+      return `<li class="${k}"><span class="faa-dot"></span><div><b>${dLabel(e)}</b> ${esc(e.label)} <span class="lk-sh">${e.skipped ? '0주' : '최대 ' + unit(e.shares) + '주'}</span>${e.note ? `<small>${esc(e.note)}</small>` : ''}</div></li>`;
+    }).join('');
+    card('lockup', {
+      title: '보호예수 해제 일정', sub: `${md(isoToTs(ip.date))} 상장 · 공모가 ${price(ip.price)} · 투자설명서 기준`, info: INFO.lockup,
+      body: `${nx ? `<div class="lk-next">
+          <div class="er-next-h"><span>다음 해제</span><span class="tone ${dd <= 7 ? 'neg' : 'neu'}">${dd === 0 ? '오늘' : `D-${dd}`}</span></div>
+          <div class="er-next-d"><b>${krDate(nx.date)}${nx.est ? ' (예상)' : ''}</b><span class="er-dday">${unit(nx.shares)}주</span></div>
+          <div class="er-next-m">${esc(nx.label)}${q?.price ? ` · 현재가로 약 <b>${usd(nx.shares * q.price)}</b>` : ''}${nx.note ? ` · ${esc(nx.note)}` : ''}</div>
+        </div>` : ''}
+        <div class="ns-grid er-grid">
+          <div><span>공모가 대비</span><b class="${cls(q?.price ? q.price / ip.price - 1 : null)}">${q?.price ? pct(q.price / ip.price - 1, 1) : '–'}</b><small>${price(ip.price)} → ${price(q?.price)}</small></div>
+          <div><span>공모 주식 수</span><b>${unit(ip.shares)}주</b><small>${esc(ip.exchange)}</small></div>
+          <div><span>지금까지 해제</span><b>${unit(done)}주</b><small>보호예수 풀린 최대 물량</small></div>
+          <div><span>앞으로 해제</span><b>${unit(left)}주</b><small>머스크 보유분 ${unit(6.4e9)}주 포함</small></div>
+        </div>
+        <ul class="faa-ms lk-ms">${list}</ul>
+        <p class="note">${esc(F.caveat)} 일론 머스크 의결권 약 ${pctPlain(ip.muskVoting)}. <a href="${safeUrl(ip.source.url)}" target="_blank" rel="noopener">출처: ${esc(ip.source.label)}</a></p>`,
+    });
+  }
+
+  // ---------------------------------------------------------------- 실적: 적자 성장 기업(JOBY) — 현금·소진 속도가 핵심
+  function sRunway(E) {
     const Q = (E?.quarters || []).filter((q) => q.liquidity != null);
     const last = Q.at(-1);
     const burns = (E?.quarters || []).filter((q) => q.burn != null).slice(-2).map((q) => -q.burn);
     const burn = burns.length ? burns.reduce((a, b) => a + b, 0) / burns.length : null;
     return last && burn > 0 ? { liq: last.liquidity, end: last.end, burn, quarters: last.liquidity / burn } : null;
   }
-  function renderJEarnings() {
-    const E = state.jearn;
-    if (!E) { card('jearnings', { title: '조비 실적', info: INFO.jearnings, body: `<p class="skeleton">${state.jearnErr ? '실적을 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` }); return; }
-    const Q = E.quarters || [];
-    const last = Q.at(-1), prev = Q.at(-2);
-    const N = E.next;
-    const dd = N?.date ? dday(N.date) : null;
-    const sur = (E.surprises || []).find((s) => s.end === last?.end);
-    const rw = jRunway();
-    const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
-    const sp = (v) => (v == null ? '–' : `<span class="${cls(v)}">${pct(v)}</span>`);
-    const nextHtml = N?.date ? `
+  function nextEarnHtml(N, extra = '') {
+    if (!N?.date) return '';
+    const dd = dday(N.date);
+    return `
       <div class="er-next">
         <div class="er-next-h"><span>다음 실적 발표</span>${N.estimated ? '<span class="tone neu">예상일</span>' : '<span class="tone pos">확정</span>'}</div>
         <div class="er-next-d"><b>${krDate(N.date)}</b><span class="er-dday">${dd > 0 ? `D-${dd}` : dd === 0 ? 'D-DAY' : '발표 완료'}</span></div>
         <div class="er-next-m">${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}예상 EPS <b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b>${N.low != null ? ` (범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}${N.analysts ? `, ${N.analysts}명` : ''})` : ''}${N.lastYearEps != null ? ` · 작년 같은 분기 $${N.lastYearEps.toFixed(2)}` : ''}</div>
-        <p class="note">실적 발표 때 주주서한에 <b>FAA 인증 단계별 진행률</b>도 함께 공개돼요.</p>
-      </div>` : '';
-    card('jearnings', {
+        ${extra}
+      </div>`;
+  }
+  const earnSkeleton = (sym, id) => card(id, { title: `${STOCK_INFO[sym].short} 실적`, info: INFO.searnings, body: `<p class="skeleton">${st(sym).earnErr ? '실적을 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` });
+  const epsCell = (q) => `${q.eps != null ? '$' + q.eps.toFixed(2) : '–'}${q.consensus != null ? `<span class="dim" style="display:block;font-size:10.5px">예상 ${q.consensus.toFixed(2)}</span>` : ''}`;
+
+  function renderBurnEarnings(sym = 'JOBY') {
+    const E = st(sym).earn;
+    if (!E) return earnSkeleton(sym, 'searnings');
+    const Q = E.quarters || [];
+    const last = Q.at(-1), prev = Q.at(-2);
+    const sur = (E.surprises || []).find((s) => s.end === last?.end);
+    const rw = sRunway(E);
+    card('searnings', {
       title: '조비 실적', sub: last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq', info: INFO.jearnings,
-      body: `${nextHtml}
+      body: `${nextEarnHtml(E.next, '<p class="note">실적 발표 때 주주서한에 <b>FAA 인증 단계별 진행률</b>도 함께 공개돼요.</p>')}
         ${last ? `<div class="ns-grid er-grid">
           <div><span>현금·단기투자</span><b>${usdS2(last.liquidity)}</b><small>${rw ? `최근 2분기 평균 소진 ${usd(rw.burn)} → 약 <b>${(rw.quarters / 4).toFixed(1)}년</b> 버틸 수 있음` : '–'}</small></div>
           <div><span>분기 현금 소진</span><b class="down">${usdS2(last.burn)}</b><small>영업현금흐름 + 설비투자 · 전분기 ${usdS2(prev?.burn)}</small></div>
@@ -2451,100 +2655,190 @@
           <div><span>연구개발비</span><b>${usdS2(last.rnd)}</b><small>인증·생산 준비 비용 · 판관비 ${usdS2(last.sga)}</small></div>
         </div>` : ''}
         <div class="mini-h er-h">현금·단기투자 잔고</div>
-        <div class="chart short"><canvas id="cv-jer-cash" role="img" aria-label="분기별 현금 잔고"></canvas></div>
+        <div class="chart short"><canvas id="cv-ser-cash" role="img" aria-label="분기별 현금 잔고"></canvas></div>
         <div class="pair er-pair">
-          <div><div class="mini-h er-h">분기 순손실</div><div class="chart"><canvas id="cv-jer-ni" role="img" aria-label="분기별 순손실"></canvas></div></div>
-          <div><div class="mini-h er-h">분기 매출</div><div class="chart"><canvas id="cv-jer-rev" role="img" aria-label="분기별 매출"></canvas></div></div>
+          <div><div class="mini-h er-h">분기 순손실</div><div class="chart"><canvas id="cv-ser-ni" role="img" aria-label="분기별 순손실"></canvas></div></div>
+          <div><div class="mini-h er-h">분기 매출</div><div class="chart"><canvas id="cv-ser-rev" role="img" aria-label="분기별 매출"></canvas></div></div>
         </div>
         <div class="tbl-wrap"><table>
           <thead><tr><th>분기</th><th>매출</th><th>순손실</th><th>현금 소진</th><th>EPS</th></tr></thead>
-          <tbody>${Q.slice().reverse().map((q, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${qLabel(q.end)}</td><td>${usdS2(q.revenue)}</td><td class="${q.netIncome < 0 ? 'down' : ''}">${usdS2(q.netIncome)}</td><td>${usdS2(q.burn)}</td><td>${q.eps != null ? '$' + q.eps.toFixed(2) : '–'}${q.consensus != null ? `<span class="dim" style="display:block;font-size:10.5px">예상 ${q.consensus.toFixed(2)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>
+          <tbody>${Q.slice().reverse().map((q, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${qLabel(q.end)}</td><td>${usdS2(q.revenue)}</td><td class="${q.netIncome < 0 ? 'down' : ''}">${usdS2(q.netIncome)}</td><td>${usdS2(q.burn)}</td><td>${epsCell(q)}</td></tr>`).join('')}</tbody></table></div>
         <p class="note">조비는 아직 상업 운항 전이라 적자가 정상이에요. <b>현금이 몇 년 버틸 수 있는지</b>와 <b>FAA 인증 속도</b>가 핵심 지표예요. 2025년 3분기부터 매출에 헬기 여객 사업(Blade) 인수분이 포함돼요.</p>`,
     });
     const labels = Q.map((q) => qLabel(q.end));
     const tipQ = (it) => qLabelLong(Q[it.dataIndex].end);
     const CQ = Q.filter((q) => q.liquidity != null);
-    draw('jer-cash', {
+    draw('ser-cash', {
       type: 'bar',
       data: { labels: CQ.map((q) => qLabel(q.end)), datasets: [{ label: '현금·단기투자', data: CQ.map((q) => q.liquidity), backgroundColor: C.teal, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 30 }] },
       options: { interaction, plugins: { ...noLegend, tooltip: tooltip((it) => qLabelLong(CQ[it.dataIndex].end), usd) }, scales: { x: axisX(CQ.map((q) => qLabel(q.end)), (v) => v, 8), y: axisY(usd, { beginAtZero: true }) } },
     });
-    draw('jer-ni', {
+    niRevCharts(Q, labels, tipQ);
+  }
+  function niRevCharts(Q, labels, tipQ) {
+    draw('ser-ni', {
       type: 'bar',
       data: { labels, datasets: [{ label: '순손익', data: Q.map((q) => q.netIncome), backgroundColor: Q.map((q) => (q.netIncome < 0 ? C.orange : C.teal)), borderRadius: 3, borderSkipped: false, maxBarThickness: 18 }] },
       options: { interaction, plugins: { ...noLegend, tooltip: tooltip(tipQ, usdS2) }, scales: { x: axisX(labels, (v) => v, 4), y: axisY((v) => usdS2(v)) } },
     });
-    draw('jer-rev', {
+    draw('ser-rev', {
       type: 'bar',
       data: { labels, datasets: [{ label: '매출', data: Q.map((q) => q.revenue), backgroundColor: C.blue, borderRadius: { topLeft: 3, topRight: 3 }, borderSkipped: 'bottom', maxBarThickness: 18 }] },
       options: { interaction, plugins: { ...noLegend, tooltip: tooltip(tipQ, usdS2) }, scales: { x: axisX(labels, (v) => v, 4), y: axisY(usd, { beginAtZero: true }) } },
     });
   }
 
-  // ---------------------------------------------------------------- JOBY: Home 핵심 지표 · 요약
-  function renderJKpis() {
-    const el = document.getElementById('jkpis');
-    if (!el) return;
-    const F = state.faa, s5 = F?.stages?.find((s) => s.n === 5), s4 = F?.stages?.find((s) => s.n === 4);
-    const S = state.data?.short?.joby, sd = S?.daily || [];
-    const a = sd.at(-1), b = sd.at(-2);
-    const si = S?.interest?.at(-1);
-    const rw = jRunway();
-    const E = state.jearn, last = E?.quarters?.at(-1), N = E?.next;
-    const q = state.quote?.JOBY, ar = state.quote?.ACHR;
-    const tile = (k, v, d, go) => `<button type="button" class="kpi" data-go="${go}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></button>`;
-    el.innerHTML = [
-      tile('FAA 5단계(최종)', s5 ? `${s5.joby}%` : '–', s5 ? `<span class="flat">FAA 측 ${s5.faa}% · ${esc(F.asOf.slice(5).replace('-', '/'))} 기준</span>` : '', 'jearn:c-faa'),
-      tile('FAA 4단계(시험·분석)', s4 ? `${s4.joby}%` : '–', s4 ? `<span class="flat">FAA 측 ${s4.faa}%</span>` : '', 'jearn:c-faa'),
-      tile('현금·단기투자', last?.liquidity != null ? usd(last.liquidity) : '–', rw ? `<span class="flat">약 ${(rw.quarters / 4).toFixed(1)}년치</span>` : '', 'jearn:c-jearnings'),
-      tile('분기 현금 소진', last?.burn != null ? usd(-last.burn) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'jearn:c-jearnings'),
-      tile('조비 공매도 비율', a ? pctPlain(a.ratio) : '–', a && b ? `<span class="${cls(a.ratio - b.ratio)}">${arrow(a.ratio - b.ratio)} ${pp(a.ratio - b.ratio, 1)}</span>` : '', 'jprice:c-jshort'),
-      tile('공매도 잔고', si ? unit(si.qty) + '주' : '–', si ? `<span class="flat">커버 ${si.dtc.toFixed(1)}일 · ${si.chg > 0 ? '+' : ''}${si.chg.toFixed(1)}%</span>` : '', 'jprice:c-jshort'),
-      tile('다음 실적 발표', N?.date ? `D-${Math.max(0, dday(N.date))}` : '–', N?.date ? `<span class="flat">${md(isoToTs(N.date))}${N.estimated ? ' (예상)' : ''}</span>` : '', 'jearn:c-jearnings'),
-      tile('경쟁사 Archer', ar?.price != null ? price(ar.price) : '–', ar ? `<span class="${cls(ar.pct)}">${arrow(ar.pct)} ${pct(ar.pct, 1)}</span> <span class="flat">vs JOBY ${q ? pct(q.pct, 1) : '–'}</span>` : '', 'jprice:c-jpricechart'),
-    ].join('');
+  // ---------------------------------------------------------------- 실적: 성장 기업(SPCX·TEM) — 매출 성장·이익률 중심
+  const yoyQ = (Q, q) => { if (!q) return null; const ya = Q.find((x) => x.end === `${+q.end.slice(0, 4) - 1}${q.end.slice(4)}`); return q.revenue != null && ya?.revenue ? q.revenue / ya.revenue - 1 : null; };
+  const gmQ = (q) => (!q?.revenue ? null : q.grossProfit != null ? q.grossProfit / q.revenue : q.cost != null ? (q.revenue - q.cost) / q.revenue : null);
+  function renderGrowthEarnings(sym) {
+    const S = STOCK_INFO[sym], E = st(sym).earn;
+    if (!E) return earnSkeleton(sym, 'searnings');
+    const Q = E.quarters || [];
+    const last = Q.at(-1), prev = Q.at(-2);
+    const sur = (E.surprises || []).find((s) => s.end === last?.end);
+    const yoy = yoyQ(Q, last), qoq = last?.revenue != null && prev?.revenue ? last.revenue / prev.revenue - 1 : null;
+    const g = gmQ(last), gPrev = gmQ(prev);
+    const opm = last?.opIncome != null && last.revenue ? last.opIncome / last.revenue : null;
+    const turn = prev?.netIncome != null && last?.netIncome != null ? (prev.netIncome < 0 && last.netIncome > 0 ? '<span class="up">흑자 전환</span>' : prev.netIncome > 0 && last.netIncome < 0 ? '<span class="down">적자 전환</span>' : '') : '';
+    const Y = E.ytd;
+    const ytdLbl = Y ? `${+Y.start.slice(5, 7)}~${+Y.end.slice(5, 7)}월` : '';
+    const cashSmall = sym === 'SPCX' && Y ? `올해 ${ytdLbl} 영업현금흐름 ${usdS2(Y.ocf)} · 설비투자 ${usd(Y.capex)}` : last?.burn != null ? `분기 잉여현금흐름 ${usdS2(last.burn)}` : '';
+    const lk = sym === 'SPCX' ? lockupEvents().find((e) => e.quarter && e.quarter === E.next?.quarter) : null;
+    card('searnings', {
+      title: `${S.short} 실적`, sub: last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq', info: INFO.searnings,
+      body: `${nextEarnHtml(E.next, lk ? `<p class="note">⚠️ 실적 발표 2거래일 뒤 <b>보호예수 최대 ${unit(lk.shares)}주</b>가 풀려요(${esc(lk.label)}).</p>` : '')}
+        ${last ? `<div class="ns-grid er-grid">
+          <div><span>매출</span><b>${usdS2(last.revenue)}</b><small>전년 같은 분기 대비 ${sp(yoy)} · 전분기 ${sp(qoq)}</small></div>
+          <div><span>매출총이익률</span><b>${g != null ? pctPlain(g) : '–'}</b><small>${g != null && gPrev != null ? `전분기 ${pctPlain(gPrev)} → <span class="${cls(g - gPrev)}">${pp(g - gPrev, 1)}</span>` : '매출 − 매출원가'}</small></div>
+          <div><span>영업이익</span><b class="${cls(last.opIncome)}">${usdS2(last.opIncome)}</b><small>영업이익률 ${opm != null ? pctPlain(opm) : '–'}</small></div>
+          <div><span>순이익</span><b class="${cls(last.netIncome)}">${usdS2(last.netIncome)}</b><small>${turn || `전분기 ${usdS2(prev?.netIncome)}`}</small></div>
+          <div><span>EPS(주당순이익)</span><b>${last.eps != null ? '$' + last.eps.toFixed(2) : '–'}</b><small>${sur ? `예상 $${sur.consensus.toFixed(2)} · ${sur.eps >= sur.consensus ? '예상보다 양호' : '예상보다 부진'}` : '예상치 없음'}</small></div>
+          <div><span>현금·단기투자</span><b>${usdS2(last.liquidity ?? last.cash)}</b><small>${cashSmall}</small></div>
+        </div>` : ''}
+        <div class="pair er-pair">
+          <div><div class="mini-h er-h">분기 매출</div><div class="chart"><canvas id="cv-ser-rev" role="img" aria-label="분기별 매출"></canvas></div></div>
+          <div><div class="mini-h er-h">분기 순이익</div><div class="chart"><canvas id="cv-ser-ni" role="img" aria-label="분기별 순이익"></canvas></div></div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>분기</th><th>매출</th><th>전년 대비</th><th>순이익</th><th>EPS</th></tr></thead>
+          <tbody>${Q.slice().reverse().map((q, i) => { const y = yoyQ(Q, q); return `<tr${i === 0 ? ' class="today"' : ''}><td>${qLabel(q.end)}</td><td class="strong">${usdS2(q.revenue)}</td><td class="${cls(y)}">${y == null ? '–' : pct(y)}</td><td class="${cls(q.netIncome)}">${usdS2(q.netIncome)}</td><td>${epsCell(q)}</td></tr>`; }).join('')}</tbody></table></div>
+        <p class="note">${S.earnNote}</p>`,
+    });
+    const labels = Q.map((q) => qLabel(q.end));
+    niRevCharts(Q, labels, (it) => { const q = Q[it.dataIndex], y = yoyQ(Q, q); return qLabelLong(q.end) + (y != null ? ` · 전년 대비 ${pct(y)}` : ''); });
   }
 
-  function renderJSummary() {
-    if (!document.getElementById('c-jsummary')) return;
-    const items = [];
+  // ---------------------------------------------------------------- 종목 Home: 핵심 지표 · 요약
+  const tile = (k, v, d, go) => `<button type="button" class="kpi" data-go="${go}"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d}</div></button>`;
+  function commonTiles(sym) {
+    const S = STOCK_INFO[sym], sh = shortOf(sym), sd = sh?.daily || [];
+    const a = sd.at(-1), b = sd.at(-2);
+    const N = st(sym).earn?.next, H = state.holders[sym];
+    const q = state.quote?.[sym], pq = state.quote?.[S.peer[0]];
+    return {
+      short: tile(`${S.short} 공매도 비율`, a ? pctPlain(a.ratio) : '–', a && b ? `<span class="${cls(a.ratio - b.ratio)}">${arrow(a.ratio - b.ratio)} ${pp(a.ratio - b.ratio, 1)}</span> <span class="flat">평균 ${pctPlain(sh.avgRatio)}</span>` : '', 'sprice:c-sshort'),
+      inst: tile('기관 보유 비율', H ? pctPlain(H.ownershipPct) : '–', H ? `<span class="flat">늘림 ${nf(0).format(H.increased?.holders || 0)} · 줄임 ${nf(0).format(H.decreased?.holders || 0)}곳</span>` : '', 'sprice:c-sholders'),
+      next: tile('다음 실적 발표', N?.date ? `D-${Math.max(0, dday(N.date))}` : '–', N?.date ? `<span class="flat">${md(isoToTs(N.date))}${N.estimated ? ' (예상)' : ''}</span>` : '', 'searn:c-searnings'),
+      peer: tile(`경쟁사 ${S.peer[1]}`, pq?.price != null ? price(pq.price) : '–', pq ? `<span class="${cls(pq.pct)}">${arrow(pq.pct)} ${pct(pq.pct, 1)}</span> <span class="flat">vs ${sym} ${q ? pct(q.pct, 1) : '–'}</span>` : '', 'sprice:c-spricechart'),
+    };
+  }
+  function renderSKpis(sym = state.stock) {
+    const el = document.getElementById('skpis');
+    if (!el) return;
+    const T = commonTiles(sym), E = st(sym).earn, Q = E?.quarters || [], last = Q.at(-1);
+    let own = [];
+    if (sym === 'JOBY') {
+      const F = state.faa, s5 = F?.stages?.find((s) => s.n === 5), s4 = F?.stages?.find((s) => s.n === 4);
+      const rw = sRunway(E);
+      own = [
+        tile('FAA 5단계(최종)', s5 ? `${s5.joby}%` : '–', s5 ? `<span class="flat">FAA 측 ${s5.faa}% · ${esc(F.asOf.slice(5).replace('-', '/'))} 기준</span>` : '', 'searn:c-faa'),
+        tile('FAA 4단계(시험·분석)', s4 ? `${s4.joby}%` : '–', s4 ? `<span class="flat">FAA 측 ${s4.faa}%</span>` : '', 'searn:c-faa'),
+        tile('현금·단기투자', last?.liquidity != null ? usd(last.liquidity) : '–', rw ? `<span class="flat">약 ${(rw.quarters / 4).toFixed(1)}년치</span>` : '', 'searn:c-searnings'),
+        tile('분기 현금 소진', last?.burn != null ? usd(-last.burn) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'searn:c-searnings'),
+      ];
+    } else if (sym === 'SPCX') {
+      const q = state.quote?.SPCX, ip = ipoPx(), nx = nextLockup(), yoy = yoyQ(Q, last);
+      own = [
+        tile('공모가 대비', q?.price && ip ? `<span class="${cls(q.price / ip - 1)}">${pct(q.price / ip - 1, 1)}</span>` : '–', ip ? `<span class="flat">공모가 ${price(ip)} · 6/12 상장</span>` : '', 'searn:c-lockup'),
+        tile('다음 보호예수 해제', nx ? (dday(nx.date) === 0 ? '오늘' : `D-${dday(nx.date)}`) : '–', nx ? `<span class="flat">${md(isoToTs(nx.date))}${nx.est ? '(예상)' : ''} · ${unit(nx.shares)}주</span>` : '', 'searn:c-lockup'),
+        tile('분기 매출', last?.revenue != null ? usd(last.revenue) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>${yoy != null ? ` <span class="${cls(yoy)}">${pct(yoy, 0)}</span>` : ''}`, 'searn:c-searnings'),
+        tile('분기 순이익', last?.netIncome != null ? `<span class="${cls(last.netIncome)}">${usdS2(last.netIncome)}</span>` : '–', `<span class="flat">영업이익 ${usdS2(last?.opIncome)}</span>`, 'searn:c-searnings'),
+      ];
+    } else {
+      const yoy = yoyQ(Q, last), g = gmQ(last);
+      own = [
+        tile('매출 성장률', yoy != null ? `<span class="${cls(yoy)}">${pct(yoy, 0)}</span>` : '–', `<span class="flat">전년 같은 분기 대비 · ${last ? usd(last.revenue) : ''}</span>`, 'searn:c-searnings'),
+        tile('매출총이익률', g != null ? pctPlain(g) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'searn:c-searnings'),
+        tile('분기 순이익', last?.netIncome != null ? `<span class="${cls(last.netIncome)}">${usdS2(last.netIncome)}</span>` : '–', `<span class="flat">${last ? qLabel(last.end) : ''}${Q.at(-2)?.netIncome < 0 && last?.netIncome > 0 ? ' · 흑자 전환' : ''}</span>`, 'searn:c-searnings'),
+        tile('현금·단기투자', last ? usd(last.liquidity ?? last.cash) : '–', `<span class="flat">분기 현금흐름 ${usdS2(last?.burn)}</span>`, 'searn:c-searnings'),
+      ];
+    }
+    el.innerHTML = [...own, T.inst, T.short, T.next, T.peer].slice(0, 8).join('');
+  }
+
+  // 규칙 기반 자동 요약 (종목 공통 + 종목별 항목)
+  function renderSSummary(sym = state.stock) {
+    if (!document.getElementById('c-ssummary') || !isOther(sym)) return;
+    const S = STOCK_INFO[sym], items = [];
     const add = (tone, go, html, tag, weight = 1) => items.push({ tone, go, html, tag, weight });
-    const F = state.faa, s5 = F?.stages?.find((s) => s.n === 5);
-    if (s5) {
-      const h = F.history || [], dj = h.length > 1 ? h.at(-1).s5[0] - h.at(-2).s5[0] : null;
-      add(dj > 0 ? 'pos' : 'neu', 'jearn:c-faa', `FAA 인증 <b>5단계(최종)</b> Joby ${s5.joby}% · FAA ${s5.faa}%${dj != null ? ` · 직전 서한 대비 +${dj}%p` : ''} · 다음: ${esc(F.next || '')}`, dj > 0 ? 'FAA 인증 진전' : null, 3);
+    const E = st(sym).earn, Q = E?.quarters || [], last = Q.at(-1);
+    if (sym === 'JOBY') {
+      const F = state.faa, s5 = F?.stages?.find((s) => s.n === 5);
+      if (s5) {
+        const h = F.history || [], dj = h.length > 1 ? h.at(-1).s5[0] - h.at(-2).s5[0] : null;
+        add(dj > 0 ? 'pos' : 'neu', 'searn:c-faa', `FAA 인증 <b>5단계(최종)</b> Joby ${s5.joby}% · FAA ${s5.faa}%${dj != null ? ` · 직전 서한 대비 +${dj}%p` : ''} · 다음: ${esc(F.next || '')}`, dj > 0 ? 'FAA 인증 진전' : null, 3);
+      }
+      const rw = sRunway(E);
+      if (rw) {
+        const yrs = rw.quarters / 4, t = yrs >= 2 ? 'pos' : yrs < 1 ? 'neg' : 'neu';
+        add(t, 'searn:c-searnings', `현금·단기투자 <b>${usd(rw.liq)}</b> · 최근 2분기 평균 소진 ${usd(rw.burn)} → 약 ${yrs.toFixed(1)}년치`, t === 'pos' ? '현금 여유' : t === 'neg' ? '현금 부족 우려' : null, 2);
+      }
+    } else if (sym === 'SPCX') {
+      const nx = nextLockup();
+      if (nx) {
+        const d = dday(nx.date), t = d <= 14 ? 'neg' : 'neu';
+        add(t, 'searn:c-lockup', `보호예수 해제 <b>${krDate(nx.date)}${nx.est ? '(예상)' : ''}</b> · D-${d} · 최대 ${unit(nx.shares)}주(${esc(nx.label)})`, d <= 14 ? '보호예수 해제 임박' : null, 3);
+      }
+      const q = state.quote?.SPCX, ip = ipoPx();
+      if (q?.price && ip) { const r = q.price / ip - 1; add(r >= 0 ? 'pos' : 'neg', 'searn:c-lockup', `공모가 ${price(ip)} 대비 <b class="${cls(r)}">${pct(r, 1)}</b>`, r < 0 ? '공모가 하회' : null, 1); }
     }
-    const rw = jRunway();
-    if (rw) {
-      const yrs = rw.quarters / 4;
-      const t = yrs >= 2 ? 'pos' : yrs < 1 ? 'neg' : 'neu';
-      add(t, 'jearn:c-jearnings', `현금·단기투자 <b>${usd(rw.liq)}</b> · 최근 2분기 평균 소진 ${usd(rw.burn)} → 약 ${yrs.toFixed(1)}년치`, t === 'pos' ? '현금 여유' : t === 'neg' ? '현금 부족 우려' : null, 2);
+    if (sym !== 'JOBY' && last) {
+      const yoy = yoyQ(Q, last), prev = Q.at(-2);
+      const turn = prev?.netIncome < 0 && last.netIncome > 0;
+      const t = turn || (yoy != null && yoy > 0.2) ? 'pos' : yoy != null && yoy < 0 ? 'neg' : 'neu';
+      add(t, 'searn:c-searnings', `${qLabelLong(last.end)} 매출 <b>${usd(last.revenue)}</b>${yoy != null ? `(전년 대비 ${pct(yoy, 0)})` : ''} · 순이익 ${usdS2(last.netIncome)}${turn ? ' · <b>흑자 전환</b>' : ''}`, turn ? '흑자 전환' : yoy > 0.2 ? '고성장' : yoy < 0 ? '매출 감소' : null, 2);
     }
-    const S = state.data?.short?.joby;
-    if (S?.daily?.length) {
-      const last = S.daily.at(-1), diff = last.ratio - S.avgRatio;
+    const sh = shortOf(sym);
+    if (sh?.daily?.length) {
+      const l = sh.daily.at(-1), diff = l.ratio - sh.avgRatio;
       const t = diff > 0.05 ? 'neg' : diff < -0.05 ? 'pos' : 'neu';
-      const si = S.interest?.at(-1);
-      add(t, 'jprice:c-jshort', `공매도 비율 <b>${pctPlain(last.ratio)}</b>(${md(isoToTs(last.d))}) · 1개월 평균 ${pctPlain(S.avgRatio)}보다 ${Math.abs(diff * 100).toFixed(1)}%p ${diff >= 0 ? '높음' : '낮음'}${si ? ` · 잔고 ${si.chg > 0 ? '+' : ''}${si.chg.toFixed(1)}%` : ''}`, t === 'neg' ? '공매도 비중↑' : t === 'pos' ? '공매도 비중↓' : null, 2);
+      const si = sh.interest?.at(-1);
+      add(t, 'sprice:c-sshort', `공매도 비율 <b>${pctPlain(l.ratio)}</b>(${md(isoToTs(l.d))}) · 1개월 평균 ${pctPlain(sh.avgRatio)}보다 ${Math.abs(diff * 100).toFixed(1)}%p ${diff >= 0 ? '높음' : '낮음'}${si ? ` · 잔고 ${si.chg > 0 ? '+' : ''}${si.chg.toFixed(1)}%` : ''}`, t === 'neg' ? '공매도 비중↑' : t === 'pos' ? '공매도 비중↓' : null, 2);
     }
-    const N = state.jnews;
+    const H = state.holders[sym];
+    if (H?.increased && H?.decreased) {
+      const r = (H.increased.holders || 0) / Math.max(1, H.decreased.holders || 0);
+      const t = r >= 1.3 ? 'pos' : r <= 0.77 ? 'neg' : 'neu';
+      add(t, 'sprice:c-sholders', `기관 보유 <b>${pctPlain(H.ownershipPct)}</b> · 직전 13F 대비 늘린 곳 ${nf(0).format(H.increased.holders)} · 줄인 곳 ${nf(0).format(H.decreased.holders)}`, t === 'pos' ? '기관 매수 우위' : t === 'neg' ? '기관 매도 우위' : null, 1);
+    }
+    const N = st(sym).news;
     if (N) {
       const off = N.official?.[0];
       const k8 = N.filings?.find((f) => /^8-K/.test(f.form));
       const fresh8k = k8 && Date.now() - Date.parse(k8.d) < 3 * 86400000;
-      if (off) add('neu', 'jnews:c-jnews', `${fresh8k ? `<b>8-K 공시</b>(${md(isoToTs(k8.d))}) · ` : ''}최신 발표: ${esc(off.title.length > 48 ? off.title.slice(0, 47) + '…' : off.title)}`, fresh8k ? '신규 8-K 공시' : null, 1);
+      if (off || fresh8k) add('neu', 'snews:c-snews', `${fresh8k ? `<b>8-K 공시</b>(${md(isoToTs(k8.d))})${off ? ' · ' : ''}` : ''}${off ? `최신 발표: ${esc(off.title.length > 48 ? off.title.slice(0, 47) + '…' : off.title)}` : ''}`, fresh8k ? '신규 8-K 공시' : null, 1);
     }
-    const E = state.jearn?.next;
-    if (E?.date) add('neu', 'jearn:c-jearnings', `다음 실적 발표 <b>${krDate(E.date)}</b>${E.estimated ? '(예상)' : ''} · D-${Math.max(0, dday(E.date))} · 예상 EPS ${E.consensus != null ? '$' + E.consensus.toFixed(2) : '–'}`, null, 0);
-    const q = state.quote?.JOBY;
-    const chevron = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
-    const pxLine = `<li><button type="button" data-go="jprice:c-jpricechart"><span class="tone px"><span class="live-dot"></span>주가</span>
-      <span class="txt">JOBY <b>${price(q?.price)}</b> · 오늘 ${q ? `<span class="${cls(q.pct)}">${pct(q.pct, 1)}</span>` : '–'} · ${esc(mktStatus(q?.status))}</span>${chevron}</button></li>`;
+    const NE = E?.next;
+    if (NE?.date) add('neu', 'searn:c-searnings', `다음 실적 발표 <b>${krDate(NE.date)}</b>${NE.estimated ? '(예상)' : ''} · D-${Math.max(0, dday(NE.date))} · 예상 EPS ${NE.consensus != null ? '$' + NE.consensus.toFixed(2) : '–'}`, null, 0);
+    const q = state.quote?.[sym];
+    const pxLine = `<li><button type="button" data-go="sprice:c-spricechart"><span class="tone px"><span class="live-dot"></span>주가</span>
+      <span class="txt">${sym} <b>${price(q?.price)}</b> · 오늘 ${q ? `<span class="${cls(q.pct)}">${pct(q.pct, 1)}</span>` : '–'} · ${esc(mktStatus(q?.status))}</span>${chevron}</button></li>`;
     const tags = items.filter((i) => i.tag).sort((a, b) => b.weight - a.weight).slice(0, 3);
     const nPos = items.filter((i) => i.tone === 'pos').length, nNeg = items.filter((i) => i.tone === 'neg').length;
     const toneName = { pos: '긍정', neg: '주의', neu: '중립' };
-    card('jsummary', {
-      title: '현재 상황 요약', sub: '조비 에비에이션 · 규칙 기반 자동 요약', info: INFO.summary,
+    card('ssummary', {
+      title: '현재 상황 요약', sub: `${S.name} · 규칙 기반 자동 요약`, info: INFO.summary,
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
         <div class="sum-count"><span class="tone pos">긍정 ${nPos}</span><span class="tone neg">주의 ${nNeg}</span><span class="tone neu">중립 ${items.length - nPos - nNeg}</span></div>
@@ -2552,11 +2846,22 @@
     });
   }
 
-  function renderJoby() {
-    if (state.stock !== 'JOBY') return;
-    const jobs = [renderStockSwitch, renderJPriceCard, renderJKpis, renderJSummary, renderJPriceChart,
-      () => renderShort(state.data?.short?.joby, 'jshort', '조비'), renderFaa, renderJEarnings,
-      () => renderNewsSummary('JOBY'), () => renderNews('JOBY'), updateNewsBadge];
+  function renderSEarnings(sym = state.stock) {
+    if (!isOther(sym)) return;
+    if (sym === 'JOBY') renderFaa();
+    if (sym === 'SPCX') renderLockup();
+    STOCK_INFO[sym].mode === 'burn' ? renderBurnEarnings(sym) : renderGrowthEarnings(sym);
+  }
+  function renderStock() {
+    renderStockSwitch();
+    const sym = state.stock;
+    if (!isOther(sym)) { try { renderHolders('CRCL', 'holders'); } catch (e) { console.error(e); } return; }
+    document.getElementById('c-faa').hidden = sym !== 'JOBY';
+    document.getElementById('c-lockup').hidden = sym !== 'SPCX';
+    const S = STOCK_INFO[sym];
+    const jobs = [() => renderSPriceCard(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
+      () => renderShort(shortOf(sym), 'sshort', S.short), () => renderHolders(sym, 'sholders'), () => renderSEarnings(sym),
+      () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge];
     for (const j of jobs) { try { j(); } catch (e) { console.error(e); } }
   }
 
@@ -2581,7 +2886,7 @@
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStockSwitch, renderJoby];
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -2644,8 +2949,8 @@
         if (kind === 'manual') loadPxSnapshot().then(schedulePaint).catch(() => {});
       }
       state.syncKind = kind;
-      const jobyParts = state.stock === 'JOBY' && kind !== 'light' ? ['faa', 'jchart', 'jearn', 'jnews', 'jfilings'] : [];
-      const r = await syncNow([...SYNC_SETS[kind], ...jobyParts]);
+      const stockP = kind !== 'light' ? stockParts(state.stock) : [];
+      const r = await syncNow([...SYNC_SETS[kind], ...stockP]);
       renderAll();
       if (kind === 'manual') {
         const now = new Date(), t = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
@@ -2668,26 +2973,35 @@
   // ---------------------------------------------------------------- 화면 전환 (하단 탭)
   const VIEW_TITLES = {
     home: "Yong's Portfolio", fire: 'Fire · 퇴사까지',
-    crcl: '서클 주가 · 공매도', earn: '서클 실적', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: '서클 뉴스 · 공시',
-    jprice: '조비 주가 · 공매도', jearn: '조비 실적 · FAA 인증', jnews: '조비 뉴스 · 공시',
+    crcl: '서클 주가 · 수급', earn: '서클 실적', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: '서클 뉴스 · 공시',
+    sprice: '주가 · 수급', searn: '실적', snews: '뉴스 · 공시',
+  };
+  const viewTitle = (v) => {
+    const S = STOCK_INFO[state.stock];
+    if (v === 'sprice') return `${S.short} 주가 · 수급`;
+    if (v === 'searn') return S.earnTitle;
+    if (v === 'snews') return `${S.short} 뉴스 · 공시`;
+    return VIEW_TITLES[v];
   };
   const scrollMem = {};
   function showView(v, target) {
     if (!VIEW_TITLES[v] || !viewAllowed(v)) v = 'home';
     if (state.view !== v) scrollMem[state.view] = window.scrollY;
+    if (v === 'fire' && state.view !== 'fire') state.prevView = state.view; // 🔥를 다시 누르면 돌아갈 화면
     state.view = v;
     document.querySelectorAll('.view').forEach((el) => { el.hidden = el.dataset.view !== v; });
     document.querySelectorAll('[data-tab]').forEach((b) => (b.dataset.tab === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
-    document.getElementById('view-title').textContent = VIEW_TITLES[v];
+    document.getElementById('view-title').textContent = viewTitle(v);
     try { history.replaceState(null, '', '#' + v); } catch {}
     savePref('view', v);
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
-    fireLoop(v === 'fire' || state.stock === 'JOBY');
+    fireLoop(v === 'fire' || isOther());
     if (v === 'fire') { renderFire(); if (!state.quote) loadQuote().then(renderFire).catch(() => renderFire()); }
     if (v === 'earn') renderEarnings();
-    if (v === 'jearn') { renderFaa(); renderJEarnings(); }
-    if (v === 'jprice') { renderJPriceChart(); renderShort(state.data?.short?.joby, 'jshort', '조비'); }
-    if (v === 'news' || v === 'jnews') { markNewsSeen(); renderNewsSummary(); renderNews(); } else updateNewsBadge();
+    if (v === 'searn') renderSEarnings();
+    if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); }
+    if (v === 'crcl') renderHolders('CRCL', 'holders');
+    if (v === 'news' || v === 'snews') { markNewsSeen(); renderNewsSummary(); renderNews(); } else updateNewsBadge();
     updateFireChip();
     if (target) {
       const el = document.getElementById(target);
@@ -2733,7 +3047,13 @@
       return;
     }
     const go = ev.target.closest('[data-go]');
-    if (go) { const [v, target] = go.dataset.go.split(':'); showView(v, target); return; }
+    if (go) {
+      // 🔥 Fire 버튼: Fire 화면에서 다시 누르면 직전 화면으로
+      if (go.id === 'fire-chip' && state.view === 'fire') { showView(state.prevView && viewAllowed(state.prevView) ? state.prevView : 'home'); return; }
+      const [v, target] = go.dataset.go.split(':');
+      showView(v, target);
+      return;
+    }
     const tab = ev.target.closest('[data-tab]');
     if (tab) {
       if (tab.dataset.tab === state.view) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2742,8 +3062,10 @@
     }
     const stk = ev.target.closest('[data-stock]');
     if (stk) { setStock(stk.dataset.stock); return; }
-    const jr = ev.target.closest('[data-jrange]');
-    if (jr) { state.jrange = jr.dataset.jrange; savePref('jrange', state.jrange); renderJPriceChart(); return; }
+    const sr = ev.target.closest('[data-srange]');
+    if (sr) { state.srange = sr.dataset.srange; savePref('jrange', state.srange); renderSPriceChart(); return; }
+    const ht = ev.target.closest('[data-htab]');
+    if (ht) { state.holdTab = ht.dataset.htab; savePref('holdTab', state.holdTab); renderHolders(state.stock); return; }
     if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: 'JOBY' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
     const rmBtn = ev.target.closest('[data-rm]');
     if (rmBtn) { fireRows = readFireRows(); fireRows.splice(+rmBtn.dataset.rm, 1); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
@@ -2767,15 +3089,16 @@
   });
 
   if (!RANGES[state.range]) state.range = '1d';
-  if (!JRANGES[state.jrange]) state.jrange = '1d';
+  if (!SRANGES[state.srange]) state.srange = '1d';
   updateBasisBtn();
   renderFireSet();
-  document.getElementById('home-crcl').hidden = state.stock !== 'CRCL';
-  document.getElementById('home-joby').hidden = state.stock !== 'JOBY';
+  document.getElementById('home-crcl').hidden = isOther();
+  document.getElementById('home-stock').hidden = !isOther();
   renderTabbar();
-  renderStockSwitch();
+  renderStockSwitch(true);
+  document.getElementById('stock-switch')?.addEventListener('scroll', updateSwitchFade, { passive: true });
   updateFireChip();
-  { const v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); showView(viewAllowed(v0) ? v0 : 'home'); }
+  { let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0; showView(viewAllowed(v0) ? v0 : 'home'); }
   initPrice();
   refresh('auto');
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);

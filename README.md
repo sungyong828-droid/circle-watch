@@ -1,11 +1,14 @@
 # Yong's Portfolio
 
-**공유용 주소: https://circle-watch.pages.dev** (Cloudflare Pages)
+**공유용 주소: https://yongs-portfolio.pages.dev** (Cloudflare Pages · 예전 주소 circle-watch.pages.dev는 여기로 자동 이동)
 
 휴대폰에서 보는 개인용 주식 대시보드. 홈 상단에서 종목을 고르면 화면과 하단 탭이 바뀝니다.
 
-- **CRCL (서클 인터넷 그룹)**: 주가, USDC·EURC·USYC·cirBTC, Arc 체인, 실적, 뉴스·공시
-- **JOBY (조비 에비에이션)**: 주가·공매도, FAA 형식 인증 현황 + 실적(현금 버틸 기간), 뉴스·공시(FAA 인증·UAM 업계)
+- **CRCL (서클 인터넷 그룹)**: 주가·공매도·기관 보유, USDC·EURC·USYC·cirBTC, Arc 체인, 실적, 뉴스·공시
+- **JOBY (조비 에비에이션)**: 주가·공매도·기관 보유, FAA 형식 인증 현황 + 실적(현금 버틸 기간), 뉴스·공시(FAA 인증·UAM 업계)
+- **SPCX (스페이스X)**: 주가·공매도·기관 보유, 보호예수(락업) 해제 일정 + 실적, 뉴스·공시(우주 업계)
+- **TEM (템퍼스 AI)**: 주가·공매도·기관 보유, 실적(성장률·이익률), 뉴스·공시(헬스케어 AI)
+- 뉴스마다 **AI 한 줄 요약**(Cloudflare Workers AI가 기사 앞부분을 읽고 한국어로 요약)
 - **Fire** (상단 🔥 칩): 보유 종목 합계로 목표 금액까지 진행률. 보유 정보는 그 기기의 브라우저에만 저장되고 저장소·서버에는 올라가지 않습니다.
 
 ## 구조
@@ -73,17 +76,32 @@ python -m http.server 8765
 
 ## 공유용 주소 (Cloudflare Pages)
 
-`https://circle-watch.pages.dev` 는 개인 계정 이름이 드러나지 않는 공유용 주소입니다.
+`https://yongs-portfolio.pages.dev` 는 개인 계정 이름이 드러나지 않는 공유용 주소입니다. AI·KV 연결은 저장소 루트의 `wrangler.toml`에 있습니다.
 
 - 화면 파일(`index.html`, `assets/`)과 중계 기능(`functions/api/`)이 함께 올라갑니다.
   - `/api/data`: 서버 수집기 결과(GitHub Pages의 `data/latest.json`)를 대신 받아 줌
-  - `/api/news`, `/api/circle`: 뉴스·Circle 유통량 중계 (`worker/news-proxy.js` 코드를 같이 씀)
+  - `/api/news`, `/api/circle`, `/api/earnings`, `/api/quote`, `/api/chart`, `/api/holders`: 뉴스·유통량·실적·시세·차트·기관 보유 중계 (`worker/news-proxy.js` 코드를 같이 씀)
 - 서버 수집 데이터는 `/api/data`가 자동으로 받아 오므로 따로 배포할 필요가 없습니다.
 - **화면 코드를 고쳤을 때만** 다시 올립니다:
   ```bash
-  rm -rf dist && mkdir dist && cp -r index.html assets _headers dist/ && mkdir -p dist/data && cp data/faa-joby.json dist/data/
-  npx wrangler pages deploy dist --project-name circle-watch --branch main
+  rm -rf dist && mkdir -p dist/data && cp -r index.html assets _headers dist/ && cp data/faa-joby.json data/spcx-facts.json dist/data/
+  npx wrangler pages deploy --project-name yongs-portfolio --branch main
   ```
+
+## 뉴스 한 줄 요약 (Workers AI)
+
+- Worker(`worker/news-proxy.js`)가 기사 원문 앞부분을 받아 `@cf/qwen/qwen3.8-27b`로 한국어 한 문장 요약을 만들고, KV(`PORTFOLIO_SUMS`)에 종목별로 35일 보관한다.
+- 5분마다 cron이 종목 하나씩 돌아가며 새 기사 최대 8개를 요약한다. 새로고침으로 뉴스를 새로 받을 때도 빠진 요약을 4개씩 채운다.
+- 원문을 못 받으면(유료 기사·차단) 제목만으로 풀어 쓴다. 한자·가나가 섞이는 등 품질이 낮으면 버리고 다음에 다시 만든다.
+- 무료 한도(하루 10,000 뉴런) 안에서 동작한다.
+
+## 기관 보유(13F)
+
+`/holders?s=SYM` — Nasdaq의 13F 집계(상위 보유 40곳, 많이 산/판 곳 8곳, 늘림·줄임·신규·전량 매도 수). 6시간 캐시.
+
+## SPCX 보호예수 일정 갱신
+
+`data/spcx-facts.json`은 스페이스X 투자설명서(424B4)의 보호예수 해제 표를 옮긴 것이다. 실적 발표에 연동된 해제일은 화면에서 "다음 실적 발표 예정일 + 2거래일"로 계산한다. 조기 해제(인수단 면제) 같은 변경이 공시되면 이 파일을 고친다.
 
 ## JOBY FAA 인증 수치 갱신
 

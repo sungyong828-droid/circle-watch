@@ -3,7 +3,7 @@
 // 2) 한 IP가 짧은 시간에 몰아서 호출하면 잠시 막는다(무료 한도 소진 방지 — 실행 인스턴스별 간이 제한).
 // 3) 응답에 보안 헤더를 붙인다.
 const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 40; // 정상 사용(5분마다 3~4회 + 새로고침)보다 넉넉한 값
+const MAX_PER_WINDOW = 90; // 정상 사용(종목 전환·새로고침 포함)보다 넉넉한 값
 const hits = new Map();
 
 function tooMany(ip) {
