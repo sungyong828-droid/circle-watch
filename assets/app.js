@@ -414,6 +414,67 @@
   const interaction = { mode: 'index', intersect: false };
   const noLegend = { legend: { display: false } };
 
+  // ---------------------------------------------------------------- 캔들 차트
+  // Chart.js 범위 막대 두 겹으로 그린다: 가는 막대 = 심지(저가~고가), 굵은 막대 = 몸통(시가~종가). 상승 빨강 · 하락 파랑
+  // pts: [[시각(ms), 종가, 시가, 고가, 저가], …] — 시가·고가·저가가 없으면 종가로 대신
+  const ohlc = (p) => { const c = p[1], o = p[2] ?? c; return { t: p[0], c, o, h: p[3] ?? Math.max(o, c), l: p[4] ?? Math.min(o, c) }; };
+  function candleParts(K) {
+    return {
+      wick: K.map((k) => [k.l, k.h]),
+      body: K.map((k) => {
+        const lo = Math.min(k.o, k.c), hi = Math.max(k.o, k.c), min = (k.h - k.l || k.c * 0.002) * 0.06; // 시가=종가면 얇은 가로선
+        return hi - lo < min ? [lo - min / 2, hi + min / 2] : [lo, hi];
+      }),
+      col: K.map((k) => (k.c >= k.o ? C.up : C.down)),
+    };
+  }
+  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null } = {}) {
+    if (!pts?.length) return;
+    const K = pts.map(ohlc);
+    if (last != null && isFinite(last)) { const k = K.at(-1); k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last); }
+    const labels = K.map((k) => k.t), D = candleParts(K);
+    const title = tip || ((it) => new Date(labels[it.dataIndex]).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }));
+    draw(id, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '저가~고가', data: D.wick, backgroundColor: D.col.slice(), borderWidth: 0, barThickness: compact ? 1 : 1.3, grouped: false, order: 2 },
+          { label: '시가~종가', data: D.body, backgroundColor: D.col.slice(), borderWidth: 0, barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 1 },
+        ],
+      },
+      options: {
+        interaction,
+        plugins: {
+          ...noLegend,
+          tooltip: {
+            ...tooltip(title, price), enabled: !compact,
+            filter: (it) => it.datasetIndex === 1,
+            callbacks: {
+              title: (items) => title(items[0]),
+              label: (it) => { const k = charts[id]?.$K?.[it.dataIndex] || K[it.dataIndex]; return [` 시가 ${price(k.o)} · 고가 ${price(k.h)}`, ` 저가 ${price(k.l)} · 종가 ${price(k.c)}`]; },
+            },
+          },
+        },
+        scales: compact
+          ? { x: { display: false }, y: { display: false, beginAtZero: false, grace: '6%' } }
+          : { x: axisX(labels, xf, 5), y: { ...axisY(price), beginAtZero: false, grace: '4%' } },
+      },
+    });
+    if (charts[id]) charts[id].$K = K;
+  }
+  // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
+  function liveCandle(id, last) {
+    const c = charts[id], K = c?.$K;
+    if (!K?.length || last == null || !isFinite(last)) return;
+    const i = K.length - 1, k = K[i];
+    k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last);
+    const D = candleParts([k]), [w, b] = c.data.datasets;
+    w.data[i] = D.wick[0]; b.data[i] = D.body[0];
+    w.backgroundColor[i] = D.col[0]; b.backgroundColor[i] = D.col[0];
+    c.update('none');
+  }
+
   // ---------------------------------------------------------------- 섹션 렌더
   function renderKpis() {
     const tiles = [
@@ -884,9 +945,9 @@
     sym: 'CRCLUSDT',
   };
   const RANGES = {
-    '1d': { label: '1일', interval: '15m', limit: 96 },
-    '1w': { label: '1주', interval: '1h', limit: 168 },
-    '1m': { label: '1개월', interval: '4h', limit: 180 },
+    '1d': { label: '1일', interval: '30m', limit: 48 },
+    '1w': { label: '1주', interval: '2h', limit: 84 },
+    '1m': { label: '1개월', interval: '8h', limit: 90 },
     '3m': { label: '3개월', interval: '1d', limit: 90 },
   };
   const px = state.px;
@@ -915,7 +976,7 @@
   async function loadKlines(range) {
     const r = RANGES[range];
     const k = await bnGet(`klines?symbol=${BN.sym}&interval=${r.interval}&limit=${r.limit}`);
-    px.klines[range] = k.map((x) => [x[0], +x[4]]); // [시작 시각(ms), 종가]
+    px.klines[range] = k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3]]); // [시작 시각(ms), 종가, 시가, 고가, 저가]
   }
 
   // WebSocket으로 체결마다 갱신, 끊기면 5초 폴링으로 대체하고 재연결
@@ -1012,37 +1073,16 @@
       const ch = t.last / k[0][1] - 1;
       setHtml('pc-chg', `<span class="${cls(ch)}">${arrow(ch)} ${pct(ch, 2)}</span> <span class="lbl">${RANGES[state.range].label} 동안</span>`);
     }
-    for (const id of ['spark', 'pricechart']) {
-      const c = charts[id];
-      if (!c) continue;
-      const ds = c.data.datasets[0];
-      ds.data[ds.data.length - 1] = t.last;
-      c.update('none');
-    }
+    for (const id of ['spark', 'pricechart']) liveCandle(id, t.last);
   }
 
   function drawPriceLine(id, k, { compact = false, range = '1d' } = {}) {
     if (!k?.length) return;
-    const labels = k.map((p) => p[0]);
-    const data = k.map((p) => p[1]);
-    if (px.t) data[data.length - 1] = px.t.last;
-    const col = data.at(-1) >= data[0] ? C.up : C.down;
-    const xf = range === '1d' ? hm : mdLocal;
     const tip = (it) => {
-      const d = new Date(labels[it.dataIndex]);
+      const d = new Date(k[it.dataIndex][0]);
       return RANGES[range].interval === '1d' ? d.toLocaleDateString('ko-KR') : d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
     };
-    draw(id, {
-      type: 'line',
-      data: { labels, datasets: [lineDs('CRCL', data, col, { fill: 'start', backgroundColor: areaFill(col), pointRadius: endPoint(data.length, compact ? 3 : 4), borderWidth: compact ? 1.6 : 2, tension: 0.2 })] },
-      options: {
-        interaction,
-        plugins: { ...noLegend, tooltip: { ...tooltip(tip, price), enabled: !compact } },
-        scales: compact
-          ? { x: { display: false }, y: { display: false, grace: '8%' } }
-          : { x: axisX(labels, xf, 5), y: { ...axisY(price), grace: '5%' } },
-      },
-    });
+    drawCandles(id, k, { compact, xf: range === '1d' ? hm : mdLocal, tip, last: px.t?.last });
   }
 
   function renderPriceCard() {
@@ -1072,7 +1112,7 @@
     let note = '';
     if (k?.length) {
       const vals = k.map((p) => p[1]);
-      note = `${RANGES[r].label} 최고 ${price(Math.max(...vals))} · 최저 ${price(Math.min(...vals))} · 시작 ${price(vals[0])} · ${RANGES[r].interval} 봉`;
+      note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? vals[0])} · ${RANGES[r].interval} 캔들`;
     }
     card('pricechart', {
       title: 'CRCL 가격 추이',
@@ -2427,13 +2467,7 @@
       if (X.oi != null) setHtml('spx-oi', usd(X.oi * (X.mark?.mark || t.last)));
       const k = X.klines[bxRange()];
       if (k?.length) { const ch = t.last / k[0][1] - 1; setHtml('spc-chg', `<span class="${cls(ch)}">${arrow(ch)} ${pct(ch, 2)}</span> <span class="lbl">${RANGES[bxRange()].label} 동안</span>`); }
-      for (const id of ['sspark', 'spricechart']) {
-        const c = charts[id];
-        if (!c) continue;
-        const ds = c.data.datasets[0];
-        ds.data[ds.data.length - 1] = t.last;
-        c.update('none');
-      }
+      for (const id of ['sspark', 'spricechart']) liveCandle(id, t.last);
       return;
     }
     setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · ${isLive(sym) ? '실시간 체결' : '15초마다 갱신'}`);
@@ -2441,33 +2475,17 @@
     const S = STOCK_INFO[sym], pr = state.quote?.[S.peer[0]];
     if (pr) setHtml('spx-peer', `$${pr.price?.toFixed(2)} <span class="${cls(pr.pct)}">${pct(pr.pct, 1)}</span>`);
     if (sym === 'SPCX' && ipoPx()) setHtml('spx-ipo', `<span class="${cls(q.price / ipoPx() - 1)}">${pct(q.price / ipoPx() - 1, 1)}</span>`);
-    for (const id of ['sspark', 'spricechart']) {
-      const c = charts[id];
-      if (!c) continue;
-      const ds = c.data.datasets[0];
-      if (state.srange === '1d' || id === 'sspark') { ds.data[ds.data.length - 1] = q.price; c.update('none'); }
-    }
+    for (const id of ['sspark', 'spricechart']) if (state.srange === '1d' || id === 'sspark') liveCandle(id, q.price);
   }
-  function sLine(id, pts, { compact = false, range = '1d', prevClose = null, sym = state.stock } = {}) {
+  // range: '1d'·'1w'… (Yahoo 캔들) 또는 'bn'(바이낸스 1일)
+  function sLine(id, pts, { compact = false, range = '1d', sym = state.stock } = {}) {
     if (!pts?.length) return;
-    const labels = pts.map((p) => p[0]);
-    const data = pts.map((p) => p[1]);
     const q = pq(sym);
-    if (q?.price && range === '1d') data[data.length - 1] = q.price;
-    if (range === 'bn' && q?.price) data[data.length - 1] = q.price;
-    const base = range === '1d' && (q?.prevClose || prevClose) ? (q?.prevClose || prevClose) : data[0];
-    const col = data.at(-1) >= base ? C.up : C.down;
-    const xf = range === '1d' || range === 'bn' ? hm : mdLocal;
-    const tip = (it) => { const d = new Date(labels[it.dataIndex]); return range === '1d' || range === '1w' ? d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString('ko-KR'); };
-    draw(id, {
-      type: 'line',
-      data: { labels, datasets: [lineDs(sym, data, col, { fill: 'start', backgroundColor: areaFill(col), pointRadius: endPoint(data.length, compact ? 3 : 4), borderWidth: compact ? 1.6 : 2, tension: 0.2 })] },
-      options: {
-        interaction,
-        plugins: { ...noLegend, tooltip: { ...tooltip(tip, price), enabled: !compact } },
-        scales: compact ? { x: { display: false }, y: { display: false, grace: '8%' } } : { x: axisX(labels, xf, 5), y: { ...axisY(price), grace: '5%' } },
-      },
-    });
+    const intraday = range === '1d' || range === 'bn' || range === '1w';
+    const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString('ko-KR'); };
+    // 바이낸스는 24시간 이어지므로 어느 기간이든 마지막 캔들에 현재가 반영, Yahoo는 오늘(1일) 캔들만
+    const last = BN24[sym] || range === '1d' || range === 'bn' ? q?.price : null;
+    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : mdLocal, tip, last });
   }
 
   const bxRange = () => (RANGES[state.srange] ? state.srange : '1d'); // 바이낸스 캔들은 1일~3개월
@@ -2510,7 +2528,7 @@
         <div class="px-stats">${stats}<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div></div>
         <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
     });
-    sLine('sspark', pts, { compact: true, prevClose: ch?.prevClose, sym });
+    sLine('sspark', pts, { compact: true, sym });
     paintStock();
   }
 
@@ -2518,7 +2536,7 @@
     if (BN24[sym]) {
       const X = bxOf(sym), r = bxRange(), k = X.klines[r];
       let note = '';
-      if (k?.length) { const v = k.map((p) => p[1]); note = `${RANGES[r].label} 최고 ${price(Math.max(...v))} · 최저 ${price(Math.min(...v))} · 시작 ${price(v[0])} · ${RANGES[r].interval} 봉`; }
+      if (k?.length) note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? k[0][1])} · ${RANGES[r].interval} 캔들`;
       card('spricechart', {
         title: `${sym} 가격 추이`, sub: `Binance ${BN24[sym]} 무기한 선물`, info: INFO.pricechart,
         body: `
@@ -2550,7 +2568,7 @@
         <p class="note">${note || '불러오는 중…'}</p>`,
     });
     if (!ch) { loadSChart(sym, r).then(() => { if (state.srange === r && state.stock === sym) renderSPriceChart(sym); }).catch(() => {}); return; }
-    sLine('spricechart', pts, { range: r, prevClose: ch.prevClose, sym });
+    sLine('spricechart', pts, { range: r, sym });
   }
 
   // ---------------------------------------------------------------- 기관 보유 현황 (13F)
@@ -3053,7 +3071,7 @@
   async function bxKlines(sym, range) {
     const r = RANGES[range];
     const k = await bnGet(`klines?symbol=${BN24[sym]}&interval=${r.interval}&limit=${r.limit}`);
-    bxOf(sym).klines[range] = k.map((x) => [x[0], +x[4]]);
+    bxOf(sym).klines[range] = k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3]]);
   }
   let bws = null, bwsTries = 0, bwsTimer = null, bwsWatch = null, bPollTimer = null;
   const bArm = () => { clearTimeout(bwsWatch); bwsWatch = setTimeout(() => { try { bws?.close(); } catch {} }, 15000); };

@@ -613,12 +613,13 @@ export async function handleQuote(url, cache, cors, ctx) {
 
 // ---------------------------------------------------------------- 가격 차트 (Yahoo, 바이낸스에 없는 종목용)
 const CHART_SYMBOLS = ['JOBY', 'ACHR', 'CRCL', 'CRCA', 'SPCX', 'RKLB', 'TEM', 'GH'];
-const CHART_RANGES = { '1d': ['5m', '1d'], '1w': ['30m', '5d'], '1m': ['1h', '1mo'], '3m': ['1d', '3mo'], '1y': ['1d', '1y'] };
+// 캔들 차트용 간격(휴대폰에서 알아볼 수 있는 개수): 1일 15분봉 · 1주 1시간봉 · 1개월·3개월 일봉 · 1년 주봉
+const CHART_RANGES = { '1d': ['15m', '1d'], '1w': ['1h', '5d'], '1m': ['1d', '1mo'], '3m': ['1d', '3mo'], '1y': ['1wk', '1y'] };
 export async function handleChart(url, cache, cors, ctx) {
   const sym = (url.searchParams.get('s') || '').toUpperCase();
   const range = url.searchParams.get('r') || '1d';
   if (!CHART_SYMBOLS.includes(sym) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
-  const key = new Request(`${url.origin}/chart?s=${sym}&r=${range}`);
+  const key = new Request(`${url.origin}/chart?s=${sym}&r=${range}&v=ohlc`);
   let res = await cache.match(key);
   if (!res) {
     try {
@@ -626,8 +627,10 @@ export async function handleChart(url, cache, cors, ctx) {
       const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${rng}&includePrePost=${range === '1d'}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error('yahoo ' + r.status);
       const j = (await r.json()).chart.result[0];
-      const ts = j.timestamp || [], cl = j.indicators?.quote?.[0]?.close || [];
-      const points = ts.map((t, i) => [t * 1000, cl[i]]).filter((p) => p[1] != null);
+      const Q = j.indicators?.quote?.[0] || {}, ts = j.timestamp || [];
+      const r2 = (v) => (v == null ? null : Math.round(v * 10000) / 10000);
+      // [시각(ms), 종가, 시가, 고가, 저가]
+      const points = ts.map((t, i) => [t * 1000, r2(Q.close?.[i]), r2(Q.open?.[i]), r2(Q.high?.[i]), r2(Q.low?.[i])]).filter((p) => p[1] != null);
       const m = j.meta || {};
       const body = JSON.stringify({ at: new Date().toISOString(), symbol: sym, range, points, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null });
       res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${range === '1d' ? 60 : 900}` } });
