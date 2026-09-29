@@ -75,9 +75,9 @@
         <li><b>EPS</b>: 적자라 음수예요. 예상보다 손실이 적으면 "양호".</li>
       </ul>`,
     sprice: (sym) => `
-      <p><b>${STOCK_INFO[sym].name}(${sym})</b>의 실시간 주가입니다(Nasdaq 제공, 장전·장중·장후 거래 포함). 15초마다 갱신돼요.</p>
+      <p><b>${STOCK_INFO[sym].name}(${sym})</b>의 실시간 주가입니다. 미국 장전·장중·장후에는 <b>체결될 때마다 바로</b> 바뀌어요(Yahoo Finance 실시간 스트림). 스트림이 끊기면 Nasdaq 시세로 15초마다 갱신돼요.</p>
       <ul>
-        <li>바이낸스에서 24시간 거래되지 않아, 미국 장이 닫힌 주말·새벽에는 마지막 거래 가격이 보여요.</li>
+        ${BN24[sym] ? `<li><b>바이낸스 24시간</b>: 바이낸스의 ${sym}USDT 주식 선물(TradFi) 가격이에요. 미국 장이 닫힌 밤·주말에도 거래돼 다음 장 분위기를 미리 볼 수 있어요. 선물이라 실제 주가와 조금 차이가 나요("주가와 차이").</li>` : '<li>바이낸스에서 24시간 거래되지 않아, 미국 장이 닫힌 주말·새벽에는 마지막 거래 가격이 보여요.</li>'}
         <li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>
         ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : ''}
       </ul>`,
@@ -1928,6 +1928,7 @@
       const j = await getJ(`${NEWS_API}/quote`, 15000);
       if (j.error) throw new Error(j.error);
       state.quote = j;
+      for (const sym of Object.keys(live)) applyLive(sym); // 방금 들어온 실시간 체결가가 더 최신이면 유지
       state.quoteErr = false;
     } catch (e) {
       state.quoteErr = true;
@@ -2397,7 +2398,12 @@
     }
     sPrev = { sym, px: q.price };
     setHtml('spx-chg', `<span class="${cls(q.pct)}">${arrow(q.pct)} ${q.change >= 0 ? '+' : '-'}$${Math.abs(q.change ?? 0).toFixed(2)} (${pct(q.pct, 2)})</span>`);
-    setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · 15초마다 갱신`);
+    setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · ${isLive(sym) ? '실시간 체결' : '15초마다 갱신'}`);
+    const bx = bn24[sym];
+    if (BN24[sym] && bx?.price) {
+      const gap = q.price ? bx.price / q.price - 1 : null;
+      setHtml('spx-bn', `<span class="tone px"><span class="live-dot"></span>24시간</span><span>바이낸스 ${sym}USDT <b>${price(bx.price)}</b>${bx.pct24 != null ? ` <span class="${cls(bx.pct24)}">${pct(bx.pct24, 2)}</span><small>(24h)</small>` : ''}${gap != null ? ` · 주가와 차이 <span class="${cls(gap)}">${pct(gap, 2)}</span>` : ''}</span>`);
+    }
     setHtml('spx-time', esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
     setHtml('spc-last', price(q.price));
     const S = STOCK_INFO[sym], pq = state.quote?.[S.peer[0]];
@@ -2447,6 +2453,7 @@
         <div class="px-meta"><span id="spx-via">불러오는 중…</span><span id="spx-time"></span></div>
         <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 오늘 가격"></canvas></div>
         <div class="px-range" aria-label="오늘 가격 범위"><span>${price(lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${price(hi)}</span></div>
+        ${BN24[sym] ? `<div class="px-bn" id="spx-bn"><span class="tone px">24시간</span><span>바이낸스 ${sym}USDT 연결 중…</span></div>` : ''}
         <div class="px-stats">${stats}<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div></div>
         <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
     });
@@ -2904,6 +2911,98 @@
     for (const j of jobs) { try { j(); } catch (e) { console.error(e); } }
   }
 
+  // ---------------------------------------------------------------- 실시간 체결가 (Yahoo Finance 스트림 · 바이낸스 24시간 선물)
+  // Nasdaq 시세(15초)는 장 상태·전일 종가를 위한 기본값으로 두고, 체결이 날 때마다 오는 Yahoo 스트림 값으로 바로 덮어쓴다
+  // (미국 장전·장중·장후). SPCX·TEM은 바이낸스에도 24시간 거래되는 주식 선물이 있어 밤·주말 흐름을 함께 보여준다.
+  const YF_SYMS = ['JOBY', 'SPCX', 'TEM', 'ACHR', 'RKLB', 'GH', 'CRCA', 'CRCL'];
+  const live = {}; // 티커 → { price, pct, change, at }
+  let yws = null, ywsTries = 0, ywsTimer = null;
+  const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  // Yahoo가 보내는 protobuf 메시지를 필요한 칸만 읽는다(1 티커, 2 가격, 3 시각, 8 등락률%, 12 등락액)
+  function pbRead(buf) {
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength), out = {};
+    let i = 0;
+    const varint = () => { let r = 0n, sh = 0n; for (;;) { const x = buf[i++]; r |= BigInt(x & 0x7f) << sh; if (!(x & 0x80) || i >= buf.length) break; sh += 7n; } return r; };
+    while (i < buf.length) {
+      const key = Number(varint()), f = key >> 3, w = key & 7;
+      if (w === 0) out[f] = varint();
+      else if (w === 5) { out[f] = dv.getFloat32(i, true); i += 4; }
+      else if (w === 1) { out[f] = dv.getFloat64(i, true); i += 8; }
+      else if (w === 2) { const n = Number(varint()); out[f] = new TextDecoder().decode(buf.subarray(i, i + n)); i += n; }
+      else break;
+    }
+    return out;
+  }
+  function applyLive(sym) {
+    const L = live[sym];
+    if (!L || Date.now() - L.at > 20000) return;
+    state.quote ||= {};
+    const q = (state.quote[sym] ||= { symbol: sym, price: L.price }); // Nasdaq 시세보다 먼저 오면 체결가로 먼저 채운다 // 20초 넘게 체결이 없으면 Nasdaq 값을 그대로 쓴다
+    q.price = L.price;
+    if (L.pct != null && isFinite(L.pct)) q.pct = L.pct;
+    if (L.change != null && isFinite(L.change)) q.change = L.change;
+  }
+  const isLive = (sym) => live[sym] && Date.now() - live[sym].at < 90000;
+  function onYahoo(ev) {
+    let m;
+    try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type !== 'pricing' || !m.message) return;
+    let p;
+    try { p = pbRead(b64(m.message)); } catch { return; }
+    const sym = p[1], price = p[2];
+    if (!YF_SYMS.includes(sym) || !(price > 0)) return;
+    live[sym] = { price, pct: p[8] != null ? p[8] / 100 : null, change: p[12] ?? null, at: Date.now() };
+    applyLive(sym);
+    scheduleLivePaint();
+  }
+  function yConnect() {
+    if (yws || document.hidden || !('WebSocket' in window)) return;
+    try { yws = new WebSocket('wss://streamer.finance.yahoo.com/?version=2'); } catch { return; }
+    yws.onopen = () => { ywsTries = 0; yws.send(JSON.stringify({ subscribe: YF_SYMS })); };
+    yws.onmessage = onYahoo;
+    yws.onerror = () => { try { yws?.close(); } catch {} };
+    yws.onclose = () => { yws = null; if (!document.hidden) { clearTimeout(ywsTimer); ywsTimer = setTimeout(yConnect, Math.min(60000, 2000 * 2 ** ywsTries++)); } };
+  }
+  function yDisconnect() { clearTimeout(ywsTimer); if (yws) { yws.onclose = null; try { yws.close(); } catch {} yws = null; } }
+
+  // 바이낸스 24시간 주식 선물 (SPCXUSDT·TEMUSDT)
+  const BN24 = { SPCX: 'spcxusdt', TEM: 'temusdt' };
+  const bn24 = {}; // 티커 → { price, pct24, at }
+  let bws = null, bwsTries = 0, bwsTimer = null;
+  function bConnect() {
+    if (bws || document.hidden || !('WebSocket' in window)) return;
+    const streams = Object.values(BN24).flatMap((s) => [`${s}@aggTrade`, `${s}@ticker`]).join('/');
+    try { bws = new WebSocket(`wss://fstream.binance.com/market/stream?streams=${streams}`); } catch { return; }
+    bws.onopen = () => { bwsTries = 0; };
+    bws.onmessage = (ev) => {
+      let m;
+      try { m = JSON.parse(ev.data); } catch { return; }
+      const d = m.data, sym = d?.s && Object.keys(BN24).find((k) => BN24[k] === d.s.toLowerCase());
+      if (!sym) return;
+      const x = (bn24[sym] ||= {});
+      if (d.e === 'aggTrade') x.price = +d.p;
+      else if (d.e === '24hrTicker') { x.pct24 = +d.P / 100; if (x.price == null) x.price = +d.c; }
+      x.at = Date.now();
+      if (sym === state.stock) scheduleLivePaint();
+    };
+    bws.onerror = () => { try { bws?.close(); } catch {} };
+    bws.onclose = () => { bws = null; if (!document.hidden) { clearTimeout(bwsTimer); bwsTimer = setTimeout(bConnect, Math.min(60000, 2000 * 2 ** bwsTries++)); } };
+  }
+  function bDisconnect() { clearTimeout(bwsTimer); if (bws) { bws.onclose = null; try { bws.close(); } catch {} bws = null; } }
+
+  // 체결이 몰려도 화면은 한 프레임에 한 번만 다시 그린다(Fire 카드는 2초에 한 번)
+  let livePaintQueued = false, lastFirePaint = 0;
+  function scheduleLivePaint() {
+    if (livePaintQueued) return;
+    livePaintQueued = true;
+    requestAnimationFrame(() => {
+      livePaintQueued = false;
+      renderStockSwitch();
+      paintStock();
+      if (state.view === 'fire' && Date.now() - lastFirePaint > 2000) { lastFirePaint = Date.now(); renderFire(); } else updateFireChip();
+    });
+  }
+
   // ---------------------------------------------------------------- 상태 표시
   function ago(t) {
     const ms = typeof t === 'number' ? t : Date.parse(t);
@@ -3140,14 +3239,20 @@
   updateFireChip();
   { let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0; showView(viewAllowed(v0) ? v0 : 'home'); }
   initPrice();
+  // 시세를 다른 데이터보다 먼저 받아 종목 카드·주가가 바로 보이게
+  loadQuote().then(() => { renderStockSwitch(); if (isOther()) { renderSPriceCard(); renderSKpis(); } updateFireChip(); }).catch(() => {});
+  yConnect();
+  bConnect();
   refresh('auto');
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { disconnectWs(); return; }
+    if (document.hidden) { disconnectWs(); yDisconnect(); bDisconnect(); return; }
     loadPxSnapshot().then(schedulePaint).catch(() => {});
     connectWs();
+    yConnect();
+    bConnect();
     refresh('auto');
   });
 })();
