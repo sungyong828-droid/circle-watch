@@ -65,7 +65,7 @@
         <li><b>5단계 실증·검증</b>: FAA 기준대로 만든 기체로 FAA 조종사가 직접 인증 비행(TIA)을 하는 마지막 단계. 끝나면 형식 인증이 나와요.</li>
         <li><b>Joby / FAA</b>: Joby가 제출한 비율과 FAA가 검토·승인한 비율. FAA 쪽 숫자가 실제 진척에 더 가깝습니다.</li>
       </ul>
-      <p>수치는 조비가 분기 실적 발표 때 주주서한에 공개하는 값이라, 다음 발표 전까지는 그대로예요. 새 실적 발표가 나오면 이 카드 위에 알림이 떠요.</p>`,
+      <p>수치는 조비가 분기 실적 발표 때 주주서한에 공개하는 값이라 다음 발표 전까지는 그대로예요. 새 주주서한이 SEC에 올라오면 <b>서버가 3시간 안에 차트 숫자를 자동으로 읽어 반영</b>하고(출처에 "자동 반영" 표시), 읽지 못하면 이 카드 위에 알림이 떠요. 형식 인증 취득 뉴스가 나오면 그것도 바로 알려 줘요.</p>`,
     jearnings: `
       <p>조비는 아직 에어택시 상업 운항 전이라 <b>적자가 정상</b>입니다. 그래서 매출·이익보다 <b>현금이 얼마나 남았고, 얼마나 빨리 쓰는지</b>가 더 중요해요.</p>
       <ul>
@@ -97,6 +97,7 @@
         <li>표시된 수량은 <b>최대</b> 해제 물량이에요. 실제로 시장에 파는 양은 훨씬 적을 수 있어요.</li>
         <li><b>추가 해제 조건</b>: 첫 실적 발표일까지 10거래일 중 5일 이상 종가가 공모가보다 30% 높으면(= $175.5 이상) 4.56억 주를 더 풀 수 있었는데, 종가가 $108~125여서 풀리지 않았어요.</li>
         <li>일론 머스크 보유분(64억 주)은 상장 366일 뒤인 2027년 6월 12일까지 묶여 있어요.</li>
+        <li><b>자동 확인</b>: 서버가 3시간마다 스페이스X의 새 SEC 공시를 읽어, 보호예수 면제·조기 해제 문구나 주식 추가 매도 등록이 나오면 이 카드 위에 알림을 띄워요. 관련 뉴스도 함께 보여줘요.</li>
       </ul>`,
     searnings: `
       <p>분기마다 발표하는 <b>실적</b>입니다(미국 SEC 제출 재무제표 + Nasdaq 집계).</p>
@@ -1108,6 +1109,8 @@
   }
 
   // ---------------------------------------------------------------- 현재 상황 요약 (규칙 기반)
+  const TONE_ORDER = { pos: 0, neg: 1, neu: 2 };
+  const byTone = (items) => items.map((it, i) => ({ it, i })).sort((a, b) => (TONE_ORDER[a.it.tone] - TONE_ORDER[b.it.tone]) || (b.it.weight - a.it.weight) || (a.i - b.i)).map((x) => x.it);
   function renderSummary() {
     const d = state.data;
     if (!d) return;
@@ -1206,7 +1209,7 @@
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
         <div class="sum-count"><span class="tone pos">긍정 ${nPos}</span><span class="tone neg">주의 ${nNeg}</span><span class="tone neu">중립 ${items.length - nPos - nNeg}</span></div>
-        <ul class="sum-list">${pxLine}${fireLine}${items.map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
+        <ul class="sum-list">${pxLine}${fireLine}${byTone(items).map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
     });
   }
 
@@ -1454,13 +1457,14 @@
       d.arcTvl = { ...d.arcTvl, now: arc.tvl, daily };
       L.tvl = arc.tvl;
     },
-    async series(d) { // USDC·EURC·USYC 일별 공급량 추이
-      const start = Date.UTC(2025, 5, 1) / 1000;
-      const get = async (id) => (await getJ(`https://stablecoins.llama.fi/stablecoincharts/all?stablecoin=${id}`, 25000))
-        .map((p) => [Number(p.date), Object.values(p.totalCirculating || {})[0] || 0]).filter(([t]) => t >= start);
-      const [usdc, eurc, usyc] = await Promise.all([get(2), get(50), get(237)]);
-      if (usdc.length) d.series = { usdc, eurc, usyc };
+    async series(d) { // USDC·EURC·USYC 일별 공급량 추이 (DefiLlama를 중계 서버로 — 30분 캐시)
+      const j = await getJ(`${NEWS_API}/series`, 25000);
+      if (j.error || !j.usdc?.length) throw new Error(j.error || 'series');
+      // 같은 동기화에서 '스테이블코인'이 붙여 둔 오늘 값은 남긴다
+      const keep = (arr, cur) => { const last = cur?.at(-1); return last && last[0] > arr.at(-1)[0] ? [...arr, last] : arr; };
+      d.series = { usdc: keep(j.usdc, d.series?.usdc), eurc: j.eurc?.length ? j.eurc : d.series?.eurc, usyc: j.usyc?.length ? j.usyc : d.series?.usyc };
     },
+    async facts() { state.facts = await getJ(`${NEWS_API}/facts`, 15000); }, // FAA %·보호예수 공시 자동 확인 결과
     async rates(d) { // 미 재무부 13주 국채 금리
       const now = new Date();
       const years = now.getUTCMonth() < 3 ? [now.getUTCFullYear() - 1, now.getUTCFullYear()] : [now.getUTCFullYear()];
@@ -1514,13 +1518,14 @@
     async schart() {
       const s = state.stock, x = st(s);
       if (!isOther(s)) return;
-      await Promise.all([loadSChart(s, '1d'), state.srange !== '1d' ? loadSChart(s, state.srange) : null, x.chart['1y'] ? null : loadSChart(s, '1y').catch(() => {})]);
+      const fresh = (r) => x.chart[r] && Date.now() - Date.parse(x.chart[r].at || 0) < 3600000; // 1주 이상 차트·52주 값은 1시간마다 새로
+      await Promise.all([loadSChart(s, '1d'), state.srange !== '1d' && !fresh(state.srange) ? loadSChart(s, state.srange) : null, fresh('1y') ? null : loadSChart(s, '1y').catch(() => {})]);
     },
     async searn() {
       const s = state.stock, x = st(s);
       if (!isOther(s)) return;
       try {
-        const j = await getJ(`${NEWS_API}/earnings?s=${s}`, 25000);
+        const j = await getJ(`${NEWS_API}/earnings?s=${s}${state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
         if (j.error) throw new Error(j.error);
         x.earn = j; x.earnErr = false;
       } catch (e) { x.earnErr = true; if (!x.earn) throw e; }
@@ -1557,7 +1562,7 @@
     },
     async earnings() { // 분기 실적·다음 발표일 (서버에서 6시간 캐시)
       try {
-        const j = await getJ(`${NEWS_API}/earnings`, 25000);
+        const j = await getJ(`${NEWS_API}/earnings${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 25000);
         if (j.error) throw new Error(j.error);
         state.earnings = j;
         state.earningsErr = false;
@@ -1661,7 +1666,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유' };
+  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유' };
 
   // parts: 동기화할 항목 이름 목록
   async function syncNow(parts) {
@@ -1778,7 +1783,7 @@
   function updateFireChip(c = fireCfg ? fireCalc() : null) {
     const el = document.getElementById('fire-chip');
     if (!el) return;
-    el.innerHTML = `<span aria-hidden="true">🔥</span><b>${c ? (Math.max(0, c.progress) * 100).toFixed(1) + '%' : 'Fire'}</b>`;
+    el.innerHTML = c ? `<span aria-hidden="true">🔥</span><span class="fc-l">퇴사까지</span><b>${(Math.max(0, c.progress) * 100).toFixed(1)}%</b>` : `<span aria-hidden="true">🔥</span><b>Fire</b>`;
     el.setAttribute('aria-label', c ? `퇴사까지 ${(Math.max(0, c.progress) * 100).toFixed(1)}% · Fire 열기` : 'Fire 열기');
     el.setAttribute('aria-current', state.view === 'fire' ? 'page' : 'false');
   }
@@ -1839,7 +1844,7 @@
     const marks = [0.25, 0.5, 0.75].map((m) => `<i style="left:${m * 100}%"></i>`).join('');
     const posHtml = c.rows.map((r) => {
       const g = r.valueUsd / r.costUsd - 1;
-      return `<div class="fire-pos"><b>${r.ticker}</b><span>${nf(0).format(r.shares)}주 · $${r.px.toFixed(2)} <span class="${cls(r.q?.pct)}">${pct(r.q?.pct, 2)}</span> · ${esc(mktStatus(r.q?.status))}</span><span>${wonFull(r.valueUsd * c.fx)} <span class="${cls(g)}">${pct(g)}</span></span></div>`;
+      return `<div class="fire-pos"><b>${logoOf(r.ticker) ? `<img class="fp-logo" src="${logoOf(r.ticker)}" alt="" width="16" height="16">` : ''}${r.ticker}</b><span>${nf(0).format(r.shares)}주 · $${r.px.toFixed(2)} <span class="${cls(r.q?.pct)}">${pct(r.q?.pct, 2)}</span> · ${esc(mktStatus(r.q?.status))}</span><span>${wonFull(r.valueUsd * c.fx)} <span class="${cls(g)}">${pct(g)}</span></span></div>`;
     }).join('');
     card('fire', {
       title: '퇴사까지', sub: `${c.rows.map((r) => `${r.ticker} ${nf(0).format(r.shares)}주`).join(' · ')} · 목표 ${wonFull(F.goal)}${F.afterTax ? ' · 세후 기준' : ''}`, info: INFO.fire,
@@ -2105,18 +2110,18 @@
   const FAA_RE = /FAA|type certif|형식 ?인증|인증|certification|\bTIA\b|for-credit|Part 1(35|41|45)|eIPP|airworth|감항/i;
   // 종목 설정 (CRCL은 전용 화면, 나머지는 공통 틀)
   const STOCK_INFO = {
-    CRCL: { name: '서클 인터넷 그룹', short: '서클', mark: 'C', color: '#3f7ef6' },
+    CRCL: { name: '서클 인터넷 그룹', short: '서클', mark: 'C', color: '#3f7ef6', logo: 'assets/logos/CRCL.svg' },
     JOBY: {
-      name: '조비 에비에이션', short: '조비', mark: 'J', color: '#22b07d', cik: '0001819848', peer: ['ACHR', 'Archer'], peerNote: '같은 전기 에어택시(eVTOL) 업체',
+      name: '조비 에비에이션', short: '조비', mark: 'J', color: '#2e8cf0', logo: 'assets/logos/JOBY.png', cik: '0001819848', peer: ['ACHR', 'Archer'], peerNote: '같은 전기 에어택시(eVTOL) 업체',
       mode: 'burn', earnTitle: '조비 실적 · FAA 인증', industry: 'UAM 업계', industryBadge: 'UAM', relBadge: '조비', relRe: /조비|Joby|JOBY/i,
     },
     SPCX: {
-      name: '스페이스X', short: '스페이스X', mark: 'X', color: '#aab4c3', cik: '0001181412', peer: ['RKLB', 'Rocket Lab'], peerNote: '상장된 우주 발사체 업체',
+      name: '스페이스X', short: '스페이스X', mark: 'X', color: '#aab4c3', logo: 'assets/logos/SPCX.png', cik: '0001181412', peer: ['RKLB', 'Rocket Lab'], peerNote: '상장된 우주 발사체 업체',
       mode: 'growth', earnTitle: '스페이스X 실적 · 보호예수', industry: '우주 업계', industryBadge: '우주', relBadge: 'SpaceX', relRe: /스페이스X|스페이스엑스|SpaceX|SPCX|스타링크|Starlink|스타십|Starship/i,
       earnNote: '스페이스X는 2026년 6월 상장이라 SEC 분기 자료가 일부 분기만 있어요(1분기 = 상반기 − 2분기로 계산). 스타십·스타링크 위성 등 <b>설비투자가 매우 커서</b> 영업으로 번 현금보다 투자에 쓰는 돈이 훨씬 많아요. 매출 성장과 이익률 개선이 핵심이에요.',
     },
     TEM: {
-      name: '템퍼스 AI', short: '템퍼스', mark: 'T', color: '#8b7cf6', cik: '0001717115', peer: ['GH', 'Guardant'], peerNote: '액체생검·암 유전체 검사 업체',
+      name: '템퍼스 AI', short: '템퍼스', mark: 'T', color: '#8b7cf6', logo: 'assets/logos/TEM.png', cik: '0001717115', peer: ['GH', 'Guardant'], peerNote: '액체생검·암 유전체 검사 업체',
       mode: 'growth', earnTitle: '템퍼스 실적', industry: '헬스케어 AI', industryBadge: '헬스AI', relBadge: '템퍼스', relRe: /템퍼스|Tempus|\bTEM\b/,
       earnNote: '템퍼스는 유전체 검사(Genomics)와 의료 데이터·AI 서비스(Data and services)로 돈을 벌어요. <b>매출 성장률</b>과 <b>흑자 전환 여부</b>가 핵심이에요. EPS는 Nasdaq 집계(조정 기준)라 회계상 순이익과 다를 수 있어요.',
     },
@@ -2309,7 +2314,7 @@
   state.holders = {};
   state.holdTab = loadPref('holdTab', 'top');
   const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null);
-  const stockParts = (sym) => (sym === 'CRCL' ? ['holders'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', ...(sym === 'JOBY' ? ['faa'] : []), ...(sym === 'SPCX' ? ['sfacts'] : [])]);
+  const stockParts = (sym) => (sym === 'CRCL' ? ['holders'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : [])]);
   const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
   const sp = (v) => (v == null || !isFinite(v) ? '–' : `<span class="${cls(v)}">${pct(v)}</span>`);
@@ -2331,25 +2336,28 @@
     const q = state.quote?.[sym];
     return q ? { price: q.price, pct: q.pct, live: false } : null;
   }
-  // 종목 카드: 옆으로 밀어서 고르는 가로 스크롤(선택한 카드는 가운데로)
-  function renderStockSwitch(scroll = false) {
+  // 종목 선택: 모든 종목이 한눈에 보이는 격자 칩(한 줄 4개, 종목이 늘면 줄이 늘어남).
+  // 15초마다 시세를 바꿀 때 버튼을 새로 만들지 않고 값만 바꾼다(누르는 순간 버튼이 바뀌어 터치가 씹히지 않게).
+  const logoOf = (t) => STOCK_INFO[t === 'CRCA' ? 'CRCL' : t]?.logo || '';
+  function renderStockSwitch() {
     const el = document.getElementById('stock-switch');
     if (!el) return;
-    el.innerHTML = Object.entries(STOCK_INFO).map(([sym, s]) => {
-      const p = stockPx(sym);
-      return `<button type="button" role="tab" class="ss" data-stock="${sym}" aria-selected="${sym === state.stock}" style="--sc:${s.color}">
-        <span class="ss-top"><i class="ss-logo" aria-hidden="true">${s.mark}</i><span class="ss-tk">${sym}</span></span>
-        <span class="ss-nm">${s.name}</span>
-        <span class="ss-bot"><span class="ss-px">${p?.price != null ? price(p.price) : '–'}</span><em class="ss-ch ${cls(p?.pct)}">${p?.pct != null ? pct(p.pct, 1) : ''}</em></span></button>`;
-    }).join('');
-    if (scroll) el.querySelector('[aria-selected="true"]')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    updateSwitchFade();
-  }
-  function updateSwitchFade() {
-    const el = document.getElementById('stock-switch');
-    if (!el) return;
-    el.classList.toggle('more-r', el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-    el.classList.toggle('more-l', el.scrollLeft > 4);
+    const syms = Object.keys(STOCK_INFO);
+    if (el.dataset.built !== syms.join(',')) {
+      el.innerHTML = syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
+        <span class="ss-top"><img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async"><span class="ss-tk">${sym}</span></span>
+        <span class="ss-px">–</span><em class="ss-ch flat"></em></button>`).join('');
+      el.dataset.built = syms.join(',');
+    }
+    for (const btn of el.querySelectorAll('.ss')) {
+      const sym = btn.dataset.stock, p = stockPx(sym);
+      btn.setAttribute('aria-selected', String(sym === state.stock));
+      btn.setAttribute('aria-label', `${STOCK_INFO[sym].name} ${sym} ${p?.price != null ? price(p.price) : ''} ${p?.pct != null ? pct(p.pct, 1) : ''}`);
+      btn.querySelector('.ss-px').textContent = p?.price != null ? price(p.price) : '–';
+      const ch = btn.querySelector('.ss-ch');
+      ch.className = `ss-ch ${cls(p?.pct)}`;
+      ch.textContent = p?.pct != null ? pct(p.pct, 1) : '';
+    }
   }
   function setStock(sym) {
     if (!STOCK_INFO[sym] || sym === state.stock) return;
@@ -2358,7 +2366,7 @@
     document.getElementById('home-crcl').hidden = isOther(sym);
     document.getElementById('home-stock').hidden = !isOther(sym);
     renderTabbar();
-    renderStockSwitch(true);
+    renderStockSwitch();
     if (!viewAllowed(state.view)) showView('home');
     else document.getElementById('view-title').textContent = viewTitle(state.view);
     fireLoop(state.view === 'fire' || isOther());
@@ -2527,17 +2535,36 @@
   }
 
   // ---------------------------------------------------------------- JOBY: FAA 형식 인증 현황
+  // 기본값은 data/faa-joby.json(검증해 넣은 값), 서버가 새 주주서한에서 자동으로 읽은 값이 더 새로우면 그걸 쓴다
+  function faaData() {
+    const F = state.faa, A = state.facts?.faa;
+    if (!F || !A?.ok || !(A.asOf > F.asOf)) return F;
+    const stages = F.stages.map((s) => {
+      const [j, f] = A.stages[s.n] || [s.joby, s.faa];
+      return { ...s, joby: j, faa: f, status: j === 100 && f === 100 ? 'done' : s.n <= 3 ? s.status : 'active' };
+    });
+    const [y, m, d] = A.asOf.split('-').map(Number);
+    const history = [...(F.history || []), { label: `${m}/${d} 서한`, asOf: A.asOf, s5: A.stages[5] }];
+    return { ...F, stages, history, asOf: A.asOf, auto: true, source: { label: `Joby 주주서한(${md(isoToTs(A.filed))}) · 자동 반영`, date: A.filed, url: A.url } };
+  }
+  // 형식 인증(Type Certificate) 취득 소식이 뉴스·발표에 나오면 바로 알려 준다(인증 %보다 빠름)
+  const TC_RE = /type certificat|형식 ?인증/i, TC_WIN_RE = /\b(award|receiv|grant|earn|secur|obtain|win|wins|won)|취득|획득|받았|받아|승인/i, TC_NOT_RE = /stage|단계|progress|진행|toward|path|plan|expect|예상|목표/i;
   function faaUpdateNotice() {
-    const F = state.faa, fl = st('JOBY').news?.filings || [];
+    const F = faaData(), A = state.facts?.faa, fl = st('JOBY').news?.filings || [];
     if (!F) return '';
-    const er = fl.find((f) => /^8-K/.test(f.form) && /2\.02/.test(f.items || ''));
-    if (er && Date.parse(er.d) > Date.parse(F.source.date) + 3 * 86400000) {
-      return `<a class="faa-notice" href="${safeUrl(er.url)}" target="_blank" rel="noopener">🔔 ${md(isoToTs(er.d))}에 새 실적 발표가 나왔어요. 아래 인증 수치는 이전 주주서한(${esc(F.asOf)}) 기준이라 갱신이 필요해요 →</a>`;
+    const tc = newsItems('JOBY').find((i) => i.kind !== 'filing' && TC_RE.test(i.title) && TC_WIN_RE.test(i.title) && !TC_NOT_RE.test(i.title) && Date.now() - i.t < 14 * 86400000);
+    const tcHtml = tc ? `<a class="faa-notice good" href="${safeUrl(tc.url)}" target="_blank" rel="noopener">🎉 형식 인증 취득 소식: ${esc(tc.title)} (${esc(tc.source)}) →</a>` : '';
+    if (A && !A.ok && A.filed > F.source.date) {
+      return tcHtml + `<a class="faa-notice" href="${safeUrl(A.url)}" target="_blank" rel="noopener">🔔 ${md(isoToTs(A.filed))} 새 주주서한이 나왔는데 인증 차트 숫자를 자동으로 읽지 못했어요. Claude에게 "FAA 수치 업데이트해줘"라고 말해 주세요 →</a>`;
     }
-    return '';
+    const er = fl.find((f) => /^8-K/.test(f.form) && /2\.02/.test(f.items || ''));
+    if (!A && er && Date.parse(er.d) > Date.parse(F.source.date) + 3 * 86400000) {
+      return tcHtml + `<a class="faa-notice" href="${safeUrl(er.url)}" target="_blank" rel="noopener">🔔 ${md(isoToTs(er.d))}에 새 실적 발표가 나왔어요. 서버가 곧 인증 수치를 자동으로 읽어 반영해요(최대 3시간) →</a>`;
+    }
+    return tcHtml;
   }
   function renderFaa() {
-    const F = state.faa;
+    const F = faaData();
     if (!F) { card('faa', { title: 'FAA 형식 인증 현황', body: '<p class="skeleton">불러오는 중…</p>' }); return; }
     const cur = [...F.stages].reverse().find((s) => s.status === 'active') || F.stages.at(-1);
     const bars = F.stages.map((s) => {
@@ -2574,12 +2601,22 @@
   function lockupEvents() {
     const F = state.spcx;
     if (!F) return [];
-    const N = st('SPCX').earn?.next;
+    const E = st('SPCX').earn, N = E?.next;
     return F.lockup.map((e) => {
       if (e.date) return { ...e, est: false };
+      const done = (E?.quarters || []).find((q) => q.end === e.quarter && q.reportedOn) || (E?.surprises || []).find((q) => q.end === e.quarter && q.reported);
+      if (done) return { ...e, date: addTradingDays(done.reportedOn || done.reported, 2), est: false }; // 이미 발표된 분기: 실제 발표일 기준
       if (N?.date && N.quarter === e.quarter) return { ...e, date: addTradingDays(N.date, 2), est: true };
       return { ...e, date: null, est: true };
     });
+  }
+  // 보호예수 관련 새 공시(면제·조기 해제·추가 매도 등록)·뉴스가 있으면 카드 위에 알림
+  const LOCK_NEWS_RE = /lock-?up|보호예수|락업|의무보유|secondary offering|추가 매도|블록딜|block trade/i;
+  function lockupNotice() {
+    const F = state.spcx, L = (state.facts?.spcxLock || []).filter((x) => x.d > (F?.asOf || ''));
+    const fl = L.map((x) => `<a class="faa-notice" href="${safeUrl(x.url)}" target="_blank" rel="noopener">🔔 ${md(isoToTs(x.d))} ${x.kind === 'lockup' ? '보호예수 변경 관련 공시' : '주식 추가 매도·발행 등록 공시'}(Form ${esc(x.form)}) — 아래 일정이 바뀌었을 수 있어요 →${x.snippet ? `<small>${esc(x.snippet.slice(0, 180))}…</small>` : ''}</a>`).join('');
+    const nw = newsItems('SPCX').filter((i) => i.kind !== 'filing' && LOCK_NEWS_RE.test(i.title) && Date.now() - i.t < 14 * 86400000).slice(0, 3);
+    return fl + (nw.length ? `<div class="mini-h er-h">최근 보호예수 관련 뉴스</div><ul class="nl faa-nl">${nw.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">뉴스</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : '');
   }
   const nextLockup = () => { const t = todayIso(); return lockupEvents().filter((e) => !e.skipped && e.date && e.date >= t).sort((a, b) => a.date.localeCompare(b.date))[0] || null; };
   function renderLockup() {
@@ -2598,7 +2635,7 @@
     }).join('');
     card('lockup', {
       title: '보호예수 해제 일정', sub: `${md(isoToTs(ip.date))} 상장 · 공모가 ${price(ip.price)} · 투자설명서 기준`, info: INFO.lockup,
-      body: `${nx ? `<div class="lk-next">
+      body: `${lockupNotice()}${nx ? `<div class="lk-next">
           <div class="er-next-h"><span>다음 해제</span><span class="tone ${dd <= 7 ? 'neg' : 'neu'}">${dd === 0 ? '오늘' : `D-${dd}`}</span></div>
           <div class="er-next-d"><b>${krDate(nx.date)}${nx.est ? ' (예상)' : ''}</b><span class="er-dday">${unit(nx.shares)}주</span></div>
           <div class="er-next-m">${esc(nx.label)}${q?.price ? ` · 현재가로 약 <b>${usd(nx.shares * q.price)}</b>` : ''}${nx.note ? ` · ${esc(nx.note)}` : ''}</div>
@@ -2749,7 +2786,7 @@
     const T = commonTiles(sym), E = st(sym).earn, Q = E?.quarters || [], last = Q.at(-1);
     let own = [];
     if (sym === 'JOBY') {
-      const F = state.faa, s5 = F?.stages?.find((s) => s.n === 5), s4 = F?.stages?.find((s) => s.n === 4);
+      const F = faaData(), s5 = F?.stages?.find((s) => s.n === 5), s4 = F?.stages?.find((s) => s.n === 4);
       const rw = sRunway(E);
       own = [
         tile('FAA 5단계(최종)', s5 ? `${s5.joby}%` : '–', s5 ? `<span class="flat">FAA 측 ${s5.faa}% · ${esc(F.asOf.slice(5).replace('-', '/'))} 기준</span>` : '', 'searn:c-faa'),
@@ -2784,7 +2821,7 @@
     const add = (tone, go, html, tag, weight = 1) => items.push({ tone, go, html, tag, weight });
     const E = st(sym).earn, Q = E?.quarters || [], last = Q.at(-1);
     if (sym === 'JOBY') {
-      const F = state.faa, s5 = F?.stages?.find((s) => s.n === 5);
+      const F = faaData(), s5 = F?.stages?.find((s) => s.n === 5);
       if (s5) {
         const h = F.history || [], dj = h.length > 1 ? h.at(-1).s5[0] - h.at(-2).s5[0] : null;
         add(dj > 0 ? 'pos' : 'neu', 'searn:c-faa', `FAA 인증 <b>5단계(최종)</b> Joby ${s5.joby}% · FAA ${s5.faa}%${dj != null ? ` · 직전 서한 대비 +${dj}%p` : ''} · 다음: ${esc(F.next || '')}`, dj > 0 ? 'FAA 인증 진전' : null, 3);
@@ -2842,7 +2879,7 @@
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
         <div class="sum-count"><span class="tone pos">긍정 ${nPos}</span><span class="tone neg">주의 ${nNeg}</span><span class="tone neu">중립 ${items.length - nPos - nNeg}</span></div>
-        <ul class="sum-list">${pxLine}${items.map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
+        <ul class="sum-list">${pxLine}${byTone(items).map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
     });
   }
 
@@ -2912,8 +2949,8 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
-    auto: ['circle', 'cirbtc', 'stables', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    manual: ['circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    auto: ['circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
     light: ['circle', 'cirbtc', 'quote'],
   };
   let manualRunning = false, manualQueued = false, doneTimer = null;
@@ -3095,8 +3132,7 @@
   document.getElementById('home-crcl').hidden = isOther();
   document.getElementById('home-stock').hidden = !isOther();
   renderTabbar();
-  renderStockSwitch(true);
-  document.getElementById('stock-switch')?.addEventListener('scroll', updateSwitchFade, { passive: true });
+  renderStockSwitch();
   updateFireChip();
   { let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0; showView(viewAllowed(v0) ? v0 : 'home'); }
   initPrice();

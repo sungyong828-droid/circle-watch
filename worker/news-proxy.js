@@ -527,15 +527,19 @@ export async function buildEarnings(sym = 'CRCL') {
   };
 }
 
-// 실적은 자주 바뀌지 않아 6시간 캐시 (발표일 전후에도 충분)
+// 실적: 1시간 캐시, 새로고침 버튼(fresh)은 10분 넘은 캐시를 다시 받는다(실적 발표 당일에도 금방 반영)
 export async function handleEarnings(url, cache, cors, ctx) {
   const sym = pickSym(url);
   const key = new Request(`${url.origin}/earnings?s=${sym}`);
   let res = await cache.match(key);
+  if (res && url.searchParams.has('fresh')) {
+    const at = Date.parse((await res.clone().json()).at || 0);
+    if (!(Date.now() - at < 600000)) res = null;
+  }
   if (!res) {
     try {
       const body = JSON.stringify(await buildEarnings(sym));
-      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=21600' } });
+      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
       ctx.waitUntil(cache.put(key, res.clone()));
     } catch (e) {
       return json({ error: String(e.message || e) }, cors, 502);
@@ -778,6 +782,121 @@ export async function summarizeMissing(env, sym, data, max = 5) {
   return res.filter((r) => r.status === 'fulfilled' && r.value.s).length;
 }
 
+// ---------------------------------------------------------------- 손으로 넣던 자료 자동 확인 (3시간마다)
+// 1) 조비 FAA 인증 %: 새 실적 8-K(2.02)가 나오면 주주서한(첨부 99.2) 차트 글자를 읽어 단계별 숫자로 바꾼다.
+//    "DATA AS OF JULY 31, 2026 … JOBY 100% 97% 83% FAA 100% 97% 77% 100% 100% 20% 10%"
+//    (서한마다 차트 글자 순서가 두 가지라 둘 다 처리하고, 범위·순서 검증을 통과할 때만 쓴다)
+// 2) 스페이스X: 상장 후 나온 8-K 중 보호예수(lock-up) 면제·조기 해제 문구가 있는 공시, 추가 매도 등록(S-1·S-3·424B)
+const SEC_H = { 'user-agent': 'YongsPortfolio personal dashboard (https://yongs-portfolio.pages.dev)' };
+const secGet = async (u, type = 'json') => {
+  const r = await fetch(u, { headers: { ...SEC_H, accept: type === 'json' ? 'application/json' : 'text/html' }, signal: AbortSignal.timeout(10000) });
+  if (!r.ok) throw new Error('sec ' + r.status);
+  return type === 'json' ? r.json() : r.text();
+};
+const MON3 = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
+const pad2 = (n) => String(n).padStart(2, '0');
+export function parseFaaChart(html) {
+  const t = String(html).replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
+  const m = t.match(/DATA AS OF ([A-Z]+)\.? (\d{1,2}),? (\d{4})[\s\S]{0,400}?JOBY((?:\s*\d{1,3}%){3,4})\s*FAA((?:\s*\d{1,3}%){5,8})/i);
+  if (!m) return null;
+  const mon = MON3[m[1].slice(0, 3).toUpperCase()];
+  const nums = (s) => [...s.matchAll(/(\d{1,3})%/g)].map((x) => +x[1]);
+  const J = nums(m[4]), F = nums(m[5]), n = J.length, fm = F.slice(0, n), ex = F.slice(n);
+  if (!mon || !((n === 3 && ex.length === 4) || (n === 4 && ex.length === 2))) return null;
+  const s = { 1: [J[0], fm[0]], 2: [J[1], fm[1]], 3: [ex[0], ex[1]], 4: [J[2], fm[2]], 5: n === 4 ? [J[3], fm[3]] : [ex[2], ex[3]] };
+  for (const [a, b] of Object.values(s)) if (!(a >= 0 && a <= 100 && b >= 0 && b <= a)) return null; // FAA 승인 ≤ Joby 제출
+  if (s[1][0] !== 100 || s[3][0] !== 100) return null;
+  return { asOf: `${m[3]}-${pad2(mon)}-${pad2(m[2])}`, stages: s };
+}
+const LOCKUP_CHANGE_RE = /waive|waiver|release|amend|terminat|early/i;
+export async function checkFacts(env, force = false) {
+  if (!env?.SUMS) return null;
+  const cur = (await env.SUMS.get('facts', 'json')) || {};
+  if (!force && cur.checkedAt && Date.now() - Date.parse(cur.checkedAt) < 3 * 3600000) return cur;
+  const out = { ...cur, checkedAt: new Date().toISOString() };
+  try {
+    const r = (await secGet('https://data.sec.gov/submissions/CIK0001819848.json')).filings.recent;
+    const i = r.form.findIndex((f, k) => f === '8-K' && /2\.02/.test(r.items[k] || ''));
+    if (i >= 0) {
+      const acc = r.accessionNumber[i].replace(/-/g, '');
+      if (cur.faa?.acc !== acc || !cur.faa?.ok) {
+        const base = `https://www.sec.gov/Archives/edgar/data/1819848/${acc}/`;
+        const names = (await secGet(base + 'index.json')).directory.item.map((x) => x.name)
+          .filter((nm) => /ex[a-z_-]{0,4}99/i.test(nm) && /\.htm$/i.test(nm))
+          .sort((a, b) => /99[._-]?2/.test(b) - /99[._-]?2/.test(a)); // 주주서한(99.2)부터
+        let got = null, url = names[0] ? base + names[0] : base;
+        for (const nm of names.slice(0, 3)) { const p = parseFaaChart(await secGet(base + nm, 'text')); if (p) { got = p; url = base + nm; break; } }
+        out.faa = { ...(got || {}), ok: !!got, acc, filed: r.filingDate[i], url };
+      }
+    }
+    delete out.faaErr;
+  } catch (e) { out.faaErr = String(e.message || e); }
+  try {
+    const r = (await secGet('https://data.sec.gov/submissions/CIK0001181412.json')).filings.recent;
+    const checked = new Set(cur.spcxChecked || []), list = [...(cur.spcxLock || [])];
+    let fetched = 0;
+    for (let k = 0; k < Math.min(40, r.form.length); k++) {
+      const acc = r.accessionNumber[k], form = r.form[k], d = r.filingDate[k];
+      if (d <= '2026-06-26' || checked.has(acc)) continue; // 상장 마감(6/26) 이후만
+      const url = `https://www.sec.gov/Archives/edgar/data/1181412/${acc.replace(/-/g, '')}/${r.primaryDocument[k]}`;
+      if (/^(S-1|S-3|424B)/.test(form)) { list.push({ acc, d, form, kind: 'offering', url }); checked.add(acc); continue; }
+      if (!/^8-K/.test(form)) { checked.add(acc); continue; }
+      if (fetched >= 4) continue; // 한 번에 4건까지(나머지는 다음 확인 때)
+      fetched++;
+      const txt = (await secGet(url, 'text')).replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/\s+/g, ' ').slice(0, 300000);
+      checked.add(acc);
+      for (const m of txt.matchAll(/lock-?up|market stand-?off/gi)) { // 단어 위치를 먼저 찾고 앞뒤 문장만 본다
+        const win = txt.slice(Math.max(0, m.index - 220), m.index + 220);
+        if (LOCKUP_CHANGE_RE.test(win)) { list.push({ acc, d, form, kind: 'lockup', url, snippet: win.trim().slice(0, 400) }); break; }
+      }
+    }
+    out.spcxLock = list.slice(-10);
+    out.spcxChecked = [...checked].slice(-300);
+    delete out.spcxErr;
+  } catch (e) { out.spcxErr = String(e.message || e); }
+  await env.SUMS.put('facts', JSON.stringify(out));
+  return out;
+}
+export async function handleFacts(url, cache, cors, ctx, env) {
+  const key = new Request(`${url.origin}/facts`);
+  let res = await cache.match(key);
+  if (!res) {
+    const f = env?.SUMS ? (await env.SUMS.get('facts', 'json')) || {} : {};
+    // 예약 확인이 한동안 안 돌았으면(처음 배포 등) 응답 뒤에 바로 확인해 둔다
+    if (env?.SUMS && !(Date.now() - Date.parse(f.checkedAt || 0) < 6 * 3600000)) ctx.waitUntil(checkFacts(env).catch(() => {}));
+    const { spcxChecked, ...pub } = f;
+    res = new Response(JSON.stringify(pub), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+    ctx.waitUntil(cache.put(key, res.clone()));
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+
+// ---------------------------------------------------------------- USDC·EURC·USYC 일별 공급량 (DefiLlama — 응답 헤더 문제로 브라우저가 직접 못 받음)
+export async function handleSeries(url, cache, cors, ctx) {
+  const key = new Request(`${url.origin}/series`);
+  let res = await cache.match(key);
+  if (!res) {
+    try {
+      const start = Date.UTC(2025, 5, 1) / 1000;
+      const get = async (id) => {
+        const r = await fetch(`https://stablecoins.llama.fi/stablecoincharts/all?stablecoin=${id}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(12000) });
+        if (!r.ok) throw new Error('llama ' + r.status);
+        return (await r.json()).map((p) => [Number(p.date), Object.values(p.totalCirculating || {})[0] || 0]).filter(([t]) => t >= start);
+      };
+      const [usdc, eurc, usyc] = await Promise.all([get(2), get(50), get(237)]);
+      res = new Response(JSON.stringify({ at: new Date().toISOString(), usdc, eurc, usyc }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=1800' } });
+      ctx.waitUntil(cache.put(key, res.clone()));
+    } catch (e) {
+      return json({ error: String(e.message || e) }, cors, 502);
+    }
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+
 // 뉴스 응답 (Worker와 Cloudflare Pages Functions가 함께 쓴다)
 export async function handleNews(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
@@ -803,7 +922,11 @@ export async function handleNews(url, cache, cors, ctx, env) {
     if (!data.kr.length && !data.en.length && !data.official.length) return json({ error: '뉴스 출처를 모두 받지 못했습니다', notes: data.notes }, cors, 502);
     attachSums(data, await readSums(env, sym));
     // 요약이 빠진 새 기사는 응답을 보낸 뒤 이어서 요약해 둔다(다음 갱신 때 보임)
-    if (env?.AI) ctx.waitUntil(summarizeMissing(env, sym, data, 4).catch(() => {}));
+    const lock = new Request(`${url.origin}/sumlock?s=${sym}`);
+    if (env?.AI && !(await cache.match(lock))) {
+      ctx.waitUntil(cache.put(lock, new Response('1', { headers: { 'cache-control': 'public, max-age=300' } })));
+      ctx.waitUntil(summarizeMissing(env, sym, data, 4).catch(() => {}));
+    }
     const body = JSON.stringify(data);
     res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${CACHE_SECONDS}` } });
     ctx.waitUntil(cache.put(cacheKey, res.clone()));
@@ -823,7 +946,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders'].includes(url.pathname)) return new Response('Portfolio proxy · GET /news, /circle, /earnings, /quote, /chart, /holders', { headers: cors });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series'].includes(url.pathname)) return new Response('Portfolio proxy · GET /news, /circle, /earnings, /quote, /chart, /holders, /facts, /series', { headers: cors });
     // 등록된 화면에서 온 요청만 받는다
     if (origin && !ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
@@ -832,10 +955,14 @@ export default {
     if (url.pathname === '/quote') return handleQuote(url, cache, cors, ctx);
     if (url.pathname === '/chart') return handleChart(url, cache, cors, ctx);
     if (url.pathname === '/holders') return handleHolders(url, cache, cors, ctx);
+    if (url.pathname === '/facts') return handleFacts(url, cache, cors, ctx, env);
+    if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);
   },
   // 5분마다 종목 하나씩 돌아가며 새 기사를 요약해 둔다(아무도 안 봐도 요약이 쌓이도록)
   async scheduled(event, env, ctx) {
+    // 3시간마다: FAA 인증 %·스페이스X 보호예수 공시 자동 확인
+    if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); return; }
     const sym = STOCKS[Math.floor(event.scheduledTime / 300000) % STOCKS.length];
     ctx.waitUntil((async () => {
       const data = await buildNews(sym);
