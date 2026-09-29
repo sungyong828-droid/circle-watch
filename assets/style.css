@@ -522,3 +522,94 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
   #refresh.loading .ic-refresh, .spin-dot { animation: none; }
   .top-progress::before { animation: none; left: 0; width: 100%; opacity: 0.6; }
 }
+
+/* =====================================================================
+   Yong's Portfolio: 종목 선택 · 🔥 버튼 · JOBY(FAA)
+   ===================================================================== */
+.tabbar { grid-template-columns: repeat(var(--tabs, 6), 1fr); }
+@media (min-width: 900px) { .tabbar { width: min(640px, 100%); } }
+.home-part { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 900px) {
+  .home-part { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-part > .card, .home-part > .group-h, .home-part > .kpis, .stock-switch { grid-column: 1 / -1; }
+}
+
+.stock-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stock-switch button {
+  display: grid; gap: 1px; text-align: left; padding: 10px 12px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.stock-switch button[aria-selected="true"] { border-color: var(--c-blue); background: rgba(79, 143, 247, 0.12); color: var(--ink); box-shadow: inset 0 0 0 1px var(--c-blue); }
+.stock-switch button:active { transform: scale(0.98); }
+.ss-tk { font: 700 16px var(--mono); letter-spacing: -0.01em; color: var(--ink); }
+.ss-nm { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-px { font: 600 13px var(--mono); margin-top: 3px; }
+.ss-px em { font-style: normal; font-size: 12px; margin-left: 2px; }
+
+.fire-chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 11px; border-radius: 17px; cursor: pointer;
+  border: 1px solid rgba(208, 122, 18, 0.55); background: rgba(208, 122, 18, 0.12); color: var(--ink); font: inherit; font-size: 13px;
+}
+.fire-chip b { font: 700 13px var(--mono); }
+.fire-chip[aria-current="page"] { background: var(--c-orange); border-color: var(--c-orange); color: #fff; }
+.chip-btn.sm { height: 26px; padding: 0 10px; font-size: 11.5px; letter-spacing: 0; text-transform: none; font-weight: 500; }
+
+.fire-poss { display: grid; gap: 6px; margin-top: 12px; }
+.fire-pos { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: baseline; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.fire-pos b { font-family: var(--mono); }
+.fire-pos span:last-child { font-family: var(--mono); text-align: right; }
+.f-rows-h { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
+#f-rows { display: grid; gap: 8px; }
+.f-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 32px; gap: 6px; align-items: center; }
+.f-row select, .f-row input { width: 100%; height: 42px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: 13px var(--mono); -webkit-appearance: none; appearance: none; }
+.f-row select { font: 12.5px var(--sans); }
+.f-rm { height: 32px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; }
+.f-add { justify-self: start; height: 36px !important; }
+@media (max-width: 420px) { .f-row { grid-template-columns: 1fr 1fr 32px; } .f-row select { grid-column: 1 / -1; } }
+
+/* FAA 인증 카드 */
+.faa-card { border-color: rgba(79, 143, 247, 0.35); }
+.faa-notice { display: block; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(224, 164, 58, 0.12); border: 1px solid rgba(224, 164, 58, 0.45); color: var(--warn); font-size: 13px; text-decoration: none; }
+.faa-hero { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.faa-big { flex-shrink: 0; white-space: nowrap; font: 700 44px/1 var(--mono); color: var(--c-blue); letter-spacing: -0.03em; }
+.faa-big small { font-size: 14px; color: var(--muted); margin-left: 2px; }
+.faa-hero div { display: grid; gap: 2px; font-size: 13px; color: var(--ink-2); }
+.faa-hero b { font-size: 15px; color: var(--ink); }
+.faa-stages { display: grid; gap: 10px; margin-top: 14px; }
+.faa-stage { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line-soft); }
+.faa-stage.active { border-color: rgba(79, 143, 247, 0.5); }
+.faa-sh { display: grid; grid-template-columns: 24px 1fr; gap: 0 8px; align-items: center; }
+.faa-sh small { grid-column: 2; font-size: 11px; color: var(--faint); }
+.faa-n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 11.5px var(--mono); background: var(--line); color: var(--ink-2); grid-row: span 2; }
+.faa-stage.done .faa-n { background: var(--good); color: #fff; }
+.faa-stage.active .faa-n { background: var(--c-blue); color: #fff; }
+.faa-sh b { font-size: 13.5px; }
+.faa-bars { display: grid; gap: 5px; margin-top: 8px; }
+.faa-bars div { display: grid; grid-template-columns: 38px 1fr 40px; gap: 8px; align-items: center; font-size: 11.5px; color: var(--muted); }
+.faa-bars i { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.faa-bars em { display: block; height: 100%; border-radius: 4px; background: var(--c-blue); }
+.faa-bars em.f { background: var(--c-teal); }
+.faa-bars b { font: 600 12px var(--mono); color: var(--ink); text-align: right; }
+.faa-note { margin: 6px 0 0; font-size: 11.5px; color: var(--faint); line-height: 1.45; }
+.faa-trend { margin-top: 12px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.faa-trend b { font-family: var(--mono); color: var(--ink); }
+.faa-trend i { font-style: normal; color: var(--faint); }
+.faa-trend small { color: var(--faint); }
+.faa-trend span { white-space: nowrap; }
+.faa-ms { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 0; }
+.faa-ms li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 7px 0; position: relative; font-size: 13px; line-height: 1.45; }
+.faa-ms li::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.faa-ms li:first-child::before { top: 14px; } .faa-ms li:last-child::before { bottom: calc(100% - 14px); }
+.faa-dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 3px; position: relative; z-index: 1; border: 2px solid var(--faint); background: var(--surface); }
+.faa-ms li.done .faa-dot { border-color: var(--good); background: var(--good); }
+.faa-ms b { font: 600 12px var(--mono); color: var(--muted); margin-right: 4px; }
+.faa-ms a { color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--faint); }
+.faa-ms li.todo div { color: var(--muted); }
+.faa-ms small { display: block; font-size: 11.5px; color: var(--faint); }
+.faa-nl { margin-top: 4px; }
+.faa-tag { font-style: normal; font: 700 9.5px var(--mono); color: var(--c-blue); border: 1px solid rgba(79, 143, 247, 0.5); border-radius: 4px; padding: 0 3px; margin-right: 5px; vertical-align: 1px; }
+.nk.related { color: var(--c-blue); border-color: rgba(79, 143, 247, 0.45); background: rgba(79, 143, 247, 0.1); }
+.nk.industry { color: var(--c-purple); border-color: rgba(143, 122, 238, 0.45); background: rgba(143, 122, 238, 0.1); }
+.nk.official { color: #fff; background: var(--c-blue); border-color: var(--c-blue); }
+.seg.range.jr { grid-template-columns: repeat(5, 1fr); }

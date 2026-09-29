@@ -1,8 +1,12 @@
-# Circle Watch
+# Yong's Portfolio
 
 **공유용 주소: https://circle-watch.pages.dev** (Cloudflare Pages)
 
-Circle(CRCL)의 USDC·EURC·USYC·cirBTC와 Arc 체인 현황을 휴대폰에서 보는 개인용 대시보드.
+휴대폰에서 보는 개인용 주식 대시보드. 홈 상단에서 종목을 고르면 화면과 하단 탭이 바뀝니다.
+
+- **CRCL (서클 인터넷 그룹)**: 주가, USDC·EURC·USYC·cirBTC, Arc 체인, 실적, 뉴스·공시
+- **JOBY (조비 에비에이션)**: 주가·공매도, FAA 형식 인증 현황 + 실적(현금 버틸 기간), 뉴스·공시(FAA 인증·UAM 업계)
+- **Fire** (상단 🔥 칩): 보유 종목 합계로 목표 금액까지 진행률. 보유 정보는 그 기기의 브라우저에만 저장되고 저장소·서버에는 올라가지 않습니다.
 
 ## 구조
 
@@ -77,9 +81,14 @@ python -m http.server 8765
 - 서버 수집 데이터는 `/api/data`가 자동으로 받아 오므로 따로 배포할 필요가 없습니다.
 - **화면 코드를 고쳤을 때만** 다시 올립니다:
   ```bash
-  rm -rf dist && mkdir dist && cp -r index.html assets _headers dist/
+  rm -rf dist && mkdir dist && cp -r index.html assets _headers dist/ && mkdir -p dist/data && cp data/faa-joby.json dist/data/
   npx wrangler pages deploy dist --project-name circle-watch --branch main
   ```
+
+## JOBY FAA 인증 수치 갱신
+
+`data/faa-joby.json`은 **손으로 갱신**합니다. 조비가 분기 실적 발표 때 주주서한(SEC 8-K 첨부 99.2)에 5단계별 Joby/FAA 진행률 차트를 공개하므로, 발표 후 그 수치로 `stages`, `history`, `asOf`, `source`, `milestones`를 고치고 GitHub에 push + Cloudflare Pages 재배포를 합니다.
+새 실적 발표(8-K item 2.02)가 나왔는데 이 파일이 옛날 것이면 화면의 FAA 카드 위에 알림이 뜹니다.
 
 ## 보안
 

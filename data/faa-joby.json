@@ -1,0 +1,31 @@
+{
+  "asOf": "2026-07-31",
+  "source": {
+    "label": "Joby 2026년 2분기 주주서한 (2026-08-05)",
+    "date": "2026-08-05",
+    "url": "https://www.sec.gov/Archives/edgar/data/1819848/000181984826000432/joby-8kx20260805xexx99_2.htm"
+  },
+  "stages": [
+    { "n": 1, "name": "인증 기준", "en": "Certification Basis", "joby": 100, "faa": 100, "status": "done", "note": "어떤 규정으로 인증할지 FAA와 합의" },
+    { "n": 2, "name": "적합성 입증 방법", "en": "Means of Compliance", "joby": 97, "faa": 97, "status": "done", "note": "Joby는 사실상 완료로 봄 — 설계 변경에 대응하려고 일부를 일부러 열어 둠" },
+    { "n": 3, "name": "인증 계획", "en": "Certification Plans", "joby": 100, "faa": 100, "status": "done", "note": "2024년 2월 eVTOL 업체 최초로 완료" },
+    { "n": 4, "name": "시험·분석", "en": "Testing & Analysis", "joby": 83, "faa": 77, "status": "active", "note": "부품·시스템 시험 보고서를 FAA가 검토 · 5단계와 함께 진행" },
+    { "n": 5, "name": "실증·검증", "en": "Show & Verify", "joby": 20, "faa": 10, "status": "active", "note": "FAA 적합 기체로 인증 비행(TIA) — 끝나면 형식 인증(Type Certificate) 발급" }
+  ],
+  "history": [
+    { "label": "1분기 서한(5/1)", "asOf": "2026-05-01", "s5": [15, 6] },
+    { "label": "2분기 서한(7/31)", "asOf": "2026-07-31", "s5": [20, 10] }
+  ],
+  "next": "FAA 조종사가 직접 모는 인증 비행(for-credit TIA) 시작",
+  "milestones": [
+    { "date": "2022-05-26", "title": "Part 135 항공운송사업자 인증 취득", "url": "https://ir.jobyaviation.com/news-events/press-releases/detail/40/joby-receives-part-135-certification-from-the-faa", "done": true },
+    { "date": "2024-02-21", "title": "형식 인증 3단계(인증 계획) 완료 — eVTOL 업체 최초", "url": "https://www.jobyaviation.com/news/joby-completes-third-stage-faa-certification-process", "done": true },
+    { "date": "2026-03-11", "title": "TIA용 첫 FAA 적합 기체 비행 시작", "url": "https://ir.jobyaviation.com/news-events/press-releases/detail/176/jobys-first-faa-conforming-aircraft-takes-flight", "done": true },
+    { "date": "2026-08-05", "title": "2분기: 5단계에서 역대 최대 분기 진전 · 기체 5대 비행, 12대 생산 중", "url": "https://ir.jobyaviation.com/news-events/press-releases/detail/187/joby-reports-second-quarter-2026-financial-results", "done": true },
+    { "date": "2026-09-10", "title": "텍사스에서 정부 에어택시 시범사업(eIPP) 비행 시작", "url": "https://ir.jobyaviation.com/news-events/press-releases/detail/191/joby-launches-eipp-flights-in-texas", "done": true },
+    { "date": "예정", "title": "FAA 조종사 인증 비행(for-credit TIA) 시작", "note": "Joby: 2026년 중 시작 예정", "done": false },
+    { "date": "예정", "title": "형식 인증(Type Certificate) 취득 → 5단계 완료", "done": false },
+    { "date": "예정", "title": "첫 승객 운항", "note": "Joby 목표: 2026년 안", "done": false }
+  ],
+  "caveat": "단계별 %는 주주서한 차트의 수치이며, 문서 수정·재제출로 조금씩 달라질 수 있어요(Joby 설명). 분기 실적 발표 때 새로 공개돼요."
+}

@@ -5,6 +5,7 @@
 const ALLOWED_ORIGINS = [
   'https://sungyong828-droid.github.io',
   'http://localhost:8765',
+  'https://circle-watch.pages.dev',
 ];
 const CACHE_SECONDS = 180;
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
@@ -72,8 +73,8 @@ function dedupe(list, max = 40) {
     .slice(0, max);
 }
 
-async function nasdaqFilings() {
-  const res = await fetch('https://api.nasdaq.com/api/company/CRCL/sec-filings?limit=100&sortColumn=filed&sortOrder=desc&IsQuoteMedia=true', {
+async function nasdaqFilings(sym = 'CRCL') {
+  const res = await fetch(`https://api.nasdaq.com/api/company/${sym}/sec-filings?limit=100&sortColumn=filed&sortOrder=desc&IsQuoteMedia=true`, {
     headers: { 'user-agent': BROWSER_UA, accept: 'application/json, text/plain, */*', origin: 'https://www.nasdaq.com', referer: 'https://www.nasdaq.com/' },
     signal: AbortSignal.timeout(8000),
   });
@@ -85,12 +86,48 @@ async function nasdaqFilings() {
   });
 }
 
-const Q = {
-  kr: 'CRCL OR "써클 인터넷" OR (써클 USDC) OR (서클 USDC) OR (써클 스테이블코인) when:30d',
-  krBing: ['써클 USDC', '써클 CRCL', '서클 USDC'],
-  en: '"Circle Internet" OR CRCL OR (Circle USDC stablecoin) when:30d',
-  enBing: ['"Circle Internet"', 'CRCL stock', 'Circle USDC'],
+// 종목별 뉴스 검색어 · 공식 발표 판별 · 업계 뉴스 종류
+const NEWS_CFG = {
+  CRCL: {
+    kr: 'CRCL OR "써클 인터넷" OR (써클 USDC) OR (서클 USDC) OR (써클 스테이블코인) when:30d',
+    krBing: ['써클 USDC', '써클 CRCL', '서클 USDC'],
+    en: '"Circle Internet" OR CRCL OR (Circle USDC stablecoin) when:30d',
+    enBing: ['"Circle Internet"', 'CRCL stock', 'Circle USDC'],
+    bw: '"Circle" site:businesswire.com when:60d',
+    bwBing: ['"Circle Internet Group" Business Wire', 'Circle announces USDC'],
+    site: 'site:circle.com when:60d',
+    officialSource: /^(circle investor relations|circle\.com|businesswire\.com|business wire)$/i,
+    officialTitle: /USDC|EURC|\bArc\b|Circle Internet|^Circle (?!Pharma|K\b|Health)|(with|in|and|by|from|,) Circle\b/,
+    officialExclude: /Circle (Pharma|K\b|Health|Model)|(Donor|Harraden) Circle|\b[Tt]erms\b|full-stack platform/,
+    officialStrip: /^Circle Internet Group, Inc\. - /,
+    industry: 'crypto',
+  },
+  JOBY: {
+    kr: '"조비 에비에이션" OR 조비에비에이션 OR (조비 에어택시) OR (조비 UAM) OR (조비 eVTOL) when:30d',
+    krBing: ['조비 에비에이션', '조비 에어택시'],
+    en: '"Joby Aviation" OR (Joby eVTOL) OR (Joby "air taxi") when:30d',
+    enBing: ['"Joby Aviation"', 'Joby air taxi'],
+    bw: '"Joby" site:businesswire.com when:90d',
+    bwBing: ['"Joby Aviation" Business Wire', 'Joby Aviation announces'],
+    site: 'site:jobyaviation.com when:90d',
+    officialSource: /^(joby aviation|joby aero|jobyaviation\.com|ir\.jobyaviation\.com|businesswire\.com|business wire)$/i,
+    officialTitle: /\bJoby\b/,
+    officialExclude: /\b[Tt]erms\b|[Pp]rivacy/,
+    officialStrip: /^Joby Aero, Inc\. - |^Joby Aviation, Inc\. - /,
+    industry: 'uam',
+  },
 };
+const STOCKS = Object.keys(NEWS_CFG);
+// 검색 뉴스(구글·Bing)는 누구나 올릴 수 있는 사이트가 섞이므로: 도박·성인·대출 광고 차단 + 제목에 종목 관련어가 있어야 통과
+const JUNK_RE = /카지노|슬롯|바카라|토토|먹튀|도박|베팅|배팅|홀덤|릴게임|성인|야동|대출 ?(문의|상담)|casino|slots?|baccarat|betting|gambl|porn|escort|onlyfans|viagra/i;
+const RELEVANT = {
+  CRCL: /서클|써클|Circle|CRCL|USDC|EURC|스테이블코인|stablecoin/i,
+  JOBY: /조비|Joby|JOBY/i,
+};
+// 공시 목록 페이지("4 - 09/23/2026 - Joby Aero, Inc.")처럼 기사 아닌 항목
+const FILING_PAGE_RE = /^(\d+|8-K|10-[QK]|S-\d|SC ?13[DG]|144|DEF ?14A|424B\d?)(\/A)?\s*-\s*\d{2}\/\d{2}\/\d{4}/i;
+const cleanNews = (list, sym) => list.filter((n) => !JUNK_RE.test(n.title) && !JUNK_RE.test(n.source || '') && !SPAM_RE.test(n.title) && RELEVANT[sym].test(n.title));
+const pickSym = (url) => { const s = (url.searchParams.get('s') || 'CRCL').toUpperCase(); return STOCKS.includes(s) ? s : 'CRCL'; };
 
 // 구글 → (실패 시) Bing 순서로 시도하고, 어느 쪽에서 받았는지 표시
 async function withFallback(primary, fallback, label, notes) {
@@ -119,7 +156,15 @@ const CRYPTO_FEEDS = [
 const SPAM_RE = /sponsored|press release|partner content|advertorial|paid (post|content)|presale|pre-sale|giveaway|free (crypto|tokens?)|airdrop (claim|now|live)|guaranteed|\b\d{3,}x\b|price prediction|how to buy|best (crypto|coins?) to buy|\[(ad|pr|광고|홍보|보도자료)\]|보도자료|협찬|광고|에어드랍 (받|참여)|무료 (코인|토큰)|폭등 예정|지금 사야/i;
 const CRYPTO_KW = /비트코인|이더리움|코인|가상자산|암호화폐|블록체인|스테이블|디지털자산|디지털 자산|거래소|업비트|빗썸|코인베이스|바이낸스|토큰|NFT|디파이|DeFi|XRP|리플|솔라나|USDC|USDT|테더|서클|CBDC|웹3|Web3|채굴|ETF|BTC|ETH/i;
 
-async function cryptoFeed(f) {
+// 도심항공교통(UAM)·eVTOL 업계 뉴스: 전문 매체 RSS만 (FlightGlobal은 에어택시 관련 기사만)
+const UAM_FEEDS = [
+  { url: 'https://evtolinsights.com/feed/', source: 'eVTOL Insights', lang: 'en', host: 'evtolinsights.com' },
+  { url: 'https://www.urbanairmobilitynews.com/feed/', source: 'Urban Air Mobility News', lang: 'en', host: 'urbanairmobilitynews.com' },
+  { url: 'https://www.flightglobal.com/rss', source: 'FlightGlobal', lang: 'en', host: 'flightglobal.com', needKw: true },
+];
+const UAM_KW = /eVTOL|air taxi|air-taxi|advanced air mobility|urban air mobility|\bAAM\b|\bUAM\b|vertiport|Joby|Archer|Beta Technologies|Vertical Aerospace|EHang|Wisk|Lilium|Eve Air|Volocopter|도심항공|에어택시|버티포트/i;
+
+async function cryptoFeed(f, kw = CRYPTO_KW) {
   const xml = await fetchText(f.url, 2);
   const cutoff = Date.now() - 3 * DAY_MS;
   return rssItems(xml).map((it) => {
@@ -132,9 +177,15 @@ async function cryptoFeed(f) {
     try { const u = new URL(n.url); if (u.protocol !== 'https:' && u.protocol !== 'http:') return false; host = u.hostname; } catch { return false; }
     if (!(host === f.host || host.endsWith('.' + f.host))) return false; // 매체 자기 도메인 링크만
     if (SPAM_RE.test(n.title) || SPAM_RE.test(n.cats)) return false;
-    if (f.needKw && !CRYPTO_KW.test(n.title)) return false;
+    if (f.needKw && !kw.test(n.title)) return false;
     return true;
   }).map(({ cats, ...n }) => n);
+}
+
+async function industryNews(feeds, kw) {
+  const res = await Promise.allSettled(feeds.map((f) => cryptoFeed(f, kw)));
+  const all = res.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  return { list: dedupe(all, 40), failed: feeds.filter((_, i) => res[i].status === 'rejected').map((f) => f.source) };
 }
 
 async function cryptoNews() {
@@ -146,35 +197,36 @@ async function cryptoNews() {
   return { list: [...ko, ...en].sort((a, b) => b.t.localeCompare(a.t)), failed };
 }
 
-async function buildNews() {
+async function buildNews(sym = 'CRCL') {
+  const C = NEWS_CFG[sym];
   const notes = [];
   const settle = async (p) => { try { return { ok: true, v: await p } } catch (e) { return { ok: false, e } } };
   // 모든 출처를 동시에 요청하고, 14초 안에 못 받은 항목은 비워 둔다(마지막 성공 결과로 채워짐)
   const deadline = (p) => Promise.race([p, sleep(14000).then(() => { throw new Error('시간 초과'); })]);
+  const industry = C.industry === 'crypto' ? cryptoNews() : industryNews(UAM_FEEDS, UAM_KW);
   const [kr, en, bw, site, filings, crypto] = await Promise.all([
-    settle(deadline(withFallback(() => googleNews(Q.kr, 'ko'), () => bingNews(Q.krBing, 'ko'), 'kr', notes))),
-    settle(deadline(withFallback(() => googleNews(Q.en, 'en'), () => bingNews(Q.enBing, 'en'), 'en', notes))),
-    settle(deadline(withFallback(() => googleNews('"Circle" site:businesswire.com when:60d', 'en'),
-      () => bingNews(['"Circle Internet Group" Business Wire', 'Circle announces USDC'], 'en').then((l) => l.map((n) => ({ ...n, source: /business ?wire/i.test(n.source) ? 'businesswire.com' : n.source }))), 'bw', notes))),
-    settle(deadline(withFallback(() => googleNews('site:circle.com when:60d', 'en'), null, 'site', notes))),
-    settle(deadline(nasdaqFilings())),
-    settle(deadline(cryptoNews())),
+    settle(deadline(withFallback(() => googleNews(C.kr, 'ko'), () => bingNews(C.krBing, 'ko'), 'kr', notes))),
+    settle(deadline(withFallback(() => googleNews(C.en, 'en'), () => bingNews(C.enBing, 'en'), 'en', notes))),
+    settle(deadline(withFallback(() => googleNews(C.bw, 'en'),
+      () => bingNews(C.bwBing, 'en').then((l) => l.map((n) => ({ ...n, source: /business ?wire/i.test(n.source) ? 'businesswire.com' : n.source }))), 'bw', notes))),
+    settle(deadline(withFallback(() => googleNews(C.site, 'en'), null, 'site', notes))),
+    settle(deadline(nasdaqFilings(sym))),
+    settle(deadline(industry)),
   ]);
   const v = (r) => (r.ok ? r.v : []);
-  // 출처는 IR·circle.com·Business Wire만, 이름만 같은 다른 회사(Circle K 등)는 제외
+  // 공식 발표: 회사 IR·자사 사이트·Business Wire만, 이름만 같은 다른 회사는 제외
   const official = dedupe([...v(bw), ...v(site)]
-    .filter((n) => /^(circle investor relations|circle\.com|businesswire\.com|business wire)$/i.test(n.source)
-      && /USDC|EURC|\bArc\b|Circle Internet|^Circle (?!Pharma|K\b|Health)|(with|in|and|by|from|,) Circle\b/.test(n.title)
-      && !/Circle (Pharma|K\b|Health|Model)|(Donor|Harraden) Circle|\b[Tt]erms\b/.test(n.title))
-    .map((n) => ({ ...n, title: n.title.replace(/^Circle Internet Group, Inc\. - /, '') })), 30);
+    .filter((n) => C.officialSource.test(n.source) && C.officialTitle.test(n.title) && !C.officialExclude.test(n.title) && !FILING_PAGE_RE.test(n.title))
+    .map((n) => ({ ...n, title: n.title.replace(C.officialStrip, '') })), 30);
   const officialTitles = new Set(official.map((n) => n.title));
   return {
     at: new Date().toISOString(),
     official,
-    kr: dedupe(v(kr)),
-    en: dedupe(v(en).filter((n) => !officialTitles.has(n.title))),
+    kr: dedupe(cleanNews(v(kr), sym)),
+    en: dedupe(cleanNews(v(en), sym).filter((n) => !officialTitles.has(n.title))),
     filings: v(filings),
-    crypto: crypto.ok ? crypto.v.list : [],
+    crypto: crypto.ok ? crypto.v.list : [], // CRCL: 암호화폐 · JOBY: UAM 업계
+    industry: C.industry,
     cryptoFailed: crypto.ok ? crypto.v.failed : ['all'],
     failed: Object.entries({ kr, en, bw, site, filings, crypto }).filter(([, r]) => !r.ok).map(([k]) => k),
     notes,
@@ -256,8 +308,22 @@ const MON = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Se
 // "Jun 2026" → 해당 분기 말일 "2026-06-30"
 const qtrEnd = (s) => { const m = String(s || '').match(/([A-Z][a-z]{2}) (\d{4})/); if (!m) return null; const mo = MON[m[1]]; const last = new Date(Date.UTC(+m[2], mo, 0)).getUTCDate(); return `${m[2]}-${String(mo).padStart(2, '0')}-${last}`; };
 
-async function secQuarterly() {
-  const r = await fetch('https://data.sec.gov/api/xbrl/companyfacts/CIK0001876042.json', {
+const EARN_CFG = {
+  CRCL: {
+    cik: '0001876042',
+    flows: { revenue: 'Revenues', reserve: 'InterestAndDividendIncomeOperating', otherRevenue: 'RevenueFromContractWithCustomerExcludingAssessedTax', opIncome: 'OperatingIncomeLoss', netIncome: 'NetIncomeLoss', eps: 'EarningsPerShareDiluted' },
+  },
+  JOBY: {
+    cik: '0001819848',
+    flows: { revenue: 'RevenueFromContractWithCustomerExcludingAssessedTax', opIncome: 'OperatingIncomeLoss', netIncome: 'NetIncomeLoss', eps: 'EarningsPerShareDiluted', rnd: 'ResearchAndDevelopmentExpense', sga: 'SellingGeneralAndAdministrativeExpense' },
+    instants: { cash: 'CashAndCashEquivalentsAtCarryingValue', sti: 'ShortTermInvestments' },
+    ytd: { ocf: 'NetCashProvidedByUsedInOperatingActivities', capex: 'PaymentsToAcquirePropertyPlantAndEquipment' },
+  },
+};
+
+async function secQuarterly(sym = 'CRCL') {
+  const E = EARN_CFG[sym];
+  const r = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${E.cik}.json`, {
     headers: { 'user-agent': 'CircleWatch personal dashboard (https://circle-watch.pages.dev)', accept: 'application/json' },
     signal: AbortSignal.timeout(10000),
   });
@@ -283,23 +349,43 @@ async function secQuarterly() {
     }
     return q;
   };
-  return {
-    revenue: series('Revenues'),
-    reserve: series('InterestAndDividendIncomeOperating'),
-    otherRevenue: series('RevenueFromContractWithCustomerExcludingAssessedTax'),
-    opIncome: series('OperatingIncomeLoss'),
-    netIncome: series('NetIncomeLoss'),
-    eps: series('EarningsPerShareDiluted'),
+  // 분기 말 잔액(현금 등)
+  const instant = (concept) => {
+    const u = g[concept]?.units; if (!u) return {};
+    const out = {};
+    for (const v of u[Object.keys(u)[0]]) if (!v.start && /10-[QK]/.test(v.form || '')) out[v.end] = v.val;
+    return out;
   };
+  // 현금흐름표는 연초부터 누적(YTD)이라 직전 누적과의 차이로 분기 값을 만든다
+  const ytdQuarterly = (concept) => {
+    const u = g[concept]?.units; if (!u) return {};
+    const byStart = {};
+    for (const v of u[Object.keys(u)[0]]) if (v.start) (byStart[v.start] ||= {})[v.end] = v.val;
+    const q = {};
+    for (const [start, ends] of Object.entries(byStart)) {
+      let prevEnd = start, prevVal = 0;
+      for (const end of Object.keys(ends).sort()) {
+        const gap = days(prevEnd, end);
+        if (gap >= 80 && gap <= 100 && q[end] == null) q[end] = ends[end] - prevVal;
+        prevEnd = end; prevVal = ends[end];
+      }
+    }
+    return q;
+  };
+  const out = {};
+  for (const [k, c] of Object.entries(E.flows || {})) out[k] = series(c);
+  for (const [k, c] of Object.entries(E.instants || {})) out[k] = instant(c);
+  for (const [k, c] of Object.entries(E.ytd || {})) out[k] = ytdQuarterly(c);
+  return out;
 }
 
-export async function buildEarnings() {
+export async function buildEarnings(sym = 'CRCL') {
   const [fin, sur, dt, fc, sec] = await Promise.allSettled([
-    nasdaqJson('company/CRCL/financials?frequency=2'),
-    nasdaqJson('company/CRCL/earnings-surprise'),
-    nasdaqJson('analyst/CRCL/earnings-date'),
-    nasdaqJson('analyst/CRCL/earnings-forecast'),
-    secQuarterly(),
+    nasdaqJson(`company/${sym}/financials?frequency=2`),
+    nasdaqJson(`company/${sym}/earnings-surprise`),
+    nasdaqJson(`analyst/${sym}/earnings-date`),
+    nasdaqJson(`analyst/${sym}/earnings-forecast`),
+    secQuarterly(sym),
   ]);
   const Q = {}; // 분기 말일 → 값
   const put = (end, k, v) => { if (end && v != null && isFinite(v)) (Q[end] ||= { end })[k] = v; };
@@ -348,24 +434,31 @@ export async function buildEarnings() {
     const r0 = fc.value?.quarterlyForecast?.rows?.[0];
     if (r0) Object.assign(next, { quarter: qtrEnd(r0.fiscalEnd), high: +r0.highEPSForecast, low: +r0.lowEPSForecast, analysts: next.analysts ?? +r0.noOfEstimates });
   }
-  const quarters = Object.values(Q).filter((q) => q.revenue != null).sort((a, b) => a.end.localeCompare(b.end)).slice(-8);
+  // 현금 소진 = 영업현금흐름 + 설비투자(음수면 현금이 빠져나감)
+  for (const q of Object.values(Q)) {
+    if (q.ocf != null) q.burn = q.ocf - (q.capex || 0);
+    if (q.cash != null || q.sti != null) q.liquidity = (q.cash || 0) + (q.sti || 0);
+  }
+  const quarters = Object.values(Q).filter((q) => q.revenue != null || q.netIncome != null).filter((q) => q.netIncome != null || q.revenue != null).sort((a, b) => a.end.localeCompare(b.end)).slice(-8);
   if (!quarters.length && !next) throw new Error('실적 데이터를 받지 못했습니다');
   return {
     at: new Date().toISOString(),
     quarters,
     surprises,
     next,
+    symbol: sym,
     sources: { nasdaq: fin.status === 'fulfilled', sec: sec.status === 'fulfilled' },
   };
 }
 
 // 실적은 자주 바뀌지 않아 6시간 캐시 (발표일 전후에도 충분)
 export async function handleEarnings(url, cache, cors, ctx) {
-  const key = new Request(`${url.origin}/earnings`);
+  const sym = pickSym(url);
+  const key = new Request(`${url.origin}/earnings?s=${sym}`);
   let res = await cache.match(key);
   if (!res) {
     try {
-      const body = JSON.stringify(await buildEarnings());
+      const body = JSON.stringify(await buildEarnings(sym));
       res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=21600' } });
       ctx.waitUntil(cache.put(key, res.clone()));
     } catch (e) {
@@ -379,7 +472,7 @@ export async function handleEarnings(url, cache, cors, ctx) {
 
 // ---------------------------------------------------------------- 주식 시세 · 환율 (Fire 탭)
 // Nasdaq: 장전·장중·장후 실시간 체결가와 정규장 종가 / Yahoo: 원·달러 환율 (실패 시 open.er-api 일별 환율)
-const QUOTE_SYMBOLS = { CRCA: 'etf', CRCL: 'stocks' };
+const QUOTE_SYMBOLS = { CRCA: 'etf', CRCL: 'stocks', JOBY: 'stocks', ACHR: 'stocks' };
 const num = (s) => { const n = parseFloat(String(s ?? '').replace(/[^0-9.\-]/g, '')); return isFinite(n) ? n : null; };
 
 async function nasdaqQuote(sym, cls) {
@@ -411,9 +504,12 @@ async function usdKrw() {
 }
 
 export async function buildQuote() {
-  const [crca, crcl, fx] = await Promise.allSettled([nasdaqQuote('CRCA', QUOTE_SYMBOLS.CRCA), nasdaqQuote('CRCL', QUOTE_SYMBOLS.CRCL), usdKrw()]);
+  const [crca, crcl, joby, achr, fx] = await Promise.allSettled([
+    nasdaqQuote('CRCA', QUOTE_SYMBOLS.CRCA), nasdaqQuote('CRCL', QUOTE_SYMBOLS.CRCL),
+    nasdaqQuote('JOBY', QUOTE_SYMBOLS.JOBY), nasdaqQuote('ACHR', QUOTE_SYMBOLS.ACHR), usdKrw(),
+  ]);
   const v = (r) => (r.status === 'fulfilled' ? r.value : null);
-  const out = { at: new Date().toISOString(), CRCA: v(crca), CRCL: v(crcl), fx: v(fx) };
+  const out = { at: new Date().toISOString(), CRCA: v(crca), CRCL: v(crcl), JOBY: v(joby), ACHR: v(achr), fx: v(fx) };
   if (!out.CRCA && !out.fx) throw new Error('시세를 받지 못했습니다');
   return out;
 }
@@ -436,10 +532,42 @@ export async function handleQuote(url, cache, cors, ctx) {
   return out;
 }
 
+// ---------------------------------------------------------------- 가격 차트 (Yahoo, 바이낸스에 없는 종목용)
+const CHART_SYMBOLS = ['JOBY', 'ACHR', 'CRCL', 'CRCA'];
+const CHART_RANGES = { '1d': ['5m', '1d'], '1w': ['30m', '5d'], '1m': ['1h', '1mo'], '3m': ['1d', '3mo'], '1y': ['1d', '1y'] };
+export async function handleChart(url, cache, cors, ctx) {
+  const sym = (url.searchParams.get('s') || '').toUpperCase();
+  const range = url.searchParams.get('r') || '1d';
+  if (!CHART_SYMBOLS.includes(sym) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
+  const key = new Request(`${url.origin}/chart?s=${sym}&r=${range}`);
+  let res = await cache.match(key);
+  if (!res) {
+    try {
+      const [interval, rng] = CHART_RANGES[range];
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${rng}&includePrePost=${range === '1d'}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error('yahoo ' + r.status);
+      const j = (await r.json()).chart.result[0];
+      const ts = j.timestamp || [], cl = j.indicators?.quote?.[0]?.close || [];
+      const points = ts.map((t, i) => [t * 1000, cl[i]]).filter((p) => p[1] != null);
+      const m = j.meta || {};
+      const body = JSON.stringify({ at: new Date().toISOString(), symbol: sym, range, points, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null });
+      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${range === '1d' ? 60 : 900}` } });
+      ctx.waitUntil(cache.put(key, res.clone()));
+    } catch (e) {
+      return json({ error: String(e.message || e) }, cors, 502);
+    }
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
+}
+
 // 뉴스 응답 (Worker와 Cloudflare Pages Functions가 함께 쓴다)
 export async function handleNews(url, cache, cors, ctx) {
-  const cacheKey = new Request(`${url.origin}/news`);
-  const lastKey = new Request(`${url.origin}/news-last-good`);
+  const sym = pickSym(url);
+  const suffix = sym === 'CRCL' ? '' : `?s=${sym}`; // CRCL은 기존 캐시 키 유지
+  const cacheKey = new Request(`${url.origin}/news${suffix}`);
+  const lastKey = new Request(`${url.origin}/news-last-good${suffix}`);
   // fresh(새로고침 버튼)여도 1분 안에 받아 둔 결과가 있으면 그대로 쓴다
   let res = await cache.match(cacheKey);
   if (res && url.searchParams.has('fresh')) {
@@ -449,7 +577,7 @@ export async function handleNews(url, cache, cors, ctx) {
   if (!res) {
     let data;
     try {
-      data = await buildNews();
+      data = await buildNews(sym);
     } catch (e) {
       data = { at: new Date().toISOString(), official: [], kr: [], en: [], filings: [], failed: ['all'], notes: [String(e.message || e)] };
     }
@@ -475,13 +603,14 @@ export default {
     const origin = request.headers.get('origin') || '';
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-    if (!['/news', '/circle', '/earnings', '/quote'].includes(url.pathname)) return new Response('Circle Watch proxy · GET /news, /circle, /earnings, /quote', { headers: cors });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart'].includes(url.pathname)) return new Response('Portfolio proxy · GET /news, /circle, /earnings, /quote, /chart', { headers: cors });
     // 등록된 화면에서 온 요청만 받는다
     if (origin && !ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
     if (url.pathname === '/circle') return circleSupply(url, cache, cors, ctx);
     if (url.pathname === '/earnings') return handleEarnings(url, cache, cors, ctx);
     if (url.pathname === '/quote') return handleQuote(url, cache, cors, ctx);
+    if (url.pathname === '/chart') return handleChart(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx);
   },
 };
