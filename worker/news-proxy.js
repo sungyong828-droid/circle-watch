@@ -333,6 +333,42 @@ async function circleSupply(url, cache, cors, ctx) {
   return out;
 }
 
+// ---------------------------------------------------------------- 서버 캐시: 오래된 값이라도 바로 주고 뒤에서 새로 받기
+// freshSec 안이면 그대로, keepSec 안이면 저장된 값을 즉시 돌려주고 뒤에서 갱신(사용자는 기다리지 않음).
+// 저장된 값이 없으면 cold()(예: KV에 보관한 사본)를 먼저 주고 뒤에서 만들고, 그것도 없을 때만 만들 때까지 기다린다.
+async function swr(cache, ctx, keyUrl, { freshSec, keepSec, build, cors, cold }) {
+  const key = new Request(keyUrl);
+  const hit = await cache.match(key);
+  const age = hit ? (Date.now() - Number(hit.headers.get('x-built') || 0)) / 1000 : Infinity;
+  const prev = hit ? hit.clone() : null; // 응답으로 보낸 뒤에도 직전 값을 읽을 수 있게 미리 복제
+  const make = async () => {
+    const body = await build(prev);
+    const r = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${keepSec}`, 'x-built': String(Date.now()) } });
+    ctx.waitUntil(cache.put(key, r.clone()));
+    return r;
+  };
+  const background = async () => {
+    const lock = new Request(keyUrl + (keyUrl.includes('?') ? '&' : '?') + '__lock=1'); // 같은 갱신이 동시에 여러 번 돌지 않게
+    if (await cache.match(lock)) return;
+    ctx.waitUntil(cache.put(lock, new Response('1', { headers: { 'cache-control': 'public, max-age=30' } })));
+    ctx.waitUntil(make().catch(() => {}));
+  };
+  let res;
+  if (hit && age < freshSec) res = hit;
+  else if (hit && age < keepSec) { res = hit; await background(); }
+  else {
+    const c = cold ? await cold().catch(() => null) : null;
+    if (c) { res = new Response(c, { headers: { 'content-type': 'application/json; charset=utf-8' } }); await background(); }
+    else {
+      try { res = await make(); } catch (e) { return json({ error: String(e.message || e) }, cors, 502); }
+    }
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  out.headers.set('cache-control', 'no-store'); // 휴대폰 브라우저는 매번 서버에 묻는다(서버가 즉시 응답)
+  return out;
+}
+
 const json = (obj, headers = {}, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...headers } });
 
@@ -530,24 +566,11 @@ export async function buildEarnings(sym = 'CRCL') {
 // 실적: 1시간 캐시, 새로고침 버튼(fresh)은 10분 넘은 캐시를 다시 받는다(실적 발표 당일에도 금방 반영)
 export async function handleEarnings(url, cache, cors, ctx) {
   const sym = pickSym(url);
-  const key = new Request(`${url.origin}/earnings?s=${sym}`);
-  let res = await cache.match(key);
-  if (res && url.searchParams.has('fresh')) {
-    const at = Date.parse((await res.clone().json()).at || 0);
-    if (!(Date.now() - at < 600000)) res = null;
-  }
-  if (!res) {
-    try {
-      const body = JSON.stringify(await buildEarnings(sym));
-      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
-      ctx.waitUntil(cache.put(key, res.clone()));
-    } catch (e) {
-      return json({ error: String(e.message || e) }, cors, 502);
-    }
-  }
-  const out = new Response(res.body, res);
-  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-  return out;
+  // 1시간마다 새로(새로고침 버튼은 10분), 그 사이엔 즉시 응답
+  return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr`, {
+    freshSec: url.searchParams.has('fresh') ? 600 : 3600, keepSec: 7 * 86400, cors,
+    build: async () => JSON.stringify(await buildEarnings(sym)),
+  });
 }
 
 // ---------------------------------------------------------------- 주식 시세 · 환율 (Fire 탭)
@@ -595,20 +618,8 @@ export async function buildQuote() {
 
 // 실시간성이 중요해서 10초만 캐시
 export async function handleQuote(url, cache, cors, ctx) {
-  const key = new Request(`${url.origin}/quote`);
-  let res = await cache.match(key);
-  if (!res) {
-    try {
-      const body = JSON.stringify(await buildQuote());
-      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=10' } });
-      ctx.waitUntil(cache.put(key, res.clone()));
-    } catch (e) {
-      return json({ error: String(e.message || e) }, cors, 502);
-    }
-  }
-  const out = new Response(res.body, res);
-  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-  return out;
+  // 8초 안이면 그대로, 10분 안이면 저장값을 즉시 주고 뒤에서 갱신(Nasdaq 8종목 조회는 3~4초 걸림)
+  return swr(cache, ctx, `${url.origin}/quote?v=swr`, { freshSec: 8, keepSec: 600, cors, build: async () => JSON.stringify(await buildQuote()) });
 }
 
 // ---------------------------------------------------------------- 가격 차트 (Yahoo, 바이낸스에 없는 종목용)
@@ -619,10 +630,9 @@ export async function handleChart(url, cache, cors, ctx) {
   const sym = (url.searchParams.get('s') || '').toUpperCase();
   const range = url.searchParams.get('r') || '1d';
   if (!CHART_SYMBOLS.includes(sym) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
-  const key = new Request(`${url.origin}/chart?s=${sym}&r=${range}&v=ohlc`);
-  let res = await cache.match(key);
-  if (!res) {
-    try {
+  return swr(cache, ctx, `${url.origin}/chart?s=${sym}&r=${range}&v=ohlc2`, {
+    freshSec: range === '1d' ? 60 : 900, keepSec: 86400, cors,
+    build: async () => {
       const [interval, rng] = CHART_RANGES[range];
       const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${rng}&includePrePost=${range === '1d'}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error('yahoo ' + r.status);
@@ -632,16 +642,9 @@ export async function handleChart(url, cache, cors, ctx) {
       // [시각(ms), 종가, 시가, 고가, 저가]
       const points = ts.map((t, i) => [t * 1000, r2(Q.close?.[i]), r2(Q.open?.[i]), r2(Q.high?.[i]), r2(Q.low?.[i])]).filter((p) => p[1] != null);
       const m = j.meta || {};
-      const body = JSON.stringify({ at: new Date().toISOString(), symbol: sym, range, points, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null });
-      res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${range === '1d' ? 60 : 900}` } });
-      ctx.waitUntil(cache.put(key, res.clone()));
-    } catch (e) {
-      return json({ error: String(e.message || e) }, cors, 502);
-    }
-  }
-  const out = new Response(res.body, res);
-  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-  return out;
+      return JSON.stringify({ at: new Date().toISOString(), symbol: sym, range, points, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null });
+    },
+  });
 }
 
 // ---------------------------------------------------------------- 기관 보유 현황 (13F · Nasdaq)
@@ -678,19 +681,7 @@ export async function buildHolders(sym) {
 }
 export async function handleHolders(url, cache, cors, ctx) {
   const sym = pickSym(url);
-  const key = new Request(`${url.origin}/holders?s=${sym}`);
-  let res = await cache.match(key);
-  if (!res) {
-    try {
-      res = new Response(JSON.stringify(await buildHolders(sym)), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=21600' } });
-      ctx.waitUntil(cache.put(key, res.clone()));
-    } catch (e) {
-      return json({ error: String(e.message || e) }, cors, 502);
-    }
-  }
-  const out = new Response(res.body, res);
-  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-  return out;
+  return swr(cache, ctx, `${url.origin}/holders?s=${sym}&v=swr`, { freshSec: 6 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildHolders(sym)) });
 }
 
 // ---------------------------------------------------------------- 뉴스 한 줄 요약 (Workers AI)
@@ -903,41 +894,40 @@ export async function handleSeries(url, cache, cors, ctx) {
 // 뉴스 응답 (Worker와 Cloudflare Pages Functions가 함께 쓴다)
 export async function handleNews(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
-  const suffix = sym === 'CRCL' ? '' : `?s=${sym}`; // CRCL은 기존 캐시 키 유지
-  const cacheKey = new Request(`${url.origin}/news${suffix}`);
-  const lastKey = new Request(`${url.origin}/news-last-good${suffix}`);
-  // fresh(새로고침 버튼)여도 1분 안에 받아 둔 결과가 있으면 그대로 쓴다
-  let res = await cache.match(cacheKey);
-  if (res && url.searchParams.has('fresh')) {
-    const at = Date.parse((await res.clone().json()).at || 0);
-    if (!(Date.now() - at < 60000)) res = null;
-  }
-  if (!res) {
-    let data;
-    try {
-      data = await buildNews(sym);
-    } catch (e) {
-      data = { at: new Date().toISOString(), official: [], kr: [], en: [], filings: [], failed: ['all'], notes: [String(e.message || e)] };
-    }
-    const lastRes = await cache.match(lastKey);
-    const last = lastRes ? await lastRes.json() : null;
-    data = mergeLastGood(data, last);
-    if (!data.kr.length && !data.en.length && !data.official.length) return json({ error: '뉴스 출처를 모두 받지 못했습니다', notes: data.notes }, cors, 502);
-    attachSums(data, await readSums(env, sym));
-    // 요약이 빠진 새 기사는 응답을 보낸 뒤 이어서 요약해 둔다(다음 갱신 때 보임)
-    const lock = new Request(`${url.origin}/sumlock?s=${sym}`);
-    if (env?.AI && !(await cache.match(lock))) {
-      ctx.waitUntil(cache.put(lock, new Response('1', { headers: { 'cache-control': 'public, max-age=300' } })));
-      ctx.waitUntil(summarizeMissing(env, sym, data, 4).catch(() => {}));
-    }
-    const body = JSON.stringify(data);
-    res = new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${CACHE_SECONDS}` } });
-    ctx.waitUntil(cache.put(cacheKey, res.clone()));
-    if (!data.stale) ctx.waitUntil(cache.put(lastKey, new Response(body, { headers: { 'cache-control': 'public, max-age=604800' } })));
-  }
-  const out = new Response(res.body, res);
-  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
-  return out;
+  // 3분마다 새로(새로고침 버튼은 1분). 구글이 느리거나 막혀도(최대 14초) 사용자는 저장된 뉴스를 바로 받는다.
+  return swr(cache, ctx, `${url.origin}/news?s=${sym}&v=swr`, {
+    freshSec: url.searchParams.has('fresh') ? 60 : CACHE_SECONDS, keepSec: 7 * 86400, cors,
+    // 이 지역 서버 캐시가 비어 있으면(오래 안 썼을 때) KV에 보관한 사본을 먼저 준다
+    cold: env?.SUMS ? async () => { const t = await env.SUMS.get('news:' + sym); return t || null; } : null,
+    build: async (prevRes) => {
+      let data;
+      try { data = await buildNews(sym); } catch (e) {
+        data = { at: new Date().toISOString(), official: [], kr: [], en: [], filings: [], failed: ['all'], notes: [String(e.message || e)] };
+      }
+      // 이번에 비어 있는 항목은 직전 결과로 채운다(최대 7일)
+      let last = null;
+      try { last = prevRes ? await prevRes.json() : env?.SUMS ? await env.SUMS.get('news:' + sym, 'json') : null; } catch {}
+      data = mergeLastGood(data, last);
+      if (!data.kr.length && !data.en.length && !data.official.length) throw new Error('뉴스 출처를 모두 받지 못했습니다');
+      attachSums(data, await readSums(env, sym));
+      // 요약이 빠진 새 기사는 이어서 요약해 둔다(다음 갱신 때 보임)
+      const lock = new Request(`${url.origin}/sumlock?s=${sym}`);
+      if (env?.AI && !(await cache.match(lock))) {
+        ctx.waitUntil(cache.put(lock, new Response('1', { headers: { 'cache-control': 'public, max-age=300' } })));
+        ctx.waitUntil(summarizeMissing(env, sym, data, 4).catch(() => {}));
+      }
+      const body = JSON.stringify(data);
+      // KV 사본은 30분에 한 번만 갱신(무료 쓰기 한도 보호)
+      if (env?.SUMS && !data.stale) {
+        const mark = new Request(`${url.origin}/newskv?s=${sym}`);
+        if (!(await cache.match(mark))) {
+          ctx.waitUntil(cache.put(mark, new Response('1', { headers: { 'cache-control': 'public, max-age=1800' } })));
+          ctx.waitUntil(env.SUMS.put('news:' + sym, body).catch(() => {}));
+        }
+      }
+      return body;
+    },
+  });
 }
 
 export { circleSupply };

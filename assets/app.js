@@ -1555,15 +1555,15 @@
     // ---- 선택한 종목만 받는다 (sym을 먼저 잡아 두어 도중에 종목을 바꿔도 섞이지 않게)
     async faa() { state.faa = await getJ(`data/faa-joby.json?t=${Math.floor(Date.now() / 600000)}`); },
     async sfacts() { state.spcx = await getJ(`data/spcx-facts.json?t=${Math.floor(Date.now() / 600000)}`); },
-    async schart() {
-      const s = state.stock, x = st(s);
+    async schart(d, L, sym = state.stock) {
+      const s = sym, x = st(s);
       if (!isOther(s)) return;
-      if (BN24[s]) { await Promise.all([bxSnapshot(s), bxKlines(s, '1d'), bxRange() !== '1d' ? bxKlines(s, bxRange()) : null]); return; }
+      if (BN24[s]) { await Promise.all([bxSnapshot(s), bxKlines(s, '1d'), bxRange() !== '1d' && s === state.stock ? bxKlines(s, bxRange()) : null]); return; }
       const fresh = (r) => x.chart[r] && Date.now() - Date.parse(x.chart[r].at || 0) < 3600000; // 1주 이상 차트·52주 값은 1시간마다 새로
       await Promise.all([loadSChart(s, '1d'), state.srange !== '1d' && !fresh(state.srange) ? loadSChart(s, state.srange) : null, fresh('1y') ? null : loadSChart(s, '1y').catch(() => {})]);
     },
-    async searn() {
-      const s = state.stock, x = st(s);
+    async searn(d, L, sym = state.stock) {
+      const s = sym, x = st(s);
       if (!isOther(s)) return;
       try {
         const j = await getJ(`${NEWS_API}/earnings?s=${s}${state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
@@ -1571,8 +1571,8 @@
         x.earn = j; x.earnErr = false;
       } catch (e) { x.earnErr = true; if (!x.earn) throw e; }
     },
-    async snews() {
-      const s = state.stock, x = st(s);
+    async snews(d, L, sym = state.stock) {
+      const s = sym, x = st(s);
       if (!isOther(s)) return;
       const j = await getJ(`${NEWS_API}/news?s=${s}${state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
       if (j.error) throw new Error(j.error);
@@ -1582,8 +1582,8 @@
       const fallback = (j.filings || []).map((f) => ({ ...f, url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${STOCK_INFO[s].cik}&type=&dateb=&owner=include&count=40` }));
       x.news = { ...cur, official: j.official, kr: j.kr, en: j.en, crypto: j.crypto || [], newsAt: j.at, ownerMap, filings: cur.filings || fallback };
     },
-    async sfilings() { // SEC EDGAR에서 직접
-      const s = state.stock, x = st(s), cik = STOCK_INFO[s]?.cik;
+    async sfilings(d, L, sym = state.stock) { // SEC EDGAR에서 직접
+      const s = sym, x = st(s), cik = STOCK_INFO[s]?.cik;
       if (!isOther(s) || !cik) return;
       const j = await getJ(`https://data.sec.gov/submissions/CIK${cik}.json`);
       const r = j.filings.recent, list = [];
@@ -1593,8 +1593,8 @@
       }
       x.news = { ...(x.news || {}), filings: list, filingsAt: new Date().toISOString() };
     },
-    async holders() { // 기관 보유(13F) — 서버 6시간 캐시
-      const s = state.stock;
+    async holders(d, L, sym = state.stock) { // 기관 보유(13F) — 서버 6시간 캐시
+      const s = sym;
       try {
         const j = await getJ(`${NEWS_API}/holders?s=${s}`, 20000);
         if (j.error) throw new Error(j.error);
@@ -1710,15 +1710,21 @@
   const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유' };
 
   // parts: 동기화할 항목 이름 목록
-  async function syncNow(parts) {
+  // 항목마다 도착하는 대로 화면에 반영한다(느린 항목 하나 때문에 전체가 늦어지지 않게). quiet: 화면 갱신 없이 받아만 두기
+  let renderTimer = null;
+  function scheduleRenderAll() { clearTimeout(renderTimer); renderTimer = setTimeout(renderAll, 120); }
+  async function syncNow(parts, { sym, quiet = false } = {}) {
     const d = state.data;
     if (!d) return { ok: 0, fail: [] };
     const L = {};
-    const res = await Promise.allSettled(parts.map((p) => SYNC[p](d, L)));
+    const flush = () => { const t = new Date().toISOString(); for (const [k, v] of Object.entries(L)) if (v != null && isFinite(v)) state.live[k] = { v, t }; };
+    const res = await Promise.allSettled(parts.map((p) => Promise.resolve()
+      .then(() => SYNC[p](d, L, sym ?? state.stock))
+      .then(() => { if (!quiet) { flush(); scheduleRenderAll(); } })));
     const fail = parts.filter((p, i) => res[i].status === 'rejected');
-    const t = new Date().toISOString();
-    for (const [k, v] of Object.entries(L)) if (v != null && isFinite(v)) state.live[k] = { v, t };
-    if (parts.length > 2) { state.syncedAt = t; state.syncFail = fail; pushLocalSnap(); }
+    flush();
+    if (parts.length > 2 && !quiet) { state.syncedAt = new Date().toISOString(); state.syncFail = fail; pushLocalSnap(); }
+    saveSnapshot();
     return { ok: parts.length - fail.length, fail };
   }
 
@@ -1964,7 +1970,9 @@
   }
 
   // 시세(보유 종목·경쟁사·환율): Fire 화면이거나 CRCL 외 종목을 보고 있을 때 15초마다
-  async function loadQuote() {
+  let quoteInflight = null;
+  function loadQuote() { return (quoteInflight ||= fetchQuote().finally(() => { quoteInflight = null; })); }
+  async function fetchQuote() {
     try {
       const j = await getJ(`${NEWS_API}/quote`, 15000);
       if (j.error) throw new Error(j.error);
@@ -2422,7 +2430,8 @@
     else document.getElementById('view-title').textContent = viewTitle(state.view);
     fireLoop(state.view === 'fire' || isOther());
     renderStock();
-    syncNow(['quote', ...stockParts(sym)]).then(() => { if (state.stock === sym) renderStock(); }).catch(() => {});
+    busyBar(true);
+    syncNow(['quote', ...stockParts(sym)], { sym }).then(() => { if (state.stock === sym) renderStock(); }).catch(() => {}).finally(() => busyBar(false));
   }
 
   // ---------------------------------------------------------------- 종목: 시세 · 차트
@@ -3130,6 +3139,55 @@
     });
   }
 
+  // ---------------------------------------------------------------- 마지막 화면 저장(다시 열면 바로 보이게) · 다른 종목 미리 받기
+  const SNAP_KEY = 'cw.snapshot.v1';
+  let snapTimer = null;
+  const pickKeys = (o, keys) => (o ? Object.fromEntries(keys.filter((k) => o[k] != null).map((k) => [k, o[k]])) : {});
+  function saveSnapshot() {
+    clearTimeout(snapTimer);
+    snapTimer = setTimeout(() => {
+      if (!state.data) return;
+      const snap = {
+        at: state.syncedAt || new Date().toISOString(), data: state.data, quote: state.quote, earnings: state.earnings,
+        holders: state.holders, faa: state.faa, spcx: state.spcx, facts: state.facts,
+        st: Object.fromEntries(Object.entries(state.st).map(([k, x]) => [k, { earn: x.earn, news: x.news, chart: pickKeys(x.chart, ['1d', '1y']) }])),
+        px: { t: px.t, mark: px.mark, oi: px.oi, klines: pickKeys(px.klines, ['1d']) },
+        bx: Object.fromEntries(Object.entries(bx).map(([k, x]) => [k, { t: x.t, mark: x.mark, oi: x.oi, klines: pickKeys(x.klines, ['1d']) }])),
+      };
+      try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); }
+      catch { // 저장 공간이 모자라면 뉴스를 빼고 다시
+        try { for (const x of Object.values(snap.st)) x.news = null; localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch { try { localStorage.removeItem(SNAP_KEY); } catch {} }
+      }
+    }, 1500);
+  }
+  function loadSnapshot() {
+    try {
+      const S = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
+      if (!S?.data || !(Date.now() - Date.parse(S.at) < 3 * 86400000)) return false;
+      state.data = S.data; state.quote = S.quote || null; state.earnings = S.earnings || null;
+      state.holders = S.holders || {}; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
+      for (const [k, x] of Object.entries(S.st || {})) Object.assign(st(k), { earn: x.earn || null, news: x.news || null, chart: x.chart || {} });
+      if (S.px) { px.t = S.px.t; px.mark = S.px.mark; px.oi = S.px.oi; Object.assign(px.klines, S.px.klines || {}); }
+      for (const [k, x] of Object.entries(S.bx || {})) Object.assign(bxOf(k), { t: x.t, mark: x.mark, oi: x.oi, klines: x.klines || {} });
+      state.syncedAt = S.at;
+      return true;
+    } catch { return false; }
+  }
+  // 지금 안 보는 종목도 뒤에서 받아 둔다 → 종목을 바꾸면 바로 보임(10분마다)
+  let lastPrefetch = 0;
+  async function prefetchStocks() {
+    if (Date.now() - lastPrefetch < 10 * 60000 || document.hidden) return;
+    lastPrefetch = Date.now();
+    await Promise.all(OTHER.filter((sym) => sym !== state.stock).map((sym) => syncNow(stockParts(sym), { sym, quiet: true }).catch(() => {})));
+  }
+  // 화면 맨 위 얇은 진행 막대: 처음 불러올 때·종목을 바꿀 때
+  let busyCount = 0;
+  function busyBar(on) {
+    busyCount = Math.max(0, busyCount + (on ? 1 : -1));
+    const bar = document.getElementById('top-progress');
+    if (bar && !manualRunning) bar.hidden = busyCount === 0;
+  }
+
   // ---------------------------------------------------------------- 상태 표시
   function ago(t) {
     const ms = typeof t === 'number' ? t : Date.parse(t);
@@ -3140,6 +3198,7 @@
     const d = state.data;
     if (!d) return;
     if (manualRunning) return; // 새로고침 중에는 '업데이트 중…' 유지
+    if (state.booting) { document.getElementById('status').innerHTML = '<span class="spin-dot"></span>최신 값 받는 중…'; return; }
     const fails = state.syncFail || [];
     document.getElementById('status').innerHTML = state.syncedAt
       ? `<span class="live-dot"></span>${ago(state.syncedAt)} 업데이트` + (fails.length ? ` · <span class="warn">일부 항목 실패</span>` : '')
@@ -3216,7 +3275,9 @@
       state.syncKind = kind;
       const stockP = kind !== 'light' ? stockParts(state.stock) : [];
       const r = await syncNow([...SYNC_SETS[kind], ...stockP]);
+      if (state.booting) { state.booting = false; busyBar(false); }
       renderAll();
+      if (kind !== 'light') setTimeout(prefetchStocks, 1500);
       if (kind === 'manual') {
         const now = new Date(), t = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
         manualRunning = false;
@@ -3227,6 +3288,7 @@
           : `✓ 업데이트 완료 · ${t}`, r.fail.length > 0);
       }
     } catch (e) {
+      if (state.booting) { state.booting = false; busyBar(false); }
       if (kind === 'manual') { manualRunning = false; setRefreshUi('fail'); toast('업데이트 실패 · 인터넷 연결을 확인하세요', true); }
       document.getElementById('status').innerHTML = '<span class="warn">데이터를 불러오지 못했어요 · 새로고침을 눌러 다시 시도하세요</span>';
     } finally {
@@ -3357,6 +3419,8 @@
 
   if (!RANGES[state.range]) state.range = '1d';
   if (!SRANGES[state.srange]) state.srange = '1d';
+  const fromSnap = loadSnapshot();
+  state.booting = true;
   updateBasisBtn();
   renderFireSet();
   document.getElementById('home-crcl').hidden = isOther();
@@ -3365,6 +3429,8 @@
   renderStockSwitch();
   updateFireChip();
   { let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0; showView(viewAllowed(v0) ? v0 : 'home'); }
+  if (fromSnap) { try { renderAll(); } catch (e) { console.error(e); } } // 지난번 화면을 즉시
+  busyBar(true);
   initPrice();
   // 시세를 다른 데이터보다 먼저 받아 종목 카드·주가가 바로 보이게
   loadQuote().then(() => { renderStockSwitch(); if (isOther()) { renderSPriceCard(); renderSKpis(); } updateFireChip(); }).catch(() => {});
