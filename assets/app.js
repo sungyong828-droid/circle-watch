@@ -2799,7 +2799,7 @@
   // ---------------------------------------------------------------- 증권사별 의견 (Finviz)
   const BUY_RE = /buy|outperform|overweight|positive|accumulate|\badd\b/i, SELL_RE = /sell|underperform|underweight|negative|reduce/i;
   const RATING_KO = (r) => String(r || '').replace(/Strong Buy/gi, '강력 매수').replace(/\bBuy\b/gi, '매수').replace(/Outperform/gi, '시장 상회').replace(/Overweight/gi, '비중 확대')
-    .replace(/Market Perform|Mkt Perform/gi, '시장 수익률').replace(/Sector Perform/gi, '업종 수익률').replace(/Equal-?Weight/gi, '비중 유지').replace(/Peer Perform/gi, '동종 수익률')
+    .replace(/Market Perform|Mkt Perform/gi, '시장 수익률').replace(/Sector Perform/gi, '업종 수익률').replace(/Equal-?Weight/gi, '비중 유지').replace(/Sector Weight/gi, '업종 비중').replace(/Sector Outperform/gi, '업종 상회').replace(/Sector Underperform/gi, '업종 하회').replace(/Speculative Buy/gi, '투기적 매수').replace(/Long-Term Buy/gi, '장기 매수').replace(/Peer Perform/gi, '동종 수익률')
     .replace(/Neutral/gi, '중립').replace(/\bHold\b/gi, '보유').replace(/Underperform/gi, '시장 하회').replace(/Underweight/gi, '비중 축소').replace(/Strong Sell/gi, '강력 매도').replace(/\bSell\b/gi, '매도')
     .replace(/Positive/gi, '긍정').replace(/Negative/gi, '부정');
   const ACTION_KO = { Initiated: ['신규', 'neu'], Upgrade: ['상향', 'pos'], Downgrade: ['하향', 'neg'], Reiterated: ['유지', 'neu'], Resumed: ['재개', 'neu'], 'Target Raised': ['목표↑', 'pos'], 'Target Lowered': ['목표↓', 'neg'] };
