@@ -84,7 +84,7 @@ python -m http.server 8765
 - 서버 수집 데이터는 `/api/data`가 자동으로 받아 오므로 따로 배포할 필요가 없습니다.
 - **화면 코드를 고쳤을 때만** 다시 올립니다:
   ```bash
-  rm -rf dist && mkdir -p dist/data && cp -r index.html assets _headers dist/ && cp data/faa-joby.json data/spcx-facts.json dist/data/
+  python build.py   # dist 생성 + 화면 파일에서 개인 계정 주소 제거(남아 있으면 중단)
   npx wrangler pages deploy --project-name yongs-portfolio --branch main
   ```
 

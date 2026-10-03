@@ -18,7 +18,7 @@ function tooMany(ip) {
   return h.n > MAX_PER_WINDOW;
 }
 
-export async function onRequest({ request, next }) {
+export async function onRequest({ request, next, waitUntil }) {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     return new Response('Method Not Allowed', { status: 405, headers: { allow: 'GET, HEAD' } });
   }
@@ -27,7 +27,8 @@ export async function onRequest({ request, next }) {
     return new Response('forbidden', { status: 403 });
   }
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  if (tooMany(ip)) {
+  // 1) 실행 인스턴스 안의 간이 제한(빠름) 2) 같은 데이터센터 전체 캐시 카운터(분당 200회) — 자동화된 대량 호출 차단
+  if (tooMany(ip) || await tooManyShared(ip, waitUntil)) {
     return new Response(JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }), {
       status: 429, headers: { 'content-type': 'application/json; charset=utf-8', 'retry-after': '60' },
     });
@@ -38,5 +39,17 @@ export async function onRequest({ request, next }) {
   out.headers.set('x-robots-tag', 'noindex');
   out.headers.set('cache-control', out.headers.get('cache-control') || 'no-store');
   out.headers.delete('access-control-allow-origin'); // 같은 주소 전용이므로 CORS 허용 안 함
+  out.headers.delete('x-built');
   return out;
+}
+
+const SHARED_PER_MIN = 200;
+async function tooManyShared(ip, waitUntil) {
+  try {
+    const key = new Request(`https://ratelimit.internal/${encodeURIComponent(ip)}/${Math.floor(Date.now() / 60000)}`);
+    const hit = await caches.default.match(key);
+    const n = (hit ? Number(await hit.text()) || 0 : 0) + 1;
+    waitUntil(caches.default.put(key, new Response(String(n), { headers: { 'cache-control': 'public, max-age=120' } })));
+    return n > SHARED_PER_MIN;
+  } catch { return false; }
 }

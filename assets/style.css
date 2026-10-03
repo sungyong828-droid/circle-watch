@@ -766,3 +766,44 @@ details.more[open] > summary span { font-size: 0; } details.more[open] > summary
 .op-row .op-k { display: grid; min-width: 0; padding: 4px 6px; font-size: 12px; white-space: nowrap; overflow: hidden; }
 .op-row .op-k small { font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
 .op-l { align-self: center; }
+
+/* 시장 개요 */
+@media (min-width: 900px) { #c-market, #c-brief { grid-column: 1 / -1; } }
+.mk-st { display: inline-block; font-weight: 700; padding: 0 6px; border-radius: 6px; margin-right: 4px; }
+.mk-st.open { color: var(--good); background: rgba(63, 191, 127, 0.12); }
+.mk-st.pre, .mk-st.post { color: var(--warn); background: rgba(224, 164, 58, 0.12); }
+.mk-st.closed { color: var(--muted); background: var(--surface-2); }
+.mk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 12px; background: var(--line-soft); border-radius: 10px; overflow: hidden; }
+@media (max-width: 480px) { .mk-t { grid-template-areas: 'n' 'v' 'p'; grid-template-columns: 1fr; padding: 7px 8px; } .mk-spark { display: none; } .mk-t b { font-size: 13px; } .mk-t em { font-size: 11px; } }
+.mk-t { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'n s' 'v v' 'p p'; gap: 1px 4px; padding: 8px 10px; background: var(--surface); min-width: 0; }
+.mk-t span { grid-area: n; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-t b { grid-area: v; font: 600 14.5px var(--mono); white-space: nowrap; }
+.mk-t em { grid-area: p; font: 600 11.5px var(--mono); font-style: normal; }
+.mk-spark { grid-area: s; width: 44px; height: 16px; align-self: center; }
+.mk-fut { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+.mk-fut b { font-family: var(--mono); }
+.mk-fut small { color: var(--faint); }
+/* 브리핑 */
+.brief-card { border: 1px solid rgba(143, 122, 238, 0.4); background: linear-gradient(170deg, rgba(143, 122, 238, 0.1), var(--surface) 60%); }
+.bf-mkt { margin-top: 12px; font-size: 14px; line-height: 1.6; color: var(--ink); }
+.bf-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.bf-list li { display: grid; grid-template-columns: 78px 1fr; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line-soft); align-items: start; }
+.bf-sym { display: grid; gap: 1px; text-align: left; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; cursor: pointer; }
+.bf-sym b { font: 700 13px var(--mono); }
+.bf-sym em { font: 600 12px var(--mono); font-style: normal; }
+.bf-list p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+/* 키워드 속보 */
+.kw-card { border: 1px solid rgba(224, 164, 58, 0.4); }
+.kw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; align-items: center; }
+.kw-chip { display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 4px 0 10px; border-radius: 14px; background: rgba(224, 164, 58, 0.14); color: var(--warn); font-size: 12.5px; font-weight: 600; }
+.kw-chip button { width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: inherit; font-size: 15px; cursor: pointer; }
+.kw-add input { height: 28px; width: 116px; padding: 0 10px; border-radius: 14px; border: 1px dashed var(--line); background: none; color: var(--ink); font: inherit; font-size: 12.5px; }
+.kw-list mark { background: rgba(224, 164, 58, 0.3); color: inherit; border-radius: 3px; padding: 0 1px; }
+/* 차트 도구 */
+.ct-bar { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.ct-bar button { height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.ct-bar button[aria-pressed="true"] { color: var(--ink); background: var(--surface-2); border-color: var(--c-blue); }
+.ct-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
+.ct-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; font: 500 11px var(--mono); color: var(--muted); min-height: 14px; }
+.ct-legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: 3px; }
+.ct-legend i.v { height: 8px; vertical-align: 0; background: rgba(240, 97, 109, 0.4); }

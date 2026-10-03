@@ -81,6 +81,26 @@
         ${STOCK_INFO[sym].peer ? `<li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>` : ''}
         ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : ''}
       </ul>`,
+    market: `
+      <p>미국 증시 전체 분위기예요(Yahoo Finance, 1분마다 새로).</p>
+      <ul>
+        <li><b>S&P500·나스닥·다우·러셀2000</b>: 대형주·기술주·우량주·중소형주 지수. 내 종목이 시장과 같이 움직였는지 비교해 보세요.</li>
+        <li><b>VIX</b>: 공포지수. 20 아래면 안정, 30 넘으면 불안이 큰 시장.</li>
+        <li><b>미 10년물 금리</b>: 오르면 성장주(조비·템퍼스 등)에 부담, 서클은 준비금 이자수익이 늘어요.</li>
+        <li><b>달러지수·비트코인</b>: 달러 강세는 위험자산에 부담. 비트코인은 서클·암호화폐 심리와 연결돼요.</li>
+        <li><b>지수 선물</b>: 미국 정규장이 닫힌 시간에도 거래돼 다음 장 분위기를 미리 보여줘요.</li>
+        <li><b>장 상태</b>: 미국 동부 시각 기준 장전(04:00~09:30)·정규장(09:30~16:00)·장후(16:00~20:00). 미국 공휴일은 구분하지 못해요.</li>
+      </ul>`,
+    brief: `
+      <p>AI(Cloudflare Workers AI)가 <b>시장 지표·주요 뉴스</b>와 <b>내 종목의 등락·최근 36시간 뉴스</b>를 읽고 "왜 움직였나"를 짧게 정리해요. 30분마다 새로 만들어요.</p>
+      <p>뉴스로 설명이 안 되면 "뚜렷한 재료 없이"라고 쓰도록 했지만, AI 요약이라 틀릴 수 있어요. 종목 이름을 누르면 그 종목 화면으로 가요.</p>`,
+    kw: `
+      <p>등록한 단어가 들어간 기사만 모아 최신순으로 보여줘요. 시장 전체 뉴스(CNBC·MarketWatch·연합뉴스·한국경제)와 내 종목 뉴스를 모두 찾아요.</p>
+      <ul>
+        <li>단어는 영어·한국어 모두 되고 대소문자는 구분하지 않아요(예: FOMC, 금리, tariff).</li>
+        <li>앱을 보고 있을 때 새 키워드 기사가 들어오면 화면 아래에 알림이 떠요.</li>
+        <li>키워드 목록은 이 기기에만 저장돼요.</li>
+      </ul>`,
     options: `
       <p>옵션 거래로 본 <b>시장 참가자들의 기대</b>예요(CBOE 지연 시세, 약 15분 늦음).</p>
       <ul>
@@ -209,6 +229,7 @@
       </ul>
       <p>각 줄을 누르면 해당 카드로 이동합니다.</p>`,
     pricechart: `
+      <p><b>캔들/라인</b>: 캔들은 시가·고가·저가·종가를 한 막대로(빨강 상승·파랑 하락), 라인은 종가만 이어요. <b>이동평균</b>: 최근 5·20·60·120개 캔들 종가 평균(노랑·분홍·초록·보라) — 주가가 이평선 위에 있으면 상승 추세로 봐요. <b>거래량</b>: 아래쪽 막대. 차트를 누르면 그 캔들의 값이 나와요.</p>
       <p>바이낸스 CRCLUSDT 선물의 가격 추이입니다. 기간을 바꾸면 봉 간격이 달라집니다(1일=15분, 1주=1시간, 1개월=4시간, 3개월=1일). 마지막 점은 실시간 가격입니다.</p>
       <p>선이 <span class="up">빨강</span>이면 기간 시작보다 오른 상태, <span class="down">파랑</span>이면 내린 상태입니다.</p>`,
     short: `
@@ -447,10 +468,11 @@
   const interaction = { mode: 'index', intersect: false };
   const noLegend = { legend: { display: false } };
 
-  // ---------------------------------------------------------------- 캔들 차트
-  // Chart.js 범위 막대 두 겹으로 그린다: 가는 막대 = 심지(저가~고가), 굵은 막대 = 몸통(시가~종가). 상승 빨강 · 하락 파랑
-  // pts: [[시각(ms), 종가, 시가, 고가, 저가], …] — 시가·고가·저가가 없으면 종가로 대신
-  const ohlc = (p) => { const c = p[1], o = p[2] ?? c; return { t: p[0], c, o, h: p[3] ?? Math.max(o, c), l: p[4] ?? Math.min(o, c) }; };
+  // ---------------------------------------------------------------- 캔들 차트 (+ 이동평균선 · 거래량 · 캔들/라인 전환)
+  // Chart.js 범위 막대 두 겹으로 캔들을 그린다: 가는 막대 = 심지(저가~고가), 굵은 막대 = 몸통(시가~종가). 상승 빨강 · 하락 파랑
+  // pts: [[시각(ms), 종가, 시가, 고가, 저가, 거래량], …] — 시가·고가·저가가 없으면 종가로 대신.
+  // pts.pre: 화면에는 안 보이는 앞쪽 캔들(이동평균 계산용)
+  const ohlc = (p) => { const c = p[1], o = p[2] ?? c; return { t: p[0], c, o, h: p[3] ?? Math.max(o, c), l: p[4] ?? Math.min(o, c), v: p[5] ?? null }; };
   function candleParts(K) {
     return {
       wick: K.map((k) => [k.l, k.h]),
@@ -461,51 +483,113 @@
       col: K.map((k) => (k.c >= k.o ? C.up : C.down)),
     };
   }
-  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null } = {}) {
+  const MA_SET = [[5, '#f2c94c'], [20, '#ff7eb6'], [60, '#4fd1a5'], [120, '#9b8cff']];
+  state.chartType = loadPref('chartType', 'candle');
+  state.chartMA = loadPref('chartMA', '1') === '1';
+  state.chartVol = loadPref('chartVol', '1') === '1';
+  // 차트 위 도구: 캔들/라인 · 이동평균 · 거래량 (모든 종목 공통, 이 기기에 기억)
+  const chartTools = (id) => `<div class="ct-bar" role="group" aria-label="차트 보기 설정">
+      <button type="button" data-ctype="candle" aria-pressed="${state.chartType !== 'line'}">캔들</button><button type="button" data-ctype="line" aria-pressed="${state.chartType === 'line'}">라인</button>
+      <i class="ct-sep"></i>
+      <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button>
+    </div><div class="ct-legend" id="ctl-${id}"></div>`;
+  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, ind = false } = {}) {
     if (!pts?.length) return;
-    const K = pts.map(ohlc);
-    if (last != null && isFinite(last)) { const k = K.at(-1); k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last); }
-    const labels = K.map((k) => k.t), D = candleParts(K);
+    const pre = (pts.pre || []).map(ohlc), V = pts.map(ohlc), all = [...pre, ...V];
+    if (last != null && isFinite(last)) { const k = V.at(-1); k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last); }
+    const labels = V.map((k) => k.t), D = candleParts(V);
+    const line = ind && state.chartType === 'line';
     const title = tip || ((it) => new Date(labels[it.dataIndex]).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }));
+    const ds = [];
+    if (line) {
+      const col = V.at(-1).c >= V[0].o ? C.up : C.down;
+      ds.push(lineDs('종가', V.map((k) => k.c), col, { fill: 'start', backgroundColor: areaFill(col), pointRadius: endPoint(V.length, 3), borderWidth: 2, tension: 0.15, order: 1 }));
+    } else {
+      ds.push({ label: '저가~고가', data: D.wick, backgroundColor: D.col.slice(), borderWidth: 0, barThickness: compact ? 1 : 1.3, grouped: false, order: 2 });
+      ds.push({ label: '시가~종가', data: D.body, backgroundColor: D.col.slice(), borderWidth: 0, barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 1 });
+    }
+    // 이동평균: 앞쪽 캔들까지 포함해 계산하고 화면 구간만 그린다
+    const maOut = [];
+    if (ind && state.chartMA) {
+      for (const [n, col] of MA_SET) {
+        if (all.length < n + 2) continue;
+        const ma = [];
+        let sum = 0;
+        for (let i = 0; i < all.length; i++) { sum += all[i].c; if (i >= n) sum -= all[i - n].c; ma.push(i >= n - 1 ? sum / n : null); }
+        const shown = ma.slice(pre.length);
+        if (!shown.some((x) => x != null)) continue;
+        ds.push({ type: 'line', label: `MA${n}`, data: shown, borderColor: col, backgroundColor: col, borderWidth: 1.3, pointRadius: 0, pointHoverRadius: 0, tension: 0.2, spanGaps: true, order: 0 });
+        maOut.push([n, col, shown.at(-1)]);
+      }
+    }
+    const hasVol = ind && state.chartVol && V.some((k) => k.v > 0);
+    if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
+    const maxVol = hasVol ? Math.max(...V.map((k) => k.v || 0)) : 0;
+    // 세로축을 실제 가격 범위(캔들·이동평균)에 맞춰 빈 공간 없이
+    const yLo = Math.min(...V.map((k) => k.l)), yHi = Math.max(...V.map((k) => k.h)), yPad = (yHi - yLo) * 0.08 || yHi * 0.01; // 캔들 기준(멀리 떨어진 이평선은 잘림)
     draw(id, {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: '저가~고가', data: D.wick, backgroundColor: D.col.slice(), borderWidth: 0, barThickness: compact ? 1 : 1.3, grouped: false, order: 2 },
-          { label: '시가~종가', data: D.body, backgroundColor: D.col.slice(), borderWidth: 0, barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 1 },
-        ],
-      },
+      data: { labels, datasets: ds },
       options: {
         interaction,
         plugins: {
           ...noLegend,
           tooltip: {
             ...tooltip(title, price), enabled: !compact,
-            filter: (it) => it.datasetIndex === 1,
+            filter: (it) => it.dataset.label === (line ? '종가' : '시가~종가'),
             callbacks: {
               title: (items) => title(items[0]),
-              label: (it) => { const k = charts[id]?.$K?.[it.dataIndex] || K[it.dataIndex]; return [` 시가 ${price(k.o)} · 고가 ${price(k.h)}`, ` 저가 ${price(k.l)} · 종가 ${price(k.c)}`]; },
+              label: (it) => {
+                const k = charts[id]?.$V?.[it.dataIndex] || V[it.dataIndex];
+                const out = [` 시가 ${price(k.o)} · 고가 ${price(k.h)}`, ` 저가 ${price(k.l)} · 종가 ${price(k.c)}`];
+                if (k.v) out.push(` 거래량 ${unit(k.v)}`);
+                const mas = it.chart.data.datasets.filter((d) => /^MA/.test(d.label) && d.data[it.dataIndex] != null).map((d) => `${d.label} ${price(d.data[it.dataIndex])}`);
+                if (mas.length) out.push(' ' + mas.join(' · '));
+                return out;
+              },
             },
           },
         },
         scales: compact
           ? { x: { display: false }, y: { display: false, beginAtZero: false, grace: '6%' } }
-          : { x: axisX(labels, xf, 5), y: { ...axisY(price), beginAtZero: false, grace: '4%' } },
+          : {
+            x: axisX(labels, xf, 5),
+            y: { ...axisY(price), beginAtZero: false, min: yLo - yPad, max: yHi + yPad, ticks: { ...axisY(price).ticks, maxTicksLimit: 5 } },
+            ...(hasVol ? { vol: { display: false, beginAtZero: true, max: maxVol * 4.5, grid: { display: false } } } : {}),
+          },
       },
     });
-    if (charts[id]) charts[id].$K = K;
+    if (charts[id]) { charts[id].$V = V; charts[id].$line = line; }
+    if (ind) setHtml('ctl-' + id, maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${price(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
-    const c = charts[id], K = c?.$K;
-    if (!K?.length || last == null || !isFinite(last)) return;
-    const i = K.length - 1, k = K[i];
+    const c = charts[id], V = c?.$V;
+    if (!V?.length || last == null || !isFinite(last)) return;
+    const i = V.length - 1, k = V[i];
     k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last);
+    if (c.$line) { c.data.datasets[0].data[i] = last; c.update('none'); return; }
     const D = candleParts([k]), [w, b] = c.data.datasets;
     w.data[i] = D.wick[0]; b.data[i] = D.body[0];
     w.backgroundColor[i] = D.col[0]; b.backgroundColor[i] = D.col[0];
+    const vd = c.data.datasets.find((d) => d.label === '거래량');
+    if (vd) vd.backgroundColor[i] = D.col[0] + '55';
     c.update('none');
+  }
+  // 보여줄 구간만 남기고 앞쪽은 pts.pre로(이동평균 계산용)
+  function splitView(all, keep) {
+    const cut = Math.max(0, all.length - keep), view = all.slice(cut);
+    view.pre = all.slice(0, cut);
+    return view;
+  }
+  // Yahoo 차트: 서버는 앞쪽 기간까지 보내므로 기간에 맞게 자른다(1일 = 마지막 거래일)
+  function yahooView(points, r) {
+    if (!points?.length) return points || [];
+    const last = points.at(-1)[0];
+    let from;
+    if (r === '1d') { const d = etDate(last); from = points.findIndex((p) => etDate(p[0]) === d); }
+    else { const days = { '1w': 7, '1m': 31, '3m': 92, '1y': 366 }[r] || 31; from = points.findIndex((p) => p[0] >= last - days * 86400000); }
+    return splitView(points, points.length - Math.max(0, from));
   }
 
   // ---------------------------------------------------------------- 섹션 렌더
@@ -1008,8 +1092,8 @@
   }
   async function loadKlines(range) {
     const r = RANGES[range];
-    const k = await bnGet(`klines?symbol=${BN.sym}&interval=${r.interval}&limit=${r.limit}`);
-    px.klines[range] = k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3]]); // [시작 시각(ms), 종가, 시가, 고가, 저가]
+    const k = await bnGet(`klines?symbol=${BN.sym}&interval=${r.interval}&limit=${r.limit + 120}`);
+    px.klines[range] = splitView(k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3], +x[5]]), r.limit); // [시작 시각(ms), 종가, 시가, 고가, 저가, 거래량]
   }
 
   // WebSocket으로 체결마다 갱신, 끊기면 5초 폴링으로 대체하고 재연결
@@ -1115,7 +1199,7 @@
       const d = new Date(k[it.dataIndex][0]);
       return RANGES[range].interval === '1d' ? d.toLocaleDateString('ko-KR') : d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
     };
-    drawCandles(id, k, { compact, xf: range === '1d' ? hm : mdLocal, tip, last: px.t?.last });
+    drawCandles(id, k, { compact, xf: range === '1d' ? hm : mdLocal, tip, last: px.t?.last, ind: !compact });
   }
 
   function renderPriceCard() {
@@ -1153,6 +1237,7 @@
       info: INFO.pricechart,
       body: `
         <div class="seg range" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-range="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
+        ${chartTools('pricechart')}
         <div class="px-main sm"><span class="px-last" id="pc-last">${price(px.t?.last)}</span><span class="px-chg" id="pc-chg"></span></div>
         <div class="chart tall"><canvas id="cv-pricechart" role="img" aria-label="CRCL 가격 추이"></canvas></div>
         <p class="note">${note || '불러오는 중…'}</p>`,
@@ -1636,6 +1721,13 @@
         if (state.optionsErr) delete state.optionsErr[sym];
       } catch (er) { (state.optionsErr ||= {})[sym] = String(er.message || er); if (!state.options?.[sym] && !/옵션이 없어요/.test(er.message)) throw er; }
     },
+    async market() { const j = await getJ(`${NEWS_API}/market`, 15000); if (j.error) throw new Error(j.error); state.market = j; },
+    async mnews() { const j = await getJ(`${NEWS_API}/mnews${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 20000); if (j.error) throw new Error(j.error); state.mnews = j; },
+    async brief() { // AI 브리핑(서버 30분마다 새로, 그 사이엔 즉시 응답)
+      const j = await getJ(`${NEWS_API}/brief?s=${WATCH.slice(0, 8).join(',')}`, 60000);
+      if (j.error) throw new Error(j.error);
+      state.brief = j;
+    },
     async sshort(d, L, sym = state.stock) { // 추가한 종목의 공매도(FINRA, 서버 3시간마다)
       const j = await getJ(`${NEWS_API}/short?s=${sym}`, 20000);
       if (j.error) throw new Error(j.error);
@@ -1762,7 +1854,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유', analyst: '애널리스트·내부자', options: '옵션 심리', sshort: '공매도' };
+  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유', analyst: '애널리스트·내부자', options: '옵션 심리', sshort: '공매도', market: '시장 개요', mnews: '시장 뉴스', brief: 'AI 브리핑' };
 
   // parts: 동기화할 항목 이름 목록
   // 항목마다 도착하는 대로 화면에 반영한다(느린 항목 하나 때문에 전체가 늦어지지 않게). quiet: 화면 갱신 없이 받아만 두기
@@ -2534,6 +2626,7 @@
   async function loadSChart(sym, r) {
     const j = await getJ(`${NEWS_API}/chart?s=${sym}&r=${r}`, 15000);
     if (j.error) throw new Error(j.error);
+    j.points = yahooView(j.points, r);
     st(sym).chart[r] = j;
   }
   const ipoPx = () => state.spcx?.ipo?.price ?? null;
@@ -2589,7 +2682,7 @@
     const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString('ko-KR'); };
     // 바이낸스는 24시간 이어지므로 어느 기간이든 마지막 캔들에 현재가 반영, Yahoo는 오늘(1일) 캔들만
     const last = BN24[sym] || range === '1d' || range === 'bn' ? q?.price : null;
-    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : mdLocal, tip, last });
+    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : mdLocal, tip, last, ind: !compact });
   }
 
   const bxRange = () => (RANGES[state.srange] ? state.srange : '1d'); // 바이낸스 캔들은 1일~3개월
@@ -2645,6 +2738,7 @@
         title: `${sym} 가격 추이`, sub: `Binance ${BN24[sym]} 무기한 선물`, info: INFO.pricechart,
         body: `
           <div class="seg range" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-srange="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
+          ${chartTools('spricechart')}
           <div class="px-main sm"><span class="px-last" id="spc-last">${price(X.t?.last)}</span><span class="px-chg" id="spc-chg"></span></div>
           <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
           <p class="note">${note || '불러오는 중…'}</p>`,
@@ -2667,6 +2761,7 @@
       title: `${sym} 가격 추이`, sub: `${STOCK_INFO[sym].name} · Yahoo Finance`, info: '',
       body: `
         <div class="seg range jr" role="group" aria-label="기간 선택">${Object.entries(SRANGES).map(([k, v]) => `<button type="button" data-srange="${k}" aria-pressed="${k === r}">${v}</button>`).join('')}</div>
+        ${chartTools('spricechart')}
         <div class="px-main sm"><span class="px-last" id="spc-last">${price(q?.price)}</span><span class="px-chg">${chg == null ? '' : `<span class="${cls(chg)}">${arrow(chg)} ${pct(chg, 2)}</span> <span class="lbl">${SRANGES[r]} 동안</span>`}</span></div>
         <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
         <p class="note">${note || '불러오는 중…'}</p>`,
@@ -2735,6 +2830,108 @@
         <p class="note">13F는 운용자산 1억 달러 이상 기관이 분기가 끝나고 45일 안에 내는 보유 보고서라 <b>최대 4개월 전 기준</b>이에요. 공매도·옵션 포지션은 빠져 있고, 일부 기관은 신고가 늦어 이전 분기 값이 보여요(지난 분기 표시).${nextDue ? ` 다음 신고 마감: ${nextDue.getMonth() + 1}/${nextDue.getDate()}경(${nextQ.getMonth() + 1}/${nextQ.getDate()} 기준).` : ''}</p></details>`,
     });
   }
+
+  // ---------------------------------------------------------------- 시장 개요 · 장 상태
+  // 미국 동부 시각으로 장전(04:00)·정규장(09:30)·장후(16:00~20:00) 판단(공휴일은 구분 못 함)
+  function marketSession(ms = Date.now()) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(ms).map((x) => [x.type, x.value]));
+    const mins = (+p.hour % 24) * 60 + +p.minute;
+    const left = (to) => { const m = to - mins; return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
+    if (p.weekday === 'Sat' || p.weekday === 'Sun') return { k: 'closed', label: '주말 휴장', next: '월요일 장전부터 다시 거래' };
+    if (mins < 240) return { k: 'closed', label: '장 마감', next: `장전 시작까지 ${left(240)}` };
+    if (mins < 570) return { k: 'pre', label: '장전 거래 중', next: `정규장 개장까지 ${left(570)}` };
+    if (mins < 960) return { k: 'open', label: '정규장 거래 중', next: `마감까지 ${left(960)}` };
+    if (mins < 1200) return { k: 'post', label: '장후 거래 중', next: `장후 종료까지 ${left(1200)}` };
+    return { k: 'closed', label: '장 마감', next: p.weekday === 'Fri' ? '월요일 장전부터 다시 거래' : `장전 시작까지 ${left(240 + 1440)}` };
+  }
+  const MK_SHORT = { '^GSPC': 'S&P500', '^IXIC': '나스닥', '^DJI': '다우', '^RUT': '러셀', '^VIX': 'VIX', '^TNX': '10년물', 'DX-Y.NYB': '달러', 'BTC-USD': 'BTC' };
+  const MK_MAIN = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX', 'DX-Y.NYB', 'BTC-USD'];
+  const mkVal = (x) => (x.price == null ? '–' : x.sym === '^TNX' ? x.price.toFixed(2) + '%' : x.sym === 'BTC-USD' ? '$' + nf(0).format(x.price) : nf(x.price >= 1000 ? 0 : 2).format(x.price));
+  function sparkSvg(arr, up) {
+    if (!arr || arr.length < 2) return '';
+    const mn = Math.min(...arr), mx = Math.max(...arr), w = 60, h = 18;
+    const p = arr.map((v, i) => `${((i / (arr.length - 1)) * w).toFixed(1)},${(h - (mx > mn ? (v - mn) / (mx - mn) : 0.5) * h).toFixed(1)}`).join(' ');
+    return `<svg class="mk-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${p}" fill="none" stroke="${up ? C.up : C.down}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+  function renderMarket() {
+    if (!document.getElementById('c-market')) return;
+    const M = state.market, S = marketSession(), by = Object.fromEntries((M?.items || []).map((x) => [x.sym, x]));
+    const tiles = MK_MAIN.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<div class="mk-t" title="${esc(x.name)}"><span>${esc(MK_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</div>`).join('');
+    const fut = ['ES=F', 'NQ=F'].map((s) => by[s]).filter((x) => x && !x.error && x.pct != null);
+    card('market', {
+      title: '시장 개요', sub: `<span class="mk-st ${S.k}">${S.label}</span> ${S.next}`, info: INFO.market,
+      body: M ? `<div class="mk-grid">${tiles}</div>${fut.length && S.k !== 'open' ? `<p class="mk-fut">지수 선물 ${fut.map((x) => `${esc(x.name.replace(' 선물', ''))} <b class="${cls(x.pct)}">${pct(x.pct, 2)}</b>`).join(' · ')} <small>(장외 시간의 분위기)</small></p>` : ''}` : '<p class="skeleton">불러오는 중…</p>',
+    });
+  }
+
+  // ---------------------------------------------------------------- 오늘의 브리핑 (AI)
+  function renderBrief() {
+    if (!document.getElementById('c-brief')) return;
+    const B = state.brief;
+    if (!B) { card('brief', { title: '오늘의 브리핑', info: INFO.brief, body: '<p class="skeleton">AI가 오늘 시장과 내 종목을 정리하는 중…</p>' }); return; }
+    const items = (B.items || []).filter((it) => WATCH.includes(it.sym));
+    card('brief', {
+      title: '오늘의 브리핑', sub: `AI 요약 · ${hm(Date.parse(B.at))} 기준 · 30분마다 새로`, info: INFO.brief,
+      body: `${B.market?.text ? `<p class="bf-mkt">${esc(B.market.text)}</p>` : ''}
+        <ul class="bf-list">${items.map((it) => `<li><button type="button" class="bf-sym" data-stock="${esc(it.sym)}" aria-label="${esc(it.sym)} 보기"><b>${esc(it.sym)}</b><em class="${cls(it.pct)}">${it.pct != null ? pct(it.pct, 1) : '–'}</em></button>
+          <p>${it.text ? esc(it.text) : '<span class="dim">최근 뉴스가 적어 정리할 내용이 없어요.</span>'}</p></li>`).join('')}</ul>
+        <p class="note">AI가 주가 변동과 최근 뉴스 제목·요약만 보고 쓴 글이라 틀릴 수 있어요. 등락률은 미국 장 기준(Nasdaq)이에요.</p>`,
+    });
+  }
+
+  // ---------------------------------------------------------------- 키워드 속보 (News 탭)
+  const KW_KEY = 'cw.kw';
+  state.kw = readJSON(KW_KEY, null) || ['FOMC', 'CPI', '금리', '관세', 'stablecoin', '스테이블코인', 'FAA', 'Starship'];
+  let kwNotified = new Set(readJSON('cw.kwNoti', [])), kwBoot = true;
+  const kwEsc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function kwItems() {
+    const kws = state.kw.filter(Boolean);
+    if (!kws.length) return [];
+    const pool = [];
+    for (const n of state.mnews?.items || []) pool.push({ t: Date.parse(n.t), title: n.title, sum: n.sum || '', source: n.source, url: n.url, tag: '시장' });
+    for (const sym of WATCH) { if (!NEWS_UI[sym]) continue; for (const i of newsItems(sym)) if (i.kind !== 'filing') pool.push({ t: i.t, title: i.title, sum: i.sum || '', source: i.source, url: i.url, tag: sym }); }
+    const cutoff = Date.now() - 48 * 3600000, seenT = new Set(), out = [];
+    for (const n of pool.sort((a, b) => b.t - a.t)) {
+      if (!(n.t >= cutoff)) continue;
+      const key = n.title.toLowerCase().replace(/[^a-z0-9가-힣]/g, '').slice(0, 50);
+      if (seenT.has(key)) continue;
+      const text = `${n.title} ${n.sum}`.toLowerCase();
+      const hit = kws.filter((w) => text.includes(w.toLowerCase()));
+      if (!hit.length) continue;
+      seenT.add(key);
+      out.push({ ...n, hit, key });
+    }
+    return out.slice(0, 25);
+  }
+  const hl = (s, kws) => kws.reduce((acc, w) => acc.replace(new RegExp(`(${kwEsc(esc(w))})`, 'gi'), '<mark>$1</mark>'), esc(s));
+  function renderKwNews() {
+    const items = kwItems(), kws = state.kw;
+    for (const id of ['kwnews', 'skwnews']) {
+      if (!document.getElementById('c-' + id)) continue;
+      card(id, {
+        title: '키워드 속보', sub: '시장 전체·내 종목 뉴스 중 등록한 단어가 들어간 기사 · 최근 48시간', info: INFO.kw,
+        body: `<div class="kw-chips">${kws.map((w) => `<span class="kw-chip">${esc(w)}<button type="button" data-kwdel="${esc(w)}" aria-label="${esc(w)} 삭제">×</button></span>`).join('')}
+            <form class="kw-add" data-kwform="1"><input name="kw" maxlength="30" placeholder="+ 키워드 추가" aria-label="키워드 추가" autocomplete="off"></form></div>
+          <ul class="nl kw-list">${items.map((i, n) => `${n === 5 ? `</ul>${more(id + ':more', `키워드 기사 ${items.length - 5}건 더 보기`)}<ul class="nl kw-list">` : ''}<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk ${i.tag === '시장' ? 'industry' : 'related'}">${esc(i.tag)}</span>
+            <span class="nt">${hl(i.title, i.hit)}</span>${i.sum ? `<span class="nsum">${hl(i.sum, i.hit)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)} ${timeLabel(i)}</span></a></li>`).join('') || '<li class="empty">최근 48시간 동안 키워드가 들어간 기사가 없어요.</li>'}</ul>${items.length > 5 ? '</details>' : ''}`,
+      });
+    }
+    // 화면을 보는 중 새 키워드 기사가 들어오면 알림 띠(처음 불러올 때는 알리지 않음)
+    const fresh = items.filter((i) => !kwNotified.has(i.key) && Date.now() - i.t < 3 * 3600000);
+    if (!kwBoot && fresh.length) toast(`🔔 키워드 속보 · <b>${esc(fresh[0].hit[0])}</b> ${esc(fresh[0].title.slice(0, 60))}`);
+    for (const i of items) kwNotified.add(i.key);
+    kwNotified = new Set([...kwNotified].slice(-300));
+    writeJSON('cw.kwNoti', [...kwNotified]);
+    if (state.mnews) kwBoot = false;
+  }
+  function addKw(w) {
+    w = String(w || '').trim().slice(0, 30);
+    if (!w || state.kw.some((x) => x.toLowerCase() === w.toLowerCase())) return;
+    state.kw = [...state.kw, w].slice(0, 20);
+    writeJSON(KW_KEY, state.kw);
+    renderKwNews();
+  }
+  function delKw(w) { state.kw = state.kw.filter((x) => x !== w); writeJSON(KW_KEY, state.kw); renderKwNews(); }
 
   // ---------------------------------------------------------------- 자세한 항목 접기·펼치기 (다시 그려도 펼친 상태 유지)
   state.openMore = new Set();
@@ -3546,8 +3743,8 @@
   }
   async function bxKlines(sym, range) {
     const r = RANGES[range];
-    const k = await bnGet(`klines?symbol=${BN24[sym]}&interval=${r.interval}&limit=${r.limit}`);
-    bxOf(sym).klines[range] = k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3]]);
+    const k = await bnGet(`klines?symbol=${BN24[sym]}&interval=${r.interval}&limit=${r.limit + 120}`);
+    bxOf(sym).klines[range] = splitView(k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3], +x[5]]), r.limit);
   }
   let bws = null, bwsTries = 0, bwsTimer = null, bwsWatch = null, bPollTimer = null;
   const bArm = () => { clearTimeout(bwsWatch); bwsWatch = setTimeout(() => { try { bws?.close(); } catch {} }, 15000); };
@@ -3616,7 +3813,7 @@
       if (!state.data) return;
       const snap = {
         at: state.syncedAt || new Date().toISOString(), data: state.data, quote: state.quote, earnings: state.earnings,
-        holders: state.holders, analyst: state.analyst, options: state.options, faa: state.faa, spcx: state.spcx, facts: state.facts,
+        holders: state.holders, analyst: state.analyst, options: state.options, market: state.market, brief: state.brief, mnews: state.mnews, faa: state.faa, spcx: state.spcx, facts: state.facts,
         st: Object.fromEntries(Object.entries(state.st).map(([k, x]) => [k, { earn: x.earn, news: x.news, short: x.short, chart: pickKeys(x.chart, ['1d', '1y']) }])),
         px: { t: px.t, mark: px.mark, oi: px.oi, klines: pickKeys(px.klines, ['1d']) },
         bx: Object.fromEntries(Object.entries(bx).map(([k, x]) => [k, { t: x.t, mark: x.mark, oi: x.oi, klines: pickKeys(x.klines, ['1d']) }])),
@@ -3632,7 +3829,7 @@
       const S = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
       if (!S?.data || !(Date.now() - Date.parse(S.at) < 3 * 86400000)) return false;
       state.data = S.data; state.quote = S.quote || null; state.earnings = S.earnings || null;
-      state.holders = S.holders || {}; state.analyst = S.analyst || {}; state.options = S.options || {}; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
+      state.holders = S.holders || {}; state.analyst = S.analyst || {}; state.options = S.options || {}; state.market = S.market || null; state.brief = S.brief || null; state.mnews = S.mnews || null; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
       for (const [k, x] of Object.entries(S.st || {})) Object.assign(st(k), { earn: x.earn || null, news: x.news || null, short: x.short || null, chart: x.chart || {} });
       if (S.px) { px.t = S.px.t; px.mark = S.px.mark; px.oi = S.px.oi; Object.assign(px.klines, S.px.klines || {}); }
       for (const [k, x] of Object.entries(S.bx || {})) Object.assign(bxOf(k), { t: x.t, mark: x.mark, oi: x.oi, klines: x.klines || {} });
@@ -3677,7 +3874,7 @@
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock];
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderBrief, renderKwNews];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -3686,7 +3883,7 @@
   // ---------------------------------------------------------------- 데이터 로딩
   async function loadData() {
     let res = await fetch(`${DATA_URL}?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null);
-    if (ON_PAGES && !res?.ok) res = await fetch(`${DATA_FALLBACK}?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null);
+    if (ON_PAGES && !res?.ok && DATA_FALLBACK) res = await fetch(`${DATA_FALLBACK}?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null);
     if (!res?.ok) throw new Error('data ' + (res?.status || 'network'));
     state.data = await res.json();
   }
@@ -3703,9 +3900,9 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
-    auto: ['circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
-    light: ['circle', 'cirbtc', 'quote'],
+    manual: ['market', 'mnews', 'brief', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    auto: ['market', 'mnews', 'brief', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    light: ['circle', 'cirbtc', 'quote', 'market', 'mnews'],
   };
   let manualRunning = false, manualQueued = false, doneTimer = null;
   function setRefreshUi(mode) { // 'loading' | 'done' | 'fail' | 'idle'
@@ -3796,7 +3993,7 @@
     if (v === 'searn') renderSEarnings();
     if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
     if (v === 'crcl') { renderHolders('CRCL', 'holders'); renderAnalyst('CRCL'); renderInsider('CRCL'); renderOptions('CRCL'); }
-    if (v === 'news' || v === 'snews') { markNewsSeen(); renderNewsSummary(); renderNews(); } else updateNewsBadge();
+    if (v === 'news' || v === 'snews') { markNewsSeen(); renderNewsSummary(); renderNews(); renderKwNews(); } else updateNewsBadge();
     updateFireChip();
     if (target) {
       const el = document.getElementById(target);
@@ -3818,6 +4015,7 @@
   // ---------------------------------------------------------------- 이벤트
   document.addEventListener('submit', (ev) => {
     if (ev.target.id === 'fire-form') { ev.preventDefault(); saveFireForm(); }
+    if (ev.target.dataset?.kwform) { ev.preventDefault(); addKw(ev.target.elements.kw.value); }
   });
   document.addEventListener('input', (ev) => {
     if (ev.target.id === 'watch-q') { watchSearch(ev.target.value); return; }
@@ -3870,6 +4068,17 @@
     if (wd) { removeWatch(wd.dataset.wdel); return; }
     const wm = ev.target.closest('[data-wmove]');
     if (wm) { const [i, d] = wm.dataset.wmove.split(':').map(Number); moveWatch(i, d); return; }
+    const kd = ev.target.closest('[data-kwdel]');
+    if (kd) { delKw(kd.dataset.kwdel); return; }
+    const ctp = ev.target.closest('[data-ctype]');
+    if (ctp) { state.chartType = ctp.dataset.ctype; savePref('chartType', state.chartType); renderPriceChart(); if (isOther()) renderSPriceChart(); return; }
+    const ctg = ev.target.closest('[data-ctoggle]');
+    if (ctg) {
+      const k = ctg.dataset.ctoggle === 'ma' ? 'chartMA' : 'chartVol';
+      state[k] = !state[k]; savePref(k, state[k] ? '1' : '0');
+      renderPriceChart(); if (isOther()) renderSPriceChart();
+      return;
+    }
     const bk = ev.target.closest('[data-brokers]');
     if (bk) { state.brokerAll = state.brokerAll === bk.dataset.brokers ? null : bk.dataset.brokers; renderAnalyst(bk.dataset.brokers); return; }
     const ht = ev.target.closest('[data-htab]');
@@ -3920,7 +4129,7 @@
   refresh('auto');
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
-  setInterval(() => { if (!document.hidden) { renderStatus(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
+  setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeWatchSheet(); });
   document.addEventListener('toggle', (ev) => {
     const d = ev.target;
