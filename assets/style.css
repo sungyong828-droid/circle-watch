@@ -675,3 +675,23 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 /* 기관 순위 */
 .h-rank { font: 700 12px var(--mono); color: var(--muted); text-align: center; }
 .h-rank.top3 { color: #1a1206; background: linear-gradient(160deg, #ffd66b, #f0a92e); border-radius: 50%; width: 20px; height: 20px; line-height: 20px; }
+
+/* 애널리스트 의견 */
+.an-head { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.an-head .tone { font-size: 13px; padding: 4px 10px; }
+.an-cons { font-size: 12.5px; color: var(--muted); }
+.an-cons b { color: var(--ink); }
+.an-bar { display: flex; height: 26px; margin-top: 10px; border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.an-bar i { display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; font-style: normal; }
+.an-bar i b { font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap; padding: 0 6px; }
+.an-bar .b { background: var(--up); } .an-bar .h { background: #5c6675; } .an-bar .s { background: var(--down); }
+.an-range { margin-top: 12px; }
+.an-track { position: relative; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(91,155,255,.35), rgba(240,97,109,.35)); }
+.an-track i { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.an-mean { width: 12px; height: 12px; background: var(--c-purple); transform: translate(-50%, -50%) rotate(45deg) !important; border: 2px solid var(--surface); }
+.an-now { width: 14px; height: 14px; border-radius: 50%; background: var(--ink); border: 3px solid var(--surface); }
+.an-lab { display: flex; justify-content: space-between; margin-top: 6px; font: 500 11px var(--mono); color: var(--muted); }
+/* 내부자 매매 */
+.ins-tbl td small { display: block; color: var(--muted); font-size: 10.5px; }
+.ins-list li { grid-template-columns: minmax(0, 1fr) auto 86px; }
+.ins-list .h-sh b { font-family: inherit; font-size: 12.5px; letter-spacing: 0; }

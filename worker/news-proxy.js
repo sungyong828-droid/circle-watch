@@ -38,7 +38,7 @@ async function fetchText(url, tries = 2) {
 
 async function googleNews(q, lang) {
   const loc = lang === 'ko' ? 'hl=ko&gl=KR&ceid=KR:ko' : 'hl=en-US&gl=US&ceid=US:en';
-  const xml = await fetchText(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&${loc}`);
+  const xml = await fetchText(`https://news.google.com/rss/search?q=${encodeURIComponent(q)}&${loc}`, 1);
   return rssItems(xml).map((it) => {
     const source = rssTag(it, 'source');
     let title = rssTag(it, 'title');
@@ -247,6 +247,19 @@ async function cryptoNews() {
   return { list: [...ko, ...en].sort((a, b) => b.t.localeCompare(a.t)), failed };
 }
 
+// Nasdaq 종목별 보도자료(Business Wire 등 통신사로 낸 회사 발표). 날짜만 있어 그날 정오(미국 동부)로 둔다.
+async function nasdaqPressReleases(sym) {
+  const r = await fetch(`https://www.nasdaq.com/api/news/topic/press_release?q=symbol:${sym.toLowerCase()}|assetclass:stocks&limit=20&offset=0`, {
+    headers: { 'user-agent': BROWSER_UA, accept: 'application/json, text/plain, */*', referer: 'https://www.nasdaq.com/' }, signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error('nasdaq pr ' + r.status);
+  const rows = (await r.json())?.data?.rows || [];
+  return rows.map((x) => {
+    const t = Date.parse(`${x.created} 16:00:00 GMT`);
+    return { t: new Date(isFinite(t) ? t : Date.now()).toISOString(), title: decodeXml(String(x.title || '')).trim(), source: '보도자료', url: /^https?:/.test(x.url || '') ? x.url : 'https://www.nasdaq.com' + (x.url || '') };
+  }).filter((n) => n.title);
+}
+
 async function buildNews(sym = 'CRCL') {
   const C = NEWS_CFG[sym];
   const notes = [];
@@ -254,7 +267,7 @@ async function buildNews(sym = 'CRCL') {
   // 모든 출처를 동시에 요청하고, 14초 안에 못 받은 항목은 비워 둔다(마지막 성공 결과로 채워짐)
   const deadline = (p) => Promise.race([p, sleep(14000).then(() => { throw new Error('시간 초과'); })]);
   const industry = C.industry === 'crypto' ? cryptoNews() : industryNews(...INDUSTRY[C.industry]);
-  const [kr, en, bw, site, filings, crypto] = await Promise.all([
+  const [kr, en, bw, site, filings, crypto, pr] = await Promise.all([
     settle(deadline(withFallback(() => googleNews(C.kr, 'ko'), () => bingNews(C.krBing, 'ko'), 'kr', notes))),
     settle(deadline(withFallback(() => googleNews(C.en, 'en'), () => bingNews(C.enBing, 'en'), 'en', notes))),
     settle(deadline(withFallback(() => googleNews(C.bw, 'en'),
@@ -262,11 +275,13 @@ async function buildNews(sym = 'CRCL') {
     settle(deadline(withFallback(() => googleNews(C.site, 'en'), null, 'site', notes))),
     settle(deadline(nasdaqFilings(sym))),
     settle(deadline(industry)),
+    settle(deadline(nasdaqPressReleases(sym))),
   ]);
   const v = (r) => (r.ok ? r.v : []);
   // 공식 발표: 회사 IR·자사 사이트·Business Wire만, 이름만 같은 다른 회사는 제외
-  const official = dedupe([...v(bw), ...v(site)]
-    .filter((n) => C.officialSource.test(n.source) && C.officialTitle.test(n.title) && !C.officialExclude.test(n.title) && !FILING_PAGE_RE.test(n.title))
+  // 공식 발표: Nasdaq 보도자료 + 회사 IR·자사 사이트·Business Wire. 이름만 같은 다른 회사·남의 보도자료는 제외
+  const official = dedupe([...v(pr), ...v(bw), ...v(site)]
+    .filter((n) => (n.source === '보도자료' || C.officialSource.test(n.source)) && C.officialTitle.test(n.title) && !C.officialExclude.test(n.title) && !FILING_PAGE_RE.test(n.title))
     .map((n) => ({ ...n, title: n.title.replace(C.officialStrip, '') }))
     .filter((n) => n.title.replace(/\s*[-|–]\s*(SpaceX|Joby Aviation|Tempus|Circle)\s*$/i, '').trim().length >= 25), 30); // "SpaceX - Launches" 같은 메뉴 페이지 제외
   const officialTitles = new Set(official.map((n) => n.title));
@@ -279,7 +294,7 @@ async function buildNews(sym = 'CRCL') {
     crypto: crypto.ok ? crypto.v.list : [], // 업계 뉴스 — CRCL: 암호화폐 · JOBY: UAM · SPCX: 우주 · TEM: 헬스케어 AI
     industry: C.industry,
     cryptoFailed: crypto.ok ? crypto.v.failed : ['all'],
-    failed: Object.entries({ kr, en, bw, site, filings, crypto }).filter(([, r]) => !r.ok).map(([k]) => k),
+    failed: Object.entries({ kr, en, bw, site, filings, crypto, pr }).filter(([, r]) => !r.ok).map(([k]) => k),
     notes,
   };
 }
@@ -684,6 +699,34 @@ export async function handleHolders(url, cache, cors, ctx) {
   return swr(cache, ctx, `${url.origin}/holders?s=${sym}&v=swr`, { freshSec: 6 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildHolders(sym)) });
 }
 
+// ---------------------------------------------------------------- 애널리스트 의견 · 내부자 매매 (Nasdaq 집계)
+const numP = (s) => { const t = String(s ?? '').trim(); const n = num(t); return n == null ? null : /^\(/.test(t) ? -Math.abs(n) : n; }; // "(424,416)" → 음수
+export async function buildAnalyst(sym) {
+  const [tp, ins] = await Promise.allSettled([
+    nasdaqJson(`analyst/${sym}/targetprice`),
+    nasdaqJson(`company/${sym}/insider-trades?limit=12&type=ALL&sortColumn=lastDate&sortOrder=DESC`),
+  ]);
+  const T = tp.status === 'fulfilled' ? tp.value : null, I = ins.status === 'fulfilled' ? ins.value : null;
+  if (!T && !I) throw new Error('애널리스트·내부자 자료를 받지 못했습니다');
+  const co = T?.consensusOverview || null;
+  const rowsOf = (tbl) => Object.fromEntries((tbl?.rows || []).map((r) => [r.insiderTrade, { m3: numP(r.months3), m12: numP(r.months12) }]));
+  const cnt = rowsOf(I?.numberOfTrades), shr = rowsOf(I?.numberOfSharesTraded);
+  return {
+    at: new Date().toISOString(), symbol: sym,
+    target: co && co.priceTarget ? { mean: +co.priceTarget, low: +co.lowPriceTarget, high: +co.highPriceTarget, buy: +co.buy || 0, hold: +co.hold || 0, sell: +co.sell || 0 } : null,
+    history: (T?.historicalConsensus || []).map((h) => ({ d: mdy(h.z?.date), target: +h.y || null, buy: +h.z?.buy || 0, hold: +h.z?.hold || 0, sell: +h.z?.sell || 0, consensus: h.z?.consensus || '' })).filter((h) => h.d),
+    insider: I ? {
+      buys: cnt['Number of Open Market Buys'] || null, sells: cnt['Number of Sells'] || null,
+      bought: shr['Number of Shares Bought'] || null, sold: shr['Number of Shares Sold'] || null, net: shr['Net Activity'] || null,
+      recent: (I.transactionTable?.table?.rows || []).map((r) => ({ name: r.insider, rel: r.relation, d: mdy(r.lastDate), type: r.transactionType, shares: num(r.sharesTraded), price: num(r.lastPrice), held: num(r.sharesHeld) })),
+    } : null,
+  };
+}
+export async function handleAnalyst(url, cache, cors, ctx) {
+  const sym = pickSym(url);
+  return swr(cache, ctx, `${url.origin}/analyst?s=${sym}&v=1`, { freshSec: 6 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildAnalyst(sym)) });
+}
+
 // ---------------------------------------------------------------- 뉴스 한 줄 요약 (Workers AI)
 // 기사 원문을 받아 AI가 한국어 한 문장으로 요약하고, 결과는 KV에 종목별로 보관한다(같은 기사는 한 번만 요약).
 // 원문을 못 받으면(유료 기사·차단) 제목만으로 짧게 풀어 쓴다. 기사 속 문장은 지시로 취급하지 않는다.
@@ -939,7 +982,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series'].includes(url.pathname)) return new Response('Portfolio proxy · GET /news, /circle, /earnings, /quote, /chart, /holders, /facts, /series', { headers: cors });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst'].includes(url.pathname)) return new Response('Portfolio proxy · GET /news, /circle, /earnings, /quote, /chart, /holders, /analyst, /facts, /series', { headers: cors });
     // 등록된 화면에서 온 요청만 받는다
     if (origin && !ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
@@ -949,6 +992,7 @@ export default {
     if (url.pathname === '/chart') return handleChart(url, cache, cors, ctx);
     if (url.pathname === '/holders') return handleHolders(url, cache, cors, ctx);
     if (url.pathname === '/facts') return handleFacts(url, cache, cors, ctx, env);
+    if (url.pathname === '/analyst') return handleAnalyst(url, cache, cors, ctx);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);
   },
