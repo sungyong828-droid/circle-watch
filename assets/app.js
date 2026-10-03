@@ -2456,7 +2456,8 @@
     fireLoop(state.view === 'fire' || isOther());
     renderStock();
     busyBar(true);
-    syncNow(['quote', ...stockParts(sym)], { sym }).then(() => { if (state.stock === sym) renderStock(); }).catch(() => {}).finally(() => busyBar(false));
+    if (sym === 'CRCL') { try { renderKpis(); renderSummary(); } catch (e) { console.error(e); } } // 미리 받아 둔 값으로 Home 지표·요약도 바로
+    syncNow(['quote', ...stockParts(sym)], { sym }).then(() => { if (state.stock === sym) { renderStock(); if (sym === 'CRCL') { renderKpis(); renderSummary(); } } }).catch(() => {}).finally(() => busyBar(false));
   }
 
   // ---------------------------------------------------------------- 종목: 시세 · 차트
@@ -3308,7 +3309,7 @@
   async function prefetchStocks() {
     if (Date.now() - lastPrefetch < 10 * 60000 || document.hidden) return;
     lastPrefetch = Date.now();
-    await Promise.all(OTHER.filter((sym) => sym !== state.stock).map((sym) => syncNow(stockParts(sym), { sym, quiet: true }).catch(() => {})));
+    await Promise.all(Object.keys(STOCK_INFO).filter((sym) => sym !== state.stock).map((sym) => syncNow(stockParts(sym), { sym, quiet: true }).catch(() => {})));
   }
   // 화면 맨 위 얇은 진행 막대: 처음 불러올 때·종목을 바꿀 때
   let busyCount = 0;
