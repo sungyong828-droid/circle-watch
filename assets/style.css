@@ -533,7 +533,7 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 .home-part { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 @media (min-width: 900px) {
   .home-part { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .home-part > .card, .home-part > .group-h, .home-part > .kpis, .stock-switch { grid-column: 1 / -1; }
+  .home-part > .card, .home-part > .group-h, .home-part > .kpis, .stock-switch, .ss-head { grid-column: 1 / -1; }
 }
 
 .fire-chip {
@@ -695,3 +695,56 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 .ins-tbl td small { display: block; color: var(--muted); font-size: 10.5px; }
 .ins-list li { grid-template-columns: minmax(0, 1fr) auto 86px; }
 .ins-list .h-sh b { font-family: inherit; font-size: 12.5px; letter-spacing: 0; }
+
+/* 종목 편집 칩 · 이니셜 로고 · 실적 표시 */
+.ss-edit { align-content: center; justify-items: center; text-align: center; border-style: dashed; color: var(--muted); }
+.ss-edit span { font-size: 18px; line-height: 1; }
+.ss-edit small { font-size: 10.5px; }
+.ss-letter { display: inline-grid; place-items: center; font: 800 11px var(--mono); font-style: normal; color: #0d1015; background: var(--sc) !important; }
+.ss-ed { position: absolute; top: -6px; right: -4px; font-style: normal; font: 700 9.5px/1.4 inherit; color: #fff; background: var(--up); border-radius: 6px; padding: 1px 5px; box-shadow: 0 0 0 2px var(--ground); }
+.ss-head { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 -4px; font-size: 12px; font-weight: 700; color: var(--muted); }
+/* 증권사별 의견 */
+.br-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.br-list li { grid-template-columns: minmax(0, 1fr) auto 92px; }
+.br-list .h-name small .tone.sm { font-size: 10px; padding: 0 5px; }
+.br-rate { font-family: inherit !important; font-size: 12.5px !important; }
+.br-list .h-chg b { display: block; font: 600 12px var(--mono); color: var(--ink); white-space: nowrap; }
+/* 옵션 */
+.op-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.op-l { font: 700 12px inherit; width: 22px; }
+.op-k { display: inline-grid; padding: 5px 9px; border-radius: 8px; background: var(--surface-2); font: 600 12.5px var(--mono); }
+.op-k small { font: 500 10.5px var(--mono); color: var(--muted); }
+.op-k.up { box-shadow: inset 2px 0 0 var(--up); } .op-k.down { box-shadow: inset 2px 0 0 var(--down); }
+.op-un { list-style: none; margin: 6px 0 0; padding: 0; }
+.op-un li { display: grid; grid-template-columns: 90px 1fr auto; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line-soft); font-size: 12.5px; }
+.op-un li:first-child { border-top: 0; }
+.op-un li span:first-child { font: 700 12.5px var(--mono); }
+/* 실적 발표 당일 */
+.card.earnday { border: 1px solid rgba(240, 97, 109, 0.55); background: linear-gradient(170deg, rgba(240, 97, 109, 0.12), var(--surface) 55%); }
+.ed-time { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 13px; }
+.ed-time span { font: 700 14px var(--mono); color: var(--up); }
+.ed-check { margin-top: 12px; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); }
+/* 종목 관리 시트 */
+body.sheet-open { overflow: hidden; }
+.sheet { position: fixed; inset: 0; z-index: 60; }
+.sheet-bg { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); }
+.sheet-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88vh; overflow-y: auto; background: var(--surface); border-radius: 18px 18px 0 0; padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.4); }
+@media (min-width: 720px) { .sheet-panel { left: 50%; right: auto; width: 520px; transform: translateX(-50%); bottom: 24px; border-radius: 18px; } }
+.sheet-h { display: flex; justify-content: space-between; align-items: center; font-size: 16px; margin-bottom: 10px; }
+.ws-search input { width: 100%; height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 15px; }
+.ws-sub { margin-top: 16px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.ws-sub small { font-weight: 500; margin-left: 6px; }
+.ws-list { list-style: none; margin: 6px 0 0; padding: 0; }
+.ws-list li { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line-soft); }
+.ws-list li:first-child { border-top: 0; }
+.ws-list li.empty { color: var(--faint); font-size: 13px; justify-content: center; }
+.ws-logo { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: var(--sc); color: #0d1015; font: 800 12px var(--mono); flex: none; overflow: hidden; }
+.ws-logo img { width: 22px; height: 22px; object-fit: contain; background: #fff; border-radius: 5px; }
+.ws-name { flex: 1; min-width: 0; }
+.ws-name b { font: 700 14px var(--mono); }
+.ws-name small { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-btn { height: 32px; min-width: 34px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; }
+.ws-btn:disabled { opacity: 0.35; cursor: default; }
+.ws-btn.del { color: var(--down); }
+.ws-btn.add { color: var(--up); border-color: rgba(240, 97, 109, 0.5); }
+.ws-added { font-size: 12px; color: var(--muted); }

@@ -78,9 +78,26 @@
       <p><b>${STOCK_INFO[sym].name}(${sym})</b>의 실시간 주가입니다. 미국 장전·장중·장후에는 <b>체결될 때마다 바로</b> 바뀌어요(Yahoo Finance 실시간 스트림). 스트림이 끊기면 Nasdaq 시세로 15초마다 갱신돼요.</p>
       <ul>
         ${BN24[sym] ? `<li><b>바이낸스 24시간</b>: 바이낸스의 ${sym}USDT 주식 선물(TradFi) 가격이에요. 미국 장이 닫힌 밤·주말에도 거래돼 다음 장 분위기를 미리 볼 수 있어요. 선물이라 실제 주가와 조금 차이가 나요("주가와 차이").</li>` : '<li>바이낸스에서 24시간 거래되지 않아, 미국 장이 닫힌 주말·새벽에는 마지막 거래 가격이 보여요.</li>'}
-        <li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>
+        ${STOCK_INFO[sym].peer ? `<li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>` : ''}
         ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : ''}
       </ul>`,
+    options: `
+      <p>옵션 거래로 본 <b>시장 참가자들의 기대</b>예요(CBOE 지연 시세, 약 15분 늦음).</p>
+      <ul>
+        <li><b>풋/콜 거래량 비율</b>: 오늘 풋(하락 대비) 거래량 ÷ 콜(상승 베팅) 거래량. 0.7 아래면 상승 베팅 우세, 1 넘으면 하락 대비 우세로 봐요.</li>
+        <li><b>내재변동성(IV30)</b>: 옵션 가격에 들어 있는 앞으로 30일 변동성 예상(연율). 높을수록 큰 움직임을 예상.</li>
+        <li><b>예상 변동폭</b>: 현재가에 가장 가까운 행사가의 콜+풋 가격 합 ÷ 주가. 그 만기까지 시장이 예상하는 위아래 움직임(대략 68% 확률 범위)이에요. 실적 발표가 들어간 만기는 실적 반응 크기를 가늠할 수 있어요.</li>
+        <li><b>맥스 페인</b>: 만기 때 옵션 매수자들이 가장 많이 잃는 가격. 만기 무렵 주가가 이 근처로 끌린다는 속설이 있어요(참고용).</li>
+        <li><b>미결제가 많이 쌓인 가격</b>: 콜이 많으면 저항, 풋이 많으면 지지로 보는 경우가 많아요.</li>
+      </ul>`,
+    earnday: `
+      <p>실적 발표 <b>전날~당일</b>과 발표 후 <b>36시간</b> 동안만 나타나는 카드예요.</p>
+      <ul>
+        <li><b>발표 전</b>: 발표 시각(한국시간), 남은 시간, 예상 EPS, 옵션이 예상하는 실적 반응 폭, 최근 분기 예상 상회 횟수.</li>
+        <li><b>발표 후</b>: EPS·매출 실제 vs 예상, 주가 반응, 실적 공시(8-K) 원문, 실적 관련 뉴스와 AI 요약.</li>
+        <li>이 기간에는 실적·애널리스트·뉴스를 <b>1분마다</b> 새로 확인해요(서버는 2~5분마다 갱신).</li>
+      </ul>
+      <p>발표 시각은 Finviz 기준(BMO = 장 시작 전, AMC = 장 마감 후)이에요. 회사가 날짜를 공지하기 전엔 예상일이라 바뀔 수 있어요.</p>`,
     analyst: `
       <p>증권사 애널리스트들이 낸 <b>투자의견</b>(매수·보유·매도)과 <b>12개월 목표주가</b>를 모은 값이에요(Nasdaq 집계, 매월 갱신).</p>
       <ul>
@@ -1554,7 +1571,7 @@
         const pick = (sym) => { const l = lines.find((x) => x.split('|')[1] === sym); if (!l) return null; const [, , sv, sev, tv] = l.split('|'); return { d: day, short: +sv, exempt: +sev, total: +tv, ratio: +sv / +tv }; };
         const c = pick('CRCL');
         if (c) add.push(c);
-        for (const s of OTHER) { const r = pick(s); if (r) (addO[s] ||= []).push(r); }
+        for (const s of BUILTIN_OTHER) { const r = pick(s); if (r) (addO[s] ||= []).push(r); }
       }
       const cutoff = Date.now() / 1000 - 31 * 86400;
       const merge = (base, extra) => {
@@ -1563,7 +1580,7 @@
         return { ...base, daily, avgRatio: sumT ? sumS / sumT : 0 };
       };
       const by = { ...(S.by || (S.joby ? { JOBY: S.joby } : {})) };
-      for (const s of OTHER) if (addO[s]?.length && by[s]) by[s] = merge(by[s], addO[s]);
+      for (const s of BUILTIN_OTHER) if (addO[s]?.length && by[s]) by[s] = merge(by[s], addO[s]);
       if (!add.length) { d.short = { ...S, by, joby: by.JOBY }; return; }
       d.short = { ...merge(S, add), by, joby: by.JOBY };
       L.shortRatio = d.short.daily.at(-1).ratio;
@@ -1583,7 +1600,7 @@
       const s = sym, x = st(s);
       if (!isOther(s)) return;
       try {
-        const j = await getJ(`${NEWS_API}/earnings?s=${s}${state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
+        const j = await getJ(`${NEWS_API}/earnings?s=${s}${earnDay(s) ? '&live=1' : state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
         if (j.error) throw new Error(j.error);
         x.earn = j; x.earnErr = false;
       } catch (e) { x.earnErr = true; if (!x.earn) throw e; }
@@ -1600,7 +1617,7 @@
       x.news = { ...cur, official: j.official, kr: j.kr, en: j.en, crypto: j.crypto || [], newsAt: j.at, ownerMap, filings: cur.filings || fallback };
     },
     async sfilings(d, L, sym = state.stock) { // SEC EDGAR에서 직접
-      const s = sym, x = st(s), cik = STOCK_INFO[s]?.cik;
+      const s = sym, x = st(s), cik = STOCK_INFO[s]?.cik || x.earn?.cik;
       if (!isOther(s) || !cik) return;
       const j = await getJ(`https://data.sec.gov/submissions/CIK${cik}.json`);
       const r = j.filings.recent, list = [];
@@ -1610,9 +1627,23 @@
       }
       x.news = { ...(x.news || {}), filings: list, filingsAt: new Date().toISOString() };
     },
-    async analyst(d, L, sym = state.stock) { // 애널리스트 목표가·투자의견·내부자 매매 — 서버 6시간마다
+    async options(d, L, sym = state.stock) { // 옵션 시장 심리(CBOE) — 실적 발표일을 넘겨 실적 포함 만기 변동폭도 계산
+      const e = earnOf(sym)?.next?.date || '';
       try {
-        const j = await getJ(`${NEWS_API}/analyst?s=${sym}`, 20000);
+        const j = await getJ(`${NEWS_API}/options?s=${sym}&e=${e}`, 20000);
+        if (j.error) throw new Error(j.error);
+        (state.options ||= {})[sym] = j;
+        if (state.optionsErr) delete state.optionsErr[sym];
+      } catch (er) { (state.optionsErr ||= {})[sym] = String(er.message || er); if (!state.options?.[sym] && !/옵션이 없어요/.test(er.message)) throw er; }
+    },
+    async sshort(d, L, sym = state.stock) { // 추가한 종목의 공매도(FINRA, 서버 3시간마다)
+      const j = await getJ(`${NEWS_API}/short?s=${sym}`, 20000);
+      if (j.error) throw new Error(j.error);
+      st(sym).short = j;
+    },
+    async analyst(d, L, sym = state.stock) { // 애널리스트 목표가·투자의견·내부자 매매 — 서버 3시간마다(실적 발표 무렵 5분)
+      try {
+        const j = await getJ(`${NEWS_API}/analyst?s=${sym}${earnDay(sym) ? '&live=1' : ''}`, 20000);
         if (j.error) throw new Error(j.error);
         (state.analyst ||= {})[sym] = j;
       } catch (e) { if (!state.analyst?.[sym]) throw e; }
@@ -1627,7 +1658,7 @@
     },
     async earnings() { // 분기 실적·다음 발표일 (서버에서 6시간 캐시)
       try {
-        const j = await getJ(`${NEWS_API}/earnings${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 25000);
+        const j = await getJ(`${NEWS_API}/earnings${earnDay('CRCL') ? '?live=1' : state.syncKind === 'manual' ? '?fresh=1' : ''}`, 25000);
         if (j.error) throw new Error(j.error);
         state.earnings = j;
         state.earningsErr = false;
@@ -1731,7 +1762,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유', analyst: '애널리스트·내부자' };
+  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유', analyst: '애널리스트·내부자', options: '옵션 심리', sshort: '공매도' };
 
   // parts: 동기화할 항목 이름 목록
   // 항목마다 도착하는 대로 화면에 반영한다(느린 항목 하나 때문에 전체가 늦어지지 않게). quiet: 화면 갱신 없이 받아만 두기
@@ -1758,6 +1789,7 @@
   const FIRE_TICKERS = { CRCA: 'CRCA · ProShares Ultra CRCL (2배)', CRCL: 'CRCL · 서클 인터넷 그룹', JOBY: 'JOBY · 조비 에비에이션', SPCX: 'SPCX · 스페이스X', TEM: 'TEM · 템퍼스 AI' };
   const readJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
   const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (/^[A-Z]{1,5}(\.[A-Z])?$/.test(sym)) FIRE_TICKERS[sym] ||= `${sym} · ${m?.name || sym}`;
   // 예전 형식({ticker, shares, avg})은 종목 목록 형식으로 바꿔 읽는다
   const normFire = (F) => {
     if (!F) return null;
@@ -1998,7 +2030,8 @@
   function loadQuote() { return (quoteInflight ||= fetchQuote().finally(() => { quoteInflight = null; })); }
   async function fetchQuote() {
     try {
-      const j = await getJ(`${NEWS_API}/quote`, 15000);
+      const extra = WATCH.filter((x) => STOCK_INFO[x]?.custom);
+      const j = await getJ(`${NEWS_API}/quote${extra.length ? `?x=${extra.join(',')}` : ''}`, 15000);
       if (j.error) throw new Error(j.error);
       state.quote = j;
       for (const sym of Object.keys(live)) applyLive(sym); // 방금 들어온 실시간 체결가가 더 최신이면 유지
@@ -2200,7 +2233,28 @@
       earnNote: '템퍼스는 유전체 검사(Genomics)와 의료 데이터·AI 서비스(Data and services)로 돈을 벌어요. <b>매출 성장률</b>과 <b>흑자 전환 여부</b>가 핵심이에요. EPS는 Nasdaq 집계(조정 기준)라 회계상 순이익과 다를 수 있어요.',
     },
   };
-  const OTHER = ['JOBY', 'SPCX', 'TEM'];
+  // 관심 종목: 기본 4종목 + 사용자가 추가한 종목(이 기기에만 저장). 순서도 사용자가 정한다.
+  const BUILTIN = ['CRCL', 'JOBY', 'SPCX', 'TEM'];
+  const BUILTIN_OTHER = ['JOBY', 'SPCX', 'TEM']; // 서버 수집기가 공매도를 모으는 종목
+  const SYM_OK = /^[A-Z]{1,5}(\.[A-Z])?$/;
+  const WATCH_KEY = 'cw.watch';
+  const watchCfg = (() => { const w = readJSON(WATCH_KEY, null); return w?.list?.length ? { list: w.list, custom: w.custom || {} } : { list: BUILTIN.slice(), custom: {} }; })();
+  // 추가한 종목의 기본 설정(이름·색·관련어). 로고는 이니셜.
+  function customInfo(sym, meta = {}) {
+    const name = String(meta.name || sym).replace(/,?\s+(Inc|Corp|Corporation|Ltd|Limited|Holdings?|Group|plc|Co|Company|Incorporated)\.?$/i, '').replace(/,?\s+(Inc|Corp|Ltd)\.?$/i, '').trim() || sym;
+    const word = name.split(/\s+/)[0].replace(/[^\w&.-]/g, '');
+    const hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
+    const short = name.length > 9 ? sym : name;
+    return {
+      name, short, mark: sym[0], color: `hsl(${hue} 62% 60%)`, logo: null, cik: null, peer: null, peerNote: '', mode: 'growth', custom: true, exchange: meta.exchange || '',
+      earnTitle: `${short} 실적`, industry: null, industryBadge: '', relBadge: sym.length > 4 ? sym.slice(0, 4) : sym,
+      relRe: new RegExp(`${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') || sym}|\\b${sym.replace('.', '\\.')}\\b`, 'i'), earnNote: '',
+    };
+  }
+  for (const [sym, meta] of Object.entries(watchCfg.custom)) if (SYM_OK.test(sym) && !STOCK_INFO[sym]) STOCK_INFO[sym] = customInfo(sym, meta);
+  let WATCH = watchCfg.list.filter((x, i, a) => STOCK_INFO[x] && a.indexOf(x) === i);
+  if (!WATCH.length) WATCH = BUILTIN.slice();
+  const OTHER = Object.keys(STOCK_INFO).filter((x) => x !== 'CRCL');
   const isOther = (s = state.stock) => s !== 'CRCL' && !!STOCK_INFO[s];
   state.st = {};
   const st = (sym) => (state.st[sym] ||= { chart: {}, earn: null, earnErr: false, news: null });
@@ -2213,16 +2267,17 @@
       badges: { related: '서클', kr: '국내', en: '해외', industry: '코인' },
     },
   };
-  for (const sym of OTHER) {
+  const newsUIFor = (sym) => {
     const S = STOCK_INFO[sym];
-    NEWS_UI[sym] = {
+    return {
       name: S.short, view: 'snews', list: 'c-snews', sum: 'c-snewssum', badge: 'news-badge',
       seenKey: sym === 'JOBY' ? 'jnewsSeen' : `newsSeen.${sym}`, filterKey: sym === 'JOBY' ? 'jnewsFilter' : `newsFilter.${sym}`,
       relRe: S.relRe, getN: () => st(sym).news,
-      filters: [['all', '전체'], ['filing', '공시'], ['related', `${S.short} 관련`], ...(sym === 'JOBY' ? [['faa', 'FAA 인증']] : []), ['kr', '국내 뉴스'], ['en', '해외 뉴스'], ['industry', S.industry]],
+      filters: [['all', '전체'], ['filing', '공시'], ['related', `${S.short} 관련`], ...(sym === 'JOBY' ? [['faa', 'FAA 인증']] : []), ['kr', '국내 뉴스'], ['en', '해외 뉴스'], ...(S.industry ? [['industry', S.industry]] : [])],
       badges: { related: S.relBadge, kr: '국내', en: '해외', industry: S.industryBadge },
     };
-  }
+  };
+  for (const sym of OTHER) NEWS_UI[sym] = newsUIFor(sym);
   state.majorOnly = loadPref('majorOnly', '1') === '1';
   const seen = {};
   for (const [sym, U] of Object.entries(NEWS_UI)) {
@@ -2233,6 +2288,18 @@
     if (U.filter === 'official') U.filter = 'related';
   }
   const curUI = () => NEWS_UI[state.stock] || NEWS_UI.CRCL;
+  // 실행 중에 종목을 추가할 때 화면·뉴스·Fire 설정을 등록
+  function registerStock(sym) {
+    if (!STOCK_INFO[sym]) STOCK_INFO[sym] = customInfo(sym, watchCfg.custom[sym]);
+    if (!OTHER.includes(sym) && sym !== 'CRCL') OTHER.push(sym);
+    if (!NEWS_UI[sym]) {
+      NEWS_UI[sym] = newsUIFor(sym);
+      const U = NEWS_UI[sym], at = Date.now();
+      savePref(U.seenKey, String(at)); seen[sym] = { at, prev: at }; U.filter = 'all';
+    }
+    TAB_SETS[sym] ||= [['home', 'Home', 'home'], ['sprice', sym, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']];
+    FIRE_TICKERS[sym] ||= `${sym} · ${STOCK_INFO[sym].name}`;
+  }
 
   function newsItems(sym = state.stock) {
     const U = NEWS_UI[sym], N = U.getN();
@@ -2383,13 +2450,14 @@
   };
   for (const s of OTHER) TAB_SETS[s] = [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']];
   const OLD_VIEWS = { jprice: 'sprice', jearn: 'searn', jnews: 'snews' }; // 예전 주소(#jprice 등) 호환
-  state.stock = STOCK_INFO[loadPref('stock', 'CRCL')] ? loadPref('stock', 'CRCL') : 'CRCL';
+  state.stock = WATCH.includes(loadPref('stock', 'CRCL')) ? loadPref('stock', 'CRCL') : WATCH[0];
   state.srange = loadPref('jrange', '1d');
   state.holders = {};
   state.analyst = {};
   state.holdTab = loadPref('holdTab', 'top');
-  const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null);
-  const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : [])]);
+  const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null) || st(sym).short || null;
+  const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst', 'options'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', 'options',
+    ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : []), ...(STOCK_INFO[sym]?.custom ? ['sshort'] : [])]);
   const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
   const sp = (v) => (v == null || !isFinite(v) ? '–' : `<span class="${cls(v)}">${pct(v)}</span>`);
@@ -2426,15 +2494,16 @@
   function renderStockSwitch() {
     const el = document.getElementById('stock-switch');
     if (!el) return;
-    const syms = Object.keys(STOCK_INFO);
+    const syms = WATCH;
     if (el.dataset.built !== syms.join(',')) {
       el.innerHTML = syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
-        <span class="ss-top"><img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async"><span class="ss-tk">${sym}</span></span>
+        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(sym[0])}</i>`}<span class="ss-tk">${sym}</span><i class="ss-ed" hidden>실적</i></span>
         <span class="ss-px">–</span><em class="ss-ch flat"></em></button>`).join('');
       el.dataset.built = syms.join(',');
     }
-    for (const btn of el.querySelectorAll('.ss')) {
+    for (const btn of el.querySelectorAll('.ss[data-stock]')) {
       const sym = btn.dataset.stock, p = stockPx(sym);
+      const ed = btn.querySelector('.ss-ed'); if (ed) ed.hidden = !earnDay(sym);
       btn.setAttribute('aria-selected', String(sym === state.stock));
       btn.setAttribute('aria-label', `${STOCK_INFO[sym].name} ${sym} ${p?.price != null ? price(p.price) : ''} ${p?.pct != null ? pct(p.pct, 1) : ''}`);
       btn.querySelector('.ss-px').textContent = p?.price != null ? price(p.price) : '–';
@@ -2444,7 +2513,7 @@
     }
   }
   function setStock(sym) {
-    if (!STOCK_INFO[sym] || sym === state.stock) return;
+    if (!STOCK_INFO[sym] || !WATCH.includes(sym) || sym === state.stock) return;
     state.stock = sym;
     savePref('stock', sym);
     document.getElementById('home-crcl').hidden = isOther(sym);
@@ -2507,7 +2576,7 @@
     }
     setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · ${isLive(sym) ? '실시간 체결' : '15초마다 갱신'}`);
     setHtml('spx-time', esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
-    const S = STOCK_INFO[sym], pr = state.quote?.[S.peer[0]];
+    const S = STOCK_INFO[sym], pr = S.peer ? state.quote?.[S.peer[0]] : null;
     if (pr) setHtml('spx-peer', `$${pr.price?.toFixed(2)} <span class="${cls(pr.pct)}">${pct(pr.pct, 1)}</span>`);
     if (sym === 'SPCX' && ipoPx()) setHtml('spx-ipo', `<span class="${cls(q.price / ipoPx() - 1)}">${pct(q.price / ipoPx() - 1, 1)}</span>`);
     for (const id of ['sspark', 'spricechart']) if (state.srange === '1d' || id === 'sspark') liveCandle(id, q.price);
@@ -2560,7 +2629,7 @@
         <div class="px-meta"><span id="spx-via">불러오는 중…</span><span id="spx-time"></span></div>
         <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 오늘 가격"></canvas></div>
         <div class="px-range" aria-label="오늘 가격 범위"><span>${price(lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${price(hi)}</span></div>
-        <div class="px-stats">${stats}<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div></div>
+        <div class="px-stats">${stats}${S.peer ? `<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div>` : `<div><span>52주 위치</span><b>${q?.price && y1?.high52 > y1?.low52 ? Math.round(((q.price - y1.low52) / (y1.high52 - y1.low52)) * 100) + '%' : '–'}</b><small>최저 0% · 최고 100%</small></div>`}</div>
         <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
     });
     sLine('sspark', pts, { compact: true, sym });
@@ -2670,26 +2739,33 @@
   const curPrice = (sym) => stockPx(sym)?.price ?? state.quote?.[sym]?.price ?? null;
   const CONS_KO = { 'Strong Buy': '강력 매수', Buy: '매수', Outperform: '시장수익률 상회', Neutral: '보유(중립)', Hold: '보유(중립)', Underperform: '시장수익률 하회', Sell: '매도', 'Strong Sell': '강력 매도' };
   function analystView(sym) {
-    const A = state.analyst?.[sym], T = A?.target;
-    if (!T) return null;
+    const A = state.analyst?.[sym];
+    let T = A?.target, src = 'Nasdaq';
+    if (!T) { // 상장 직후(SPCX) 등: 증권사별 최근 의견으로 직접 계산
+      const L = brokerLatest(sym), ts = L.map((b) => lastTarget(b.target)).filter((v) => v > 0);
+      if (!ts.length) return null;
+      const buy = L.filter((b) => BUY_RE.test(nowRating(b.rating))).length, sell = L.filter((b) => SELL_RE.test(nowRating(b.rating))).length;
+      T = { mean: ts.reduce((a, b) => a + b, 0) / ts.length, low: Math.min(...ts), high: Math.max(...ts), buy, sell, hold: L.length - buy - sell };
+      src = 'Finviz';
+    }
     const n = T.buy + T.hold + T.sell, px0 = curPrice(sym);
     const score = n ? (T.buy - T.sell) / n : 0; // +1 전부 매수 · -1 전부 매도
     const label = score >= 0.4 ? '매수 우위' : score <= -0.2 ? '매도 우위' : '중립';
-    return { A, T, n, px: px0, up: px0 ? T.mean / px0 - 1 : null, label, tone: score >= 0.4 ? 'pos' : score <= -0.2 ? 'neg' : 'neu', cons: CONS_KO[A.history?.at(-1)?.consensus] || '' };
+    return { A, T, n, src, px: px0, up: px0 ? T.mean / px0 - 1 : null, label, tone: score >= 0.4 ? 'pos' : score <= -0.2 ? 'neg' : 'neu', cons: src === 'Nasdaq' ? CONS_KO[A.history?.at(-1)?.consensus] || '' : '' };
   }
   function renderAnalyst(sym = state.stock, id = sym === 'CRCL' ? 'analyst' : 'sanalyst') {
     if (!document.getElementById('c-' + id)) return;
     const A = state.analyst?.[sym], V = analystView(sym), S = STOCK_INFO[sym];
     const title = '애널리스트 의견';
     if (!A) { card(id, { title, info: INFO.analyst, body: '<p class="skeleton">불러오는 중…</p>' }); return; }
-    if (!V) { card(id, { title, sub: `${S.short} · Nasdaq 집계`, info: INFO.analyst, body: `<p class="note" style="margin-top:12px">아직 애널리스트 목표가 집계가 없어요${sym === 'SPCX' ? '(상장 직후라 증권사 커버리지 집계 전)' : ''}. 집계가 나오면 자동으로 보여요.</p>` }); return; }
+    if (!V) { card(id, { title, sub: `${S.short} · Nasdaq 집계`, info: INFO.analyst, body: `<p class="note" style="margin-top:12px">아직 애널리스트 목표가 집계가 없어요. 집계가 나오면 자동으로 보여요.</p>${brokersHtml(sym)}` }); return; }
     const { T, n, px: p0, up } = V;
     const w = (k) => (n ? (T[k] / n) * 100 : 0);
     const span = T.high - T.low || 1, at = (v) => Math.min(100, Math.max(0, ((v - T.low) / span) * 100));
     const H = (A.history || []).filter((h) => h.target);
     const first = H[0];
     card(id, {
-      title, sub: `${S.short} · 증권사 ${n}곳 · Nasdaq 집계`, info: INFO.analyst,
+      title, sub: `${S.short} · 증권사 ${n}곳 · ${V.src === 'Nasdaq' ? 'Nasdaq 집계' : '증권사별 최근 목표가로 계산'}`, info: INFO.analyst,
       body: `<div class="an-head"><span class="tone ${V.tone}">${V.label}</span>${V.cons ? `<span class="an-cons">종합 의견 <b>${esc(V.cons)}</b></span>` : ''}</div>
         <div class="an-bar" role="img" aria-label="매수 ${T.buy} 보유 ${T.hold} 매도 ${T.sell}">
           ${T.buy ? `<i class="b" style="width:${w('buy')}%"><b>매수 ${T.buy}</b></i>` : ''}${T.hold ? `<i class="h" style="width:${w('hold')}%"><b>보유 ${T.hold}</b></i>` : ''}${T.sell ? `<i class="s" style="width:${w('sell')}%"><b>매도 ${T.sell}</b></i>` : ''}
@@ -2703,7 +2779,8 @@
           <div class="an-lab"><span>${price(T.low)}</span><span>◆ 평균 · ● 현재가</span><span>${price(T.high)}</span></div>
         </div>
         ${H.length > 1 ? `<div class="mini-h er-h">평균 목표가 추이 (월별)</div><div class="chart short"><canvas id="cv-${id}" role="img" aria-label="평균 목표가 추이"></canvas></div>` : ''}
-        <p class="note">증권사들이 낸 투자의견·12개월 목표주가의 집계예요(Nasdaq). ${first && H.length > 1 ? `${md(isoToTs(first.d))} ${price(first.target)} → 지금 ${price(T.mean)}. ` : ''}목표가는 자주 늦게 바뀌고 증권사마다 차이가 커서 참고용이에요.</p>`,
+        <p class="note">증권사들이 낸 투자의견·12개월 목표주가의 집계예요(${V.src}). ${first && H.length > 1 ? `${md(isoToTs(first.d))} ${price(first.target)} → 지금 ${price(T.mean)}. ` : ''}목표가는 자주 늦게 바뀌고 증권사마다 차이가 커서 참고용이에요.</p>
+        ${brokersHtml(sym)}`,
     });
     if (H.length > 1) {
       const labels = H.map((h) => isoToTs(h.d));
@@ -2717,6 +2794,256 @@
         },
       });
     }
+  }
+
+  // ---------------------------------------------------------------- 증권사별 의견 (Finviz)
+  const BUY_RE = /buy|outperform|overweight|positive|accumulate|\badd\b/i, SELL_RE = /sell|underperform|underweight|negative|reduce/i;
+  const RATING_KO = (r) => String(r || '').replace(/Strong Buy/gi, '강력 매수').replace(/\bBuy\b/gi, '매수').replace(/Outperform/gi, '시장 상회').replace(/Overweight/gi, '비중 확대')
+    .replace(/Market Perform|Mkt Perform/gi, '시장 수익률').replace(/Sector Perform/gi, '업종 수익률').replace(/Equal-?Weight/gi, '비중 유지').replace(/Peer Perform/gi, '동종 수익률')
+    .replace(/Neutral/gi, '중립').replace(/\bHold\b/gi, '보유').replace(/Underperform/gi, '시장 하회').replace(/Underweight/gi, '비중 축소').replace(/Strong Sell/gi, '강력 매도').replace(/\bSell\b/gi, '매도')
+    .replace(/Positive/gi, '긍정').replace(/Negative/gi, '부정');
+  const ACTION_KO = { Initiated: ['신규', 'neu'], Upgrade: ['상향', 'pos'], Downgrade: ['하향', 'neg'], Reiterated: ['유지', 'neu'], Resumed: ['재개', 'neu'], 'Target Raised': ['목표↑', 'pos'], 'Target Lowered': ['목표↓', 'neg'] };
+  const lastTarget = (t) => { const m = String(t || '').match(/\$([\d,.]+)\s*$/); return m ? +m[1].replace(/,/g, '') : null; };
+  const nowRating = (r) => String(r || '').split('→').pop().trim();
+  // 증권사마다 가장 최근 의견 하나(1년 이내)
+  function brokerLatest(sym) {
+    const out = new Map();
+    for (const b of state.analyst?.[sym]?.street?.brokers || []) if (!out.has(b.firm) && Date.now() - Date.parse(b.d) < 365 * 86400000) out.set(b.firm, b);
+    return [...out.values()];
+  }
+  function brokersHtml(sym) {
+    const all = state.analyst?.[sym]?.street?.brokers || [];
+    if (!all.length) return '';
+    const p0 = curPrice(sym), showAll = state.brokerAll === sym;
+    const list = showAll ? all.slice(0, 30) : brokerLatest(sym).slice(0, 10);
+    const rows = list.map((b) => {
+      const [act, tone] = ACTION_KO[b.action] || [b.action, 'neu'];
+      const tg = lastTarget(b.target), up = tg && p0 ? tg / p0 - 1 : null;
+      return `<li><div class="h-name"><b>${esc(b.firm)}</b><small>${md(isoToTs(b.d))} · <span class="tone ${tone} sm">${esc(act)}</span></small></div>
+        <div class="h-sh"><b class="br-rate ${BUY_RE.test(nowRating(b.rating)) ? 'up' : SELL_RE.test(nowRating(b.rating)) ? 'down' : ''}">${esc(RATING_KO(b.rating))}</b></div>
+        <div class="h-chg">${tg ? `<b>${esc(b.target.replace(/\s*→\s*/, '→'))}</b><small class="${cls(up)}">${up != null ? pct(up, 0) : ''}</small>` : '<small>목표가 없음</small>'}</div></li>`;
+    }).join('');
+    return `<div class="mini-h er-h br-h"><span>${showAll ? '의견 변경 기록(최근순)' : '증권사별 최근 의견'}</span><button type="button" class="chip-btn sm" data-brokers="${sym}">${showAll ? '증권사별로 보기' : '전체 기록 보기'}</button></div>
+      <ul class="h-list br-list">${rows}</ul><p class="note">출처: Finviz. 목표가 옆 %는 현재가 대비. "A→B"는 이번에 바꾼 의견·목표가예요.</p>`;
+  }
+
+  // ---------------------------------------------------------------- 옵션 시장 심리 (CBOE 지연 시세)
+  function optTone(O) {
+    if (!O?.pcVol && O?.pcVol !== 0) return ['neu', '자료 부족'];
+    return O.pcVol < 0.7 ? ['pos', '상승 베팅 우세'] : O.pcVol > 1.0 ? ['neg', '하락 대비 우세'] : ['neu', '균형'];
+  }
+  function renderOptions(sym = state.stock, id = sym === 'CRCL' ? 'options' : 'soptions') {
+    if (!document.getElementById('c-' + id)) return;
+    const O = state.options?.[sym], S = STOCK_INFO[sym], title = '옵션 시장 심리';
+    if (!O) { card(id, { title, info: INFO.options, body: `<p class="skeleton">${state.optionsErr?.[sym] ? esc(state.optionsErr[sym]) : '불러오는 중…'}</p>` }); return; }
+    const [tone, label] = optTone(O), sp0 = O.spot;
+    const mv = (x, lbl) => (x ? `<div><span>${lbl}</span><b>±${(x.move * 100).toFixed(1)}%</b><small>${md(isoToTs(x.exp))} 만기(${x.days}일) · ${price(sp0 * (1 - x.move))}~${price(sp0 * (1 + x.move))}</small></div>` : '');
+    const strikes = (L, t) => L.map((r) => `<span class="op-k ${t}">${price(r.k)}<small>${unit(r.oi)}계약 · ${md(isoToTs(r.exp))}</small></span>`).join('');
+    card(id, {
+      title, sub: `${S.short} · CBOE 옵션 시세(약 15분 지연) · 기준가 ${price(sp0)}`, info: INFO.options,
+      body: `<div class="an-head"><span class="tone ${tone}">${label}</span><span class="an-cons">풋/콜 거래량 비율 <b>${O.pcVol != null ? O.pcVol.toFixed(2) : '–'}</b></span></div>
+        <div class="ns-grid er-grid">
+          <div><span>내재변동성(IV30)</span><b>${O.iv30 != null ? O.iv30.toFixed(1) + '%' : '–'}</b><small>앞으로 30일 연간 변동성 예상${O.iv30Chg ? ` · 전일 ${O.iv30Chg > 0 ? '+' : ''}${O.iv30Chg.toFixed(1)}%p` : ''}</small></div>
+          <div><span>풋/콜 미결제 비율</span><b>${O.pcOI != null ? O.pcOI.toFixed(2) : '–'}</b><small>콜 ${unit(O.callOI)} · 풋 ${unit(O.putOI)}계약</small></div>
+          ${mv(O.near, '가장 가까운 만기 예상 변동폭')}${mv(O.month, '한 달 예상 변동폭')}
+          ${O.earn ? mv(O.earn, '실적 발표 포함 만기 예상 변동폭') : ''}
+          ${O.maxPain ? `<div><span>맥스 페인</span><b>${price(O.maxPain.strike)}</b><small>${md(isoToTs(O.maxPain.exp))} 만기 · 현재가 대비 <span class="${cls(O.maxPain.strike / sp0 - 1)}">${pct(O.maxPain.strike / sp0 - 1, 1)}</span></small></div>` : ''}
+        </div>
+        ${O.topCalls?.length ? `<div class="mini-h er-h">미결제가 많이 쌓인 가격(60일 이내 만기)</div><div class="op-row"><span class="op-l up">콜</span>${strikes(O.topCalls, 'up')}</div><div class="op-row"><span class="op-l down">풋</span>${strikes(O.topPuts, 'down')}</div>` : ''}
+        ${O.unusual?.length ? `<div class="mini-h er-h">오늘 거래가 몰린 옵션(거래량 > 미결제 1.5배)</div><ul class="op-un">${O.unusual.map((u) => `<li><span class="${u.type === 'C' ? 'up' : 'down'}">${u.type === 'C' ? '콜' : '풋'} ${price(u.k)}</span><span>${md(isoToTs(u.exp))} 만기</span><span>거래 ${unit(u.vol)} · 미결제 ${unit(u.oi)}</span></li>`).join('')}</ul>` : ''}
+        <p class="note">옵션 가격으로 계산한 시장의 기대치예요. 실제 움직임과 다를 수 있고, 거래가 적은 종목은 수치가 들쭉날쭉해요.</p>`,
+    });
+  }
+  function optionsSummaryItem(sym) {
+    const O = state.options?.[sym];
+    if (!O || O.pcVol == null) return null;
+    const [tone, label] = optTone(O), E = O.earn;
+    const t = tone === 'pos' ? 'pos' : tone === 'neg' ? 'neg' : 'neu';
+    return [t, sym === 'CRCL' ? 'crcl:c-options' : 'sprice:c-soptions', `옵션 풋/콜 ${O.pcVol.toFixed(2)}(${label}) · IV30 ${O.iv30 != null ? O.iv30.toFixed(0) + '%' : '–'}${E && E.days <= 21 ? ` · 실적 포함 만기 예상 변동폭 <b>±${(E.move * 100).toFixed(0)}%</b>` : ''}`, t === 'pos' ? '옵션 상승 베팅' : t === 'neg' ? '옵션 하락 대비' : null, 1];
+  }
+
+  // ---------------------------------------------------------------- 실적 발표 당일 모드
+  // 발표 전날~당일(미국 날짜): 일정·시각·예상치·옵션이 보는 변동폭 / 발표 후 36시간: 실제 vs 예상·주가 반응·공시·관련 뉴스
+  const etDate = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+  const etOffset = (iso) => { try { const v = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'shortOffset' }).formatToParts(new Date(iso + 'T12:00:00Z')).find((p) => p.type === 'timeZoneName').value; const m = v.match(/GMT([+-]\d+)/); return m ? `${m[1].startsWith('-') ? '-' : '+'}${String(Math.abs(+m[1])).padStart(2, '0')}:00` : '-05:00'; } catch { return '-05:00'; } };
+  const earnOf = (sym) => (sym === 'CRCL' ? state.earnings : st(sym).earn);
+  function earnDay(sym) {
+    const E = earnOf(sym), A = state.analyst?.[sym]?.street;
+    if (!E) return null;
+    const force = location.search.match(/earnday=([A-Z.]+):(pre|post)/);
+    const N = E.next, Q = E.quarters || [], lastQ = Q.at(-1), fq = A?.quarters?.at(-1);
+    const repMs = Math.max(fq?.at || 0, lastQ?.reportedOn ? Date.parse(lastQ.reportedOn + 'T21:00:00Z') : 0);
+    // 발표 시각: Finviz 'Nov 11 AMC'의 날짜가 다음 발표일과 같을 때만 믿는다
+    let time = null;
+    if (N?.date && A?.earnings) { const [mo, dd] = A.earnings.split(' '); const d = new Date(N.date + 'T12:00:00Z'); if (d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) === mo && d.getUTCDate() === +dd) time = A.earningsTime; }
+    const base = { E, A, N, lastQ, fq, time, repMs };
+    if (force?.[1] === sym) return { ...base, phase: force[2] };
+    if (repMs && Date.now() - repMs < 36 * 3600000 && Date.now() >= repMs - 3600000) return { ...base, phase: 'post' };
+    if (N?.date && (N.date === etDate() || N.date === etDate(Date.now() + 86400000))) return { ...base, phase: 'pre' };
+    return null;
+  }
+  const EARN_CHECK = {
+    CRCL: 'USDC 유통량·준비금 이자수익, 금리 민감도, 유통 비용(Coinbase 등) 비중, 다음 분기 가이던스',
+    JOBY: '주주서한의 <b>FAA 인증 단계별 %</b>(서버가 자동으로 읽어 반영), 현금 소진 속도, 상업 운항 일정',
+    SPCX: '스타링크 매출 성장, 설비투자 규모 — 발표 <b>2거래일 뒤 보호예수 최대 13억 주 해제</b>(3분기)',
+    TEM: '매출 성장률, 흑자 유지 여부, 유전체 검사 건수·데이터 사업 성장',
+  };
+  function renderEarnDay(sym = state.stock) {
+    const id = sym === 'CRCL' ? 'earnday' : 'searnday', el = document.getElementById('c-' + id);
+    if (!el) return;
+    const D = earnDay(sym);
+    el.hidden = !D;
+    if (!D) return;
+    const S = STOCK_INFO[sym], N = D.N, O = state.options?.[sym];
+    if (D.phase === 'pre') {
+      const at = N?.date && D.time ? Date.parse(`${N.date}T${D.time === 'BMO' ? '08:00' : '16:05'}:00${etOffset(N.date)}`) : null;
+      const left = at ? at - Date.now() : null;
+      const kst = at ? new Date(at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null;
+      const sur = (D.E.surprises || []).slice(0, 4);
+      const beats = sur.filter((x) => x.eps >= x.consensus).length;
+      card(id, {
+        title: `🔔 ${S.short} 실적 발표 ${dday(N.date) <= 0 ? '오늘' : dday(N.date) === 1 ? '내일' : `D-${dday(N.date)}`}`, sub: `${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}미국 ${krDate(N.date)}${D.time ? ` · ${D.time === 'BMO' ? '장 시작 전' : '장 마감 후'}` : ' · 시각 미정'}`, info: INFO.earnday,
+        body: `${kst ? `<div class="ed-time"><b>한국시간 ${esc(kst)}경</b>${left > 0 ? `<span>${Math.floor(left / 3600000)}시간 ${Math.floor((left % 3600000) / 60000)}분 남음</span>` : '<span>곧 발표</span>'}</div>` : ''}
+          <div class="ns-grid er-grid">
+            <div><span>예상 EPS</span><b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b><small>${N.low != null ? `범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}` : ''}${N.analysts ? ` · ${N.analysts}명` : ''}</small></div>
+            <div><span>작년 같은 분기</span><b>${N.lastYearEps != null ? '$' + N.lastYearEps.toFixed(2) : '–'}</b><small>EPS</small></div>
+            <div><span>옵션이 보는 변동폭</span><b>${O?.earn ? '±' + (O.earn.move * 100).toFixed(1) + '%' : '–'}</b><small>${O?.earn ? `${price(O.spot * (1 - O.earn.move))} ~ ${price(O.spot * (1 + O.earn.move))}` : '옵션 자료 없음'}</small></div>
+            <div><span>최근 ${sur.length}분기 예상 상회</span><b>${sur.length ? `${beats}/${sur.length}` : '–'}</b><small>EPS 기준</small></div>
+          </div>
+          <p class="ed-check">✅ 볼 것: ${EARN_CHECK[sym] || '매출·EPS가 예상보다 높은지, 다음 분기 가이던스'}</p>`,
+      });
+      return;
+    }
+    // 발표 후
+    const fq = D.fq, q = D.lastQ, sur = (D.E.surprises || []).find((x) => x.end === q?.end);
+    const eps = fq?.eps ?? sur?.eps ?? q?.eps, epsEst = fq?.epsEst ?? sur?.consensus;
+    const epsS = eps != null && epsEst ? (eps - epsEst) / Math.abs(epsEst) : null;
+    const salesS = fq?.sales && fq?.salesEst ? fq.sales / fq.salesEst - 1 : null;
+    const p = stockPx(sym);
+    const fl = (sym === 'CRCL' ? state.data?.news?.filings : st(sym).news?.filings) || [];
+    const k8 = fl.find((f) => /^8-K/.test(f.form) && /2\.02/.test(f.items || '') && Date.now() - Date.parse(f.d) < 4 * 86400000);
+    const EN_RE = /earnings|results|quarter|revenue|guidance|EPS|실적|분기|매출|어닝/i;
+    const news = newsItems(sym).filter((i) => i.kind !== 'filing' && EN_RE.test(i.title) && Date.now() - i.t < 2 * 86400000).slice(0, 4);
+    card(id, {
+      title: `📊 ${S.short} 실적 발표 결과`, sub: `${q ? qLabelLong(q.end) : ''} · 발표 ${D.repMs ? new Date(D.repMs).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}`, info: INFO.earnday,
+      body: `<div class="ns-grid er-grid">
+          <div><span>EPS</span><b class="${cls(epsS)}">${eps != null ? '$' + (+eps).toFixed(2) : '–'}</b><small>${epsEst != null ? `예상 $${(+epsEst).toFixed(2)} · ` : ''}${epsS != null ? `<span class="${cls(epsS)}">${epsS >= 0 ? '예상 상회' : '예상 하회'} ${pct(epsS, 0)}</span>` : ''}</small></div>
+          <div><span>매출</span><b class="${cls(salesS)}">${fq?.sales ? usd(fq.sales) : usdS2(q?.revenue)}</b><small>${fq?.salesEst ? `예상 ${usd(fq.salesEst)} · <span class="${cls(salesS)}">${salesS >= 0 ? '상회' : '하회'} ${pct(salesS, 1)}</span>` : ''}</small></div>
+          <div><span>주가 반응</span><b class="${cls(p?.pct)}">${p?.pct != null ? pct(p.pct, 1) : '–'}</b><small>${price(p?.price)} · ${BN24[sym] || sym === 'CRCL' ? '바이낸스 24시간' : esc(mktStatus(state.quote?.[sym]?.status))}</small></div>
+          <div><span>다음 실적</span><b>${D.E.next?.date && D.E.next.date > (q?.end || '') ? md(isoToTs(D.E.next.date)) : '–'}</b><small>${D.E.next?.estimated ? '예상일' : ''}</small></div>
+        </div>
+        ${k8 ? `<a class="faa-notice good" href="${safeUrl(k8.url)}" target="_blank" rel="noopener">📄 실적 발표 공시(8-K, ${md(isoToTs(k8.d))}) 원문 보기 →</a>` : ''}
+        ${news.length ? `<div class="mini-h er-h">실적 관련 소식</div><ul class="nl faa-nl">${news.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
+        <p class="ed-check">✅ 이어서 볼 것: ${EARN_CHECK[sym] || '가이던스와 컨퍼런스콜 내용'}</p>`,
+    });
+  }
+
+  // ---------------------------------------------------------------- 종목 추가·삭제·순서 (이 기기에 저장)
+  let watchSearchTimer = null, watchResults = [];
+  function saveWatch() { writeJSON(WATCH_KEY, { list: WATCH, custom: watchCfg.custom }); }
+  function openWatchSheet() {
+    let el = document.getElementById('watch-sheet');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'watch-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '종목 관리');
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    document.body.classList.add('sheet-open');
+    renderWatchSheet();
+    setTimeout(() => document.getElementById('watch-q')?.focus(), 50);
+  }
+  function closeWatchSheet() { const el = document.getElementById('watch-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+  function renderWatchSheet() {
+    const el = document.getElementById('watch-sheet');
+    if (!el || el.hidden) return;
+    const q = document.getElementById('watch-q')?.value || '';
+    const rows = WATCH.map((sym, i) => {
+      const S = STOCK_INFO[sym];
+      return `<li><span class="ws-logo" style="--sc:${S.color}">${S.logo ? `<img src="${S.logo}" alt="" width="22" height="22">` : esc(sym[0])}</span>
+        <div class="ws-name"><b>${sym}</b><small>${esc(S.name)}${BUILTIN.includes(sym) ? ' · 기본' : ''}</small></div>
+        <button type="button" class="ws-btn" data-wmove="${i}:-1" aria-label="${sym} 위로" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="ws-btn" data-wmove="${i}:1" aria-label="${sym} 아래로" ${i === WATCH.length - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="ws-btn del" data-wdel="${sym}" aria-label="${sym} 삭제" ${WATCH.length < 2 ? 'disabled' : ''}>삭제</button></li>`;
+    }).join('');
+    const res = (watchResults || []).map((r) => `<li><div class="ws-name"><b>${esc(r.symbol)}</b><small>${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small></div>
+      ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}">+ 추가</button>`}</li>`).join('');
+    const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
+    el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
+      <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
+      <label class="ws-search"><input id="watch-q" type="search" placeholder="티커나 영문 회사명 (예: AAPL, Tesla)" autocomplete="off" value="${esc(q)}"></label>
+      ${q ? `<ul class="ws-list">${res || `<li class="empty">${watchResults === null ? '검색 중…' : '검색 결과가 없어요. 영문으로 입력해 보세요.'}</li>`}</ul>` : ''}
+      ${removedBuiltin.length && !q ? `<div class="ws-sub">다시 추가하기</div><ul class="ws-list">${removedBuiltin.map((s) => `<li><div class="ws-name"><b>${s}</b><small>${esc(STOCK_INFO[s].name)} · 기본</small></div><button type="button" class="ws-btn add" data-wadd="${s}">+ 추가</button></li>`).join('')}</ul>` : ''}
+      <div class="ws-sub">내 종목 <small>위에서부터 홈 상단에 보여요</small></div>
+      <ul class="ws-list">${rows}</ul>
+      <p class="note">🔒 종목 목록은 이 기기(브라우저)에만 저장돼요. 기본 4종목(CRCL·JOBY·SPCX·TEM)은 전용 화면(FAA 인증·보호예수 등)이 있고, 새로 추가한 종목은 공통 화면(주가·실적·뉴스·공시·공매도·기관·애널리스트·옵션)으로 보여요. 바이낸스에 24시간 주식 선물이 있는 종목은 CRCL처럼 바이낸스 가격으로 표시돼요.</p>
+    </div>`;
+    const inp = document.getElementById('watch-q');
+    if (inp && q) { inp.focus(); inp.setSelectionRange(q.length, q.length); }
+  }
+  function watchSearch(q) {
+    clearTimeout(watchSearchTimer);
+    if (!q.trim()) { watchResults = []; renderWatchSheet(); return; }
+    watchSearchTimer = setTimeout(async () => {
+      watchResults = null; renderWatchSheet();
+      try { watchResults = (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(q.trim())}`, 10000)).results || []; } catch { watchResults = []; }
+      if ((document.getElementById('watch-q')?.value || '') === q) renderWatchSheet();
+    }, 300);
+  }
+  function addWatch(sym, meta = {}) {
+    if (!SYM_OK.test(sym) || WATCH.includes(sym)) return;
+    if (!BUILTIN.includes(sym)) { watchCfg.custom[sym] = { name: meta.name || sym, exchange: meta.exchange || '' }; registerStock(sym); }
+    WATCH.push(sym);
+    saveWatch();
+    afterWatchChange(sym);
+    toast(`✓ ${sym} 추가 · 홈 상단에서 고를 수 있어요`);
+  }
+  function removeWatch(sym) {
+    if (WATCH.length < 2) return;
+    WATCH = WATCH.filter((s) => s !== sym);
+    saveWatch();
+    if (state.stock === sym) setStock(WATCH[0]);
+    afterWatchChange();
+  }
+  function moveWatch(i, d) {
+    const j = i + d;
+    if (j < 0 || j >= WATCH.length) return;
+    [WATCH[i], WATCH[j]] = [WATCH[j], WATCH[i]];
+    saveWatch();
+    afterWatchChange();
+  }
+  function afterWatchChange(added) {
+    const sw = document.getElementById('stock-switch');
+    if (sw) sw.dataset.built = '';
+    renderStockSwitch();
+    renderWatchSheet();
+    if (added) {
+      liveSubscribe(added);
+      checkBinance(added);
+      loadQuote().then(renderStockSwitch).catch(() => {});
+      syncNow(stockParts(added), { sym: added, quiet: true }).then(() => { renderStockSwitch(); if (state.stock === added) renderStock(); }).catch(() => {});
+    }
+  }
+  // 바이낸스에 24시간 주식 선물이 있으면 CRCL처럼 바이낸스 가격으로
+  let bnEquities = null;
+  async function checkBinance(sym) {
+    if (BN24[sym] || !STOCK_INFO[sym]?.custom) return;
+    try {
+      bnEquities ||= (async () => {
+        const c = readJSON('cw.bnEq', null);
+        if (c && Date.now() - c.at < 86400000) return new Set(c.list);
+        const j = await bnGet('exchangeInfo');
+        const list = j.symbols.filter((x) => x.status === 'TRADING' && /TRADIFI/i.test(x.contractType || '') && x.symbol.endsWith('USDT')).map((x) => x.symbol);
+        writeJSON('cw.bnEq', { at: Date.now(), list });
+        return new Set(list);
+      })();
+      const set = await bnEquities;
+      if (set.has(sym + 'USDT')) { BN24[sym] = sym + 'USDT'; bDisconnect(); bConnect(); bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) renderStock(); }).catch(() => {}); }
+    } catch {}
+  }
+  function liveSubscribe(sym) {
+    if (!YF_SYMS.includes(sym)) YF_SYMS.push(sym);
+    try { if (yws?.readyState === 1) yws.send(JSON.stringify({ subscribe: [sym] })); } catch {}
   }
 
   const REL_KO = (r) => String(r || '').replace(/Chief Executive Officer|CEO/i, 'CEO').replace(/Chief Financial Officer|CFO/i, 'CFO').replace(/^Officer$/i, '임원').replace(/^Director$/i, '이사').replace(/Beneficial Owner.*|10% Owner/i, '대주주').replace(/President/i, '사장');
@@ -2985,12 +3312,12 @@
     const S = STOCK_INFO[sym], sh = shortOf(sym), sd = sh?.daily || [];
     const a = sd.at(-1), b = sd.at(-2);
     const N = st(sym).earn?.next, H = state.holders[sym];
-    const q = pq(sym), pr = state.quote?.[S.peer[0]];
+    const q = pq(sym), pr = S.peer ? state.quote?.[S.peer[0]] : null;
     return {
       short: tile(`${S.short} 공매도 비율`, a ? pctPlain(a.ratio) : '–', a && b ? `<span class="${cls(a.ratio - b.ratio)}">${arrow(a.ratio - b.ratio)} ${pp(a.ratio - b.ratio, 1)}</span> <span class="flat">평균 ${pctPlain(sh.avgRatio)}</span>` : '', 'sprice:c-sshort'),
       inst: tile('기관 보유 비율', H ? pctPlain(H.ownershipPct) : '–', H ? `<span class="flat">늘림 ${nf(0).format(H.increased?.holders || 0)} · 줄임 ${nf(0).format(H.decreased?.holders || 0)}곳</span>` : '', 'sprice:c-sholders'),
       next: tile('다음 실적 발표', N?.date ? `D-${Math.max(0, dday(N.date))}` : '–', N?.date ? `<span class="flat">${md(isoToTs(N.date))}${N.estimated ? ' (예상)' : ''}</span>` : '', 'searn:c-searnings'),
-      peer: tile(`경쟁사 ${S.peer[1]}`, pr?.price != null ? price(pr.price) : '–', pr ? `<span class="${cls(pr.pct)}">${arrow(pr.pct)} ${pct(pr.pct, 1)}</span> <span class="flat">vs ${sym} ${q ? pct(q.pct, 1) : '–'}</span>` : '', 'sprice:c-spricechart'),
+      peer: !S.peer ? tile('오늘 등락', q ? `<span class="${cls(q.pct)}">${pct(q.pct, 1)}</span>` : '–', `<span class="flat">${price(q?.price)}</span>`, 'sprice:c-spricechart') : tile(`경쟁사 ${S.peer[1]}`, pr?.price != null ? price(pr.price) : '–', pr ? `<span class="${cls(pr.pct)}">${arrow(pr.pct)} ${pct(pr.pct, 1)}</span> <span class="flat">vs ${sym} ${q ? pct(q.pct, 1) : '–'}</span>` : '', 'sprice:c-spricechart'),
     };
   }
   // 애널리스트 평균 목표가 · 내부자 3개월 순매매 칸(모든 종목 공통)
@@ -3004,6 +3331,8 @@
   }
   function analystSummary(sym) {
     const out = [], V = analystView(sym), go = sym === 'CRCL' ? 'crcl:c-analyst' : 'sprice:c-sanalyst';
+    const oi = optionsSummaryItem(sym);
+    if (oi) out.push(oi);
     if (V && V.up != null) {
       const t = V.up >= 0.15 && V.tone !== 'neg' ? 'pos' : V.up < 0 || V.tone === 'neg' ? 'neg' : 'neu';
       out.push([t, go, `애널리스트 ${V.n}곳 <b>${V.label}</b>(매수 ${V.T.buy}·보유 ${V.T.hold}·매도 ${V.T.sell}) · 평균 목표가 ${price(V.T.mean)}, 현재가보다 ${Math.abs(V.up * 100).toFixed(0)}% ${V.up >= 0 ? '높음' : '낮음'}`, t === 'pos' ? '목표가 여유' : V.up < 0 ? '목표가 초과' : null, 1]);
@@ -3129,12 +3458,12 @@
   function renderStock() {
     renderStockSwitch();
     const sym = state.stock;
-    if (!isOther(sym)) { for (const j of [() => renderHolders('CRCL', 'holders'), () => renderAnalyst('CRCL'), () => renderInsider('CRCL')]) { try { j(); } catch (e) { console.error(e); } } return; }
+    if (!isOther(sym)) { for (const j of [() => renderHolders('CRCL', 'holders'), () => renderAnalyst('CRCL'), () => renderInsider('CRCL'), () => renderOptions('CRCL'), () => renderEarnDay('CRCL')]) { try { j(); } catch (e) { console.error(e); } } return; }
     document.getElementById('c-faa').hidden = sym !== 'JOBY';
     document.getElementById('c-lockup').hidden = sym !== 'SPCX';
     const S = STOCK_INFO[sym];
     const jobs = [() => renderSPriceCard(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
-      () => renderShort(shortOf(sym), 'sshort', S.short), () => renderHolders(sym, 'sholders'), () => renderAnalyst(sym), () => renderInsider(sym), () => renderSEarnings(sym),
+      () => renderShort(shortOf(sym), 'sshort', S.short), () => renderHolders(sym, 'sholders'), () => renderAnalyst(sym), () => renderInsider(sym), () => renderOptions(sym), () => renderEarnDay(sym), () => renderSEarnings(sym),
       () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge];
     for (const j of jobs) { try { j(); } catch (e) { console.error(e); } }
   }
@@ -3142,7 +3471,7 @@
   // ---------------------------------------------------------------- 실시간 체결가 (Yahoo Finance 스트림 · 바이낸스 24시간 선물)
   // Nasdaq 시세(15초)는 장 상태·전일 종가를 위한 기본값으로 두고, 체결이 날 때마다 오는 Yahoo 스트림 값으로 바로 덮어쓴다
   // (미국 장전·장중·장후). SPCX·TEM은 바이낸스에도 24시간 거래되는 주식 선물이 있어 밤·주말 흐름을 함께 보여준다.
-  const YF_SYMS = ['JOBY', 'SPCX', 'TEM', 'ACHR', 'RKLB', 'GH', 'CRCA', 'CRCL'];
+  const YF_SYMS = ['JOBY', 'SPCX', 'TEM', 'ACHR', 'RKLB', 'GH', 'CRCA', 'CRCL', ...Object.keys(watchCfg.custom).filter((x) => SYM_OK.test(x))];
   const live = {}; // 티커 → { price, pct, change, at }
   let yws = null, ywsTries = 0, ywsTimer = null;
   const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -3280,8 +3609,8 @@
       if (!state.data) return;
       const snap = {
         at: state.syncedAt || new Date().toISOString(), data: state.data, quote: state.quote, earnings: state.earnings,
-        holders: state.holders, analyst: state.analyst, faa: state.faa, spcx: state.spcx, facts: state.facts,
-        st: Object.fromEntries(Object.entries(state.st).map(([k, x]) => [k, { earn: x.earn, news: x.news, chart: pickKeys(x.chart, ['1d', '1y']) }])),
+        holders: state.holders, analyst: state.analyst, options: state.options, faa: state.faa, spcx: state.spcx, facts: state.facts,
+        st: Object.fromEntries(Object.entries(state.st).map(([k, x]) => [k, { earn: x.earn, news: x.news, short: x.short, chart: pickKeys(x.chart, ['1d', '1y']) }])),
         px: { t: px.t, mark: px.mark, oi: px.oi, klines: pickKeys(px.klines, ['1d']) },
         bx: Object.fromEntries(Object.entries(bx).map(([k, x]) => [k, { t: x.t, mark: x.mark, oi: x.oi, klines: pickKeys(x.klines, ['1d']) }])),
       };
@@ -3296,8 +3625,8 @@
       const S = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
       if (!S?.data || !(Date.now() - Date.parse(S.at) < 3 * 86400000)) return false;
       state.data = S.data; state.quote = S.quote || null; state.earnings = S.earnings || null;
-      state.holders = S.holders || {}; state.analyst = S.analyst || {}; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
-      for (const [k, x] of Object.entries(S.st || {})) Object.assign(st(k), { earn: x.earn || null, news: x.news || null, chart: x.chart || {} });
+      state.holders = S.holders || {}; state.analyst = S.analyst || {}; state.options = S.options || {}; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
+      for (const [k, x] of Object.entries(S.st || {})) Object.assign(st(k), { earn: x.earn || null, news: x.news || null, short: x.short || null, chart: x.chart || {} });
       if (S.px) { px.t = S.px.t; px.mark = S.px.mark; px.oi = S.px.oi; Object.assign(px.klines, S.px.klines || {}); }
       for (const [k, x] of Object.entries(S.bx || {})) Object.assign(bxOf(k), { t: x.t, mark: x.mark, oi: x.oi, klines: x.klines || {} });
       state.syncedAt = S.at;
@@ -3309,7 +3638,7 @@
   async function prefetchStocks() {
     if (Date.now() - lastPrefetch < 10 * 60000 || document.hidden) return;
     lastPrefetch = Date.now();
-    await Promise.all(Object.keys(STOCK_INFO).filter((sym) => sym !== state.stock).map((sym) => syncNow(stockParts(sym), { sym, quiet: true }).catch(() => {})));
+    await Promise.all(WATCH.filter((sym) => sym !== state.stock).map((sym) => syncNow(stockParts(sym), { sym, quiet: true }).catch(() => {})));
   }
   // 화면 맨 위 얇은 진행 막대: 처음 불러올 때·종목을 바꿀 때
   let busyCount = 0;
@@ -3404,7 +3733,8 @@
         if (kind === 'manual') loadPxSnapshot().then(schedulePaint).catch(() => {});
       }
       state.syncKind = kind;
-      const stockP = kind !== 'light' ? stockParts(state.stock) : [];
+      const ed = earnDay(state.stock);
+      const stockP = kind !== 'light' ? stockParts(state.stock) : ed ? (state.stock === 'CRCL' ? ['earnings', 'analyst', 'news'] : ['searn', 'analyst', 'snews']) : [];
       const r = await syncNow([...SYNC_SETS[kind], ...stockP]);
       if (state.booting) { state.booting = false; busyBar(false); }
       renderAll();
@@ -3457,8 +3787,8 @@
     if (v === 'fire') { renderFire(); if (!state.quote) loadQuote().then(renderFire).catch(() => renderFire()); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
-    if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); }
-    if (v === 'crcl') { renderHolders('CRCL', 'holders'); renderAnalyst('CRCL'); renderInsider('CRCL'); }
+    if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
+    if (v === 'crcl') { renderHolders('CRCL', 'holders'); renderAnalyst('CRCL'); renderInsider('CRCL'); renderOptions('CRCL'); }
     if (v === 'news' || v === 'snews') { markNewsSeen(); renderNewsSummary(); renderNews(); } else updateNewsBadge();
     updateFireChip();
     if (target) {
@@ -3483,6 +3813,7 @@
     if (ev.target.id === 'fire-form') { ev.preventDefault(); saveFireForm(); }
   });
   document.addEventListener('input', (ev) => {
+    if (ev.target.id === 'watch-q') { watchSearch(ev.target.value); return; }
     if (ev.target.id === 'sim-range') {
       fireSim = parseFloat(ev.target.value);
       const t = document.getElementById('sim-top');
@@ -3524,6 +3855,16 @@
     if (stk) { setStock(stk.dataset.stock); return; }
     const sr = ev.target.closest('[data-srange]');
     if (sr) { state.srange = sr.dataset.srange; savePref('jrange', state.srange); renderSPriceChart(); paintStock(); return; }
+    if (ev.target.closest('[data-wedit]')) { openWatchSheet(); return; }
+    if (ev.target.closest('[data-wclose]')) { closeWatchSheet(); return; }
+    const wa = ev.target.closest('[data-wadd]');
+    if (wa) { addWatch(wa.dataset.wadd, { name: wa.dataset.wname, exchange: wa.dataset.wex }); return; }
+    const wd = ev.target.closest('[data-wdel]');
+    if (wd) { removeWatch(wd.dataset.wdel); return; }
+    const wm = ev.target.closest('[data-wmove]');
+    if (wm) { const [i, d] = wm.dataset.wmove.split(':').map(Number); moveWatch(i, d); return; }
+    const bk = ev.target.closest('[data-brokers]');
+    if (bk) { state.brokerAll = state.brokerAll === bk.dataset.brokers ? null : bk.dataset.brokers; renderAnalyst(bk.dataset.brokers); return; }
     const ht = ev.target.closest('[data-htab]');
     if (ht) { state.holdTab = ht.dataset.htab; savePref('holdTab', state.holdTab); renderHolders(state.stock); return; }
     if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: 'JOBY' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
@@ -3566,12 +3907,14 @@
   // 시세를 다른 데이터보다 먼저 받아 종목 카드·주가가 바로 보이게
   loadQuote().then(() => { renderStockSwitch(); if (isOther()) { renderSPriceCard(); renderSKpis(); } updateFireChip(); }).catch(() => {});
   yConnect();
+  for (const sym of WATCH) if (STOCK_INFO[sym]?.custom) checkBinance(sym);
   bConnect();
   for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
   refresh('auto');
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeWatchSheet(); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { disconnectWs(); yDisconnect(); bDisconnect(); return; }
     loadPxSnapshot().then(schedulePaint).catch(() => {});

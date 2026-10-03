@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=40">
+<link rel="stylesheet" href="assets/style.css?v=41">
 </head>
 <body>
 <header class="top">
@@ -43,14 +43,17 @@
 
 <main>
   <section class="view" id="view-home" data-view="home">
+    <div class="ss-head"><span>내 종목</span><button type="button" class="chip-btn sm" data-wedit="1" aria-label="종목 추가·삭제·순서 바꾸기">＋ 추가·편집</button></div>
     <div class="stock-switch" id="stock-switch" role="tablist" aria-label="종목 선택"></div>
     <div class="home-part" id="home-crcl">
+      <article class="card earnday" id="c-earnday" hidden></article>
       <article class="card price-card" id="c-price"></article>
       <h2 class="group-h">핵심 지표 <button class="chip-btn sm" id="basis" type="button" aria-label="변화율 비교 기준 바꾸기">비교 · 직전</button></h2>
       <section class="kpis" id="kpis" aria-label="핵심 지표"></section>
       <article class="card" id="c-summary"></article>
     </div>
     <div class="home-part" id="home-stock" hidden>
+      <article class="card earnday" id="c-searnday" hidden></article>
       <article class="card price-card" id="c-sprice"></article>
       <h2 class="group-h">핵심 지표 <span>누르면 자세히</span></h2>
       <section class="kpis" id="skpis" aria-label="핵심 지표"></section>
@@ -64,6 +67,7 @@
     <article class="card" id="c-analyst"></article>
     <article class="card" id="c-holders"></article>
     <article class="card" id="c-insider"></article>
+    <article class="card" id="c-options"></article>
   </section>
 
   <section class="view" id="view-earn" data-view="earn" hidden>
@@ -77,6 +81,7 @@
     <article class="card" id="c-sanalyst"></article>
     <article class="card" id="c-sholders"></article>
     <article class="card" id="c-sinsider"></article>
+    <article class="card" id="c-soptions"></article>
   </section>
 
   <section class="view" id="view-searn" data-view="searn" hidden>
@@ -135,6 +140,6 @@
 <nav class="tabbar" id="tabbar" aria-label="화면 전환"></nav>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
-<script src="assets/app.js?v=40"></script>
+<script src="assets/app.js?v=41"></script>
 </body>
 </html>
