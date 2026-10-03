@@ -161,7 +161,7 @@
     fire: `
       <p>보유한 주식의 <b>현재 원화 평가금액 ÷ 목표 금액</b>으로 퇴사(경제적 자유) 목표까지 얼마나 왔는지 보여줍니다.</p>
       <ul>
-        <li><b>보유 종목</b>: 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)에, 홈의 <b>+ 추가·편집</b>에서 관심 종목으로 추가한 종목도 골라 함께 넣을 수 있어요. 관심 종목에서 빼도 이미 입력한 보유 정보는 그대로 계산돼요.</li>
+        <li><b>보유 종목</b>: 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)에, 홈의 <b>+ 추가·편집</b>에서 관심 종목으로 추가한 종목도 골라 함께 넣을 수 있어요. 관심 종목에서 빼면 여기 선택 목록에서도 빠져요(이미 저장한 보유 정보는 지우기 전까지 그대로 계산돼요).</li>
         <li><b>평가금액</b> = 보유 수량 × 실시간 주가(Nasdaq, 장전·장중·장후 포함) × 실시간 원·달러 환율.</li>
         <li><b>평가손익</b>: 매수 금액(수량 × 평균 단가)과 비교. 평균 매수 환율을 입력하지 않으면 현재 환율로 환산합니다.</li>
         <li><b>목표 달성 가격</b>: 지금 환율이 그대로일 때 목표 금액이 되는 주가.</li>
@@ -1878,8 +1878,10 @@
   for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (TICKER_RE.test(sym)) FIRE_TICKERS[sym] ||= `${sym} · ${m?.name || sym}`;
   // 관심 종목에서 뺐어도 보유 정보에 남아 있는 종목은 계속 고를 수 있게
   for (const p of readJSON(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= p.ticker;
-  // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지
-  const fireTickerOrder = () => [...new Set(['CRCA', ...WATCH, ...Object.keys(FIRE_TICKERS)])].filter((k) => FIRE_TICKERS[k]);
+  // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지 기본 종목. 관심 종목에서 뺀 종목은 목록에서 빠진다
+  // (keep: 이미 그 종목으로 저장된 행은 값이 바뀌지 않도록 그 행에만 남긴다)
+  const fireTickerOrder = (keep) => [...new Set(['CRCA', ...WATCH, ...FIRE_BASE, ...(keep ? [keep] : [])])].filter((k) => FIRE_TICKERS[k]);
+  const firePicked = (k) => FIRE_BASE.includes(k) || WATCH.includes(k);
   // Nasdaq에서 받는 시세에 따로 요청해야 하는 보유 종목(기본 5종목 외)
   const fireExtraSyms = () => (fireCfg?.positions || []).map((p) => p.ticker).filter((t) => !FIRE_BASE.includes(t));
   // 예전 형식({ticker, shares, avg})은 종목 목록 형식으로 바꿔 읽는다
@@ -1983,10 +1985,11 @@
     el.setAttribute('aria-current', state.view === 'fire' ? 'page' : 'false');
   }
 
-  const fireTickerOptions = (sel) => fireTickerOrder().map((k) => `<option value="${esc(k)}" ${sel === k ? 'selected' : ''}>${esc(FIRE_TICKERS[k])}</option>`).join('');
+  const fireSaved = (k) => !!fireCfg?.positions.some((p) => p.ticker === k);
+  const fireTickerOptions = (sel) => fireTickerOrder(fireSaved(sel) ? sel : null).map((k) => `<option value="${esc(k)}" ${sel === k ? 'selected' : ''}>${esc(FIRE_TICKERS[k])}${firePicked(k) ? '' : ' (관심 종목에서 뺌)'}</option>`).join('');
   // 화면을 연 채로 관심 종목을 추가하면 입력 중인 값은 그대로 두고 선택지만 새로
   function refreshFireTickers() {
-    for (const s of document.querySelectorAll('#f-rows .f-ticker')) { const v = s.value; s.innerHTML = fireTickerOptions(v); s.value = v; }
+    for (const s of document.querySelectorAll('#f-rows .f-ticker')) { const v = s.value; s.innerHTML = fireTickerOptions(v); if ([...s.options].some((o) => o.value === v)) s.value = v; }
   }
   function fireRowHtml(p, i) {
     return `<div class="f-row" data-row="${i}">
@@ -3213,6 +3216,7 @@
     if (sw) sw.dataset.built = '';
     renderStockSwitch();
     renderWatchSheet();
+    refreshFireTickers(); // Fire 보유 종목 선택지도 관심 종목에 맞춘다
     if (added) {
       liveSubscribe(added);
       checkBinance(added);
