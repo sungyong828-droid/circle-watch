@@ -2729,11 +2729,16 @@
           <div><span>줄인 곳</span><b class="down">${dec ? nf(0).format(dec.holders) + '곳' : '–'}</b><small>-${unit(dec?.shares)}주${H.soldOut ? ` · 전량 매도 ${nf(0).format(H.soldOut.holders)}곳` : ''}</small></div>
         </div>
         ${flow != null ? `<div class="h-flow"><span>기관 순매수(직전 분기 대비)</span><b class="${cls(flow)}">${flow > 0 ? '+' : ''}${unit(flow)}주</b></div>` : ''}
+        ${more(id + ':more', `기관별 보유 목록 ${H.top.length}곳 보기`)}
         <div class="nf h-tabs" role="group" aria-label="기관 목록 보기">${HOLD_TABS.map(([k, l]) => `<button type="button" data-htab="${k}" aria-pressed="${k === tab}">${l}</button>`).join('')}</div>
         <ul class="h-list">${list || '<li class="empty">해당하는 기관이 없어요.</li>'}</ul>
-        <p class="note">13F는 운용자산 1억 달러 이상 기관이 분기가 끝나고 45일 안에 내는 보유 보고서라 <b>최대 4개월 전 기준</b>이에요. 공매도·옵션 포지션은 빠져 있고, 일부 기관은 신고가 늦어 이전 분기 값이 보여요(지난 분기 표시).${nextDue ? ` 다음 신고 마감: ${nextDue.getMonth() + 1}/${nextDue.getDate()}경(${nextQ.getMonth() + 1}/${nextQ.getDate()} 기준).` : ''}</p>`,
+        <p class="note">13F는 운용자산 1억 달러 이상 기관이 분기가 끝나고 45일 안에 내는 보유 보고서라 <b>최대 4개월 전 기준</b>이에요. 공매도·옵션 포지션은 빠져 있고, 일부 기관은 신고가 늦어 이전 분기 값이 보여요(지난 분기 표시).${nextDue ? ` 다음 신고 마감: ${nextDue.getMonth() + 1}/${nextDue.getDate()}경(${nextQ.getMonth() + 1}/${nextQ.getDate()} 기준).` : ''}</p></details>`,
     });
   }
+
+  // ---------------------------------------------------------------- 자세한 항목 접기·펼치기 (다시 그려도 펼친 상태 유지)
+  state.openMore = new Set();
+  const more = (key, label) => `<details class="more" data-more="${key}" ${state.openMore.has(key) ? 'open' : ''}><summary><span>${label}</span></summary>`;
 
   // ---------------------------------------------------------------- 애널리스트 의견 · 내부자 매매 (Nasdaq 집계)
   const curPrice = (sym) => stockPx(sym)?.price ?? state.quote?.[sym]?.price ?? null;
@@ -2758,7 +2763,7 @@
     const A = state.analyst?.[sym], V = analystView(sym), S = STOCK_INFO[sym];
     const title = '애널리스트 의견';
     if (!A) { card(id, { title, info: INFO.analyst, body: '<p class="skeleton">불러오는 중…</p>' }); return; }
-    if (!V) { card(id, { title, sub: `${S.short} · Nasdaq 집계`, info: INFO.analyst, body: `<p class="note" style="margin-top:12px">아직 애널리스트 목표가 집계가 없어요. 집계가 나오면 자동으로 보여요.</p>${brokersHtml(sym)}` }); return; }
+    if (!V) { card(id, { title, sub: `${S.short} · Nasdaq 집계`, info: INFO.analyst, body: `<p class="note" style="margin-top:12px">아직 애널리스트 목표가 집계가 없어요. 집계가 나오면 자동으로 보여요.</p>${brokersHtml(sym) ? `${more(id + ':more', '증권사별 의견 보기')}${brokersHtml(sym)}</details>` : ''}` }); return; }
     const { T, n, px: p0, up } = V;
     const w = (k) => (n ? (T[k] / n) * 100 : 0);
     const span = T.high - T.low || 1, at = (v) => Math.min(100, Math.max(0, ((v - T.low) / span) * 100));
@@ -2774,13 +2779,14 @@
           <div><span>평균 목표가</span><b>${price(T.mean)}</b><small>${up != null ? `현재가 ${price(p0)} 대비 <span class="${cls(up)}">${pct(up, 1)}</span>` : ''}</small></div>
           <div><span>목표가 범위</span><b>${price(T.low)} ~ ${price(T.high)}</b><small>가장 낮은 곳 · 가장 높은 곳</small></div>
         </div>
+        ${more(id + ':more', `목표가 범위·추이${brokerLatest(sym).length ? ` · 증권사별 의견 ${brokerLatest(sym).length}곳` : ''} 보기`)}
         <div class="an-range" aria-label="목표가 범위와 현재가">
           <div class="an-track"><i class="an-mean" style="left:${at(T.mean)}%" title="평균 목표가"></i>${p0 != null ? `<i class="an-now ${cls(up)}" style="left:${at(p0)}%" title="현재가"></i>` : ''}</div>
           <div class="an-lab"><span>${price(T.low)}</span><span>◆ 평균 · ● 현재가</span><span>${price(T.high)}</span></div>
         </div>
         ${H.length > 1 ? `<div class="mini-h er-h">평균 목표가 추이 (월별)</div><div class="chart short"><canvas id="cv-${id}" role="img" aria-label="평균 목표가 추이"></canvas></div>` : ''}
         <p class="note">증권사들이 낸 투자의견·12개월 목표주가의 집계예요(${V.src}). ${first && H.length > 1 ? `${md(isoToTs(first.d))} ${price(first.target)} → 지금 ${price(T.mean)}. ` : ''}목표가는 자주 늦게 바뀌고 증권사마다 차이가 커서 참고용이에요.</p>
-        ${brokersHtml(sym)}`,
+        ${brokersHtml(sym)}</details>`,
     });
     if (H.length > 1) {
       const labels = H.map((h) => isoToTs(h.d));
@@ -2838,7 +2844,7 @@
     if (!O) { card(id, { title, info: INFO.options, body: `<p class="skeleton">${state.optionsErr?.[sym] ? esc(state.optionsErr[sym]) : '불러오는 중…'}</p>` }); return; }
     const [tone, label] = optTone(O), sp0 = O.spot;
     const mv = (x, lbl) => (x ? `<div><span>${lbl}</span><b>±${(x.move * 100).toFixed(1)}%</b><small>${md(isoToTs(x.exp))} 만기(${x.days}일) · ${price(sp0 * (1 - x.move))}~${price(sp0 * (1 + x.move))}</small></div>` : '');
-    const strikes = (L, t) => L.map((r) => `<span class="op-k ${t}">${price(r.k)}<small>${unit(r.oi)}계약 · ${md(isoToTs(r.exp))}</small></span>`).join('');
+    const strikes = (L, t) => L.map((r) => `<span class="op-k ${t}" title="${md(isoToTs(r.exp))} 만기 · 미결제 ${unit(r.oi)}계약">$${r.k % 1 ? r.k.toFixed(1) : r.k}<small>${unit(r.oi)} · ${md(isoToTs(r.exp))}</small></span>`).join('');
     card(id, {
       title, sub: `${S.short} · CBOE 옵션 시세(약 15분 지연) · 기준가 ${price(sp0)}`, info: INFO.options,
       body: `<div class="an-head"><span class="tone ${tone}">${label}</span><span class="an-cons">풋/콜 거래량 비율 <b>${O.pcVol != null ? O.pcVol.toFixed(2) : '–'}</b></span></div>
@@ -3069,8 +3075,9 @@
             <tr><td>매도</td><td>${I.sells?.m3 ?? '–'}건 <small>${sh(I.sold?.m3 != null ? -I.sold.m3 : null)}</small></td><td>${I.sells?.m12 ?? '–'}건 <small>${sh(I.sold?.m12 != null ? -I.sold.m12 : null)}</small></td></tr>
             <tr class="today"><td>순매매</td><td class="${cls(I.net?.m3)}">${sh(I.net?.m3)}</td><td class="${cls(I.net?.m12)}">${sh(I.net?.m12)}</td></tr>
           </tbody></table></div>
-        ${rows ? `<div class="mini-h er-h">최근 거래</div><ul class="h-list ins-list">${rows}</ul>` : ''}
-        <p class="note">임원 매도는 세금·분산 목적이 많고, <b>자동 매도</b>는 미리 정해 둔 계획(10b5-1)에 따른 것이라 의미가 작아요. 반대로 <b>장내 매수</b>는 회사 전망을 좋게 본다는 신호로 여겨져요. 스톡옵션 행사는 매매 의사와 무관해요.</p>`,
+        ${more(id + ':more', `최근 거래${(I.recent || []).length ? ` ${Math.min(8, I.recent.length)}건` : ''} 보기`)}
+        ${rows ? `<ul class="h-list ins-list">${rows}</ul>` : ''}
+        <p class="note">임원 매도는 세금·분산 목적이 많고, <b>자동 매도</b>는 미리 정해 둔 계획(10b5-1)에 따른 것이라 의미가 작아요. 반대로 <b>장내 매수</b>는 회사 전망을 좋게 본다는 신호로 여겨져요. 스톡옵션 행사는 매매 의사와 무관해요.</p></details>`,
     });
   }
 
@@ -3915,6 +3922,12 @@
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeWatchSheet(); });
+  document.addEventListener('toggle', (ev) => {
+    const d = ev.target;
+    if (!(d instanceof HTMLElement) || !d.matches('details.more')) return;
+    d.open ? state.openMore.add(d.dataset.more) : state.openMore.delete(d.dataset.more);
+    if (d.open) for (const cv of d.querySelectorAll('canvas')) charts[cv.id.replace(/^cv-/, '')]?.resize();
+  }, true);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { disconnectWs(); yDisconnect(); bDisconnect(); return; }
     loadPxSnapshot().then(schedulePaint).catch(() => {});

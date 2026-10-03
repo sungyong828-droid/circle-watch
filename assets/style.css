@@ -748,3 +748,21 @@ body.sheet-open { overflow: hidden; }
 .ws-btn.del { color: var(--down); }
 .ws-btn.add { color: var(--up); border-color: rgba(240, 97, 109, 0.5); }
 .ws-added { font-size: 12px; color: var(--muted); }
+
+/* 두 번 탭해도 화면이 확대되지 않게(iOS는 viewport 설정을 무시하는 경우가 있어 touch-action도 함께) */
+html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, a, summary, input, select { touch-action: manipulation; }
+/* 자세한 항목 접기·펼치기 */
+details.more { margin-top: 12px; }
+details.more > summary { list-style: none; display: flex; align-items: center; justify-content: center; gap: 6px; height: 38px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::after { content: ''; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 0.15s; }
+details.more[open] > summary { margin-bottom: 4px; }
+details.more[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+details.more[open] > summary span { font-size: 0; } details.more[open] > summary span::after { font-size: 13px; content: '접기'; }
+/* 옵션: 미결제 많은 행사가 3개를 한 줄에 */
+.op-row { display: grid; grid-template-columns: 24px repeat(3, minmax(0, 1fr)); gap: 5px; align-items: stretch; }
+.op-row .op-k { display: grid; min-width: 0; padding: 4px 6px; font-size: 12px; white-space: nowrap; overflow: hidden; }
+.op-row .op-k small { font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
+.op-l { align-self: center; }
