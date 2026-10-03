@@ -1321,7 +1321,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/brief'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
@@ -1337,7 +1337,6 @@ export default {
     if (url.pathname === '/lookup') return handleLookup(url, cache, cors, ctx);
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
-    if (url.pathname === '/brief') return handleBrief(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);
   },

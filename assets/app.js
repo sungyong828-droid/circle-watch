@@ -91,9 +91,6 @@
         <li><b>지수 선물</b>: 미국 정규장이 닫힌 시간에도 거래돼 다음 장 분위기를 미리 보여줘요.</li>
         <li><b>장 상태</b>: 미국 동부 시각 기준 장전(04:00~09:30)·정규장(09:30~16:00)·장후(16:00~20:00). 미국 공휴일은 구분하지 못해요.</li>
       </ul>`,
-    brief: `
-      <p>AI(Cloudflare Workers AI)가 <b>시장 지표·주요 뉴스</b>와 <b>내 종목의 등락·최근 36시간 뉴스</b>를 읽고 "왜 움직였나"를 짧게 정리해요. 30분마다 새로 만들어요.</p>
-      <p>뉴스로 설명이 안 되면 "뚜렷한 재료 없이"라고 쓰도록 했지만, AI 요약이라 틀릴 수 있어요. 종목 이름을 누르면 그 종목 화면으로 가요.</p>`,
     kw: `
       <p>등록한 단어가 들어간 기사만 모아 최신순으로 보여줘요. 시장 전체 뉴스(CNBC·MarketWatch·연합뉴스·한국경제)와 내 종목 뉴스를 모두 찾아요.</p>
       <ul>
@@ -1723,11 +1720,6 @@
     },
     async market() { const j = await getJ(`${NEWS_API}/market`, 15000); if (j.error) throw new Error(j.error); state.market = j; },
     async mnews() { const j = await getJ(`${NEWS_API}/mnews${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 20000); if (j.error) throw new Error(j.error); state.mnews = j; },
-    async brief() { // AI 브리핑(서버 30분마다 새로, 그 사이엔 즉시 응답)
-      const j = await getJ(`${NEWS_API}/brief?s=${WATCH.slice(0, 8).join(',')}`, 60000);
-      if (j.error) throw new Error(j.error);
-      state.brief = j;
-    },
     async sshort(d, L, sym = state.stock) { // 추가한 종목의 공매도(FINRA, 서버 3시간마다)
       const j = await getJ(`${NEWS_API}/short?s=${sym}`, 20000);
       if (j.error) throw new Error(j.error);
@@ -1854,7 +1846,7 @@
       L.cctpNet = totalIn - totalOut;
     },
   };
-  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유', analyst: '애널리스트·내부자', options: '옵션 심리', sshort: '공매도', market: '시장 개요', mnews: '시장 뉴스', brief: 'AI 브리핑' };
+  const SYNC_NAMES = { circle: '서클 유통량', cirbtc: 'cirBTC', stables: '스테이블코인', series: '공급량 추이', dex: 'DEX', tvl: 'TVL', lending: '대출', accounts: '활성 계정', activity: 'Arc 활동', cctp: 'CCTP', rates: '국채 금리', short: '공매도', filings: 'SEC 공시', news: '뉴스', earnings: '실적', quote: '주가·환율', faa: 'FAA 인증', sfacts: '보호예수 일정', facts: '자동 확인 자료', schart: '가격 차트', searn: '종목 실적', snews: '종목 뉴스', sfilings: '종목 공시', holders: '기관 보유', analyst: '애널리스트·내부자', options: '옵션 심리', sshort: '공매도', market: '시장 개요', mnews: '시장 뉴스' };
 
   // parts: 동기화할 항목 이름 목록
   // 항목마다 도착하는 대로 화면에 반영한다(느린 항목 하나 때문에 전체가 늦어지지 않게). quiet: 화면 갱신 없이 받아만 두기
@@ -2864,21 +2856,6 @@
     });
   }
 
-  // ---------------------------------------------------------------- 오늘의 브리핑 (AI)
-  function renderBrief() {
-    if (!document.getElementById('c-brief')) return;
-    const B = state.brief;
-    if (!B) { card('brief', { title: '오늘의 브리핑', info: INFO.brief, body: '<p class="skeleton">AI가 오늘 시장과 내 종목을 정리하는 중…</p>' }); return; }
-    const items = (B.items || []).filter((it) => WATCH.includes(it.sym));
-    card('brief', {
-      title: '오늘의 브리핑', sub: `AI 요약 · ${hm(Date.parse(B.at))} 기준 · 30분마다 새로`, info: INFO.brief,
-      body: `${B.market?.text ? `<p class="bf-mkt">${esc(B.market.text)}</p>` : ''}
-        <ul class="bf-list">${items.map((it) => `<li><button type="button" class="bf-sym" data-stock="${esc(it.sym)}" aria-label="${esc(it.sym)} 보기"><b>${esc(it.sym)}</b><em class="${cls(it.pct)}">${it.pct != null ? pct(it.pct, 1) : '–'}</em></button>
-          <p>${it.text ? esc(it.text) : '<span class="dim">최근 뉴스가 적어 정리할 내용이 없어요.</span>'}</p></li>`).join('')}</ul>
-        <p class="note">AI가 주가 변동과 최근 뉴스 제목·요약만 보고 쓴 글이라 틀릴 수 있어요. 등락률은 미국 장 기준(Nasdaq)이에요.</p>`,
-    });
-  }
-
   // ---------------------------------------------------------------- 키워드 속보 (News 탭)
   const KW_KEY = 'cw.kw';
   state.kw = readJSON(KW_KEY, null) || ['FOMC', 'CPI', '금리', '관세', 'stablecoin', '스테이블코인', 'FAA', 'Starship'];
@@ -3813,7 +3790,7 @@
       if (!state.data) return;
       const snap = {
         at: state.syncedAt || new Date().toISOString(), data: state.data, quote: state.quote, earnings: state.earnings,
-        holders: state.holders, analyst: state.analyst, options: state.options, market: state.market, brief: state.brief, mnews: state.mnews, faa: state.faa, spcx: state.spcx, facts: state.facts,
+        holders: state.holders, analyst: state.analyst, options: state.options, market: state.market, mnews: state.mnews, faa: state.faa, spcx: state.spcx, facts: state.facts,
         st: Object.fromEntries(Object.entries(state.st).map(([k, x]) => [k, { earn: x.earn, news: x.news, short: x.short, chart: pickKeys(x.chart, ['1d', '1y']) }])),
         px: { t: px.t, mark: px.mark, oi: px.oi, klines: pickKeys(px.klines, ['1d']) },
         bx: Object.fromEntries(Object.entries(bx).map(([k, x]) => [k, { t: x.t, mark: x.mark, oi: x.oi, klines: pickKeys(x.klines, ['1d']) }])),
@@ -3829,7 +3806,7 @@
       const S = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
       if (!S?.data || !(Date.now() - Date.parse(S.at) < 3 * 86400000)) return false;
       state.data = S.data; state.quote = S.quote || null; state.earnings = S.earnings || null;
-      state.holders = S.holders || {}; state.analyst = S.analyst || {}; state.options = S.options || {}; state.market = S.market || null; state.brief = S.brief || null; state.mnews = S.mnews || null; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
+      state.holders = S.holders || {}; state.analyst = S.analyst || {}; state.options = S.options || {}; state.market = S.market || null; state.mnews = S.mnews || null; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
       for (const [k, x] of Object.entries(S.st || {})) Object.assign(st(k), { earn: x.earn || null, news: x.news || null, short: x.short || null, chart: x.chart || {} });
       if (S.px) { px.t = S.px.t; px.mark = S.px.mark; px.oi = S.px.oi; Object.assign(px.klines, S.px.klines || {}); }
       for (const [k, x] of Object.entries(S.bx || {})) Object.assign(bxOf(k), { t: x.t, mark: x.mark, oi: x.oi, klines: x.klines || {} });
@@ -3874,7 +3851,7 @@
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderBrief, renderKwNews];
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderKwNews];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -3900,8 +3877,8 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['market', 'mnews', 'brief', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
-    auto: ['market', 'mnews', 'brief', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    manual: ['market', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    auto: ['market', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
     light: ['circle', 'cirbtc', 'quote', 'market', 'mnews'],
   };
   let manualRunning = false, manualQueued = false, doneTimer = null;
