@@ -161,6 +161,7 @@
     fire: `
       <p>보유한 주식의 <b>현재 원화 평가금액 ÷ 목표 금액</b>으로 퇴사(경제적 자유) 목표까지 얼마나 왔는지 보여줍니다.</p>
       <ul>
+        <li><b>보유 종목</b>: 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)에, 홈의 <b>+ 추가·편집</b>에서 관심 종목으로 추가한 종목도 골라 함께 넣을 수 있어요. 관심 종목에서 빼도 이미 입력한 보유 정보는 그대로 계산돼요.</li>
         <li><b>평가금액</b> = 보유 수량 × 실시간 주가(Nasdaq, 장전·장중·장후 포함) × 실시간 원·달러 환율.</li>
         <li><b>평가손익</b>: 매수 금액(수량 × 평균 단가)과 비교. 평균 매수 환율을 입력하지 않으면 현재 환율로 환산합니다.</li>
         <li><b>목표 달성 가격</b>: 지금 환율이 그대로일 때 목표 금액이 되는 주가.</li>
@@ -1873,7 +1874,14 @@
   const FIRE_TICKERS = { CRCA: 'CRCA · ProShares Ultra CRCL (2배)', CRCL: 'CRCL · 서클 인터넷 그룹', JOBY: 'JOBY · 조비 에비에이션', SPCX: 'SPCX · 스페이스X', TEM: 'TEM · 템퍼스 AI' };
   const readJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
   const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-  for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (/^[A-Z]{1,5}(\.[A-Z])?$/.test(sym)) FIRE_TICKERS[sym] ||= `${sym} · ${m?.name || sym}`;
+  const FIRE_BASE = Object.keys(FIRE_TICKERS), TICKER_RE = /^[A-Z]{1,5}(\.[A-Z])?$/;
+  for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (TICKER_RE.test(sym)) FIRE_TICKERS[sym] ||= `${sym} · ${m?.name || sym}`;
+  // 관심 종목에서 뺐어도 보유 정보에 남아 있는 종목은 계속 고를 수 있게
+  for (const p of readJSON(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= p.ticker;
+  // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지
+  const fireTickerOrder = () => [...new Set(['CRCA', ...WATCH, ...Object.keys(FIRE_TICKERS)])].filter((k) => FIRE_TICKERS[k]);
+  // Nasdaq에서 받는 시세에 따로 요청해야 하는 보유 종목(기본 5종목 외)
+  const fireExtraSyms = () => (fireCfg?.positions || []).map((p) => p.ticker).filter((t) => !FIRE_BASE.includes(t));
   // 예전 형식({ticker, shares, avg})은 종목 목록 형식으로 바꿔 읽는다
   const normFire = (F) => {
     if (!F) return null;
@@ -1975,9 +1983,14 @@
     el.setAttribute('aria-current', state.view === 'fire' ? 'page' : 'false');
   }
 
+  const fireTickerOptions = (sel) => fireTickerOrder().map((k) => `<option value="${esc(k)}" ${sel === k ? 'selected' : ''}>${esc(FIRE_TICKERS[k])}</option>`).join('');
+  // 화면을 연 채로 관심 종목을 추가하면 입력 중인 값은 그대로 두고 선택지만 새로
+  function refreshFireTickers() {
+    for (const s of document.querySelectorAll('#f-rows .f-ticker')) { const v = s.value; s.innerHTML = fireTickerOptions(v); s.value = v; }
+  }
   function fireRowHtml(p, i) {
     return `<div class="f-row" data-row="${i}">
-      <select class="f-ticker" aria-label="종목">${Object.entries(FIRE_TICKERS).map(([k, l]) => `<option value="${k}" ${p.ticker === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <select class="f-ticker" aria-label="종목">${fireTickerOptions(p.ticker)}</select>
       <input class="f-shares" inputmode="decimal" value="${p.shares ?? ''}" placeholder="보유 수량(주)" aria-label="보유 수량" required>
       <input class="f-avg" inputmode="decimal" value="${p.avg ?? ''}" placeholder="평균 단가($)" aria-label="평균 단가(달러)" required>
       <button type="button" class="f-rm" data-rm="${i}" aria-label="이 종목 삭제" ${fireRows.length < 2 ? 'hidden' : ''}>×</button>
@@ -1992,6 +2005,7 @@
         <div class="f-rows-h"><span>보유 종목</span><small>수량 · 평균 단가(달러)</small></div>
         <div id="f-rows">${fireRows.map(fireRowHtml).join('')}</div>
         <button type="button" class="btn-ghost f-add" id="f-add">+ 종목 추가</button>
+        <p class="note f-hint">목록에 없는 종목은 홈의 <b>+ 추가·편집</b>에서 관심 종목으로 추가하면 여기서도 고를 수 있어요.</p>
         <label>목표 금액(원)<input id="f-goal" inputmode="numeric" value="${F.goal ?? 1.5e9}" required><small id="f-goal-hint">${wonFull(F.goal ?? 1.5e9)}</small></label>
         <label>평균 매수 환율(원, 선택)<input id="f-fx" inputmode="decimal" value="${F.buyFx ?? ''}" placeholder="비우면 현재 환율로 손익 계산"></label>
         <label class="chk"><input type="checkbox" id="f-tax" ${F.afterTax ? 'checked' : ''}> 세후 기준으로 계산 (해외주식 양도세 22%, 연 250만원 공제)</label>
@@ -2015,7 +2029,7 @@
     if (!el) return;
     const c = fireCalc();
     if (!fireCfg) {
-      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 여러 종목(CRCA·CRCL·JOBY·SPCX·TEM)을 함께 넣을 수 있어요.</p>` });
+      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)은 물론, 관심 종목으로 직접 추가한 종목도 함께 넣을 수 있어요.</p>` });
       ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; });
       return;
     }
@@ -2114,7 +2128,7 @@
   function loadQuote() { return (quoteInflight ||= fetchQuote().finally(() => { quoteInflight = null; })); }
   async function fetchQuote() {
     try {
-      const extra = WATCH.filter((x) => STOCK_INFO[x]?.custom);
+      const extra = [...new Set([...WATCH.filter((x) => STOCK_INFO[x]?.custom), ...fireExtraSyms()])];
       const j = await getJ(`${NEWS_API}/quote${extra.length ? `?x=${extra.join(',')}` : ''}`, 15000);
       if (j.error) throw new Error(j.error);
       state.quote = j;
@@ -2153,7 +2167,8 @@
     fireConfirmDelete = false;
     toast('✓ 이 기기에 저장했어요');
     renderFireSet();
-    if (!state.quote) loadQuote().then(() => { renderFire(); renderSummary(); }).catch(() => renderFire());
+    // 새로 넣은 종목의 시세가 아직 없으면 바로 다시 받는다
+    if (!state.quote || positions.some((p) => state.quote[p.ticker]?.price == null)) loadQuote().then(() => { renderFire(); renderSummary(); }).catch(() => renderFire());
     renderFire();
     renderSummary();
   }
@@ -2382,7 +2397,8 @@
       savePref(U.seenKey, String(at)); seen[sym] = { at, prev: at }; U.filter = 'all';
     }
     TAB_SETS[sym] ||= [['home', 'Home', 'home'], ['sprice', sym, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']];
-    FIRE_TICKERS[sym] ||= `${sym} · ${STOCK_INFO[sym].name}`;
+    if (!FIRE_TICKERS[sym] || FIRE_TICKERS[sym] === sym) FIRE_TICKERS[sym] = `${sym} · ${STOCK_INFO[sym].name}`;
+    refreshFireTickers();
   }
 
   function newsItems(sym = state.stock) {
@@ -4060,7 +4076,7 @@
     if (bk) { state.brokerAll = state.brokerAll === bk.dataset.brokers ? null : bk.dataset.brokers; renderAnalyst(bk.dataset.brokers); return; }
     const ht = ev.target.closest('[data-htab]');
     if (ht) { state.holdTab = ht.dataset.htab; savePref('holdTab', state.holdTab); renderHolders(state.stock); return; }
-    if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: 'JOBY' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
+    if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: fireTickerOrder().find((k) => !fireRows.some((r) => r.ticker === k)) || 'CRCA' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
     const rmBtn = ev.target.closest('[data-rm]');
     if (rmBtn) { fireRows = readFireRows(); fireRows.splice(+rmBtn.dataset.rm, 1); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
     const simBtn = ev.target.closest('[data-sim]');
