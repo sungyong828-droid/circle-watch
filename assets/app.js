@@ -2553,6 +2553,9 @@
   };
   for (const s of OTHER) TAB_SETS[s] = [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']];
   const OLD_VIEWS = { jprice: 'sprice', jearn: 'searn', jnews: 'snews' }; // 예전 주소(#jprice 등) 호환
+  // 종목 바로가기 링크(?s=JOBY)로 들어오면 그 종목부터 보여준다
+  const linkStock = (new URLSearchParams(location.search).get('s') || '').toUpperCase();
+  if (WATCH.includes(linkStock)) savePref('stock', linkStock);
   state.stock = WATCH.includes(loadPref('stock', 'CRCL')) ? loadPref('stock', 'CRCL') : WATCH[0];
   state.srange = loadPref('jrange', '1d');
   state.holders = {};
@@ -4101,6 +4104,7 @@
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
     if (ev.target.closest('#refresh')) manualRefresh();
     if (ev.target.closest('#share-btn')) shareSite();
+    if (ev.target.closest('[data-welcome-close]')) { savePref('welcomed', '1'); renderWelcome(false); }
   });
 
   // ---------------------------------------------------------------- 방문 집계(익명) · 공유
@@ -4123,8 +4127,27 @@
       if (location.search) history.replaceState(null, '', location.pathname + location.hash);
     } catch {}
   }
+  // 처음 온 방문자에게만 사용법 안내(닫으면 다시 안 보임). 기존 사용자(저장된 화면이 있는 기기)는 건너뛴다
+  function renderWelcome(firstVisit) {
+    const el = document.getElementById('c-welcome');
+    if (!el) return;
+    if (!firstVisit || loadPref('welcomed', '')) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = `<div class="wc-head"><b>처음 오셨나요? 👋</b><button type="button" class="wc-x" data-welcome-close aria-label="안내 닫기">×</button></div>
+      <ul class="wc-list">
+        <li><b>종목 칩</b>을 누르면 서클·조비·스페이스X·템퍼스 화면이 바뀌어요.</li>
+        <li>아래 <b>탭</b>에서 차트(캔들·이동평균)·실적·뉴스(AI 한 줄 요약)를 볼 수 있어요.</li>
+        <li><b>+ 추가·편집</b>으로 아무 미국 주식이나 내 종목에 넣을 수 있어요.</li>
+        <li>🔥 <b>Fire</b>에 보유 수량·평단을 넣으면 목표 금액까지 몇 %인지 계산해요(이 기기에만 저장).</li>
+        <li>카드 제목 옆 <b>ⓘ</b>를 누르면 지표 설명이 나와요.</li>
+      </ul>
+      <button type="button" class="btn-primary wc-ok" data-welcome-close>알겠어요</button>`;
+  }
   async function shareSite() {
-    const data = { title: "Yong's Portfolio", text: '미국 주식 실시간 대시보드 — 서클(CRCL)·조비·스페이스X·템퍼스, 관심 종목 추가도 돼요', url: SITE_URL + '?ref=share' };
+    // 보고 있는 종목 화면으로 바로 열리는 링크(기본 종목일 때)
+    const s = BUILTIN.includes(state.stock) && state.stock !== 'CRCL' ? `s=${state.stock}&` : '';
+    const name = STOCK_INFO[state.stock]?.name || '';
+    const data = { title: "Yong's Portfolio", text: `${s ? `${name}(${state.stock}) 실시간 주가·차트·뉴스 — ` : ''}미국 주식 실시간 대시보드 · 서클·조비·스페이스X·템퍼스, 관심 종목 추가도 돼요`, url: `${SITE_URL}?${s}ref=share` };
     try {
       if (navigator.share) { await navigator.share(data); return; }
       await navigator.clipboard.writeText(data.url);
@@ -4134,6 +4157,7 @@
 
   if (!RANGES[state.range]) state.range = '1d';
   if (!SRANGES[state.srange]) state.srange = '1d';
+  const firstVisit = (() => { try { return !localStorage.getItem('cw.snapshot.v1'); } catch { return false; } })();
   const fromSnap = loadSnapshot();
   state.booting = true;
   updateBasisBtn();
@@ -4154,6 +4178,7 @@
   bConnect();
   for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
   refresh('auto');
+  renderWelcome(firstVisit);
   countVisit();
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
