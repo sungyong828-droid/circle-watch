@@ -2225,12 +2225,38 @@
   // 주당 배당금은 주식 분할이 반영된 값이라, 수량은 '지금 보유 중인 수량(분할 반영)'으로 넣어야 맞다.
   const DIV_KEY = 'cw.div', DIV_CACHE = 'cw.divCache3';
   try { localStorage.removeItem('cw.divCache'); localStorage.removeItem('cw.divCache2'); } catch {} // 매수일 기준으로 잘라 저장하던 예전 캐시
-  const normDiv = (V) => {
-    if (!V || !Array.isArray(V.lots)) return null;
-    V.lots = V.lots.filter((l) => TICKER_RE.test(l?.t || '') && l.sh > 0 && l.avg > 0 && /^\d{4}-\d{2}-\d{2}$/.test(l.d || '')).map((l) => (l.sell ? { ...l, sell: true } : { t: l.t, sh: l.sh, avg: l.avg, d: l.d }));
-    V.tax = [0, 0.15].includes(V.tax) ? V.tax : 0.15;
-    return V.lots.length ? V : null;
+  // 거래 내역 → 지금 수량·평단(평균 단가 방식: 매수는 원가에 더하고, 매도는 그때 평단만큼 뺀다)
+  const holdFromTrades = (trades) => {
+    let sh = 0, cost = 0;
+    for (const x of [...trades].sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0))) {
+      if (x.sell) { const out = Math.min(x.sh, sh); cost -= sh ? cost * (out / sh) : 0; sh -= out; } else { sh += x.sh; cost += x.sh * x.price; }
+    }
+    return { sh: Math.round(sh * 10000) / 10000, avg: sh > 0 ? Math.round((cost / sh) * 10000) / 10000 : 0 };
   };
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const normDiv = (V) => {
+    if (!V) return null;
+    if (!Array.isArray(V.hold) && Array.isArray(V.lots)) { // 예전 형식(줄마다 매수 기록) → 종목별로 묶기
+      const g = {};
+      for (const l of V.lots) if (TICKER_RE.test(l?.t || '') && l.sh > 0 && l.avg > 0 && ISO_RE.test(l.d || '')) (g[l.t] ||= []).push(l);
+      V.hold = Object.entries(g).map(([t, ls]) => (ls.length === 1 && !ls[0].sell
+        ? { t, sh: ls[0].sh, avg: ls[0].avg, d: ls[0].d }
+        : { t, trades: ls.map((l) => ({ d: l.d, sh: l.sh, price: l.avg, ...(l.sell ? { sell: true } : {}) })) }));
+      delete V.lots;
+    }
+    if (!Array.isArray(V.hold)) return null;
+    V.hold = V.hold.filter((h) => TICKER_RE.test(h?.t || '')).map((h) => {
+      const trades = (h.trades || []).filter((x) => ISO_RE.test(x?.d || '') && x.sh > 0 && x.price > 0).map((x) => ({ d: x.d, sh: x.sh, price: x.price, ...(x.sell ? { sell: true } : {}) }));
+      if (trades.length) return { t: h.t, ...holdFromTrades(trades), trades };
+      return h.sh > 0 && h.avg > 0 ? { t: h.t, sh: h.sh, avg: h.avg, d: ISO_RE.test(h.d || '') ? h.d : new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) } : null; // (todayIso는 아래에서 정의돼 여기선 못 씀)
+    }).filter(Boolean);
+    V.tax = [0, 0.15].includes(V.tax) ? V.tax : 0.15;
+    return V.hold.length ? V : null;
+  };
+  // 계산용: 종목 → 매수·매도 기록(거래 내역이 없으면 '그날 한 번에 산 것' 한 줄)
+  const divLots = () => (divCfg?.hold || []).flatMap((h) => (h.trades?.length
+    ? h.trades.map((x) => ({ t: h.t, sh: x.sh, avg: x.price, d: x.d, ...(x.sell ? { sell: true } : {}) }))
+    : [{ t: h.t, sh: h.sh, avg: h.avg, d: h.d }]));
   let divCfg = normDiv(readJSON(DIV_KEY, null));
   let divRows = null, divConfirmDelete = false;
   state.divData = readJSON(DIV_CACHE, {}) || {}; // { SYM: { t: 받은 시각, d: 서버 응답 } } — 다음 방문 때 바로 그린다
@@ -2244,7 +2270,7 @@
 
   async function loadDividends(force = false) {
     if (!divCfg) return;
-    const syms = [...new Set(divCfg.lots.map((l) => l.t))];
+    const syms = [...new Set(divCfg.hold.map((h) => h.t))];
     await Promise.all(syms.map(async (s) => {
       const c = state.divData[s];
       if (!force && c && Date.now() - c.t < 6 * 3600000) return;
@@ -2278,7 +2304,7 @@
     const today = isoToday(), yearAgo = addDays(today, -365), tax = divCfg.tax;
     const per = {}, received = [], pending = [], missing = [];
     const byT = {};
-    for (const L of divCfg.lots) (byT[L.t] ||= []).push(L);
+    for (const L of divLots()) (byT[L.t] ||= []).push(L);
     for (const [sym, lots] of Object.entries(byT)) {
       lots.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
       // 원가(평균 단가 방식): 매수는 더하고, 매도는 그때의 평균 단가만큼 뺀다
@@ -2457,54 +2483,65 @@
     });
   }
 
-  // ---- 입력 폼
+  // ---- 입력 폼: 한 줄 = 한 종목(티커 · 수량 · 평단 · [거래 내역]).
+  // [거래 내역]을 누르면 그 종목의 거래 창: 맨 위 '📷 사진으로 넣기', 아래 캘린더로 직접 넣기·지금 넣은 거래 목록.
+  // 거래 내역이 있으면 수량·평단은 거래 내역으로 계산되고(평균 단가 방식), 배당은 배당락일 전날 보유 수량으로 계산한다.
+  const fmtSh = (v) => nf(v % 1 ? 2 : 0).format(v);
   function divRowHtml(r, i) {
-    return `<div class="f-row d-row${r.sell ? ' is-sell' : ''}" data-row="${i}">
+    const n = r.trades?.length || 0;
+    const ds = n ? r.trades.map((x) => x.d).sort() : [];
+    const label = n ? `거래 ${n}건` : r.d ? `매수일 ${r.d.slice(2).replace(/-/g, '.')}` : '거래 내역';
+    return `<div class="f-row d-row" data-row="${i}">
       <input class="d-t" list="d-tickers" value="${esc(r.t || '')}" placeholder="티커 (예: SCHD)" aria-label="티커" autocapitalize="characters" autocomplete="off" maxlength="8">
-      <select class="d-side" aria-label="매수 또는 매도"><option value="buy">매수</option><option value="sell" ${r.sell ? 'selected' : ''}>매도</option></select>
-      <input class="d-sh" inputmode="decimal" value="${r.sh ?? ''}" placeholder="수량" aria-label="수량">
-      <input class="d-avg" inputmode="decimal" value="${r.avg ?? ''}" placeholder="${r.sell ? '판 가격($)' : '평단($)'}" aria-label="가격(달러)">
-      <input class="d-d" type="date" value="${esc(r.d || '')}" max="${isoToday()}" aria-label="매수일(선택 — 비우면 오늘)">
-      <button type="button" class="f-rm" data-drm="${i}" aria-label="이 매수 기록 삭제" ${divRows.length < 2 ? 'hidden' : ''}>×</button>
+      <input class="d-sh" inputmode="decimal" value="${r.sh ?? ''}" placeholder="수량" aria-label="보유 수량" ${n ? 'readonly title="거래 내역으로 계산돼요"' : ''}>
+      <input class="d-avg" inputmode="decimal" value="${n && r.avg != null ? r.avg.toFixed(2) : r.avg ?? ''}" placeholder="평단($)" aria-label="평균 단가(달러)" ${n ? 'readonly title="거래 내역으로 계산돼요"' : ''}>
+      <button type="button" class="d-tx${n || r.d ? ' has' : ''}" data-dtx="${i}" aria-label="거래 내역 넣기"><span>📅 ${label}</span>${n ? `<small>${ds[0].slice(2).replace(/-/g, '.')} ~ ${ds.at(-1).slice(2).replace(/-/g, '.')}</small>` : '<small>선택 · 사진으로도 넣어요</small>'}</button>
+      <button type="button" class="f-rm" data-drm="${i}" aria-label="이 종목 줄 삭제" ${divRows.length < 2 ? 'hidden' : ''}>×</button>
     </div>`;
   }
   function renderDivSet() {
     const el = document.getElementById('c-div-set');
     if (!el) return;
-    divRows = divCfg ? divCfg.lots.map((l) => ({ ...l })) : [{}];
-    const tickers = [...new Set([...WATCH, ...Object.keys(FIRE_TICKERS), 'SCHD', 'JEPI', 'JEPQ', 'O', 'VYM', 'QQQ', 'SPY', 'VOO', 'KO', 'AAPL', 'MSFT'])];
+    divRows = divCfg ? divCfg.hold.map((h) => ({ ...h, trades: h.trades ? h.trades.map((x) => ({ ...x })) : undefined })) : [{}];
+    const tickers = [...new Set([...WATCH, ...Object.keys(FIRE_TICKERS), 'SCHD', 'JEPI', 'JEPQ', 'O', 'VYM', 'QQQ', 'SPY', 'VOO', 'KO', 'AAPL', 'MSFT', 'MSTY', 'ULTY'])];
     el.innerHTML = `<details class="fire-set" ${divCfg ? '' : 'open'}>
       <summary>${divCfg ? '배당 종목 수정' : '배당 종목 입력'}</summary>
       <form id="div-form" autocomplete="off">
-        <div class="d-import">
-          <button type="button" class="btn-primary d-ocr" id="d-ocr">📷 거래 내역 사진으로 넣기</button>
-          <p class="note">증권 앱의 거래 화면을 캡처해 올리면 매수·매도 기록을 자동으로 넣어요.</p>
-        </div>
-        <div class="f-rows-h"><span>매수 기록</span><small>티커 · 매수/매도 · 수량 · 가격($) · 날짜(선택)</small></div>
+        <div class="f-rows-h"><span>보유 종목</span><small>티커 · 수량 · 평단($) · 거래 내역</small></div>
         <div id="d-rows">${divRows.map(divRowHtml).join('')}</div>
         <datalist id="d-tickers">${tickers.map((t) => `<option value="${esc(t)}">`).join('')}</datalist>
-        <div class="d-btns"><button type="button" class="btn-ghost f-add" id="d-add">+ 매수 기록 추가</button>${fireCfg ? '<button type="button" class="btn-ghost f-add" id="d-import">🔥 보유 종목 불러오기</button>' : ''}</div>
-        <p class="note"><b>매수일은 선택</b>이에요. 넣으면 그날 이후 실제로 받은 배당금까지 계산하고, 비워 두면 오늘 날짜로 저장돼 앞으로 받을 배당금만 계산해요. 같은 종목을 여러 번 나눠 샀다면 매수일별로 한 줄씩 넣어 주세요. 수량은 <b>지금 보유 중인 수량</b>(주식 분할 반영)이에요.</p>
+        <div class="d-btns"><button type="button" class="btn-ghost f-add" id="d-add">+ 종목 추가</button>${fireCfg ? '<button type="button" class="btn-ghost f-add" id="d-import">🔥 보유 종목 불러오기</button>' : ''}</div>
+        <p class="note"><b>거래 내역은 선택</b>이에요. <b>📅 거래 내역</b>을 누르면 증권 앱 거래 화면 <b>사진으로 한 번에</b> 넣거나 캘린더로 직접 넣을 수 있어요. 거래 내역을 넣으면 그날들 이후 실제로 받은 배당금까지 계산하고 수량·평단도 자동으로 채워져요. 비워 두면 오늘 산 것으로 보고 앞으로 받을 배당금만 계산해요.</p>
         <label>배당 세금<select id="d-tax"><option value="0.15" ${!divCfg || divCfg.tax === 0.15 ? 'selected' : ''}>세후 — 미국 원천징수 15% 뺀 금액(실제 입금액)</option><option value="0" ${divCfg?.tax === 0 ? 'selected' : ''}>세전 — 세금 빼기 전 금액</option></select></label>
         <div class="fire-btns"><button type="submit" class="btn-primary">저장</button>${divCfg ? `<button type="button" id="d-del" class="btn-ghost">${divConfirmDelete ? '정말 삭제' : '이 기기에서 삭제'}</button>` : ''}</div>
         <p class="note">🔒 입력한 값은 <b>이 기기(브라우저)에만</b> 저장돼요.</p>
       </form>
     </details>`;
   }
-  function readDivRows() {
-    return [...document.querySelectorAll('#d-rows .d-row')].map((r) => ({
-      t: r.querySelector('.d-t').value.trim().toUpperCase(),
-      sh: parseFloat(r.querySelector('.d-sh').value.replace(/,/g, '')) || undefined,
-      avg: parseFloat(r.querySelector('.d-avg').value.replace(/[,$]/g, '')) || undefined,
-      d: r.querySelector('.d-d').value,
-      ...(r.querySelector('.d-side')?.value === 'sell' ? { sell: true } : {}),
-    }));
+  // 화면의 입력값(티커·수량·평단)을 divRows에 반영(거래 내역은 divRows에만 있다)
+  function syncRowsFromDom() {
+    for (const el of document.querySelectorAll('#d-rows .d-row')) {
+      const r = divRows[+el.dataset.row];
+      if (!r) continue;
+      r.t = el.querySelector('.d-t').value.trim().toUpperCase();
+      if (!r.trades?.length) {
+        r.sh = parseFloat(el.querySelector('.d-sh').value.replace(/,/g, '')) || undefined;
+        r.avg = parseFloat(el.querySelector('.d-avg').value.replace(/[,$]/g, '')) || undefined;
+      }
+    }
+    return divRows;
   }
+  const paintRows = () => { document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join(''); };
   function saveDivForm() {
-    const rows = readDivRows().filter((r) => r.t || r.sh || r.avg || r.d).map((r) => ({ ...r, d: r.d || isoToday() })); // 매수일을 비우면 오늘
-    const bad = rows.find((r) => !TICKER_RE.test(r.t) || !(r.sh > 0) || !(r.avg > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(r.d) || r.d > isoToday());
-    if (!rows.length || bad) { toast('각 줄에 티커·수량·평균 단가를 넣어 주세요(매수일은 오늘 이전만)', true); return; }
-    divCfg = { lots: rows, tax: parseFloat(document.getElementById('d-tax')?.value) || 0 };
+    syncRowsFromDom();
+    const rows = divRows.filter((r) => r.t || r.sh || r.avg || r.trades?.length);
+    const okTrade = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x.d || '') && x.d <= isoToday() && x.sh > 0 && x.price > 0;
+    const bad = rows.find((r) => !TICKER_RE.test(r.t || '') || (r.trades?.length ? !r.trades.every(okTrade) : !(r.sh > 0) || !(r.avg > 0) || (r.d && r.d > isoToday())));
+    if (!rows.length || bad) { toast(bad && !TICKER_RE.test(bad.t || '') ? '티커를 확인해 주세요' : '각 줄에 수량·평균 단가를 넣거나 거래 내역을 넣어 주세요', true); return; }
+    const hold = rows.map((r) => (r.trades?.length
+      ? { t: r.t, ...holdFromTrades(r.trades), trades: [...r.trades].sort((a, b) => (a.d < b.d ? -1 : 1)) }
+      : { t: r.t, sh: r.sh, avg: r.avg, d: r.d || isoToday() })); // 거래 내역이 없으면 오늘 산 것으로
+    divCfg = { hold, tax: parseFloat(document.getElementById('d-tax')?.value) || 0 };
     writeJSON(DIV_KEY, divCfg);
     divConfirmDelete = false;
     toast('✓ 이 기기에 저장했어요 · 배당 내역 불러오는 중');
@@ -2519,33 +2556,78 @@
     toast('이 기기에서 배당 정보를 지웠어요');
     renderDivSet(); renderDiv();
   }
-  // ---- 사진으로 거래 내역 넣기(도미노 등 증권 앱의 종목 → '거래' 화면 캡처). 글자 읽기는 이 기기에서(assets/trade-ocr.js)
-  let ocrRows = null;
-  function openOcrSheet() {
-    let el = document.getElementById('ocr-sheet');
+
+  // ---- 거래 내역 창(종목 한 줄 전용)
+  let txIdx = null, txDraft = [], ocrRows = null;
+  function openTxSheet(i) {
+    syncRowsFromDom();
+    const r = divRows[i];
+    if (!TICKER_RE.test(r?.t || '')) { toast('먼저 이 줄의 티커를 넣어 주세요', true); document.querySelector(`#d-rows .d-row[data-row="${i}"] .d-t`)?.focus(); return; }
+    txIdx = i; txDraft = (r.trades || []).map((x) => ({ ...x })); ocrRows = null;
+    let el = document.getElementById('tx-sheet');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'ocr-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '거래 내역 사진으로 넣기');
+      el.id = 'tx-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '거래 내역');
       document.body.appendChild(el);
     }
-    const Y = new Date().getFullYear();
-    const curT = (readDivRows().find((r) => r.t) || {}).t || '';
-    ocrRows = null;
     el.hidden = false;
     document.body.classList.add('sheet-open');
-    el.innerHTML = `<div class="sheet-bg" data-oclose="1"></div><div class="sheet-panel oc-panel">
-      <div class="sheet-h"><b>📷 거래 내역 사진으로 넣기</b><button type="button" class="ws-btn" data-oclose="1">닫기</button></div>
-      <ol class="oc-steps"><li>증권 앱(예: 도미노)에서 종목을 고르고 <b>거래</b> 화면을 캡처해요.</li><li>아래에 종목 티커를 넣고 캡처 사진을 골라요. 여러 장을 한 번에 골라도 되고, 겹친 부분은 한 번만 넣어요.</li><li>읽은 내용을 확인하고 <b>매수 기록에 넣기</b> → 아래 <b>저장</b>을 눌러요.</li></ol>
-      <div class="oc-fields">
-        <label>종목 티커<input id="oc-t" list="d-tickers" placeholder="예: MSTY" value="${esc(curT)}" autocapitalize="characters" autocomplete="off" maxlength="8"></label>
-        <label>가장 최근 거래의 연도<select id="oc-y"><option value="">자동 (오늘 기준)</option>${[0, 1, 2, 3].map((k) => `<option value="${Y - k}">${Y - k}년</option>`).join('')}</select></label>
-      </div>
-      <label class="btn-primary oc-pick">사진 고르기<input type="file" id="oc-file" accept="image/*" multiple hidden></label>
-      <p class="oc-status" id="oc-status">🔒 사진은 이 기기 안에서만 읽고 어디에도 보내지 않아요. 처음 한 번은 글자 읽기 엔진(약 7MB)을 받느라 시간이 걸려요.</p>
-      <div id="oc-result"></div>
+    const Y = new Date().getFullYear();
+    el.innerHTML = `<div class="sheet-bg" data-txclose="1"></div><div class="sheet-panel oc-panel">
+      <div class="sheet-h"><b>📅 거래 내역 · ${esc(r.t)}</b><button type="button" class="ws-btn" data-txclose="1">닫기</button></div>
+      <section class="tx-box tx-photo">
+        <b>📷 거래 내역 사진으로 넣기</b>
+        <p class="note">증권 앱(예: 도미노)에서 <b>${esc(r.t)}</b> → <b>거래</b> 화면을 캡처해 골라 주세요. 여러 장을 한 번에 골라도 되고, 겹친 부분은 한 번만 넣어요. 사진은 이 기기 안에서만 읽어요.</p>
+        <div class="tx-photo-row"><label class="btn-primary oc-pick">사진 고르기<input type="file" id="oc-file" accept="image/*" multiple hidden></label>
+          <select id="oc-y" aria-label="가장 최근 거래의 연도"><option value="">연도 자동</option>${[0, 1, 2, 3].map((k) => `<option value="${Y - k}">${Y - k}년</option>`).join('')}</select></div>
+        <p class="oc-status" id="oc-status">처음 한 번은 글자 읽기 엔진(약 7MB)을 받느라 시간이 걸려요.</p>
+        <div id="oc-result"></div>
+      </section>
+      <section class="tx-box">
+        <b>캘린더로 직접 넣기</b>
+        <div class="tx-manual">
+          <label class="tx-f tx-f-d"><span>거래일</span><input type="date" id="tx-d" max="${isoToday()}" value="${esc(r.d && !r.trades?.length ? r.d : '')}"></label>
+          <label class="tx-f"><span>구분</span><select id="tx-side"><option value="buy">매수</option><option value="sell">매도</option></select></label>
+          <label class="tx-f"><span>수량</span><input id="tx-sh" inputmode="decimal" placeholder="주" value="${!r.trades?.length && r.sh ? r.sh : ''}"></label>
+          <label class="tx-f"><span>가격</span><input id="tx-p" inputmode="decimal" placeholder="$" value="${!r.trades?.length && r.avg ? r.avg : ''}"></label>
+          <button type="button" class="btn-ghost" id="tx-add">+ 추가</button>
+        </div>
+      </section>
+      <section class="tx-box"><div id="tx-list"></div></section>
+      <button type="button" class="btn-primary oc-add" id="tx-done">완료</button>
     </div>`;
+    paintTxList();
   }
-  function closeOcrSheet() { const el = document.getElementById('ocr-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+  function closeTxSheet() { const el = document.getElementById('tx-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); txIdx = null; }
+  function paintTxList() {
+    const el = document.getElementById('tx-list');
+    if (!el) return;
+    const L = [...txDraft].map((x, i) => ({ ...x, i })).sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : b.i - a.i));
+    const H = holdFromTrades(txDraft);
+    el.innerHTML = L.length
+      ? `<div class="tx-sum"><b>넣은 거래 ${L.length}건</b><span>남은 수량 <b>${fmtSh(H.sh)}주</b> · 평단 <b>${H.sh ? '$' + H.avg.toFixed(2) : '–'}</b></span></div>
+        <div class="div-scroll"><table class="div-tbl tx-tbl"><thead><tr><th>날짜</th><th>구분</th><th>수량</th><th>가격</th><th></th></tr></thead><tbody>
+        ${L.map((x) => `<tr><td>${x.d.slice(2).replace(/-/g, '.')}</td><td class="${x.sell ? 'down' : 'up'}">${x.sell ? '매도' : '매수'}</td><td>${fmtSh(x.sh)}</td><td>$${x.price.toFixed(2)}</td><td><button type="button" class="tx-rm" data-txrm="${x.i}" aria-label="이 거래 삭제">×</button></td></tr>`).join('')}
+        </tbody></table></div><button type="button" class="btn-ghost tx-clear" id="tx-clear">거래 내역 모두 지우기</button>`
+      : '<p class="note">아직 넣은 거래가 없어요. 사진으로 넣거나 캘린더로 직접 넣어 주세요. 한 번에 샀다면 매수일·수량·가격 한 줄만 넣으면 돼요.</p>';
+  }
+  function addManualTrade() {
+    const d = document.getElementById('tx-d')?.value || '', sh = parseFloat((document.getElementById('tx-sh')?.value || '').replace(/,/g, '')), p = parseFloat((document.getElementById('tx-p')?.value || '').replace(/[,$]/g, ''));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d > isoToday() || !(sh > 0) || !(p > 0)) { toast('날짜·수량·가격을 넣어 주세요(날짜는 오늘 이전)', true); return; }
+    txDraft.push({ d, sh, price: p, ...(document.getElementById('tx-side')?.value === 'sell' ? { sell: true } : {}) });
+    document.getElementById('tx-sh').value = ''; document.getElementById('tx-p').value = '';
+    paintTxList();
+  }
+  function finishTx() {
+    const r = divRows[txIdx];
+    if (!r) { closeTxSheet(); return; }
+    if (txDraft.length) { r.trades = txDraft.map((x) => ({ ...x })); Object.assign(r, holdFromTrades(r.trades)); delete r.d; }
+    else { delete r.trades; }
+    paintRows();
+    closeTxSheet();
+    const det = document.querySelector('#c-div-set details'); if (det) det.open = true;
+    toast(txDraft.length ? `✓ ${r.t} 거래 ${txDraft.length}건 · 수량 ${fmtSh(r.sh)}주로 채웠어요 · 아래 저장을 눌러 주세요` : '거래 내역을 비웠어요 · 저장을 눌러 주세요');
+  }
   async function runOcr(files) {
     const st = document.getElementById('oc-status'), out = document.getElementById('oc-result');
     if (!files?.length || !window.__tradeOcr) return;
@@ -2570,42 +2652,40 @@
     const buys = R.filter((r) => r.side === 'buy'), sells = R.filter((r) => r.side === 'sell');
     const net = buys.reduce((n, r) => n + r.sh, 0) - sells.reduce((n, r) => n + r.sh, 0);
     const warn = R.filter((r) => !r.ok).length;
-    st.innerHTML = `<b>${R.length}건</b>을 읽었어요 · 매수 ${buys.length}건 · 매도 ${sells.length}건 · 매수−매도 <b>${nf(net % 1 ? 2 : 0).format(net)}주</b>${warn ? ` · <span class="warn">⚠ 확인 필요 ${warn}건</span>` : ''}`;
-    out.innerHTML = `<div class="div-scroll"><table class="div-tbl oc-tbl"><thead><tr><th></th><th>날짜</th><th>구분</th><th>수량</th><th>가격</th><th>금액</th></tr></thead><tbody>
+    st.innerHTML = `<b>${R.length}건</b>을 읽었어요 · 매수 ${buys.length}건 · 매도 ${sells.length}건 · 매수−매도 <b>${fmtSh(net)}주</b>${warn ? ` · <span class="warn">⚠ 확인 필요 ${warn}건</span>` : ''}`;
+    out.innerHTML = `<div class="div-scroll oc-scroll"><table class="div-tbl oc-tbl"><thead><tr><th></th><th>날짜</th><th>구분</th><th>수량</th><th>가격</th><th>금액</th></tr></thead><tbody>
       ${R.map((r, i) => `<tr class="${r.ok ? '' : 'oc-warn'}"><td><input type="checkbox" class="oc-on" data-i="${i}" checked aria-label="넣기"></td>
         <td><input type="date" class="oc-d" data-i="${i}" value="${esc(r.d || '')}" max="${isoToday()}" aria-label="날짜"></td>
         <td class="${r.side === 'buy' ? 'up' : 'down'}">${r.side === 'buy' ? '매수' : '매도'}</td><td>${nf(r.sh % 1 ? 4 : 0).format(r.sh)}</td><td>$${r.price.toFixed(2)}</td><td>$${nf(2).format(r.amount)}${r.ok ? '' : '<small>⚠ 확인</small>'}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="note">⚠ 표시는 날짜를 못 읽었거나 금액 ÷ 가격이 딱 떨어지지 않은 줄이에요. 날짜를 고치거나 체크를 빼 주세요. 수량은 금액 ÷ 가격으로 계산했어요.</p>
-      <label class="chk oc-replace"><input type="checkbox" id="oc-replace" checked> 이 종목의 기존 줄은 지우고 이 기록으로 바꾸기</label>
-      <button type="button" class="btn-primary oc-add" id="oc-add">${R.length}건 매수 기록에 넣기</button>`;
+      <label class="chk oc-replace"><input type="checkbox" id="oc-replace" ${txDraft.length ? '' : 'checked'}> 지금 넣어 둔 거래 내역은 지우고 이 기록으로 바꾸기</label>
+      <button type="button" class="btn-primary oc-add" id="oc-add">${R.length}건 거래 내역에 넣기</button>`;
   }
   function addOcrRows() {
-    const t = (document.getElementById('oc-t')?.value || '').trim().toUpperCase();
-    if (!TICKER_RE.test(t)) { toast('종목 티커를 넣어 주세요(예: MSTY)', true); document.getElementById('oc-t')?.focus(); return; }
     const pick = [];
     for (const cb of document.querySelectorAll('#oc-result .oc-on')) {
       if (!cb.checked) continue;
       const r = ocrRows[+cb.dataset.i], d = document.querySelector(`#oc-result .oc-d[data-i="${cb.dataset.i}"]`)?.value || '';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast('날짜가 빈 줄이 있어요. 날짜를 넣거나 체크를 빼 주세요', true); return; }
-      pick.push({ t, sh: r.sh, avg: r.price, d, ...(r.side === 'sell' ? { sell: true } : {}) });
+      pick.push({ d, sh: r.sh, price: r.price, ...(r.side === 'sell' ? { sell: true } : {}) });
     }
     if (!pick.length) { toast('넣을 줄을 골라 주세요', true); return; }
-    const replace = document.getElementById('oc-replace')?.checked;
-    const keep = readDivRows().filter((r) => (r.t || r.sh || r.avg) && !(replace && r.t === t));
-    divRows = [...keep, ...pick.sort((a, b) => (a.d < b.d ? -1 : 1))];
-    document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join('');
-    closeOcrSheet();
-    const det = document.querySelector('#c-div-set details'); if (det) det.open = true;
-    toast(`✓ ${t} ${pick.length}건을 넣었어요 · 아래 저장을 눌러 주세요`);
+    txDraft = document.getElementById('oc-replace')?.checked ? pick : [...txDraft, ...pick];
+    ocrRows = null;
+    document.getElementById('oc-result').innerHTML = '';
+    document.getElementById('oc-status').innerHTML = `✓ <b>${pick.length}건</b>을 아래 거래 내역에 넣었어요. 확인하고 <b>완료</b>를 눌러 주세요.`;
+    paintTxList();
+    document.getElementById('tx-list')?.scrollIntoView({ block: 'nearest' });
   }
   function importFireToDiv() {
-    const have = readDivRows().filter((r) => r.t);
-    const add = (fireCfg?.positions || []).filter((p) => !have.some((r) => r.t === p.ticker)).map((p) => ({ t: p.ticker, sh: p.shares, avg: +p.avg.toFixed(4), d: '' }));
+    syncRowsFromDom();
+    const have = divRows.filter((r) => r.t);
+    const add = (fireCfg?.positions || []).filter((p) => !have.some((r) => r.t === p.ticker)).map((p) => ({ t: p.ticker, sh: p.shares, avg: +p.avg.toFixed(4) }));
     if (!add.length) { toast('불러올 새 종목이 없어요'); return; }
     divRows = [...have, ...add];
-    document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join('');
-    toast('🔥 보유 종목을 불러왔어요 · 매수일은 넣어도 되고 비워도 돼요');
+    paintRows();
+    toast('🔥 보유 종목을 불러왔어요 · 거래 내역은 넣어도 되고 비워도 돼요');
   }
 
   // 시세(보유 종목·경쟁사·환율): Fire 화면이거나 CRCL 외 종목을 보고 있을 때 15초마다
@@ -4584,13 +4664,19 @@
     if (fg) { state.fireTab = fg.dataset.ftabgo; savePref('fireTab', state.fireTab); showView('fire'); window.scrollTo({ top: 0 }); return; }
     const ft = ev.target.closest('[data-ftab]');
     if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); loadDividends().catch(() => {}); } window.scrollTo({ top: 0 }); return; }
-    if (ev.target.closest('#d-add')) { divRows = readDivRows(); divRows.push({}); document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join(''); return; }
+    if (ev.target.closest('#d-add')) { syncRowsFromDom(); divRows.push({}); paintRows(); return; }
     const drm = ev.target.closest('[data-drm]');
-    if (drm) { divRows = readDivRows(); divRows.splice(+drm.dataset.drm, 1); document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join(''); return; }
+    if (drm) { syncRowsFromDom(); divRows.splice(+drm.dataset.drm, 1); paintRows(); return; }
     if (ev.target.closest('#d-del')) { deleteDiv(); return; }
-    if (ev.target.closest('#d-ocr')) { openOcrSheet(); return; }
-    if (ev.target.closest('[data-oclose]')) { closeOcrSheet(); return; }
+    const dtx = ev.target.closest('[data-dtx]');
+    if (dtx) { openTxSheet(+dtx.dataset.dtx); return; }
+    if (ev.target.closest('[data-txclose]')) { closeTxSheet(); return; }
     if (ev.target.closest('#oc-add')) { addOcrRows(); return; }
+    if (ev.target.closest('#tx-add')) { addManualTrade(); return; }
+    if (ev.target.closest('#tx-done')) { finishTx(); return; }
+    if (ev.target.closest('#tx-clear')) { txDraft = []; paintTxList(); return; }
+    const txrm = ev.target.closest('[data-txrm]');
+    if (txrm) { txDraft.splice(+txrm.dataset.txrm, 1); paintTxList(); return; }
     if (ev.target.closest('#d-import')) { importFireToDiv(); return; }
     if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: fireTickerOrder().find((k) => !fireRows.some((r) => r.ticker === k)) || 'CRCA' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
     const rmBtn = ev.target.closest('[data-rm]');
@@ -4705,10 +4791,9 @@
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
-  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { closeWatchSheet(); closeOcrSheet(); } });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { closeWatchSheet(); closeTxSheet(); } });
   document.addEventListener('change', (ev) => {
     if (ev.target.id === 'oc-file') runOcr(ev.target.files);
-    if (ev.target.classList?.contains('d-side')) { const row = ev.target.closest('.d-row'); row?.classList.toggle('is-sell', ev.target.value === 'sell'); const a = row?.querySelector('.d-avg'); if (a) a.placeholder = ev.target.value === 'sell' ? '판 가격($)' : '평단($)'; }
   });
   document.addEventListener('toggle', (ev) => {
     const d = ev.target;

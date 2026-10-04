@@ -175,3 +175,41 @@ Fire 화면 전환	Switch Fire view
 → 아래	→ then
 을 눌러요.	below.
 전량 매도	sold out
+보유 종목	Holdings
+티커 · 수량 · 평단($) · 거래 내역	ticker · shares · avg ($) · trade history
++ 종목 추가	+ Add holding
+거래 내역은 선택	Trade history is optional
+이에요.	.
+을 누르면 증권 앱 거래 화면	— tap it to add your brokerage app's trade screen
+사진으로 한 번에	all at once from screenshots
+넣거나 캘린더로 직접 넣을 수 있어요. 거래 내역을 넣으면 그날들 이후 실제로 받은 배당금까지 계산하고 수량·평단도 자동으로 채워져요. 비워 두면 오늘 산 것으로 보고 앞으로 받을 배당금만 계산해요.	or enter them with the calendar. With trades it also counts dividends actually received since then and fills in shares/avg automatically. Left blank, it's treated as bought today and only future dividends are estimated.
+📅 거래 내역	📅 Trade history
+거래 내역	Trade history
+선택 · 사진으로도 넣어요	optional · screenshots work too
+거래 내역으로 계산돼요	Calculated from trade history
+거래 내역 넣기	Add trade history
+이 종목 줄 삭제	Remove this holding
+먼저 이 줄의 티커를 넣어 주세요	Enter this row's ticker first
+증권 앱(예: 도미노)에서	In your brokerage app (e.g. Domino), open
+화면을 캡처해 골라 주세요. 여러 장을 한 번에 골라도 되고, 겹친 부분은 한 번만 넣어요. 사진은 이 기기 안에서만 읽어요.	and screenshot the trade screen. Several at once is fine; overlaps are added once. Screenshots are read on this device only.
+연도 자동	Year: auto
+처음 한 번은 글자 읽기 엔진(약 7MB)을 받느라 시간이 걸려요.	The first time, the text-recognition engine (~7MB) takes a moment to download.
+캘린더로 직접 넣기	Enter with the calendar
+거래일	Trade date
+가격($)	Price ($)
++ 추가	+ Add
+완료	Done
+넣은 거래	Trades added
+남은 수량	Shares held
+거래 내역 모두 지우기	Clear trade history
+아직 넣은 거래가 없어요. 사진으로 넣거나 캘린더로 직접 넣어 주세요. 한 번에 샀다면 매수일·수량·가격 한 줄만 넣으면 돼요.	No trades yet. Add them from screenshots or with the calendar. If you bought all at once, one row (date · shares · price) is enough.
+이 거래 삭제	Delete this trade
+날짜·수량·가격을 넣어 주세요(날짜는 오늘 이전)	Enter date, shares and price (date can't be in the future)
+거래 내역을 비웠어요 · 저장을 눌러 주세요	Trade history cleared · tap Save
+지금 넣어 둔 거래 내역은 지우고 이 기록으로 바꾸기	Replace the current trade history with these
+거래 내역에 넣기	Add to trade history
+확인하고	Check them and tap
+를 눌러 주세요.	.
+🔥 보유 종목을 불러왔어요 · 거래 내역은 넣어도 되고 비워도 돼요	🔥 Holdings imported · trade history is optional
+티커를 확인해 주세요	Check the ticker
+각 줄에 수량·평균 단가를 넣거나 거래 내역을 넣어 주세요	Enter shares and average price, or add trade history, on every row

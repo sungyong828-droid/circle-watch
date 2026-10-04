@@ -1037,3 +1037,41 @@ html.is-test .top::after { content: '🧪 TEST'; position: absolute; left: 50%; 
 .oc-tbl td small { color: var(--warn); }
 .oc-add { width: 100%; height: 50px; }
 .oc-replace { font-size: 13px; }
+
+/* 보유 종목 줄(티커 · 수량 · 평단 · 거래 내역) */
+.d-row { grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 1.3fr) 32px; }
+.d-row input[readonly] { color: var(--ink-2); background: rgba(255, 255, 255, 0.03); }
+.d-tx { display: grid; gap: 1px; align-content: center; min-height: 46px; padding: 6px 12px; text-align: left; border-radius: 12px; border: 1px dashed var(--line); background: transparent; color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
+.d-tx small { font-size: 11px; font-weight: 500; color: var(--faint); }
+.d-tx.has { border-style: solid; border-color: rgba(242, 153, 74, 0.45); background: rgba(242, 153, 74, 0.08); color: var(--ink); }
+@media (max-width: 420px) {
+  .d-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px; }
+  .d-row .d-t { grid-column: 1 / 3; grid-row: 1; }
+  .d-row .f-rm { grid-column: 3; grid-row: 1; }
+  .d-row .d-sh { grid-column: 1; grid-row: 2; }
+  .d-row .d-avg { grid-column: 2 / 4; grid-row: 2; }
+  .d-row .d-tx { grid-column: 1 / 4; grid-row: 3; }
+}
+/* 거래 내역 창 */
+.tx-box { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: var(--surface-2); }
+.tx-box > b { font-size: 14px; }
+.tx-box .note { margin: 0; }
+.tx-photo { background: linear-gradient(135deg, rgba(242, 153, 74, 0.14), rgba(242, 153, 74, 0.04)); border: 1px solid rgba(242, 153, 74, 0.3); }
+.tx-photo-row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; }
+.tx-photo-row select, .tx-manual input, .tx-manual select { height: 46px; padding: 0 10px; border-radius: 12px; border: 0; background: var(--surface); color: var(--ink); font: 600 14px var(--sans); }
+.tx-manual { display: grid; grid-template-columns: 1.3fr 0.8fr 0.8fr 0.9fr auto; gap: 8px; }
+.tx-manual .btn-ghost { height: 46px; background: var(--surface); }
+@media (max-width: 480px) { .tx-manual { grid-template-columns: 1fr 1fr; } .tx-manual input[type="date"] { grid-column: 1 / -1; } .tx-manual .btn-ghost { grid-column: 1 / -1; } }
+.tx-sum { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap; }
+.tx-tbl td { padding: 7px 4px; }
+.tx-rm { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 16px; cursor: pointer; }
+.tx-clear { justify-self: start; height: 36px; font-size: 13px; }
+.oc-scroll { max-height: 46vh; overflow: auto; }
+/* 거래 내역 창: 휴대폰 폭 안에 맞추기(날짜 입력칸 기본 폭 때문에 넘치던 것) */
+.oc-panel > *, .tx-box > *, .tx-manual > *, .tx-photo-row > * { min-width: 0; }
+.tx-box input, .tx-box select { width: 100%; min-width: 0; box-sizing: border-box; }
+.tx-photo-row .oc-pick { min-width: 0; }
+.tx-f { display: grid; gap: 4px; }
+.tx-f span { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.tx-manual { align-items: end; }
+@media (max-width: 480px) { .tx-manual .tx-f-d { grid-column: 1 / -1; } }
