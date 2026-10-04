@@ -35,6 +35,11 @@ export async function onRequestGet({ request, env }) {
     q(`SELECT msg, SUM(n) AS n, MAX(last_at) AS last_at, COUNT(*) AS days FROM errors WHERE day >= ?1 GROUP BY msg ORDER BY n DESC LIMIT 15`, from7),
     q(`SELECT day, COUNT(*) AS ips, SUM(n) AS n, MAX(last_at) AS last_at, SUM(n >= ?2 AND ?3 - last_at < ?4) AS locked FROM auth_fail WHERE day >= ?1 GROUP BY day ORDER BY day DESC`, from7, LOCK_FAILS, now, LOCK_MS),
   ]);
+  // 인기 종목(관심 종목에 새로 추가한 티커 · 최근 30일 · 기기 수) — 관리자 화면은 1대도 보여 준다(공개 /api/popular 는 3대 이상만)
+  const [picks, pickDev] = await Promise.all([
+    q(`SELECT sym, COUNT(*) AS n, SUM(day >= ?2) AS week FROM picks WHERE day >= ?1 AND ${EX} GROUP BY sym ORDER BY n DESC, sym LIMIT 25`, from30, from7),
+    q(`SELECT COUNT(DISTINCT vid) AS n FROM picks WHERE day >= ?1 AND ${EX}`, from30),
+  ]).catch(() => [[], []]);
   // 오래된 기록 정리(오류·틀린 키는 30일만 보관)
   try { await env.STATS.prepare('DELETE FROM errors WHERE day < ?1').bind(from30).run(); await env.STATS.prepare('DELETE FROM auth_fail WHERE day < ?1').bind(from30).run(); } catch {}
   // 이 기기(관리자 화면을 연 기기)
@@ -51,6 +56,7 @@ export async function onRequestGet({ request, env }) {
     at: new Date(now).toISOString(), today, days, total: total[0] || {}, refs7, refsToday, countries, devices,
     liveNow: live[0]?.n || 0, week: week[0]?.n || 0, weekNew: week[0]?.newbies || 0, prevWeek: prevWeek[0]?.n || 0, prevWeekNew: prevWeek[0]?.newbies || 0,
     returning: back[0]?.n || 0, excludedDevices: exN[0]?.n || 0,
+    picks, pickDevices: pickDev[0]?.n || 0,
     usage: usage[0] || {}, useBits: USE_BITS, langs, hours, errors: errs, authFails: fails, lockRule: { fails: LOCK_FAILS, minutes: LOCK_MS / 60000 },
     me,
   });

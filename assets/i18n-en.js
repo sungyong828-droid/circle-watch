@@ -1719,7 +1719,11 @@ window.__I18N_EN = {
 "날짜로 넣어요.": ".",
 "오늘 이후 날짜예요. 연도를 확인하거나 날짜를 고쳐 주세요": "is in the future. Check the year or fix the date",
 "배당금 계산기": "Dividend calculator",
-"퇴사 계산기": "FIRE calculator"
+"퇴사 계산기": "FIRE calculator",
+"🔥 다른 사람들이 많이 추가한 종목": "🔥 Popular with other users",
+"명이 추가": "users added",
+"🔒 보유 정보(수량·평단·매수 기록)와 관심 종목은 이 기기에만 저장돼요. 사이트는 방문 수 집계를 위해 익명 기기 ID·유입 경로를, 인기 종목 순위를 위해 새로 추가한 티커 이름만 익명으로 기록하고, 이름·연락처 같은 개인 정보는 받지 않아요.": "🔒 Holdings (shares, average cost, trades) and your watchlist stay on this device. The site records only an anonymous device ID and referrer to count visits, and the ticker names you add (anonymously) for the popular ranking. No names or contact details.",
+"🔒 종목 목록은 이 기기(브라우저)에 저장돼요. '많이 추가한 종목' 순위를 위해 새로 추가한 티커 이름만 익명으로 모으고, 수량·금액 같은 보유 정보는 보내지 않아요. 기본 4종목(CRCL·JOBY·SPCX·TEM)은 전용 화면(FAA 인증·보호예수 등)이 있고, 새로 추가한 종목은 공통 화면(주가·실적·뉴스·공시·공매도·기관·애널리스트·옵션)으로 보여요. 바이낸스에 24시간 주식 선물이 있는 종목은 CRCL처럼 바이낸스 가격으로 표시돼요.": "🔒 Your stock list is saved in this browser. Only the ticker names you add are collected anonymously for the “popular” ranking; shares, prices and holdings are never sent. The 4 defaults (CRCL · JOBY · SPCX · TEM) have dedicated screens (FAA certification, lock-up, etc.); added stocks use the common screen (price · earnings · news · filings · short · institutions · analysts · options). Stocks with 24/7 Binance stock futures show Binance prices like CRCL."
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

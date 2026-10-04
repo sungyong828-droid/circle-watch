@@ -87,7 +87,7 @@ def esc(s):
     return html.escape(str(s), quote=True)
 
 
-def page(slug, title, desc, body, ld, lang='ko', alt=None):
+def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3'):
     url = SITE + slug
     en = lang == 'en'
     # 같은 내용의 다른 언어 페이지(about ↔ en)
@@ -106,7 +106,9 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None):
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(desc)}">
 <meta property="og:url" content="{url}">
-<meta property="og:image" content="{SITE}assets/og.png?v=3">
+<meta property="og:image" content="{SITE}assets/{og}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:locale" content="{'en_US' if en else 'ko_KR'}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png?v=2">
@@ -189,7 +191,7 @@ def about_page():
   <li>위쪽 종목 칩으로 종목을 바꾸고, 아래 탭으로 차트·실적·뉴스를 넘겨 봐요. 카드의 ⓘ를 누르면 지표 설명이 나와요.</li>
 </ol></section>
 <section class="lp-sec"><h2>만든 사람</h2><a class="blog-card" href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin"><span class="bc-ic" aria-hidden="true">📝</span><span class="bc-t"><b>돼용 블로그</b><small><span>미국 주식 투자 기록과 대시보드 소식을 올려요</span><span>네이버 블로그</span></small></span><span class="bc-go" aria-hidden="true">→</span></a></section>
-<section class="lp-sec"><h2>개인 정보</h2><p>회원가입·로그인이 없고, 보유 정보와 관심 종목은 각자 기기의 브라우저에만 저장돼요. 사이트는 방문 수를 세려고 익명 기기 ID와 유입 경로만 기록해요.</p></section>
+<section class="lp-sec"><h2>개인 정보</h2><p>회원가입·로그인이 없고, 보유 정보와 관심 종목은 각자 기기의 브라우저에만 저장돼요. 사이트는 방문 수를 세려고 익명 기기 ID와 유입 경로를, 인기 종목 순위를 위해 새로 추가한 티커 이름만 익명으로 기록해요(수량·금액은 보내지 않아요).</p></section>
 {faq_html([
         ('어떤 데이터를 쓰나요?', 'Nasdaq(시세·실적·기관 보유·애널리스트), SEC(공시·재무제표), Yahoo Finance(실시간 체결·차트), Binance(24시간 주식 선물), FINRA(공매도), CBOE(옵션), 서클 공식 API·DefiLlama(USDC), 뉴스 RSS를 써요.'),
         ('얼마나 자주 업데이트되나요?', '주가는 실시간, 나머지 데이터는 5분마다 자동으로 새로 받아요. 오른쪽 위 새로고침으로 바로 갱신할 수도 있어요.'),
@@ -250,7 +252,7 @@ def dividend_page():
 </ol></section>
 {faq_html(DIV_FAQ)}
 <section class="lp-sec lp-end"><a class="lp-cta" href="{go}">💰 배당금 계산기 열기 →</a></section>'''
-    return page('dividend', title, desc, body, [app_ld('Fire Portfolio 배당금 계산기', 'dividend', desc), faq_ld(DIV_FAQ)])
+    return page('dividend', title, desc, body, [app_ld('Fire Portfolio 배당금 계산기', 'dividend', desc), faq_ld(DIV_FAQ)], og='og-dividend.png?v=1')
 
 
 def fire_page():

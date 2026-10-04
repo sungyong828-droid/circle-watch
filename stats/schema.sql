@@ -41,3 +41,6 @@ CREATE TABLE IF NOT EXISTS auth_fail (
   last_at INTEGER NOT NULL,
   PRIMARY KEY (day, iph)
 );
+-- 인기 종목 순위(관심 종목에 새로 추가한 티커 이름만 · 기기에서 빼면 지움 · day = 마지막으로 확인한 날)
+CREATE TABLE IF NOT EXISTS picks (vid TEXT NOT NULL, sym TEXT NOT NULL, day TEXT NOT NULL, PRIMARY KEY (vid, sym));
+CREATE INDEX IF NOT EXISTS picks_day ON picks (day, sym);

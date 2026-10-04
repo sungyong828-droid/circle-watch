@@ -165,6 +165,12 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   let lastStats = null;
+  function picksHtml(rows, dev) {
+    if (!rows?.length) return '<p class="adm-dim">아직 기록이 없어요. 방문자가 관심 종목을 추가하면 여기에 쌓여요.</p>';
+    const max = rows[0].n || 1;
+    return `<ol class="adm-picks">${rows.map((r, i) => `<li><em>${i + 1}</em><b>${esc(r.sym)}</b><i style="width:${Math.max(4, (r.n / max) * 100)}%"></i><span>${nf(r.n)}대${r.n >= 3 ? '' : ' <small>비공개</small>'}</span></li>`).join('')}</ol>
+      <p class="adm-dim">종목을 추가한 기기 ${nf(dev)}대 기준. 3대 이상인 종목만 방문자 화면(종목 추가 창)의 '많이 추가한 종목'에 보여요 — 블로그 글감으로 써 보세요.</p>`;
+  }
 
   const listHtml = (rows, label, fmt = (x) => x) => {
     const tot = rows.reduce((s, r) => s + r.n, 0) || 1;
@@ -203,6 +209,7 @@
         ${bars(j.days, j.today)}
         <div class="adm-row"><span class="adm-dim">최근 7일 신규 ${nf(j.weekNew)} ${delta(j.weekNew, j.prevWeekNew)} · 지난 7일 신규 ${nf(j.prevWeekNew)}</span><button type="button" class="btn-ghost sm" id="adm-csv">CSV 내려받기</button></div>
       </section>
+      <section class="card"><h2>인기 종목 <small>관심 종목에 새로 추가한 티커 · 최근 30일</small></h2>${picksHtml(j.picks, j.pickDevices)}</section>
       <section class="card"><h2>많이 쓰는 화면 · 기능 <small>최근 7일</small></h2>${usageHtml(j.usage, j.useBits || [])}</section>
       <div class="adm-2">
         <section class="card"><h2>시간대별 방문 <small>최근 7일</small></h2>${hourBars(j.hours)}</section>

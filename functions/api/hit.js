@@ -4,10 +4,12 @@
 // 같은 주소로 두 가지를 더 받는다(둘 다 그날 방문 기록이 있는 기기만):
 //   ?k=u&u=비트 — 그날 연 화면·쓴 기능(어떤 종목·금액인지는 보내지 않음)
 //   ?k=e&m=메시지 — 화면 오류(관리자 페이지의 '화면 오류'에 모아 보임)
+//   ?k=w&s=AAPL,MSTY — 관심 종목에 새로 추가한 티커 이름(인기 종목 순위용 · 수량·금액은 없음). 목록에서 빠진 티커는 지운다
 const VID_RE = /^[a-z0-9]{16,40}$/;
 const BOT_RE = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|monitor/i;
 const PER_IP_DEVICES = 30; // 한 IP에서 하루에 새로 세는 기기 수 상한(무작위 ID로 숫자 부풀리기 방지 · 회사·통신사 공용 IP는 넉넉히)
 const MAX_ERR_ROWS = 300;   // 하루 오류 종류 상한
+const SYM_RE = /^[A-Z][A-Z0-9.-]{0,9}$/;
 
 const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10);
 
@@ -40,6 +42,17 @@ export async function onRequestGet({ request, env }) {
     if (kind === 'u') {
       const bits = Math.max(0, Math.min(0xfffff, parseInt(url.searchParams.get('u'), 10) || 0));
       if (bits) await db.prepare('UPDATE visits SET used = used | ?3, last_at = ?4 WHERE day = ?1 AND vid = ?2').bind(day, vid, bits, now).run();
+      return done;
+    }
+    if (kind === 'w') {
+      const syms = [...new Set(String(url.searchParams.get('s') || '').toUpperCase().split(',').filter((x) => SYM_RE.test(x)))].slice(0, 30);
+      const seen = await db.prepare('SELECT 1 FROM visits WHERE day = ?1 AND vid = ?2').bind(day, vid).first();
+      if (!seen) return done;
+      const ph = syms.map((_, i) => `?${i + 2}`).join(',');
+      await db.batch([
+        db.prepare(`DELETE FROM picks WHERE vid = ?1${syms.length ? ` AND sym NOT IN (${ph})` : ''}`).bind(vid, ...syms),
+        ...syms.map((sym) => db.prepare('INSERT INTO picks (vid, sym, day) VALUES (?1, ?2, ?3) ON CONFLICT(vid, sym) DO UPDATE SET day = ?3').bind(vid, sym, day)),
+      ]);
       return done;
     }
     if (kind === 'e') {

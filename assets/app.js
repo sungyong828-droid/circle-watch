@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=10';
+    sc.src = 'assets/i18n-en.js?v=11';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -3749,6 +3749,7 @@
     }
     el.hidden = false;
     document.body.classList.add('sheet-open');
+    loadPopular();
     renderWatchSheet();
     setTimeout(() => document.getElementById('watch-q')?.focus(), 50);
   }
@@ -3772,13 +3773,54 @@
       <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
       <label class="ws-search"><input id="watch-q" type="search" placeholder="티커나 영문 회사명 (예: AAPL, Tesla)" autocomplete="off" value="${esc(q)}"></label>
       ${q ? `<ul class="ws-list">${res || `<li class="empty">${watchResults === null ? '검색 중…' : '검색 결과가 없어요. 영문으로 입력해 보세요.'}</li>`}</ul>` : ''}
+      ${!q ? popularHtml() : ''}
       ${removedBuiltin.length && !q ? `<div class="ws-sub">다시 추가하기</div><ul class="ws-list">${removedBuiltin.map((s) => `<li><div class="ws-name"><b>${s}</b><small>${esc(STOCK_INFO[s].name)} · 기본</small></div><button type="button" class="ws-btn add" data-wadd="${s}">+ 추가</button></li>`).join('')}</ul>` : ''}
       <div class="ws-sub">내 종목 <small>위에서부터 홈 상단에 보여요</small></div>
       <ul class="ws-list">${rows}</ul>
-      <p class="note">🔒 종목 목록은 이 기기(브라우저)에만 저장돼요. 기본 4종목(CRCL·JOBY·SPCX·TEM)은 전용 화면(FAA 인증·보호예수 등)이 있고, 새로 추가한 종목은 공통 화면(주가·실적·뉴스·공시·공매도·기관·애널리스트·옵션)으로 보여요. 바이낸스에 24시간 주식 선물이 있는 종목은 CRCL처럼 바이낸스 가격으로 표시돼요.</p>
+      <p class="note">🔒 종목 목록은 이 기기(브라우저)에 저장돼요. '많이 추가한 종목' 순위를 위해 새로 추가한 티커 이름만 익명으로 모으고, 수량·금액 같은 보유 정보는 보내지 않아요. 기본 4종목(CRCL·JOBY·SPCX·TEM)은 전용 화면(FAA 인증·보호예수 등)이 있고, 새로 추가한 종목은 공통 화면(주가·실적·뉴스·공시·공매도·기관·애널리스트·옵션)으로 보여요. 바이낸스에 24시간 주식 선물이 있는 종목은 CRCL처럼 바이낸스 가격으로 표시돼요.</p>
     </div>`;
     const inp = document.getElementById('watch-q');
     if (inp && q) { inp.focus(); inp.setSelectionRange(q.length, q.length); }
+  }
+  // 인기 종목 순위: 관심 종목에 '새로 추가한' 티커 이름만 익명으로 보낸다(기본 4종목·수량·금액·보유 정보는 보내지 않음).
+  // 목록이 바뀌었을 때와 하루 한 번만. 서버는 3대 이상 기기가 추가한 종목만 공개 순위(/api/popular)에 보여 준다.
+  function sendPicks() {
+    try {
+      if (!IS_PROD) return;
+      const list = WATCH.filter((x) => !BUILTIN.includes(x) && SYM_OK.test(x)).slice(0, 30).sort().join(',');
+      const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+      const sig = `${day}|${list}`;
+      if (localStorage.getItem('cw.picksSent') === sig) return;
+      countVisit().then((vid) => {
+        if (!vid) return;
+        fetch(`/api/hit?k=w&v=${vid}&s=${encodeURIComponent(list)}`, { cache: 'no-store', keepalive: true })
+          .then(() => { try { localStorage.setItem('cw.picksSent', sig); } catch {} }).catch(() => {});
+      });
+    } catch {}
+  }
+  let popular = null; // null = 아직 안 받음
+  function loadPopular() {
+    if (popular) return;
+    popular = [];
+    getJ(`${NEWS_API}/popular`, 8000).then((j) => { popular = (j.items || []).filter((x) => SYM_OK.test(x.sym)); renderWatchSheet(); }).catch(() => {});
+  }
+  function popularHtml() {
+    const list = (popular || []).filter((x) => !WATCH.includes(x.sym)).slice(0, 8);
+    if (!list.length) return '';
+    return `<div class="ws-sub">🔥 다른 사람들이 많이 추가한 종목 <small>최근 30일</small></div>
+      <ul class="ws-list ws-pop">${list.map((x) => `<li>${logoPath(x.sym) ? `<span class="ws-logo"><img src="${logoPath(x.sym)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(x.sym[0])}</span>`}
+        <div class="ws-name"><b>${esc(x.sym)}</b><small>${x.n}명이 추가</small></div><button type="button" class="ws-btn add" data-wpop="${esc(x.sym)}">+ 추가</button></li>`).join('')}</ul>`;
+  }
+  // 인기 종목에서 추가: 회사 이름을 찾아서 넣는다
+  async function addPopular(sym, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    let meta = {};
+    try {
+      const r = (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(sym)}`, 8000)).results || [];
+      const m = r.find((x) => x.symbol === sym);
+      if (m) meta = { name: m.name, exchange: m.exchange };
+    } catch {}
+    addWatch(sym, meta);
   }
   function watchSearch(q) {
     clearTimeout(watchSearchTimer);
@@ -3817,6 +3859,7 @@
     renderStockSwitch();
     renderWatchSheet();
     refreshFireTickers(); // Fire 보유 종목 선택지도 관심 종목에 맞춘다
+    sendPicks();
     if (added) {
       liveSubscribe(added);
       checkBinance(added);
@@ -4664,6 +4707,8 @@
     if (sr) { state.srange = sr.dataset.srange; savePref('jrange', state.srange); renderSPriceChart(); paintStock(); return; }
     if (ev.target.closest('[data-wedit]')) { openWatchSheet(); return; }
     if (ev.target.closest('[data-wclose]')) { closeWatchSheet(); return; }
+    const wp = ev.target.closest('[data-wpop]');
+    if (wp) { addPopular(wp.dataset.wpop, wp); return; }
     const wa = ev.target.closest('[data-wadd]');
     if (wa) { addWatch(wa.dataset.wadd, { name: wa.dataset.wname, exchange: wa.dataset.wex }); return; }
     const wd = ev.target.closest('[data-wdel]');
@@ -4861,6 +4906,7 @@
   if (fireCfg?.positions?.length) markUse('fireSet');
   if (divCfg?.hold?.length) markUse('divSet');
   if (WATCH.some((x) => STOCK_INFO[x]?.custom)) markUse('watch');
+  sendPicks();
   document.addEventListener('click', (ev) => { if (ev.target.closest?.('a[href*="blog.naver.com"]')) markUse('blog'); }, true);
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
