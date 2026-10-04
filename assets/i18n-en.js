@@ -1639,7 +1639,15 @@ window.__I18N_EN = {
 "✓ 이 기기에 저장했어요 · 배당 내역 불러오는 중": "✓ Saved on this device · loading dividend history",
 "이 기기에서 배당 정보를 지웠어요": "Dividend info deleted from this device",
 "불러올 새 종목이 없어요": "No new holdings to import",
-"🔥 보유 종목을 불러왔어요 · 매수일을 넣어 주세요": "🔥 Holdings imported · please add buy dates"
+"🔥 보유 종목을 불러왔어요 · 매수일을 넣어 주세요": "🔥 Holdings imported · please add buy dates",
+"💰 배당금": "💰 Dividends",
+"Fire 화면 전환": "Switch Fire view",
+"매수일(선택 — 비우면 오늘)": "Buy date (optional — blank = today)",
+"티커 · 수량 · 평단($) · 매수일(선택)": "ticker · shares · avg ($) · buy date (optional)",
+"매수일은 선택": "The buy date is optional",
+"이에요. 넣으면 그날 이후 실제로 받은 배당금까지 계산하고, 비워 두면 오늘 날짜로 저장돼 앞으로 받을 배당금만 계산해요. 같은 종목을 여러 번 나눠 샀다면 매수일별로 한 줄씩 넣어 주세요. 수량은": ". With a date it also counts dividends actually received since then; left blank it's saved as today and only future dividends are estimated. If you bought the same stock several times, add one row per buy date. Shares means",
+"각 줄에 티커·수량·평균 단가를 넣어 주세요(매수일은 오늘 이전만)": "Fill in ticker, shares and average price on every row (buy date can't be in the future)",
+"🔥 보유 종목을 불러왔어요 · 매수일은 넣어도 되고 비워도 돼요": "🔥 Holdings imported · buy dates are optional"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

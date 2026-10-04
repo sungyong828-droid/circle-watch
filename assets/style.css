@@ -892,3 +892,9 @@ html[lang="en"] .nsum { display: none; }
   .div-tbl { font-size: 11.5px; }
 }
 .div-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Fire 화면 탭: 퇴사까지 / 배당금 */
+.fire-tabs { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-soft); }
+.fire-tabs button { height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-2); font-size: 14px; font-weight: 700; cursor: pointer; }
+.fire-tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--c-orange); }
+.pane-off { display: none !important; }

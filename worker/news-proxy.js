@@ -1179,7 +1179,7 @@ export async function handleMarket(url, cache, cors, ctx) {
 const ymdUtc = (ms) => new Date(ms).toISOString().slice(0, 10);
 const mdyIso = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '')); return m ? `${m[3]}-${m[1]}-${m[2]}` : null; };
 async function buildDividends(sym) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=30y&interval=1mo&events=div,splits`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym.replace('.', '-'))}?range=30y&interval=1mo&events=div,splits`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart?.result?.[0];
   if (!j) throw new Error('배당 자료 없음');

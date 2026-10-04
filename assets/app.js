@@ -44,7 +44,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=6';
+    sc.src = 'assets/i18n-en.js?v=7';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2101,8 +2101,7 @@
     if (!el) return;
     const c = fireCalc();
     if (!fireCfg) {
-      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)은 물론, 관심 종목으로 직접 추가한 종목도 함께 넣을 수 있어요.</p>
-        <p class="note">예전 주소(yongs-portfolio.pages.dev)에서 보유 정보를 입력해 두셨다면 <a href="https://yongs-portfolio.pages.dev/move">여기를 눌러</a> 이 기기로 그대로 옮길 수 있어요.</p>` });
+      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)은 물론, 관심 종목으로 직접 추가한 종목도 함께 넣을 수 있어요.</p>` });
       ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; });
       return;
     }
@@ -2201,7 +2200,8 @@
   // 매수 기록(종목·수량·평단·매수일)은 이 기기에만 저장한다. 배당 내역은 서버(/dividends: Yahoo 배당락일·주당 배당금 + Nasdaq 지급일).
   // 받을 자격: 매수일 다음 날 이후에 배당락일이 온 배당(미국 T+1 결제 — 배당락 전날까지 사면 받음).
   // 주당 배당금은 주식 분할이 반영된 값이라, 수량은 '지금 보유 중인 수량(분할 반영)'으로 넣어야 맞다.
-  const DIV_KEY = 'cw.div', DIV_CACHE = 'cw.divCache';
+  const DIV_KEY = 'cw.div', DIV_CACHE = 'cw.divCache2';
+  try { localStorage.removeItem('cw.divCache'); } catch {} // 매수일 기준으로 잘라 저장하던 예전 캐시
   const normDiv = (V) => {
     if (!V || !Array.isArray(V.lots)) return null;
     V.lots = V.lots.filter((l) => TICKER_RE.test(l?.t || '') && l.sh > 0 && l.avg > 0 && /^\d{4}-\d{2}-\d{2}$/.test(l.d || ''));
@@ -2228,9 +2228,7 @@
       try {
         const j = await getJ(`${NEWS_API}/dividends?s=${s}`, 20000);
         if (j.error) throw new Error(j.error);
-        // 저장 용량: 가장 이른 매수일 1년 전부터의 배당만 남긴다
-        const from = addDays(divCfg.lots.filter((l) => l.t === s).map((l) => l.d).sort()[0] || isoToday(), -400);
-        j.events = (j.events || []).filter((e) => e.ex >= from);
+        j.events = j.events || []; // 30년치 전부 보관(매수일을 앞당겨도 예전 배당이 빠지지 않게)
         state.divData[s] = { t: Date.now(), d: j };
         delete state.divErr[s];
       } catch (e) { state.divErr[s] = String(e.message || e); }
@@ -2323,6 +2321,13 @@
     };
   }
 
+  // Fire 화면 위 탭: 퇴사까지 / 배당금 — 카드의 data-pane으로 보이기·숨기기(선택은 이 기기에 기억)
+  state.fireTab = loadPref('fireTab', 'fire') === 'div' ? 'div' : 'fire';
+  function applyFireTab() {
+    for (const b of document.querySelectorAll('[data-ftab]')) b.setAttribute('aria-selected', String(b.dataset.ftab === state.fireTab));
+    for (const el of document.querySelectorAll('#view-fire [data-pane]')) el.classList.toggle('pane-off', el.dataset.pane !== state.fireTab);
+    if (state.fireTab === 'div') for (const id of ['div-month']) charts[id]?.resize();
+  }
   function renderDiv() {
     const el = document.getElementById('c-div');
     if (!el) return;
@@ -2337,10 +2342,14 @@
     const errs = c.missing.filter((s) => state.divErr[s]);
     const taxLabel = c.tax ? `세후(미국 원천징수 ${Math.round(c.tax * 100)}%)` : '세전';
     const P = Object.values(c.per);
-    const rows = P.map((p) => `<tr><td><b>${esc(p.sym)}</b><small>${esc(p.freqLabel || '–')}${p.yoc != null ? ` · YOC ${pctPlain(p.yoc, 1)}` : ''}${p.lots > 1 ? (EN ? ` · ${p.lots} buys` : ` · 매수 ${p.lots}회`) : ''}</small></td>
+    const rows = P.map((p) => `<tr><td><b>${esc(p.sym)}</b><small>${esc(p.D && !p.D.events.length ? '배당 없음' : p.freqLabel || '–')}${p.yoc != null ? ` · YOC ${pctPlain(p.yoc, 1)}` : ''}${p.lots > 1 ? (EN ? ` · ${p.lots} buys` : ` · 매수 ${p.lots}회`) : ''}</small></td>
         <td>${p.payments ?? 0}회</td><td>${usd2(p.received)}</td><td>${p.annual != null ? usd2(p.annual * (1 - c.tax)) : '–'}</td>
         <td>${p.next ? `${+p.next.ex.slice(5, 7)}/${+p.next.ex.slice(8)}${p.next.est ? '<small>예상</small>' : '<small>확정</small>'}` : '–'}</td></tr>`).join('');
     const bar = Math.min(100, c.payback * 100);
+    // 받은 배당이 없을 때 이유: 배당을 안 주는 종목 / 매수일 이후 배당락이 아직 없음
+    const noDiv = P.filter((p) => p.D && !p.D.events.length).map((p) => p.sym);
+    const notYet = P.filter((p) => p.D && p.D.events.length && !p.payments).map((p) => p.sym);
+    const why = [noDiv.length ? (EN ? `${noDiv.join(', ')} ${noDiv.length > 1 ? "don't" : "doesn't"} pay dividends` : `배당을 주지 않는 종목: ${noDiv.join('·')}`) : '', notYet.length ? (EN ? `${notYet.join(', ')}: no ex-dividend date has passed since the buy date yet` : `매수일 이후 아직 배당락일이 없어 받은 배당이 없는 종목: ${notYet.join('·')} (앞으로 받을 배당만 계산)`) : ''].filter(Boolean).join(EN ? ' · ' : ' · ');
     const big = Object.entries(c.byYear).find(([, v]) => state.quote?.fx?.rate && v.gross * state.quote.fx.rate > 2e7 * 0.8);
     card('div', {
       title: '배당금', sub: EN ? `${P.length} stocks · ${c.tax ? 'after 15% US withholding' : 'pre-tax'} · current shares` : `${P.length}종목 · ${taxLabel} 기준 · 현재 보유 수량 기준`, info: INFO.div,
@@ -2350,6 +2359,7 @@
           <span>지금까지 받은 배당금</span>
           <b>${usd2(c.recvNet)}</b><small>${krwOf(c.recvNet)} · ${EN ? `${c.payments} payments` : `총 ${c.payments}회`}${c.pendNet > 0 ? ` · ${EN ? 'awaiting payment' : '지급 대기'} ${usd2(c.pendNet)}` : ''}</small>
         </div>
+        ${why ? `<p class="note" data-noi18n>${esc(why)}</p>` : ''}
         <div class="div-pb">
           <div class="div-pb-h"><span>원금 회수</span><b>${(c.payback * 100).toFixed(1)}%</b></div>
           <div class="fire-bar" role="progressbar" aria-valuenow="${Math.round(bar)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${bar}%"></span></div>
@@ -2414,7 +2424,7 @@
       <input class="d-t" list="d-tickers" value="${esc(r.t || '')}" placeholder="티커 (예: SCHD)" aria-label="티커" autocapitalize="characters" autocomplete="off" maxlength="8">
       <input class="d-sh" inputmode="decimal" value="${r.sh ?? ''}" placeholder="수량" aria-label="보유 수량">
       <input class="d-avg" inputmode="decimal" value="${r.avg ?? ''}" placeholder="평단($)" aria-label="평균 단가(달러)">
-      <input class="d-d" type="date" value="${esc(r.d || '')}" max="${isoToday()}" aria-label="매수일">
+      <input class="d-d" type="date" value="${esc(r.d || '')}" max="${isoToday()}" aria-label="매수일(선택 — 비우면 오늘)">
       <button type="button" class="f-rm" data-drm="${i}" aria-label="이 매수 기록 삭제" ${divRows.length < 2 ? 'hidden' : ''}>×</button>
     </div>`;
   }
@@ -2426,11 +2436,11 @@
     el.innerHTML = `<details class="fire-set" ${divCfg ? '' : 'open'}>
       <summary>${divCfg ? '배당 종목 수정' : '배당 종목 입력'}</summary>
       <form id="div-form" autocomplete="off">
-        <div class="f-rows-h"><span>매수 기록</span><small>티커 · 수량 · 평단($) · 매수일</small></div>
+        <div class="f-rows-h"><span>매수 기록</span><small>티커 · 수량 · 평단($) · 매수일(선택)</small></div>
         <div id="d-rows">${divRows.map(divRowHtml).join('')}</div>
         <datalist id="d-tickers">${tickers.map((t) => `<option value="${esc(t)}">`).join('')}</datalist>
         <div class="d-btns"><button type="button" class="btn-ghost f-add" id="d-add">+ 매수 기록 추가</button>${fireCfg ? '<button type="button" class="btn-ghost f-add" id="d-import">🔥 보유 종목 불러오기</button>' : ''}</div>
-        <p class="note">같은 종목을 여러 번 나눠 샀다면 매수일별로 한 줄씩 넣어 주세요. 수량은 <b>지금 보유 중인 수량</b>(주식 분할 반영)이에요. 일부를 팔았다면 남은 수량으로 고쳐 주세요.</p>
+        <p class="note"><b>매수일은 선택</b>이에요. 넣으면 그날 이후 실제로 받은 배당금까지 계산하고, 비워 두면 오늘 날짜로 저장돼 앞으로 받을 배당금만 계산해요. 같은 종목을 여러 번 나눠 샀다면 매수일별로 한 줄씩 넣어 주세요. 수량은 <b>지금 보유 중인 수량</b>(주식 분할 반영)이에요.</p>
         <label>배당 세금<select id="d-tax"><option value="0.15" ${!divCfg || divCfg.tax === 0.15 ? 'selected' : ''}>세후 — 미국 원천징수 15% 뺀 금액(실제 입금액)</option><option value="0" ${divCfg?.tax === 0 ? 'selected' : ''}>세전 — 세금 빼기 전 금액</option></select></label>
         <div class="fire-btns"><button type="submit" class="btn-primary">저장</button>${divCfg ? `<button type="button" id="d-del" class="btn-ghost">${divConfirmDelete ? '정말 삭제' : '이 기기에서 삭제'}</button>` : ''}</div>
         <p class="note">🔒 입력한 값은 <b>이 기기(브라우저)에만</b> 저장돼요.</p>
@@ -2446,16 +2456,16 @@
     }));
   }
   function saveDivForm() {
-    const rows = readDivRows().filter((r) => r.t || r.sh || r.avg || r.d);
+    const rows = readDivRows().filter((r) => r.t || r.sh || r.avg || r.d).map((r) => ({ ...r, d: r.d || isoToday() })); // 매수일을 비우면 오늘
     const bad = rows.find((r) => !TICKER_RE.test(r.t) || !(r.sh > 0) || !(r.avg > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(r.d) || r.d > isoToday());
-    if (!rows.length || bad) { toast('각 줄에 티커·수량·평균 단가·매수일(오늘 이전)을 모두 넣어 주세요', true); return; }
+    if (!rows.length || bad) { toast('각 줄에 티커·수량·평균 단가를 넣어 주세요(매수일은 오늘 이전만)', true); return; }
     divCfg = { lots: rows, tax: parseFloat(document.getElementById('d-tax')?.value) || 0 };
     writeJSON(DIV_KEY, divCfg);
     divConfirmDelete = false;
     toast('✓ 이 기기에 저장했어요 · 배당 내역 불러오는 중');
     renderDivSet(); renderDiv();
     if (!state.quote) loadQuote().then(renderDiv).catch(() => {});
-    loadDividends().catch(() => {});
+    loadDividends(true).catch(() => {});
   }
   function deleteDiv() {
     if (!divConfirmDelete) { divConfirmDelete = true; const b = document.getElementById('d-del'); if (b) b.textContent = '정말 삭제'; return; }
@@ -2470,7 +2480,7 @@
     if (!add.length) { toast('불러올 새 종목이 없어요'); return; }
     divRows = [...have, ...add];
     document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join('');
-    toast('🔥 보유 종목을 불러왔어요 · 매수일을 넣어 주세요');
+    toast('🔥 보유 종목을 불러왔어요 · 매수일은 넣어도 되고 비워도 돼요');
   }
 
   // 시세(보유 종목·경쟁사·환율): Fire 화면이거나 CRCL 외 종목을 보고 있을 때 15초마다
@@ -4345,7 +4355,7 @@
     savePref('view', v);
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
     fireLoop(v === 'fire' || isOther());
-    if (v === 'fire') { renderFire(); renderDiv(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
+    if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
     if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
@@ -4405,6 +4415,7 @@
       // 왼쪽 위 개미 로고: 홈으로(이미 홈이면 맨 위로)
       if (go.dataset.go === 'home' && state.view === 'home') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
       const [v, target] = go.dataset.go.split(':');
+      if (v === 'fire' && target === 'c-fire' && state.fireTab !== 'fire') { state.fireTab = 'fire'; savePref('fireTab', 'fire'); }
       showView(v, target);
       return;
     }
@@ -4441,6 +4452,8 @@
     if (bk) { state.brokerAll = state.brokerAll === bk.dataset.brokers ? null : bk.dataset.brokers; renderAnalyst(bk.dataset.brokers); return; }
     const ht = ev.target.closest('[data-htab]');
     if (ht) { state.holdTab = ht.dataset.htab; savePref('holdTab', state.holdTab); renderHolders(state.stock); return; }
+    const ft = ev.target.closest('[data-ftab]');
+    if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); loadDividends().catch(() => {}); } window.scrollTo({ top: 0 }); return; }
     if (ev.target.closest('#d-add')) { divRows = readDivRows(); divRows.push({}); document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join(''); return; }
     const drm = ev.target.closest('[data-drm]');
     if (drm) { divRows = readDivRows(); divRows.splice(+drm.dataset.drm, 1); document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join(''); return; }
