@@ -5,6 +5,9 @@
 
   // Cloudflare Pages(공유용 주소)에서는 같은 주소의 /api 중계를 쓰고, GitHub Pages에서는 Worker를 쓴다
   const ON_PAGES = /\.pages\.dev$/.test(location.hostname);
+  // 운영 주소인지(테스트 환경 test.my-fire-portfolio.pages.dev 등은 방문 집계 안 함 · 상단에 TEST 표시)
+  const IS_PROD = location.hostname === 'my-fire-portfolio.pages.dev';
+  if (ON_PAGES && !IS_PROD) document.documentElement.classList.add('is-test');
   const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
   const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
   const DATA_FALLBACK = 'https://sungyong828-droid.github.io/circle-watch/data/latest.json'; // /api/data가 막혔을 때만
@@ -33,7 +36,10 @@
       const saved = localStorage.getItem('cw.lang');
       if (saved === 'ko' || saved === 'en') return saved;
       if (/bot|crawl|spider|slurp|lighthouse|inspectiontool/i.test(navigator.userAgent)) return 'ko';
-      return /^ko\b/i.test(navigator.language || '') ? 'ko' : 'en';
+      if (/^ko\b/i.test(navigator.language || '')) return 'ko'; // 휴대폰·브라우저가 한국어면 한국어
+      // 접속 국가(첫 화면을 보낼 때 서버가 <html data-cc>로 넣음): 한국이면 한국어, 그 밖은 영어
+      const cc = document.documentElement.dataset.cc || '';
+      return cc === 'KR' ? 'ko' : 'en';
     } catch { return 'ko'; }
   })();
   const EN = LANG === 'en', LOC = EN ? 'en-US' : 'ko-KR';
@@ -2364,7 +2370,7 @@
     const errs = c.missing.filter((s) => state.divErr[s]);
     const taxLabel = c.tax ? `세후(미국 원천징수 ${Math.round(c.tax * 100)}%)` : '세전';
     const P = Object.values(c.per);
-    const rows = P.map((p) => `<tr><td><b>${esc(p.sym)}</b><small>${esc(p.D && !p.D.events.length ? '배당 없음' : p.freqLabel || '–')}${p.yoc != null ? ` · YOC ${pctPlain(p.yoc, 1)}` : ''}${p.lots > 1 ? (EN ? ` · ${p.lots} buys` : ` · 매수 ${p.lots}회`) : ''}</small></td>
+    const rows = P.map((p) => `<tr><td>${logoOf(p.sym) ? `<img class="div-logo" src="${logoOf(p.sym)}" alt="" width="18" height="18" loading="lazy">` : ''}<b>${esc(p.sym)}</b><small>${esc(p.D && !p.D.events.length ? '배당 없음' : p.freqLabel || '–')}${p.yoc != null ? ` · YOC ${pctPlain(p.yoc, 1)}` : ''}${p.lots > 1 ? (EN ? ` · ${p.lots} buys` : ` · 매수 ${p.lots}회`) : ''}</small></td>
         <td>${p.payments ?? 0}회</td><td>${usd2(p.received)}</td><td>${p.annual != null ? usd2(p.annual * (1 - c.tax)) : '–'}</td>
         <td>${p.next ? `${+p.next.ex.slice(5, 7)}/${+p.next.ex.slice(8)}${p.next.est ? '<small>예상</small>' : '<small>확정</small>'}` : '–'}</td></tr>`).join('');
     const bar = Math.min(100, c.payback * 100);
@@ -2721,13 +2727,16 @@
   const WATCH_KEY = 'cw.watch';
   const watchCfg = (() => { const w = readJSON(WATCH_KEY, null); return w?.list?.length ? { list: w.list, custom: w.custom || {} } : { list: BUILTIN.slice(), custom: {} }; })();
   // 추가한 종목의 기본 설정(이름·색·관련어). 로고는 이니셜.
+  // 로고: 기본 4종목은 assets/logos, 그 밖의 S&P 500·자주 찾는 종목은 assets/logos/t (tools/fetch_logos.py가 받아 둠)
+  const LOGOS = new Set(String(window.__LOGOS || '').split(' ').filter(Boolean));
+  const logoPath = (sym) => (LOGOS.has(sym) ? `assets/logos/t/${sym}.png` : null);
   function customInfo(sym, meta = {}) {
     const name = String(meta.name || sym).replace(/,?\s+(Inc|Corp|Corporation|Ltd|Limited|Holdings?|Group|plc|Co|Company|Incorporated)\.?$/i, '').replace(/,?\s+(Inc|Corp|Ltd)\.?$/i, '').trim() || sym;
     const word = name.split(/\s+/)[0].replace(/[^\w&.-]/g, '');
     const hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
     const short = name.length > 9 ? sym : name;
     return {
-      name, short, mark: sym[0], color: `hsl(${hue} 62% 60%)`, logo: null, cik: null, peer: null, peerNote: '', mode: 'growth', custom: true, exchange: meta.exchange || '',
+      name, short, mark: sym[0], color: `hsl(${hue} 62% 60%)`, logo: logoPath(sym), cik: null, peer: null, peerNote: '', mode: 'growth', custom: true, exchange: meta.exchange || '',
       earnTitle: `${short} 실적`, industry: null, industryBadge: '', relBadge: sym.length > 4 ? sym.slice(0, 4) : sym,
       relRe: new RegExp(`${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') || sym}|\\b${sym.replace('.', '\\.')}\\b`, 'i'), earnNote: '',
     };
@@ -2976,7 +2985,7 @@
   }
   // 종목 선택: 모든 종목이 한눈에 보이는 격자 칩(한 줄 4개, 종목이 늘면 줄이 늘어남).
   // 15초마다 시세를 바꿀 때 버튼을 새로 만들지 않고 값만 바꾼다(누르는 순간 버튼이 바뀌어 터치가 씹히지 않게).
-  const logoOf = (t) => STOCK_INFO[t === 'CRCA' ? 'CRCL' : t]?.logo || '';
+  const logoOf = (t) => STOCK_INFO[t === 'CRCA' ? 'CRCL' : t]?.logo || logoPath(t) || '';
   function renderStockSwitch() {
     const el = document.getElementById('stock-switch');
     if (!el) return;
@@ -3556,7 +3565,7 @@
         <button type="button" class="ws-btn" data-wmove="${i}:1" aria-label="${sym} 아래로" ${i === WATCH.length - 1 ? 'disabled' : ''}>▼</button>
         <button type="button" class="ws-btn del" data-wdel="${sym}" aria-label="${sym} 삭제" ${WATCH.length < 2 ? 'disabled' : ''}>삭제</button></li>`;
     }).join('');
-    const res = (watchResults || []).map((r) => `<li><div class="ws-name"><b>${esc(r.symbol)}</b><small>${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small></div>
+    const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String(r.symbol || '?')[0])}</span>`}<div class="ws-name"><b>${esc(r.symbol)}</b><small>${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small></div>
       ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}">+ 추가</button>`}</li>`).join('');
     const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
     el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
@@ -4520,7 +4529,7 @@
   // 공유 주소에서만, 페이지를 열 때 한 번: 기기마다 무작위 ID + 유입 경로만 보낸다(관리자 페이지에서만 조회)
   const SITE_URL = 'https://my-fire-portfolio.pages.dev/';
   function countVisit() {
-    if (!ON_PAGES || readJSON('cw.noCount', false)) return;
+    if (!ON_PAGES || !IS_PROD || readJSON('cw.noCount', false)) return;
     try {
       let vid = localStorage.getItem('cw.vid'), isNew = 0;
       if (!/^[a-z0-9]{16,40}$/.test(vid || '')) {

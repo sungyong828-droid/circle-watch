@@ -9,20 +9,24 @@
 <title>방문자 통계 · 관리자</title>
 <link rel="icon" type="image/png" href="assets/favicon.png?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j" crossorigin="anonymous">
-<link rel="stylesheet" href="assets/style.css?v=51">
-<link rel="stylesheet" href="assets/admin.css?v=1">
+<link rel="stylesheet" href="assets/style.css?v=69">
+<link rel="stylesheet" href="assets/admin.css?v=2">
 </head>
 <body class="adm">
 <header class="adm-top">
   <a class="adm-brand" href="./" aria-label="대시보드로"><img src="assets/app-icon.png?v=2" alt="" width="32" height="32"><span>방문자 통계 <small>관리자</small></span></a>
   <div class="adm-act" id="adm-act" hidden>
-    <button type="button" class="btn-ghost sm" id="adm-reload">새로고침</button>
+    <button class="icon-btn" id="refresh" type="button" aria-label="통계 새로고침" title="통계를 지금 다시 불러와요">
+      <svg class="ic-refresh" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="ic-check" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="ic-fail" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 7v6M12 17h.01" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    </button>
     <button type="button" class="btn-ghost sm" id="adm-logout">로그아웃</button>
   </div>
 </header>
 <main id="adm-main">
   <p class="skeleton">불러오는 중…</p>
 </main>
-<script src="assets/admin.js?v=1"></script>
+<script src="assets/admin.js?v=3"></script>
 </body>
 </html>

@@ -46,3 +46,8 @@ body.adm { max-width: 960px; margin: 0 auto; padding-top: 12px; }
 }
 
 body.adm { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+
+.adm-act { align-items: center; }
+.adm-act .icon-btn { width: 36px; height: 36px; }
+.adm-me { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+.adm-me small { color: var(--muted); font-size: 12px; }

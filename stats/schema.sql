@@ -14,3 +14,9 @@ CREATE TABLE IF NOT EXISTS visits (
   PRIMARY KEY (day, vid)
 );
 CREATE INDEX IF NOT EXISTS visits_vid ON visits (vid);
+
+-- 통계에서 뺄 기기(관리자 기기 등). 관리자 페이지의 '이 기기 방문은 집계하지 않기'로 켜고 끈다.
+CREATE TABLE IF NOT EXISTS excluded (
+  vid TEXT PRIMARY KEY,
+  at INTEGER NOT NULL
+);

@@ -992,3 +992,10 @@ body {
 .blog-card { border-radius: var(--radius); }
 .hf-v { font-size: clamp(20px, 6.2vw, 26px); }
 .hf-v small { font-size: 0.55em; font-weight: 700; margin-left: 2px; opacity: 0.8; }
+
+/* 종목 로고(검색 결과·배당 표) */
+.ws-letter { display: grid; place-items: center; font-weight: 800; color: var(--ink-2); background: var(--surface-2); }
+.div-logo { width: 18px; height: 18px; border-radius: 5px; background: #fff; object-fit: contain; vertical-align: -4px; margin-right: 6px; }
+
+/* 테스트 환경 표시(운영 주소가 아닐 때) */
+html.is-test .top::after { content: '🧪 TEST'; position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%); padding: 2px 10px; border-radius: 999px; background: #7c3aed; color: #fff; font: 800 11px var(--sans); letter-spacing: 0.04em; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4); z-index: 11; }

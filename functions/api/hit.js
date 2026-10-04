@@ -23,6 +23,7 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const vid = url.searchParams.get('v') || '';
   if (!env.STATS || !VID_RE.test(vid) || BOT_RE.test(request.headers.get('user-agent') || '')) return done;
+  if (url.hostname !== 'my-fire-portfolio.pages.dev') return done; // 테스트 환경 방문은 집계하지 않는다
   const now = Date.now(), day = kstDay(now);
   const ref = cleanRef(url.searchParams.get('r'));
   const device = url.searchParams.get('d') === 'm' ? 'm' : 'd';

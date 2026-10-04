@@ -52,6 +52,26 @@ key = open(os.path.join(ROOT, 'indexnow.key'), encoding='utf-8').read().strip()
 with open(os.path.join(DIST, key + '.txt'), 'w', encoding='utf-8') as f:
     f.write(key)
 
+# 첫 화면(/)은 Functions(functions/index.js)가 보내므로 _headers 의 "/*" 보안 헤더를 JS로도 만들어 둔다
+def site_headers(text):
+    out, on = {}, False
+    for line in text.splitlines():
+        if not line.strip() or line.lstrip().startswith('#'):
+            continue
+        if not line.startswith((' ', '\t')):
+            on = line.strip() == '/*'
+            continue
+        if on and ':' in line:
+            k, v = line.strip().split(':', 1)
+            out[k.strip()] = v.strip()
+    return out
+import json as _json
+hdrs = site_headers(open(hdr, encoding='utf-8').read())
+with open(os.path.join(ROOT, 'worker', 'site-headers.js'), 'w', encoding='utf-8') as f:
+    f.write('// 자동 생성(build.py) — _headers 의 "/*" 보안 헤더. functions/index.js 가 첫 화면 응답에 붙인다.\n')
+    f.write("export const PROD_HOST = 'my-fire-portfolio.pages.dev';\n")
+    f.write('export const SITE_HEADERS = ' + _json.dumps(hdrs, ensure_ascii=False, indent=2) + ';\n')
+
 # 최종 확인: dist 어디에도 개인 식별자가 남아 있으면 배포하지 않는다
 leaks = []
 for dp, _, files in os.walk(DIST):
