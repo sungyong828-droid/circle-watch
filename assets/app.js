@@ -4104,8 +4104,312 @@
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
     if (ev.target.closest('#refresh')) manualRefresh();
     if (ev.target.closest('#share-btn')) shareSite();
+    if (ev.target.closest('#card-btn')) { openCardSheet(); return; }
+    if (ev.target.closest('[data-cclose]')) { closeCardSheet(); return; }
+    const ct = ev.target.closest('[data-ctype2]');
+    if (ct) { openCardSheet(ct.dataset.ctype2); return; }
+    const cs = ev.target.closest('[data-csym]');
+    if (cs) { cardState.sym = cs.dataset.csym; for (const b of document.querySelectorAll('[data-csym]')) b.setAttribute('aria-pressed', String(b === cs)); drawCard(); return; }
+    if (ev.target.closest('#cs-save')) { saveCard(); return; }
+    if (ev.target.closest('#cs-copy')) { copyCaption(); return; }
     if (ev.target.closest('[data-welcome-close]')) { savePref('welcomed', '1'); renderWelcome(false); }
   });
+
+  // ---------------------------------------------------------------- 인스타 카드 만들기 (1080×1350 이미지)
+  // 주간 브리핑 · 종목 카드 · 퇴사까지(%만, 금액 없음). 이 기기에서 그려서 저장만 한다(서버로 보내지 않음).
+  const CARD_W = 1080, CARD_H = 1350;
+  const CK = { bg: '#0d1015', bg2: '#141c2b', surface: '#161c26', line: '#263041', ink: '#eef2f7', ink2: '#b5bdc9', muted: '#8b95a5', faint: '#5d6776', up: '#f0616d', down: '#5b9bff', accent: '#e08a1e', gold: '#f2c94c' };
+  const CF = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  const CM = '"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
+  const cardState = { type: 'weekly', sym: null, weekly: null, weeklyKey: '', caption: '' };
+  const ccol = (v) => (v == null || !isFinite(v) ? CK.muted : v > 0 ? CK.up : v < 0 ? CK.down : CK.muted);
+  const imgCache = {};
+  const loadImg = (src) => (imgCache[src] ||= new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }));
+  const cmd = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  const ymdDot = (d = new Date()) => `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} (${'일월화수목금토'[d.getDay()]})`;
+
+  // 일봉 종가로 '1주 전 종가 대비' 등락(비트코인처럼 주말에도 거래되는 것도 같은 기준)
+  function changeSince(pts, days) {
+    if (!pts?.length) return null;
+    const last = pts.at(-1), cut = last[0] - days * 86400000 + 3600000;
+    let base = null;
+    for (const p of pts) { if (p[0] <= cut) base = p; else break; }
+    return base ? { pct: last[1] / base[1] - 1, from: base[0], to: last[0], last: last[1] } : null;
+  }
+  async function loadWeekly() {
+    const syms = WATCH.slice(0, 8);
+    const key = syms.join(',');
+    if (cardState.weekly && cardState.weeklyKey === key && Date.now() - cardState.weekly.$t < 10 * 60000) return cardState.weekly;
+    const j = await getJ(`${NEWS_API}/weekly?s=${syms.join(',')}`, 20000);
+    if (j.error) throw new Error(j.error);
+    j.$t = Date.now();
+    cardState.weekly = j; cardState.weeklyKey = key;
+    return j;
+  }
+
+  // ---- 그리기 도구
+  function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function txt(g, s, x, y, { size = 32, weight = 600, color = CK.ink, font = CF, align = 'left', base = 'alphabetic', max = 0 } = {}) {
+    g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.textAlign = align; g.textBaseline = base;
+    s = String(s ?? '');
+    if (max && g.measureText(s).width > max) { while (s.length > 1 && g.measureText(s + '…').width > max) s = s.slice(0, -1); s += '…'; }
+    g.fillText(s, x, y);
+    return g.measureText(s).width;
+  }
+  function spark(g, vals, x, y, w, h, color, fill = true) {
+    vals = (vals || []).filter((v) => v != null && isFinite(v));
+    if (vals.length < 2) return;
+    const mn = Math.min(...vals), mx = Math.max(...vals), sp = mx - mn || 1;
+    const P = vals.map((v, i) => [x + (i / (vals.length - 1)) * w, y + h - ((v - mn) / sp) * h]);
+    if (fill) {
+      const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, color + '55'); gr.addColorStop(1, color + '00');
+      g.beginPath(); g.moveTo(P[0][0], y + h); P.forEach(([a, b]) => g.lineTo(a, b)); g.lineTo(P.at(-1)[0], y + h); g.closePath(); g.fillStyle = gr; g.fill();
+    }
+    g.beginPath(); P.forEach(([a, b], i) => (i ? g.lineTo(a, b) : g.moveTo(a, b))); g.strokeStyle = color; g.lineWidth = 4; g.lineJoin = 'round'; g.stroke();
+    g.beginPath(); g.arc(P.at(-1)[0], P.at(-1)[1], 7, 0, Math.PI * 2); g.fillStyle = color; g.fill();
+  }
+  async function drawLogo(g, sym, x, y, s) {
+    const src = STOCK_INFO[sym]?.logo, im = src ? await loadImg(src) : null;
+    g.save(); rrect(g, x, y, s, s, s * 0.22); g.clip();
+    if (im) g.drawImage(im, x, y, s, s);
+    else { g.fillStyle = STOCK_INFO[sym]?.color || '#3a4556'; g.fillRect(x, y, s, s); txt(g, sym[0], x + s / 2, y + s / 2 + 2, { size: s * 0.5, weight: 800, align: 'center', base: 'middle', color: '#fff' }); }
+    g.restore();
+  }
+  // 공통 틀: 배경 · 위쪽 브랜드 · 아래쪽 주소
+  async function frame(g, title, sub) {
+    const gr = g.createLinearGradient(0, 0, 0, CARD_H); gr.addColorStop(0, CK.bg); gr.addColorStop(1, CK.bg2);
+    g.fillStyle = gr; g.fillRect(0, 0, CARD_W, CARD_H);
+    const icon = await loadImg('assets/app-icon.png');
+    if (icon) { g.save(); rrect(g, 64, 60, 72, 72, 16); g.clip(); g.drawImage(icon, 64, 60, 72, 72); g.restore(); }
+    txt(g, "Yong's Portfolio", 156, 108, { size: 34, weight: 700 });
+    txt(g, ymdDot(), CARD_W - 64, 108, { size: 28, weight: 500, color: CK.muted, align: 'right' });
+    txt(g, title, 64, 236, { size: 76, weight: 800 });
+    if (sub) txt(g, sub, 64, 290, { size: 30, weight: 500, color: CK.ink2, max: CARD_W - 128 });
+    g.fillStyle = CK.line; g.fillRect(64, CARD_H - 112, CARD_W - 128, 2);
+    txt(g, '📊 yongs-portfolio.pages.dev', 64, CARD_H - 56, { size: 30, weight: 700, color: CK.ink2 });
+    txt(g, '투자 조언 아님 · 개인 기록', CARD_W - 64, CARD_H - 56, { size: 26, weight: 500, color: CK.faint, align: 'right' });
+  }
+
+  // ---- 1) 주간 브리핑
+  async function drawWeekly(g) {
+    const W = await loadWeekly();
+    const idx = W.idx.map((x) => ({ ...x, ch: changeSince(x.pts, 7) })).filter((x) => x.ch);
+    const ref = idx.find((x) => x.sym === '^GSPC')?.ch || idx[0]?.ch;
+    await frame(g, '주간 브리핑', ref ? `${cmd(ref.from)} 종가 → ${cmd(ref.to)} 종가 · 1주일 등락` : '최근 1주일 등락');
+    // 시장 6칸
+    txt(g, '미국 시장', 64, 372, { size: 34, weight: 700, color: CK.ink2 });
+    const tw = (CARD_W - 128 - 2 * 20) / 3, th = 150;
+    idx.slice(0, 6).forEach((x, i) => {
+      const cx = 64 + (i % 3) * (tw + 20), cy = 396 + Math.floor(i / 3) * (th + 20);
+      rrect(g, cx, cy, tw, th, 22); g.fillStyle = CK.surface; g.fill();
+      txt(g, x.name, cx + 24, cy + 44, { size: 26, weight: 600, color: CK.muted });
+      const v = x.ch.last, val = x.sym === '^TNX' ? v.toFixed(2) + '%' : x.sym === 'BTC-USD' ? '$' + nf(0).format(v) : nf(v >= 1000 ? 0 : 2).format(v);
+      txt(g, val, cx + 24, cy + 92, { size: 34, weight: 700, font: CM, max: tw - 48 });
+      txt(g, pct(x.ch.pct, 2), cx + 24, cy + 130, { size: 30, weight: 700, font: CM, color: ccol(x.ch.pct) });
+    });
+    // 내 종목
+    const top = 396 + 2 * (th + 20) + 50;
+    txt(g, '내 종목', 64, top, { size: 34, weight: 700, color: CK.ink2 });
+    const rows = WATCH.slice(0, 6).map((sym) => ({ sym, pts: W.stocks?.[sym], ch: changeSince(W.stocks?.[sym], 7) })).filter((r) => r.ch);
+    const rh = Math.min(104, (CARD_H - 140 - top - 20) / Math.max(1, rows.length));
+    const maxAbs = Math.max(0.05, ...rows.map((r) => Math.abs(r.ch.pct)));
+    for (const [i, r] of rows.entries()) {
+      const y = top + 24 + i * rh, mid = y + rh / 2;
+      await drawLogo(g, r.sym, 64, mid - 30, 60);
+      txt(g, r.sym, 144, mid - 4, { size: 34, weight: 800, font: CM });
+      txt(g, STOCK_INFO[r.sym]?.short || '', 144, mid + 32, { size: 24, weight: 500, color: CK.muted, max: 180 });
+      txt(g, price(r.ch.last), 470, mid + 12, { size: 32, weight: 700, font: CM, align: 'right' });
+      // 등락 막대
+      const bx0 = 520, bw = 300, center = bx0 + bw / 2, len = (Math.abs(r.ch.pct) / maxAbs) * (bw / 2);
+      g.fillStyle = CK.line; g.fillRect(center - 1, mid - 22, 2, 44);
+      rrect(g, r.ch.pct >= 0 ? center : center - len, mid - 14, Math.max(4, len), 28, 6); g.fillStyle = ccol(r.ch.pct); g.fill();
+      txt(g, pct(r.ch.pct, 1), CARD_W - 64, mid + 12, { size: 34, weight: 800, font: CM, color: ccol(r.ch.pct), align: 'right' });
+    }
+    if (!rows.length) txt(g, '종목 주간 데이터를 불러오지 못했어요', 64, top + 80, { size: 28, color: CK.muted });
+    const best = rows.slice().sort((a, b) => b.ch.pct - a.ch.pct)[0];
+    const sp500 = idx.find((x) => x.sym === '^GSPC'), ndx = idx.find((x) => x.sym === '^IXIC');
+    return [
+      `📊 주간 브리핑 (${ref ? `${cmd(ref.from)}→${cmd(ref.to)}` : '최근 1주'})`,
+      '',
+      `🇺🇸 S&P500 ${sp500 ? pct(sp500.ch.pct, 2) : '–'} · 나스닥 ${ndx ? pct(ndx.ch.pct, 2) : '–'}`,
+      ...rows.map((r) => `• ${r.sym} ${pct(r.ch.pct, 1)} (${price(r.ch.last)})`),
+      best ? `\n이번 주 가장 강했던 종목은 ${best.sym} ${pct(best.ch.pct, 1)}.` : '',
+      '',
+      '실시간 주가·뉴스 요약은 프로필 링크의 무료 대시보드에서 👉 yongs-portfolio.pages.dev',
+      '※ 본인 보유 종목 기록이며 투자 조언이 아닙니다.',
+      '',
+      `#미국주식 #주간브리핑 #해외주식 ${rows.map((r) => '#' + r.sym).join(' ')} #주식기록 #투자일지`,
+    ].join('\n');
+  }
+
+  // ---- 2) 종목 카드
+  async function drawStock(g, sym) {
+    const S = STOCK_INFO[sym] || { name: sym, short: sym };
+    let pts = null;
+    try { pts = (await loadWeekly()).stocks?.[sym] || null; } catch {}
+    // 애널리스트·실적을 아직 안 받은 종목이면 먼저 받아 온다(최대 8초)
+    const need = [];
+    if (!state.analyst?.[sym]) need.push(SYNC.analyst(state.data, {}, sym));
+    if (isOther(sym) && !earnOf(sym)) need.push(SYNC.searn(state.data, {}, sym));
+    if (need.length) await Promise.race([Promise.allSettled(need), new Promise((r) => setTimeout(r, 8000))]);
+    const p = stockPx(sym), w1 = changeSince(pts, 7), m1 = changeSince(pts, 28);
+    const live24 = sym === 'CRCL' || !!BN24[sym], sess = marketSession().k;
+    const todayLabel = live24 ? '24시간' : sess === 'closed' ? '마지막 거래일' : '오늘';
+    await frame(g, '', '');
+    await drawLogo(g, sym, 64, 176, 120);
+    txt(g, sym, 210, 238, { size: 76, weight: 800, font: CM });
+    txt(g, S.name, 212, 290, { size: 32, weight: 600, color: CK.ink2, max: CARD_W - 280 });
+    const px0 = p?.price ?? w1?.last;
+    txt(g, price(px0), 64, 440, { size: 112, weight: 800, font: CM });
+    if (p?.pct != null) { const lw = txt(g, todayLabel + ' ', 68, 506, { size: 34, weight: 600, color: CK.muted }); txt(g, pct(p.pct, 2), 68 + lw, 506, { size: 38, weight: 700, font: CM, color: ccol(p.pct) }); }
+    // 기간 등락 3칸
+    const chips = [['1주', w1?.pct], ['1개월', m1?.pct]];
+    const V = (() => { try { return analystView(sym); } catch { return null; } })();
+    if (V?.up != null) chips.push(['목표가까지', V.up]);
+    chips.forEach(([l, v], i) => {
+      const cw = (CARD_W - 128 - 2 * 20) / 3, cx = 64 + i * (cw + 20), cy = 552;
+      rrect(g, cx, cy, cw, 120, 20); g.fillStyle = CK.surface; g.fill();
+      txt(g, l, cx + 24, cy + 44, { size: 26, weight: 600, color: CK.muted });
+      txt(g, v == null ? '–' : pct(v, 1), cx + 24, cy + 96, { size: 40, weight: 800, font: CM, color: ccol(v) });
+    });
+    const lines = [];
+    if (V?.T?.mean) lines.push(['애널리스트 평균 목표가', `${price(V.T.mean)} · 매수 ${V.T.buy} / 보유 ${V.T.hold} / 매도 ${V.T.sell}`]);
+    const NE = (() => { try { return earnOf(sym)?.next; } catch { return null; } })();
+    if (NE?.date) lines.push(['다음 실적 발표', `${krDate(NE.date)}${NE.estimated ? ' (예상)' : ''} · D-${Math.max(0, dday(NE.date))}`]);
+    // 1개월 차트(아래 정보 줄이 적으면 차트를 키운다)
+    const cy = 712, ch = 300 + (2 - Math.min(2, lines.length)) * 56;
+    rrect(g, 64, cy, CARD_W - 128, ch + 60, 24); g.fillStyle = CK.surface; g.fill();
+    txt(g, '최근 1개월', 96, cy + 46, { size: 26, weight: 600, color: CK.muted });
+    if (pts?.length > 1) spark(g, pts.map((x) => x[1]), 96, cy + 70, CARD_W - 192, ch - 40, ccol(m1?.pct ?? 0));
+    // 아래 정보 줄
+    let ly = cy + ch + 116;
+    for (const [k, v] of lines.slice(0, 2)) {
+      txt(g, k, 64, ly, { size: 28, weight: 600, color: CK.muted });
+      txt(g, v, CARD_W - 64, ly, { size: 30, weight: 700, align: 'right', max: CARD_W - 128 - 330 });
+      ly += 56;
+    }
+    return [
+      `${S.short}(${sym}) ${price(px0)} ${p?.pct != null ? `${todayLabel} ${pct(p.pct, 2)}` : ''}`.trim(),
+      '',
+      `1주 ${w1 ? pct(w1.pct, 1) : '–'} · 1개월 ${m1 ? pct(m1.pct, 1) : '–'}`,
+      ...lines.map(([k, v]) => `${k}: ${v}`),
+      '',
+      `${S.short} 실시간 주가·차트·뉴스 AI 요약 👉 yongs-portfolio.pages.dev/${BUILTIN.includes(sym) ? sym.toLowerCase() : ''}`,
+      '※ 본인 보유 종목 기록이며 투자 조언이 아닙니다.',
+      '',
+      `#${sym} #${(S.short || sym).replace(/\s/g, '')} #미국주식 #해외주식 #주식기록`,
+    ].join('\n');
+  }
+
+  // ---- 3) 퇴사까지 (진행률 %만 — 금액·수량은 그리지 않는다)
+  async function drawFire(g) {
+    const c = fireCfg ? fireCalc() : null;
+    await frame(g, '퇴사까지 🔥', '경제적 자유 목표 금액까지 진행률 · 금액은 비공개');
+    if (!c) {
+      txt(g, fireCfg ? '시세를 불러오는 중이에요' : 'Fire 화면에서 보유 정보를 먼저 입력해 주세요', CARD_W / 2, 700, { size: 36, weight: 600, color: CK.muted, align: 'center' });
+      return '';
+    }
+    const p = Math.max(0, c.progress);
+    // 큰 원형 진행률
+    const cx = CARD_W / 2, cy = 640, R = 250;
+    g.lineCap = 'round';
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.strokeStyle = CK.line; g.lineWidth = 44; g.stroke();
+    const grd = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); grd.addColorStop(0, CK.gold); grd.addColorStop(1, CK.accent);
+    g.beginPath(); g.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, p)); g.strokeStyle = grd; g.lineWidth = 44; g.stroke();
+    txt(g, (p * 100).toFixed(1) + '%', cx, cy + 36, { size: 128, weight: 800, font: CM, align: 'center' });
+    txt(g, '달성', cx, cy + 100, { size: 34, weight: 600, color: CK.muted, align: 'center' });
+    // 지난주 대비
+    const wk = (() => { const cut = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10); let b = null; for (const h of fireHist) if (h.d <= cut) b = h; return b; })();
+    const dp = wk ? p - wk.p : null;
+    const ty = cy + R + 110;
+    txt(g, dp == null ? '기록이 쌓이면 지난주 대비 변화가 보여요' : `지난주보다 ${dp >= 0 ? '+' : ''}${(dp * 100).toFixed(1)}%p`, cx, ty, { size: 44, weight: 800, color: dp == null ? CK.muted : ccol(dp), align: 'center' });
+    txt(g, `남은 거리 ${(Math.max(0, 1 - p) * 100).toFixed(1)}% · 보유 ${c.rows.map((r) => r.ticker).join(' · ')}`, cx, ty + 60, { size: 30, weight: 500, color: CK.ink2, align: 'center', max: CARD_W - 128 });
+    // 진행률 기록(최근 90일)
+    const H = fireHist.slice(-90).map((h) => h.p);
+    if (H.length > 2) { rrect(g, 64, ty + 100, CARD_W - 128, 120, 20); g.fillStyle = CK.surface; g.fill(); spark(g, H, 96, ty + 124, CARD_W - 192, 72, CK.accent, false); }
+    return [
+      `🔥 퇴사까지 ${(p * 100).toFixed(1)}%${dp != null ? ` (지난주 대비 ${dp >= 0 ? '+' : ''}${(dp * 100).toFixed(1)}%p)` : ''}`,
+      '',
+      '미국 주식으로 경제적 자유까지 가는 기록. 매주 진행률을 남겨요.',
+      `보유: ${c.rows.map((r) => r.ticker).join(' · ')}`,
+      '',
+      '진행률은 무료 대시보드의 🔥Fire에서 자동 계산 👉 yongs-portfolio.pages.dev',
+      '※ 개인 기록이며 투자 조언이 아닙니다.',
+      '',
+      '#퇴사준비 #경제적자유 #파이어족 #미국주식 #투자일지 #주식기록',
+    ].join('\n');
+  }
+
+  // ---- 시트 UI
+  function openCardSheet(type) {
+    let el = document.getElementById('card-sheet');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'card-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '인스타 카드 만들기');
+      document.body.appendChild(el);
+    }
+    if (type) cardState.type = type;
+    cardState.sym = WATCH.includes(cardState.sym) ? cardState.sym : state.stock;
+    el.hidden = false;
+    document.body.classList.add('sheet-open');
+    el.innerHTML = `<div class="sheet-bg" data-cclose="1"></div><div class="sheet-panel cs-panel">
+      <div class="sheet-h"><b>📸 인스타 카드 만들기</b><button type="button" class="ws-btn" data-cclose="1">닫기</button></div>
+      <div class="cs-tabs" role="tablist">${[['weekly', '주간 브리핑'], ['stock', '종목 카드'], ['fire', '퇴사까지']].map(([k, l]) => `<button type="button" role="tab" data-ctype2="${k}" aria-selected="${cardState.type === k}">${l}</button>`).join('')}</div>
+      <div class="cs-sym" ${cardState.type === 'stock' ? '' : 'hidden'}>${WATCH.map((s) => `<button type="button" data-csym="${esc(s)}" aria-pressed="${s === cardState.sym}">${esc(s)}</button>`).join('')}</div>
+      <div class="cs-prev"><canvas id="cs-canvas" width="${CARD_W}" height="${CARD_H}" aria-label="카드 미리보기"></canvas><p class="cs-wait" id="cs-wait">그리는 중…</p></div>
+      <div class="cs-btns"><button type="button" class="btn-primary" id="cs-save">이미지 저장</button><button type="button" class="btn-ghost" id="cs-copy">캡션 복사</button></div>
+      <label class="cs-cap"><span>캡션 초안 (고쳐서 쓰세요)</span><textarea id="cs-caption" rows="7"></textarea></label>
+      <p class="note">인스타 피드 세로 비율(4:5, 1080×1350)이에요. 이미지는 이 기기에서 만들어져 바로 저장되고, 퇴사까지 카드에는 금액·수량이 들어가지 않아요.</p>
+    </div>`;
+    drawCard();
+  }
+  function closeCardSheet() { const el = document.getElementById('card-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+  let cardSeq = 0;
+  async function drawCard() {
+    const cv = document.getElementById('cs-canvas');
+    if (!cv) return;
+    const seq = ++cardSeq, wait = document.getElementById('cs-wait');
+    if (wait) wait.hidden = false;
+    // 캔버스는 글꼴을 스스로 불러오지 않으므로 쓸 글자로 미리 받아 둔다
+    const sample = '0123456789$%+-.,·:/()→ 가나다라마바사아자차카타파하 주간브리핑종목카드퇴사까지미국시장내오늘개월목표가애널리스트평균다음실적발표예상달성지난주보다남은거리보유최근기록이쌓이면변화보여요투자조언아님개인진행률경제적자유금액비공개월화수목금토일매도ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\'';
+    try { await Promise.all([document.fonts.load(`800 60px "Pretendard Variable"`, sample), document.fonts.load(`700 40px "JetBrains Mono"`, sample)]); } catch {}
+    // 화면 밖 캔버스에 그린 뒤, 가장 최근 요청일 때만 미리보기에 옮긴다(종목을 빨리 바꿔도 섞이지 않게)
+    const off = document.createElement('canvas');
+    off.width = CARD_W; off.height = CARD_H;
+    const g = off.getContext('2d');
+    let cap = '';
+    try {
+      cap = cardState.type === 'weekly' ? await drawWeekly(g) : cardState.type === 'stock' ? await drawStock(g, cardState.sym) : await drawFire(g);
+    } catch (e) {
+      await frame(g, '잠시 후 다시', '데이터를 불러오지 못했어요');
+      console.error(e);
+    }
+    if (seq !== cardSeq) return;
+    const vg = cv.getContext('2d');
+    vg.clearRect(0, 0, CARD_W, CARD_H); vg.drawImage(off, 0, 0);
+    if (wait) wait.hidden = true;
+    const ta = document.getElementById('cs-caption');
+    if (ta) ta.value = cap;
+  }
+  async function saveCard() {
+    const cv = document.getElementById('cs-canvas');
+    if (!cv) return;
+    const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
+    if (!blob) return;
+    const name = `yongs-${cardState.type === 'stock' ? cardState.sym : cardState.type}-${todayIso()}.png`;
+    const file = new File([blob], name, { type: 'image/png' });
+    // 휴대폰: 공유 창 → '이미지 저장'으로 사진 앱에 바로. PC: 파일로 내려받기
+    try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { if (e?.name === 'AbortError') return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('✓ 이미지를 저장했어요');
+  }
+  async function copyCaption() {
+    const v = document.getElementById('cs-caption')?.value || '';
+    try { await navigator.clipboard.writeText(v); toast('✓ 캡션을 복사했어요'); } catch { document.getElementById('cs-caption')?.select(); toast('캡션을 길게 눌러 복사해 주세요'); }
+  }
 
   // ---------------------------------------------------------------- 방문 집계(익명) · 공유
   // 공유 주소에서만, 페이지를 열 때 한 번: 기기마다 무작위 ID + 유입 경로만 보낸다(관리자 페이지에서만 조회)
@@ -4183,7 +4487,7 @@
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
-  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeWatchSheet(); });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { closeWatchSheet(); closeCardSheet(); } });
   document.addEventListener('toggle', (ev) => {
     const d = ev.target;
     if (!(d instanceof HTMLElement) || !d.matches('details.more')) return;

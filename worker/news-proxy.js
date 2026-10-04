@@ -1172,6 +1172,32 @@ export async function handleMarket(url, cache, cors, ctx) {
   });
 }
 
+// ---------------------------------------------------------------- 주간 등락 (인스타 카드용) — 지수 + 요청 종목의 최근 1개월 일봉 종가
+const WEEKLY_IDX = [['^GSPC', 'S&P500'], ['^IXIC', '나스닥'], ['^DJI', '다우'], ['^VIX', 'VIX'], ['^TNX', '미 10년물'], ['BTC-USD', '비트코인']];
+async function dailyCloses(sym) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1mo&interval=1d&includePrePost=false`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart.result[0], q = j.indicators?.quote?.[0] || {};
+  const pts = (j.timestamp || []).map((t, i) => [t * 1000, q.close?.[i]]).filter((p) => p[1] != null).map(([t, c]) => [t, Math.round(c * 10000) / 10000]);
+  if (j.meta?.regularMarketPrice != null && pts.length) pts[pts.length - 1][1] = j.meta.regularMarketPrice; // 장중이면 현재가
+  return pts;
+}
+export async function handleWeekly(url, cache, cors, ctx) {
+  const syms = [...new Set(String(url.searchParams.get('s') || '').toUpperCase().split(',').filter((x) => SYM_RE.test(x)))].sort().slice(0, 12);
+  return swr(cache, ctx, `${url.origin}/weekly?v=1&s=${syms.join(',')}`, {
+    freshSec: 1800, keepSec: 86400, cors,
+    build: async () => {
+      const all = [...WEEKLY_IDX.map(([s]) => s), ...syms];
+      const res = await Promise.allSettled(all.map(dailyCloses));
+      const pick = (i) => (res[i].status === 'fulfilled' ? res[i].value : null);
+      const idx = WEEKLY_IDX.map(([sym, name], i) => ({ sym, name, pts: pick(i) }));
+      const stocks = Object.fromEntries(syms.map((s, k) => [s, pick(WEEKLY_IDX.length + k)]));
+      if (!idx.some((x) => x.pts?.length)) throw new Error('주간 데이터를 받지 못했습니다');
+      return JSON.stringify({ at: new Date().toISOString(), idx, stocks });
+    },
+  });
+}
+
 // ---------------------------------------------------------------- 시장 전체 뉴스 (키워드 속보·브리핑용) — 신뢰 매체 RSS만
 const MARKET_FEEDS = [
   { url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', source: 'CNBC', lang: 'en', host: 'cnbc.com' },
@@ -1321,7 +1347,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/weekly'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
@@ -1336,6 +1362,7 @@ export default {
     if (url.pathname === '/short') return handleShort(url, cache, cors, ctx);
     if (url.pathname === '/lookup') return handleLookup(url, cache, cors, ctx);
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
+    if (url.pathname === '/weekly') return handleWeekly(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);

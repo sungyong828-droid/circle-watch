@@ -824,3 +824,19 @@ details.more[open] > summary span { font-size: 0; } details.more[open] > summary
 .top-row .brand { flex: 1 1 auto; }
 .top-actions { flex-shrink: 0; }
 .top > .top-row { min-width: 0; }
+
+/* 인스타 카드 만들기 */
+.foot-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 14px; }
+.foot-btns .share-btn { margin: 0; }
+.cs-panel { max-height: 94vh; }
+.cs-tabs, .cs-sym { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.cs-tabs button, .cs-sym button { flex: 1 1 auto; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.cs-sym button { flex: 0 0 auto; font-family: var(--mono); }
+.cs-tabs button[aria-selected="true"], .cs-sym button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); border-color: var(--c-orange); }
+.cs-prev { position: relative; margin: 0 auto 12px; max-width: 360px; }
+.cs-prev canvas { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
+.cs-wait { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--muted); background: rgba(13, 16, 21, 0.6); border-radius: 12px; }
+.cs-wait[hidden] { display: none; }
+.cs-btns { display: flex; gap: 8px; }
+.cs-cap { display: grid; gap: 6px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+.cs-cap textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--ink); padding: 10px; font: 13px/1.5 var(--sans); }
