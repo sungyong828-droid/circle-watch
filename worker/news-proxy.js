@@ -150,7 +150,7 @@ const NEWS_CFG = {
 };
 const STOCKS = Object.keys(NEWS_CFG);
 // 검색 뉴스(구글·Bing)는 누구나 올릴 수 있는 사이트가 섞이므로: 도박·성인·대출 광고 차단 + 제목에 종목 관련어가 있어야 통과
-const JUNK_RE = /카지노|슬롯|바카라|토토|먹튀|도박|베팅|배팅|홀덤|릴게임|성인|야동|대출 ?(문의|상담)|casino|slots?|baccarat|betting|gambl|porn|escort|onlyfans|viagra/i;
+const JUNK_RE = /카지노|슬롯|바카라|토토|먹튀|도박|베팅|배팅|홀덤|릴게임|성인|야동|대출 ?(문의|상담)|casino|\bslots?\b|baccarat|betting|gambl|porn|escort|onlyfans|viagra/i;
 const RELEVANT = {
   CRCL: /서클|써클|Circle|CRCL|USDC|EURC|스테이블코인|stablecoin/i,
   JOBY: /조비|Joby|JOBY/i,
@@ -1174,12 +1174,12 @@ export async function handleMarket(url, cache, cors, ctx) {
 }
 
 // ---------------------------------------------------------------- 배당 내역 (Fire 배당금 계산용)
-// Yahoo 차트 이벤트(최근 30년 — range=max는 중간 배당이 빠짐): 배당락일·주당 배당금(분할 반영), 주식 분할. ETF·리츠 포함 거의 모든 종목에 있다.
+// Yahoo 차트 이벤트(최근 30년 주봉 — 월봉·range=max는 매주 배당 등 중간 배당이 빠짐): 배당락일·주당 배당금(분할 반영), 주식 분할. ETF·리츠 포함 거의 모든 종목에 있다.
 // Nasdaq 배당 표: 지급일·발표된 다음 배당(있는 종목만 — 일부 ETF는 비어 있음).
 const ymdUtc = (ms) => new Date(ms).toISOString().slice(0, 10);
 const mdyIso = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '')); return m ? `${m[3]}-${m[1]}-${m[2]}` : null; };
 async function buildDividends(sym) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym.replace('.', '-'))}?range=30y&interval=1mo&events=div,splits`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym.replace('.', '-'))}?range=30y&interval=1wk&events=div,splits`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart?.result?.[0];
   if (!j) throw new Error('배당 자료 없음');
@@ -1206,7 +1206,7 @@ export async function handleDividends(url, cache, cors, ctx) {
   const sym = String(url.searchParams.get('s') || '').toUpperCase();
   if (!SYM_RE.test(sym)) return json({ error: 'bad request' }, cors, 400);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/dividends?v=2&s=${sym}`, { freshSec: 12 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildDividends(sym)) });
+  return swr(cache, ctx, `${url.origin}/dividends?v=3&s=${sym}`, { freshSec: 12 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildDividends(sym)) });
 }
 
 // ---------------------------------------------------------------- 시장 전체 뉴스 (키워드 속보·브리핑용) — 신뢰 매체 RSS만

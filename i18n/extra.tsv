@@ -144,3 +144,8 @@ Fire 화면 전환	Switch Fire view
 이에요. 넣으면 그날 이후 실제로 받은 배당금까지 계산하고, 비워 두면 오늘 날짜로 저장돼 앞으로 받을 배당금만 계산해요. 같은 종목을 여러 번 나눠 샀다면 매수일별로 한 줄씩 넣어 주세요. 수량은	. With a date it also counts dividends actually received since then; left blank it's saved as today and only future dividends are estimated. If you bought the same stock several times, add one row per buy date. Shares means
 각 줄에 티커·수량·평균 단가를 넣어 주세요(매수일은 오늘 이전만)	Fill in ticker, shares and average price on every row (buy date can't be in the future)
 🔥 보유 종목을 불러왔어요 · 매수일은 넣어도 되고 비워도 돼요	🔥 Holdings imported · buy dates are optional
+매주 배당	Weekly
+보유 정보를 넣으면 계산돼요	Enter holdings to calculate
+배당 종목을 넣으면 계산돼요	Enter dividend stocks to calculate
+이 대시보드를 만든 사람의	Investing journal by the maker
+미국 주식 투자 기록 · 네이버 블로그	of this dashboard · Naver Blog (Korean)

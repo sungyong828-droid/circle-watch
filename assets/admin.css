@@ -44,3 +44,5 @@ body.adm { max-width: 960px; margin: 0 auto; padding-top: 12px; }
   .adm-2 { grid-template-columns: minmax(0, 1fr); }
   .adm-kpis .k b { font-size: 22px; }
 }
+
+body.adm { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }

@@ -44,7 +44,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=7';
+    sc.src = 'assets/i18n-en.js?v=8';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2046,6 +2046,18 @@
   }
 
   // 헤더의 🔥 버튼: 보유 정보가 있는 기기에서만 진행률을 보여준다
+  // 홈 상단 '퇴사까지 · 배당금' 두 칸(값만 바꾼다)
+  function renderHomeFire() {
+    if (!document.getElementById('home-fire')) return;
+    const fc = fireCfg ? fireCalc() : null;
+    setText('hf-fire-v', fc ? `${(Math.max(0, fc.progress) * 100).toFixed(1)}%` : fireCfg ? '…' : (EN ? 'Set up' : '입력하기'));
+    setText('hf-fire-s', fc ? `${EN ? 'Goal' : '목표'} ${wonFull(fc.F.goal)} · ${EN ? 'left' : '남은'} ${(Math.max(0, 1 - fc.progress) * 100).toFixed(1)}%` : (EN ? 'Enter holdings to calculate' : '보유 정보를 넣으면 계산돼요'));
+    const dc = divCfg ? divCalc() : null;
+    const ready = dc && !dc.missing.length;
+    setText('hf-div-v', dc ? (ready ? `${usd2(dc.monthly)}${EN ? '/mo' : ' /월'}` : '…') : (EN ? 'Set up' : '입력하기'));
+    setText('hf-div-s', dc ? (ready ? `${EN ? 'Received' : '받은 배당'} ${usd2(dc.recvNet)} · ${EN ? 'recovered' : '원금 회수'} ${(dc.payback * 100).toFixed(1)}%` : (EN ? 'Loading dividends…' : '배당 내역 불러오는 중…')) : (EN ? 'Enter dividend stocks to calculate' : '배당 종목을 넣으면 계산돼요'));
+  }
+  function setText(id, t) { const el = document.getElementById(id); if (el && el.textContent !== t) el.textContent = t; }
   function updateFireChip(c = fireCfg ? fireCalc() : null) {
     const el = document.getElementById('fire-chip');
     if (!el) return;
@@ -2097,6 +2109,7 @@
 
   function renderFire() {
     updateFireChip();
+    renderHomeFire();
     const el = document.getElementById('c-fire');
     if (!el) return;
     const c = fireCalc();
@@ -2200,8 +2213,8 @@
   // 매수 기록(종목·수량·평단·매수일)은 이 기기에만 저장한다. 배당 내역은 서버(/dividends: Yahoo 배당락일·주당 배당금 + Nasdaq 지급일).
   // 받을 자격: 매수일 다음 날 이후에 배당락일이 온 배당(미국 T+1 결제 — 배당락 전날까지 사면 받음).
   // 주당 배당금은 주식 분할이 반영된 값이라, 수량은 '지금 보유 중인 수량(분할 반영)'으로 넣어야 맞다.
-  const DIV_KEY = 'cw.div', DIV_CACHE = 'cw.divCache2';
-  try { localStorage.removeItem('cw.divCache'); } catch {} // 매수일 기준으로 잘라 저장하던 예전 캐시
+  const DIV_KEY = 'cw.div', DIV_CACHE = 'cw.divCache3';
+  try { localStorage.removeItem('cw.divCache'); localStorage.removeItem('cw.divCache2'); } catch {} // 매수일 기준으로 잘라 저장하던 예전 캐시
   const normDiv = (V) => {
     if (!V || !Array.isArray(V.lots)) return null;
     V.lots = V.lots.filter((l) => TICKER_RE.test(l?.t || '') && l.sh > 0 && l.avg > 0 && /^\d{4}-\d{2}-\d{2}$/.test(l.d || ''));
@@ -2242,10 +2255,13 @@
   function payDateOf(D, ex) {
     if (D.pay?.[ex]) return { pay: D.pay[ex], est: false };
     const lags = Object.entries(D.pay || {}).map(([e, p]) => daysBetween(e, p)).filter((n) => n >= 0 && n < 60).sort((a, b) => a - b);
-    const lag = lags.length ? lags[Math.floor(lags.length / 2)] : 10;
+    // 지급일 자료가 없으면 주기·종류로 추정: 매주 배당 ETF 1일, 월배당 ETF 3일, 그 밖의 ETF 5일, 개별 주식 14일
+    const recent = D.events.filter((e) => e.ex > addDays(isoToday(), -120)).length;
+    const etf = /ETF|FUND/i.test(D.type || '') || /(ETF|Fund|Trust|ProShares|Direxion|YieldMax|Roundhill|Defiance|GraniteShares|iShares|SPDR|Vanguard|Invesco|Schwab|Ultra)/i.test(D.name || ''); // CRCA처럼 Yahoo가 주식으로 분류한 ETF
+    const lag = lags.length ? lags[Math.floor(lags.length / 2)] : recent >= 10 ? 1 : etf ? (recent >= 3 ? 3 : 5) : 14;
     return { pay: addDays(ex, lag), est: true };
   }
-  const freqOf = (n) => (n >= 10 ? ['월배당', 12] : n >= 3 ? ['분기 배당', 4] : n === 2 ? ['반기 배당', 2] : n === 1 ? ['연 1회', 1] : ['배당 없음', 0]);
+  const freqOf = (n) => (n >= 40 ? ['매주 배당', 52] : n >= 10 ? ['월배당', 12] : n >= 3 ? ['분기 배당', 4] : n === 2 ? ['반기 배당', 2] : n === 1 ? ['연 1회', 1] : ['배당 없음', 0]);
 
   function divCalc() {
     if (!divCfg) return null;
@@ -2329,6 +2345,7 @@
     if (state.fireTab === 'div') for (const id of ['div-month']) charts[id]?.resize();
   }
   function renderDiv() {
+    renderHomeFire();
     const el = document.getElementById('c-div');
     if (!el) return;
     const mEl = document.getElementById('c-div-month');
@@ -3154,7 +3171,7 @@
     [/jane street/i, '제인 스트리트', 1], [/susquehanna/i, '서스퀘하나', 1], [/two sigma/i, '투 시그마', 1], [/millennium/i, '밀레니엄', 1],
     [/d\. ?e\. shaw/i, 'D.E. 쇼', 1], [/renaissance/i, '르네상스', 1], [/baillie gifford/i, '베일리 기포드', 1], [/softbank/i, '소프트뱅크', 1],
     [/marshall wace/i, '마셜 웨이스', 0], [/\bidg\b/i, 'IDG 캐피털', 0], [/valor/i, '밸러 에퀴티', 0], [/vy capital/i, 'Vy 캐피털', 0],
-    [/gigafund/i, '기가펀드', 0], [/a16z|andreessen/i, '안드리센 호로위츠(a16z)', 0], [/sc us \(ttgp\)|sequoia/i, '세쿼이아 캐피털', 0], [/bamco|baron capital/i, '배런 캐피털', 0], [/d1 capital/i, 'D1 캐피털', 0], [/founders fund/i, '파운더스 펀드', 0], [/toyota/i, '도요타', 0], [/coatue/i, '코투', 0], [/tiger global/i, '타이거 글로벌', 0],
+    [/gigafund/i, '기가펀드', 0], [/a16z|andreessen/i, '안드리센 호로위츠(a16z)', 0], [/sc us \(ttgp\)|sequoia/i, '세쿼이아 캐피털', 0], [/bamco|baron capital/i, '배런 캐피털', 0], [/d1 capital/i, 'D1 캐피털', 0], [/founders fund/i, '파운더스 펀드', 0], [/toyota/i, '도요타', 0], [/coatue/i, '코투', 0], [/tiger global/i, '타이거 글로벌', 0],
   ];
   const instOf = (name) => INSTITUTIONS.find(([re]) => re.test(name || ''));
   const titleCase = (s) => String(s || '').replace(/\s*\/[a-z]{2,3}\/?\s*$/i, '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bLlc\b/g, 'LLC').replace(/\bL\.p\./g, 'L.P.').replace(/\bInc\b/g, 'Inc');
@@ -4452,6 +4469,8 @@
     if (bk) { state.brokerAll = state.brokerAll === bk.dataset.brokers ? null : bk.dataset.brokers; renderAnalyst(bk.dataset.brokers); return; }
     const ht = ev.target.closest('[data-htab]');
     if (ht) { state.holdTab = ht.dataset.htab; savePref('holdTab', state.holdTab); renderHolders(state.stock); return; }
+    const fg = ev.target.closest('[data-ftabgo]');
+    if (fg) { state.fireTab = fg.dataset.ftabgo; savePref('fireTab', state.fireTab); showView('fire'); window.scrollTo({ top: 0 }); return; }
     const ft = ev.target.closest('[data-ftab]');
     if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); loadDividends().catch(() => {}); } window.scrollTo({ top: 0 }); return; }
     if (ev.target.closest('#d-add')) { divRows = readDivRows(); divRows.push({}); document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join(''); return; }
@@ -4548,6 +4567,8 @@
   updateBasisBtn();
   renderFireSet();
   renderDivSet();
+  renderHomeFire();
+  if (divCfg) loadDividends().catch(() => {});
   document.getElementById('home-crcl').hidden = isOther();
   document.getElementById('home-stock').hidden = !isOther();
   renderTabbar();
@@ -4558,7 +4579,7 @@
   busyBar(true);
   initPrice();
   // 시세를 다른 데이터보다 먼저 받아 종목 카드·주가가 바로 보이게
-  loadQuote().then(() => { renderStockSwitch(); if (isOther()) { renderSPriceCard(); renderSKpis(); } updateFireChip(); }).catch(() => {});
+  loadQuote().then(() => { renderStockSwitch(); if (isOther()) { renderSPriceCard(); renderSKpis(); } updateFireChip(); renderHomeFire(); }).catch(() => {});
   yConnect();
   for (const sym of WATCH) if (STOCK_INFO[sym]?.custom) checkBinance(sym);
   bConnect();

@@ -898,3 +898,17 @@ html[lang="en"] .nsum { display: none; }
 .fire-tabs button { height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-2); font-size: 14px; font-weight: 700; cursor: pointer; }
 .fire-tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--c-orange); }
 .pane-off { display: none !important; }
+
+/* 홈 상단: 퇴사까지 · 배당금 */
+.home-fire { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hf-tile { display: grid; gap: 2px; text-align: left; padding: 12px 14px; border-radius: var(--radius); background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; min-width: 0; }
+.hf-fire { border: 1px solid rgba(208, 122, 18, 0.45); background: linear-gradient(180deg, rgba(208, 122, 18, 0.12), transparent 70%), var(--surface); }
+.hf-div { border: 1px solid color-mix(in srgb, var(--good) 45%, var(--line)); background: linear-gradient(180deg, color-mix(in srgb, var(--good) 12%, transparent), transparent 70%), var(--surface); }
+.hf-l { font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+.hf-v { font: 700 22px var(--mono); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hf-div .hf-v { color: var(--good); }
+.hf-s { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hf-tile:active { transform: scale(0.98); }
+/* 블로그 카드 설명 두 줄 */
+.blog-card .bc-t small span { display: block; }
+.hf-s { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4; }
