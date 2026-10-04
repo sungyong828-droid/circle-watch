@@ -463,7 +463,7 @@
   // ---------------------------------------------------------------- Chart.js 공통
   if (window.Chart) {
     Chart.defaults.color = C.muted;
-    Chart.defaults.font.family = "'JetBrains Mono', ui-monospace, monospace";
+    Chart.defaults.font.family = "'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
     Chart.defaults.font.size = 10.5;
     Chart.defaults.animation = false;
     Chart.defaults.maintainAspectRatio = false;
@@ -2050,11 +2050,15 @@
   function renderHomeFire() {
     if (!document.getElementById('home-fire')) return;
     const fc = fireCfg ? fireCalc() : null;
-    setText('hf-fire-v', fc ? `${(Math.max(0, fc.progress) * 100).toFixed(1)}%` : fireCfg ? '…' : (EN ? 'Set up' : '입력하기'));
+    document.querySelector('.hf-fire')?.classList.toggle('hf-empty', !fireCfg);
+    document.querySelector('.hf-div')?.classList.toggle('hf-empty', !divCfg);
+    setText('hf-fire-v', fc ? `${(Math.max(0, fc.progress) * 100).toFixed(1)}%` : fireCfg ? '…' : (EN ? '+ Set up' : '+ 입력하기'));
     setText('hf-fire-s', fc ? `${EN ? 'Goal' : '목표'} ${wonFull(fc.F.goal)} · ${EN ? 'left' : '남은'} ${(Math.max(0, 1 - fc.progress) * 100).toFixed(1)}%` : (EN ? 'Enter holdings to calculate' : '보유 정보를 넣으면 계산돼요'));
     const dc = divCfg ? divCalc() : null;
     const ready = dc && !dc.missing.length;
-    setText('hf-div-v', dc ? (ready ? `${usd2(dc.monthly)}${EN ? '/mo' : ' /월'}` : '…') : (EN ? 'Set up' : '입력하기'));
+    const dv = document.getElementById('hf-div-v');
+    const dHtml = dc ? (ready ? `${usd2(dc.monthly)}<small>${EN ? '/mo' : '/월'}</small>` : '…') : (EN ? '+ Set up' : '+ 입력하기');
+    if (dv && dv.innerHTML !== dHtml) dv.innerHTML = dHtml;
     setText('hf-div-s', dc ? (ready ? `${EN ? 'Received' : '받은 배당'} ${usd2(dc.recvNet)} · ${EN ? 'recovered' : '원금 회수'} ${(dc.payback * 100).toFixed(1)}%` : (EN ? 'Loading dividends…' : '배당 내역 불러오는 중…')) : (EN ? 'Enter dividend stocks to calculate' : '배당 종목을 넣으면 계산돼요'));
   }
   function setText(id, t) { const el = document.getElementById(id); if (el && el.textContent !== t) el.textContent = t; }
@@ -2343,6 +2347,7 @@
     for (const b of document.querySelectorAll('[data-ftab]')) b.setAttribute('aria-selected', String(b.dataset.ftab === state.fireTab));
     for (const el of document.querySelectorAll('#view-fire [data-pane]')) el.classList.toggle('pane-off', el.dataset.pane !== state.fireTab);
     if (state.fireTab === 'div') for (const id of ['div-month']) charts[id]?.resize();
+    if (state.view === 'fire') document.getElementById('view-title').textContent = viewTitle('fire');
   }
   function renderDiv() {
     renderHomeFire();
@@ -4357,6 +4362,7 @@
     if (v === 'sprice') return `${S.short} 주가 · 수급`;
     if (v === 'searn') return S.earnTitle;
     if (v === 'snews') return `${S.short} 뉴스 · 공시`;
+    if (v === 'fire' && state.fireTab === 'div') return 'Fire · 배당금';
     return VIEW_TITLES[v];
   };
   const scrollMem = {};

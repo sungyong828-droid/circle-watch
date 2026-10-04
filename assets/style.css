@@ -912,3 +912,83 @@ html[lang="en"] .nsum { display: none; }
 /* 블로그 카드 설명 두 줄 */
 .blog-card .bc-t small span { display: block; }
 .hf-s { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4; }
+
+/* =====================================================================
+   2026-10 디자인 리프레시 — 한 글꼴(Pretendard)·같은 폭 숫자·둥근 카드·유리 질감 헤더/탭바
+   (앞쪽 규칙을 덮어쓰는 마지막 블록. 색 토큰은 :root 값만 바꿔 차트·관리자·소개 페이지에도 같이 적용)
+   ===================================================================== */
+:root {
+  --ground: #0a0d12;
+  --surface: #12171f;
+  --surface-2: #1a212b;
+  --line: #262e3a;
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --radius: 18px;
+  --accent: #f2994a;
+  --mono: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+}
+body {
+  background-color: var(--ground);
+  background-image: radial-gradient(900px 420px at 50% -160px, rgba(242, 153, 74, 0.09), transparent 70%);
+  background-repeat: no-repeat;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+}
+.view { gap: 14px; }
+
+/* 헤더 · 하단 탭바: 유리 질감 */
+.top { background: rgba(10, 13, 18, 0.72); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border-bottom: 1px solid var(--line-soft); }
+.brand h1 { font-weight: 800; letter-spacing: -0.025em; }
+.mark { border-radius: 11px; box-shadow: 0 4px 14px rgba(242, 153, 74, 0.25); }
+.icon-btn, .lang-btn { background: var(--surface-2); border-color: transparent; color: var(--ink-2); }
+.fire-chip { border: 0; background: linear-gradient(135deg, rgba(242, 153, 74, 0.26), rgba(224, 114, 30, 0.14)); box-shadow: inset 0 0 0 1px rgba(242, 153, 74, 0.35); }
+.fire-chip b { font-weight: 800; }
+.tabbar { background: rgba(10, 13, 18, 0.74); backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%); border-top: 1px solid var(--line-soft); }
+.tabbar button { font-weight: 600; }
+.tabbar button svg { position: relative; z-index: 1; transition: stroke 0.15s; }
+.tabbar button[aria-current="page"] { color: var(--ink); }
+.tabbar button[aria-current="page"] svg { stroke: var(--accent); }
+.tabbar button[aria-current="page"]::before { content: ''; position: absolute; top: 5px; left: 50%; width: 52px; height: 30px; transform: translateX(-50%); border-radius: 15px; background: rgba(242, 153, 74, 0.15); }
+
+/* 카드 */
+.card { border-radius: var(--radius); border-color: var(--line-soft); padding: 16px 16px 14px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 10px 30px rgba(0, 0, 0, 0.22); }
+.card-h h3 { font-size: 17px; font-weight: 800; letter-spacing: -0.025em; }
+.card-h .sub { font-size: 12px; margin-top: 3px; }
+.info-btn { background: var(--surface-2); border-color: transparent; color: var(--ink-2); font: 700 12px/1 var(--sans); font-style: normal; }
+.info { border: 0; border-radius: 14px; background: var(--surface-2); }
+.group-h, .ss-head { font-size: 14px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; text-transform: none; }
+
+/* 숫자: 굵고 촘촘하게 */
+.px-last { font-weight: 800; letter-spacing: -0.04em; }
+.fire-pct { font-weight: 800; letter-spacing: -0.05em; }
+.kpi .v, .ns-grid b, .mk-t b, .div-hero b, .hf-v { font-weight: 800; letter-spacing: -0.03em; }
+.ns-grid { border-radius: 14px; border-color: var(--line-soft); background: var(--line-soft); }
+.ns-grid b { font-size: 18px; }
+
+/* 종목 칩 */
+.ss { border-radius: 16px; border-color: var(--line-soft); background: var(--surface); }
+.ss-tk { font-weight: 800; }
+.ss-px { font-weight: 700; }
+
+/* 버튼 · 칩 · 입력칸 */
+.btn-primary { border-radius: 14px; background: linear-gradient(135deg, #f5a55a, #e0721e); box-shadow: 0 8px 20px rgba(224, 114, 30, 0.28); font-weight: 700; }
+.btn-ghost { border-radius: 14px; border-color: transparent; background: var(--surface-2); color: var(--ink); }
+.chip-btn, .share-btn { border-radius: 999px; border-color: transparent; background: var(--surface-2); }
+.share-btn { border-radius: 14px; }
+.f-row select, .f-row input, .fire-set select#d-tax, .ws-search input { border-radius: 12px; border-color: transparent; background: var(--surface-2); }
+.f-row input:focus, .f-row select:focus, .ws-search input:focus { outline: 2px solid rgba(242, 153, 74, 0.6); outline-offset: 0; }
+.sheet-panel { border-radius: 24px 24px 0 0; background: var(--surface); }
+@media (min-width: 720px) { .sheet-panel { border-radius: 24px; } }
+
+/* Fire 탭 · 홈 두 칸 */
+.fire-tabs { border-radius: 16px; border-color: var(--line-soft); }
+.fire-tabs button { border-radius: 12px; }
+.fire-tabs button[aria-selected="true"] { background: linear-gradient(135deg, rgba(242, 153, 74, 0.22), rgba(224, 114, 30, 0.1)); box-shadow: inset 0 0 0 1px rgba(242, 153, 74, 0.45); }
+.hf-tile { border-radius: var(--radius); padding: 14px 16px; gap: 4px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22); }
+.hf-l { font-size: 13px; }
+.hf-v { font-size: 26px; }
+.hf-empty .hf-v { justify-self: start; margin: 4px 0 2px; padding: 7px 13px; border-radius: 999px; font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); background: rgba(255, 255, 255, 0.08); }
+.hf-empty.hf-div .hf-v { color: var(--ink); }
+.blog-card { border-radius: var(--radius); }
+.hf-v { font-size: clamp(20px, 6.2vw, 26px); }
+.hf-v small { font-size: 0.55em; font-weight: 700; margin-left: 2px; opacity: 0.8; }
