@@ -109,7 +109,7 @@
       </div>
       <section class="card adm-set">
         <label class="chk"><input type="checkbox" id="adm-nocount" ${excluded ? 'checked' : ''}> 이 기기에서 연 방문은 집계하지 않기</label>
-        <p class="note">방문자 = 하루 동안 사이트를 연 기기 수(한국 시간 기준). 같은 사람도 휴대폰·PC는 따로 세고, 브라우저 저장소를 지우면 새 방문자로 셉니다. 유입 경로는 블로그 등 다른 사이트의 주소, 또는 링크 끝의 <b>?ref=이름</b> 값이에요. 예: <code>https://yongs-portfolio.pages.dev/?ref=blog</code> · 기준 시각 ${esc(new Date(j.at).toLocaleString('ko-KR'))}</p>
+        <p class="note">방문자 = 하루 동안 사이트를 연 기기 수(한국 시간 기준). 같은 사람도 휴대폰·PC는 따로 세고, 브라우저 저장소를 지우면 새 방문자로 셉니다. 유입 경로는 블로그 등 다른 사이트의 주소, 또는 링크 끝의 <b>?ref=이름</b> 값이에요. 예: <code>https://my-fire-portfolio.pages.dev/?ref=blog</code> · 기준 시각 ${esc(new Date(j.at).toLocaleString('ko-KR'))}</p>
       </section>`;
     document.getElementById('adm-nocount').addEventListener('change', (ev) => store.set('cw.noCount', ev.target.checked ? 'true' : 'false'));
   }

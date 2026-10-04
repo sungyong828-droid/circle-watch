@@ -1,6 +1,6 @@
 # Fire Portfolio
 
-**공유용 주소: https://yongs-portfolio.pages.dev** (Cloudflare Pages · 예전 주소 circle-watch.pages.dev는 여기로 자동 이동)
+**공유용 주소: https://my-fire-portfolio.pages.dev** (Cloudflare Pages · 예전 주소 circle-watch.pages.dev는 여기로 자동 이동)
 
 휴대폰에서 보는 개인용 주식 대시보드. 홈 상단에서 종목을 고르면 화면과 하단 탭이 바뀝니다.
 
@@ -76,7 +76,7 @@ python -m http.server 8765
 
 ## 공유용 주소 (Cloudflare Pages)
 
-`https://yongs-portfolio.pages.dev` 는 개인 계정 이름이 드러나지 않는 공유용 주소입니다. AI·KV 연결은 저장소 루트의 `wrangler.toml`에 있습니다.
+`https://my-fire-portfolio.pages.dev` 는 개인 계정 이름이 드러나지 않는 공유용 주소입니다. AI·KV 연결은 저장소 루트의 `wrangler.toml`에 있습니다.
 
 - 화면 파일(`index.html`, `assets/`)과 중계 기능(`functions/api/`)이 함께 올라갑니다.
   - `/api/data`: 서버 수집기 결과(GitHub Pages의 `data/latest.json`)를 대신 받아 줌
@@ -85,7 +85,7 @@ python -m http.server 8765
 - **화면 코드를 고쳤을 때만** 다시 올립니다:
   ```bash
   python build.py   # dist 생성 + 화면 파일에서 개인 계정 주소 제거(남아 있으면 중단)
-  npx wrangler pages deploy --project-name yongs-portfolio --branch main
+  npx wrangler pages deploy --project-name my-fire-portfolio --branch main
   ```
 
 ## 뉴스 한 줄 요약 (Workers AI)
@@ -120,3 +120,11 @@ Worker cron(3시간마다, `17 */3 * * *`)이 SEC를 직접 읽어 KV `facts`에
 | `/api` 반복 호출로 무료 한도(하루 10만 건) 소진 | 결과를 캐시해 외부 호출은 1분에 1회로 제한. 한도가 소진돼도 과금은 없고, 화면은 서버 원본 데이터·직접 조회로 계속 동작(뉴스만 서버 수집본으로 대체) |
 | 방문 주소 유출 | `Referrer-Policy: no-referrer`, 검색엔진 색인 금지 |
 | 비밀 값 유출 | 화면·저장소에 API 키나 토큰 없음 (Cloudflare 로그인 정보는 이 PC에만 있음) |
+
+## 예전 주소 이동(moved/)
+`yongs-portfolio.pages.dev`·`circle-watch.pages.dev`는 새 주소로 301 이동만 합니다. 단 `/move`는 그 기기의 브라우저에 저장된 보유 정보·관심 종목·키워드를 새 주소로 넘겨 주는 페이지예요(관리자 키는 넘기지 않음).
+배포(이 폴더 안에서 실행해야 Functions·wrangler.toml이 섞이지 않음):
+
+    cd moved
+    npx wrangler pages deploy . --project-name yongs-portfolio --branch main
+    npx wrangler pages deploy . --project-name circle-watch --branch main

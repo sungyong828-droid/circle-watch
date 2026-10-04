@@ -7,7 +7,7 @@ import html
 import json
 import os
 
-SITE = 'https://yongs-portfolio.pages.dev/'
+SITE = 'https://my-fire-portfolio.pages.dev/'
 VER = '1'
 
 COMMON_FEATURES = [
@@ -103,7 +103,7 @@ def page(slug, title, desc, body, ld):
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(desc)}">
 <meta property="og:url" content="{url}">
-<meta property="og:image" content="{SITE}assets/og.png?v=2">
+<meta property="og:image" content="{SITE}assets/og.png?v=3">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="assets/favicon.png?v=2">
@@ -175,7 +175,7 @@ def about_page():
         ('🔥 퇴사까지 (Fire)', '보유 수량·평균 단가를 넣으면 실시간 주가·환율로 목표 금액까지 몇 %인지 계산. 입력값은 내 기기에만 저장돼요.'),
     ])}</section>
 <section class="lp-sec"><h2>쓰는 방법</h2><ol class="lp-steps">
-  <li>휴대폰 브라우저에서 <b>yongs-portfolio.pages.dev</b>를 열어요.</li>
+  <li>휴대폰 브라우저에서 <b>my-fire-portfolio.pages.dev</b>를 열어요.</li>
   <li>공유 메뉴에서 <b>홈 화면에 추가</b>를 누르면 앱처럼 바로 열려요.</li>
   <li>위쪽 종목 칩으로 종목을 바꾸고, 아래 탭으로 차트·실적·뉴스를 넘겨 봐요. 카드의 ⓘ를 누르면 지표 설명이 나와요.</li>
 </ol></section>

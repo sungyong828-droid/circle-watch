@@ -8,6 +8,23 @@
   const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
   const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
   const DATA_FALLBACK = 'https://sungyong828-droid.github.io/circle-watch/data/latest.json'; // /api/data가 막혔을 때만
+  // 예전 주소(yongs-portfolio.pages.dev/move)에서 넘어온 이 기기의 데이터(보유 정보·관심 종목·키워드·설정)를 받는다.
+  // 주소의 # 뒤라 서버로는 전송되지 않고, 이 기기에 아직 없는 값만 채운다(관리자 키·화면 캐시는 받지 않음).
+  const MIGRATED = (() => {
+    const m = location.hash.match(/^#migrate=([A-Za-z0-9_-]{1,300000})$/);
+    if (!m) return 0;
+    let n = 0, fire = false;
+    try {
+      const bin = atob(m[1].replace(/-/g, '+').replace(/_/g, '/'));
+      const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+      for (const [k, v] of Object.entries(data || {})) {
+        if (!/^cw\.[\w.-]{1,40}$/.test(k) || /^cw\.(adminKey|snapshot\.v1)$/.test(k) || typeof v !== 'string' || v.length > 100000) continue;
+        if (localStorage.getItem(k) == null) { localStorage.setItem(k, v); n++; if (k === 'cw.fire') fire = true; }
+      }
+    } catch {}
+    try { history.replaceState(null, '', location.pathname + (fire ? '#fire' : '#home')); } catch {}
+    return n;
+  })();
   // 언어: ?lang= 링크 → 이 기기 저장값 → 브라우저 언어(한국어가 아니면 영어). 검색 로봇은 한국어로 본다.
   const LANG = (() => {
     try {
@@ -2065,7 +2082,8 @@
     if (!el) return;
     const c = fireCalc();
     if (!fireCfg) {
-      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)은 물론, 관심 종목으로 직접 추가한 종목도 함께 넣을 수 있어요.</p>` });
+      card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)은 물론, 관심 종목으로 직접 추가한 종목도 함께 넣을 수 있어요.</p>
+        <p class="note">예전 주소(yongs-portfolio.pages.dev)에서 보유 정보를 입력해 두셨다면 <a href="https://yongs-portfolio.pages.dev/move">여기를 눌러</a> 이 기기로 그대로 옮길 수 있어요.</p>` });
       ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; });
       return;
     }
@@ -4160,7 +4178,7 @@
 
   // ---------------------------------------------------------------- 방문 집계(익명) · 공유
   // 공유 주소에서만, 페이지를 열 때 한 번: 기기마다 무작위 ID + 유입 경로만 보낸다(관리자 페이지에서만 조회)
-  const SITE_URL = 'https://yongs-portfolio.pages.dev/';
+  const SITE_URL = 'https://my-fire-portfolio.pages.dev/';
   function countVisit() {
     if (!ON_PAGES || readJSON('cw.noCount', false)) return;
     try {
@@ -4230,7 +4248,8 @@
   bConnect();
   for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
   refresh('auto');
-  renderWelcome(firstVisit);
+  renderWelcome(firstVisit && !MIGRATED);
+  if (MIGRATED) setTimeout(() => toast(EN ? '✓ Moved your data from the old address' : '✓ 예전 주소에서 쓰던 보유 정보·관심 종목을 옮겼어요'), 800);
   countVisit();
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);

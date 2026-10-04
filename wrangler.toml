@@ -1,6 +1,6 @@
-# Cloudflare Pages 프로젝트 (공유용 주소 https://yongs-portfolio.pages.dev)
+# Cloudflare Pages 프로젝트 (공유용 주소 https://my-fire-portfolio.pages.dev — 예전 yongs-portfolio·circle-watch는 여기로 이동)
 # 배포: dist 폴더를 만든 뒤 `npx wrangler pages deploy` (README 참고)
-name = "yongs-portfolio"
+name = "my-fire-portfolio"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-09-01"
 

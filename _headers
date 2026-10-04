@@ -1,4 +1,4 @@
-# Cloudflare Pages 보안 헤더 (yongs-portfolio.pages.dev)
+# Cloudflare Pages 보안 헤더 (my-fire-portfolio.pages.dev)
 # CSP: 이 사이트의 스크립트와 등록된 데이터 출처 외에는 실행·연결 불가.
 #      'unsafe-inline' 스크립트를 허용하지 않아, 외부 데이터에 스크립트가 섞여 와도 실행되지 않는다.
 /*

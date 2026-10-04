@@ -7,6 +7,7 @@ const ALLOWED_ORIGINS = [
   'https://sungyong828-droid.github.io',
   'http://localhost:8765',
   'https://circle-watch.pages.dev',
+  'https://my-fire-portfolio.pages.dev',
   'https://yongs-portfolio.pages.dev',
 ];
 const CACHE_SECONDS = 180;
@@ -478,7 +479,7 @@ const EARN_CFG = {
 // SEC CIK 찾기(티커 → 10자리 번호)
 async function lookupCik(sym) {
   const t = await fetch(`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(sym)}&type=10-Q&dateb=&owner=include&count=1&output=atom`, {
-    headers: { 'user-agent': 'FirePortfolio dashboard (https://yongs-portfolio.pages.dev)' }, signal: AbortSignal.timeout(8000),
+    headers: { 'user-agent': 'FirePortfolio dashboard (https://my-fire-portfolio.pages.dev)' }, signal: AbortSignal.timeout(8000),
   }).then((r) => r.text());
   const m = t.match(/<cik>(\d+)<\/cik>/i);
   return m ? m[1].padStart(10, '0') : null;
@@ -497,7 +498,7 @@ async function earnCfg(sym) {
 async function secQuarterly(sym = 'CRCL') {
   const E = await earnCfg(sym);
   const r = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${E.cik}.json`, {
-    headers: { 'user-agent': 'FirePortfolio dashboard (https://yongs-portfolio.pages.dev)', accept: 'application/json' },
+    headers: { 'user-agent': 'FirePortfolio dashboard (https://my-fire-portfolio.pages.dev)', accept: 'application/json' },
     signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error('sec ' + r.status);
@@ -1037,7 +1038,7 @@ export async function summarizeMissing(env, sym, data, max = 5) {
 //    "DATA AS OF JULY 31, 2026 … JOBY 100% 97% 83% FAA 100% 97% 77% 100% 100% 20% 10%"
 //    (서한마다 차트 글자 순서가 두 가지라 둘 다 처리하고, 범위·순서 검증을 통과할 때만 쓴다)
 // 2) 스페이스X: 상장 후 나온 8-K 중 보호예수(lock-up) 면제·조기 해제 문구가 있는 공시, 추가 매도 등록(S-1·S-3·424B)
-const SEC_H = { 'user-agent': 'FirePortfolio dashboard (https://yongs-portfolio.pages.dev)' };
+const SEC_H = { 'user-agent': 'FirePortfolio dashboard (https://my-fire-portfolio.pages.dev)' };
 const secGet = async (u, type = 'json') => {
   const r = await fetch(u, { headers: { ...SEC_H, accept: type === 'json' ? 'application/json' : 'text/html' }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) throw new Error('sec ' + r.status);

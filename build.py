@@ -2,7 +2,7 @@
 
 방문자가 받는 화면 파일에서 개인 계정 이름(GitHub·Cloudflare Worker 주소)이 드러나지 않게 지운다.
 공유 주소에서는 모든 데이터를 같은 주소의 /api 로 받으므로 이 주소들이 필요 없다.
-사용:  python build.py  →  npx wrangler pages deploy --project-name yongs-portfolio --branch main
+사용:  python build.py  →  npx wrangler pages deploy --project-name my-fire-portfolio --branch main
 """
 import os
 import re

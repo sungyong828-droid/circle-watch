@@ -875,8 +875,8 @@ window.__I18N_EN = {
 "실시간": "Live",
 "실시간 시세·환율 불러오는 중…": "Loading live quotes & FX…",
 "실시간 주가": "Live price",
-"실시간 주가·뉴스 요약은 프로필 링크의 무료 대시보드에서 👉 yongs-portfolio.pages.dev": "Live prices & news summaries on the free dashboard in my profile link 👉 yongs-portfolio.pages.dev",
-"실시간 주가·차트·뉴스 AI 요약 👉 yongs-portfolio.pages.dev/": "Live price · chart · AI news summaries 👉 yongs-portfolio.pages.dev/",
+"실시간 주가·뉴스 요약은 프로필 링크의 무료 대시보드에서 👉 yongs-portfolio.pages.dev": "Live prices & news summaries on the free dashboard in my profile link 👉 my-fire-portfolio.pages.dev",
+"실시간 주가·차트·뉴스 AI 요약 👉 yongs-portfolio.pages.dev/": "Live price · chart · AI news summaries 👉 my-fire-portfolio.pages.dev/",
 "실시간 체결": "Live trade",
 "실적": "Earnings",
 "실적 ·": "Earnings ·",
@@ -1202,7 +1202,7 @@ window.__I18N_EN = {
 "직전 대비": "vs prior",
 "진행 중": "In progress",
 "진행률 기록": "Progress history",
-"진행률은 무료 대시보드의 🔥Fire에서 자동 계산 👉 yongs-portfolio.pages.dev": "Progress auto-calculated in the free dashboard's 🔥Fire 👉 yongs-portfolio.pages.dev",
+"진행률은 무료 대시보드의 🔥Fire에서 자동 계산 👉 yongs-portfolio.pages.dev": "Progress auto-calculated in the free dashboard's 🔥Fire 👉 my-fire-portfolio.pages.dev",
 "집계 없음": "No consensus",
 "집계 중(잠정)": "Tallying (provisional)",
 "차입": "Borrowed",
@@ -1528,7 +1528,10 @@ window.__I18N_EN = {
 "유통 파트너 몫 차감 전": "before distribution partners' share",
 "코인리더스": "CoinReaders",
 "퇴사를 위한 미국 주식 실시간 대시보드 · 서클·조비·스페이스X·템퍼스, 관심 종목 추가도 돼요": "US stock dashboard for financial independence (FIRE) · Circle · Joby · SpaceX · Tempus, plus your own watchlist",
-"Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·차트·뉴스 AI 요약·공매도·기관 보유·애널리스트 목표가를 보여주는 무료 미국 주식 대시보드예요. 화면을 보려면 자바스크립트를 켜 주세요.": "Fire Portfolio is a free US stock dashboard with real-time prices, charts, AI news summaries, short interest, institutional holdings and analyst targets for Circle (CRCL), Joby (JOBY), SpaceX (SPCX) and Tempus AI (TEM). Please enable JavaScript."
+"Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·차트·뉴스 AI 요약·공매도·기관 보유·애널리스트 목표가를 보여주는 무료 미국 주식 대시보드예요. 화면을 보려면 자바스크립트를 켜 주세요.": "Fire Portfolio is a free US stock dashboard with real-time prices, charts, AI news summaries, short interest, institutional holdings and analyst targets for Circle (CRCL), Joby (JOBY), SpaceX (SPCX) and Tempus AI (TEM). Please enable JavaScript.",
+"예전 주소(yongs-portfolio.pages.dev)에서 보유 정보를 입력해 두셨다면": "If you entered holdings on the old address (yongs-portfolio.pages.dev),",
+"여기를 눌러": "tap here to",
+"이 기기로 그대로 옮길 수 있어요.": "move them to this device as-is."
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

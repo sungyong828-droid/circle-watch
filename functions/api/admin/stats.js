@@ -1,6 +1,6 @@
 // Cloudflare Pages: /api/admin/stats — 방문자 통계 (관리자 전용)
 // 요청 헤더 x-admin-key 가 Pages 비밀값 ADMIN_KEY 와 같을 때만 응답한다.
-// 비밀값 설정(사이트 주인이 직접): npx wrangler pages secret put ADMIN_KEY --project-name yongs-portfolio
+// 비밀값 설정(사이트 주인이 직접): npx wrangler pages secret put ADMIN_KEY --project-name my-fire-portfolio
 const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10); // 한국 날짜
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
