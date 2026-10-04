@@ -95,26 +95,26 @@ def page(slug, title, desc, body, ld):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d1015">
-<title>{esc(title)} | Yong's Portfolio</title>
+<title>{esc(title)} | Fire Portfolio</title>
 <meta name="description" content="{esc(desc)}">
 <link rel="canonical" href="{url}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Yong's Portfolio">
+<meta property="og:site_name" content="Fire Portfolio">
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(desc)}">
 <meta property="og:url" content="{url}">
-<meta property="og:image" content="{SITE}assets/og.png">
+<meta property="og:image" content="{SITE}assets/og.png?v=2">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" type="image/png" href="assets/favicon.png">
-<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="icon" type="image/png" href="assets/favicon.png?v=2">
+<link rel="apple-touch-icon" href="assets/icon.png?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j" crossorigin="anonymous">
-<link rel="stylesheet" href="assets/style.css?v=53">
+<link rel="stylesheet" href="assets/style.css?v=60">
 <link rel="stylesheet" href="assets/landing.css?v={VER}">
 <script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>
 </head>
 <body class="lp">
-<header class="lp-top"><a class="lp-brand" href="./"><img src="assets/app-icon.png" alt="" width="34" height="34"><span>Yong's Portfolio</span></a><a class="lp-open" href="./?ref=page-{slug}">대시보드 열기</a></header>
+<header class="lp-top"><a class="lp-brand" href="./"><img src="assets/app-icon.png?v=2" alt="" width="34" height="34"><span>Fire Portfolio</span></a><a class="lp-open" href="./?ref=page-{slug}">대시보드 열기</a></header>
 <main>
 {body}
 </main>
@@ -158,11 +158,11 @@ def stock_page(slug, S):
 
 
 def about_page():
-    title = '미국 주식 실시간 대시보드 소개 — 서클·조비·스페이스X·템퍼스'
-    desc = "Yong's Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·캔들 차트, 뉴스 AI 한 줄 요약, 시장 개요, 키워드 속보, 공매도·기관·애널리스트·옵션을 휴대폰 한 화면에 모은 무료 대시보드예요."
+    title = '퇴사를 위한 미국 주식 실시간 대시보드 소개 — 서클·조비·스페이스X·템퍼스'
+    desc = "Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·캔들 차트, 뉴스 AI 한 줄 요약, 시장 개요, 키워드 속보, 공매도·기관·애널리스트·옵션을 휴대폰 한 화면에 모은 무료 대시보드예요."
     cards = ''.join(f'<a class="lp-stock" href="{slug}"><img src="{S["logo"]}" alt="" width="28" height="28"><b>{esc(S["short"])}</b><small>{S["sym"]}</small></a>' for slug, S in STOCKS.items())
     body = f'''<section class="lp-hero">
-  <h1>미국 주식, 앱 여러 개 열지 말고 한 화면에서</h1>
+  <h1>퇴사(FIRE)를 향한 포트폴리오,<br>앱 여러 개 열지 말고 한 화면에서</h1>
   <p class="lp-lead">주가는 증권사 앱, 뉴스는 포털, 공시는 SEC, 공매도는 또 다른 사이트… 보유 종목 하나 확인하려고 여러 곳을 돌아다니다 지쳐서 직접 만든 대시보드예요. 다른 분들도 쓸 수 있게 무료로 공개했어요.</p>
   <a class="lp-cta" href="./?ref=page-about">대시보드 열기 →</a>
   <p class="lp-sub">무료 · 회원가입 없음 · 휴대폰 최적화</p>
@@ -186,7 +186,7 @@ def about_page():
         ('얼마나 자주 업데이트되나요?', '주가는 실시간, 나머지 데이터는 5분마다 자동으로 새로 받아요. 오른쪽 위 새로고침으로 바로 갱신할 수도 있어요.'),
         ('투자 추천을 해 주나요?', '아니요. 공개된 데이터를 모아 보여주는 모니터링 도구이고 투자 조언이 아니에요.'),
     ])}'''
-    ld = {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': "Yong's Portfolio", 'url': SITE, 'applicationCategory': 'FinanceApplication',
+    ld = {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': "Fire Portfolio", 'url': SITE, 'applicationCategory': 'FinanceApplication',
           'operatingSystem': 'Web', 'inLanguage': 'ko', 'description': desc, 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'KRW'}}
     return page('about', title, desc, body, ld)
 

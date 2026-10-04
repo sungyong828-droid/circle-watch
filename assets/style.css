@@ -526,7 +526,7 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 }
 
 /* =====================================================================
-   Yong's Portfolio: 종목 선택 · 🔥 버튼 · JOBY(FAA)
+   Fire Portfolio: 종목 선택 · 🔥 버튼 · JOBY(FAA)
    ===================================================================== */
 .tabbar { grid-template-columns: repeat(var(--tabs, 6), 1fr); }
 @media (min-width: 900px) { .tabbar { width: min(640px, 100%); } }
@@ -825,26 +825,8 @@ details.more[open] > summary span { font-size: 0; } details.more[open] > summary
 .top-actions { flex-shrink: 0; }
 .top > .top-row { min-width: 0; }
 
-/* 인스타 카드 만들기 */
-.foot-btns { display: flex; gap: 8px; margin: 0 0 14px; }
-.foot-btns .share-btn { flex: 1; }
-.foot-btns .share-btn[hidden] { display: none; }
-.foot-btns .share-btn { margin: 0; }
-.cs-panel { max-height: 94vh; }
-.cs-tabs, .cs-sym { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-.cs-tabs button, .cs-sym button { flex: 1 1 auto; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 13.5px; font-weight: 600; cursor: pointer; }
-.cs-sym button { flex: 0 0 auto; font-family: var(--mono); }
-.cs-tabs button[aria-selected="true"], .cs-sym button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); border-color: var(--c-orange); }
-.cs-prev { position: relative; margin: 0 auto 12px; max-width: 360px; }
-.cs-prev canvas { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
-.cs-wait { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--muted); background: rgba(13, 16, 21, 0.6); border-radius: 12px; }
-.cs-wait[hidden] { display: none; }
-.cs-btns { display: flex; gap: 8px; }
-.cs-cap { display: grid; gap: 6px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
-.cs-cap textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--ink); padding: 10px; font: 13px/1.5 var(--sans); }
-
 /* 언어 전환 버튼(상단) */
-.lang-btn { height: 34px; min-width: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink-2); font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; }
+.lang-btn { height: 34px; min-width: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink-2); font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; }
 .lang-btn:active { background: var(--surface-2); }
 /* 영어 보기: 번역 전 한국어가 잠깐 보이지 않게, AI 한국어 요약은 숨김 */
 html.i18n-wait body { visibility: hidden; }
@@ -856,3 +838,15 @@ html[lang="en"] .nsum { display: none; }
 .blog-card .bc-t b { font-size: 15px; }
 .blog-card .bc-t small { color: var(--muted); font-size: 12.5px; }
 .blog-card .bc-go { color: #03c75a; font-size: 18px; font-weight: 700; }
+
+/* 하단 공유 버튼 한 개 */
+.foot-btns { display: flex; gap: 8px; margin: 0 0 14px; }
+.foot-btns .share-btn { flex: 1; margin: 0; }
+/* 좁은 휴대폰: 사이트 이름이 잘리지 않게 오른쪽 버튼을 줄인다(🔥 칩은 '퇴사까지' 글자 빼고 %만) */
+@media (max-width: 420px) {
+  .top-actions { gap: 6px; }
+  .fire-chip { padding: 0 9px; }
+  .fire-chip .fc-l { display: none; }
+  .icon-btn { width: 34px; height: 34px; }
+  .lang-btn { padding: 0 7px; font-size: 12px; }
+}

@@ -1,4 +1,4 @@
-// Yong's Portfolio 중계 Worker (Cloudflare Worker · Pages Functions 공용)
+// Fire Portfolio 중계 Worker (Cloudflare Worker · Pages Functions 공용)
 // 구글 뉴스 RSS·Nasdaq·SEC·Yahoo는 브라우저에서 직접 받을 수 없어(CORS), 이 코드가 대신 받아 JSON으로 돌려준다.
 // GET /news?s=SYM → { at, official, kr, en, filings, crypto }   (3분 캐시 · 항목마다 AI 한 줄 요약 sum)
 // GET /earnings · /quote · /chart · /holders(기관 보유) · /circle
@@ -478,7 +478,7 @@ const EARN_CFG = {
 // SEC CIK 찾기(티커 → 10자리 번호)
 async function lookupCik(sym) {
   const t = await fetch(`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(sym)}&type=10-Q&dateb=&owner=include&count=1&output=atom`, {
-    headers: { 'user-agent': 'YongsPortfolio personal dashboard (https://yongs-portfolio.pages.dev)' }, signal: AbortSignal.timeout(8000),
+    headers: { 'user-agent': 'FirePortfolio dashboard (https://yongs-portfolio.pages.dev)' }, signal: AbortSignal.timeout(8000),
   }).then((r) => r.text());
   const m = t.match(/<cik>(\d+)<\/cik>/i);
   return m ? m[1].padStart(10, '0') : null;
@@ -497,7 +497,7 @@ async function earnCfg(sym) {
 async function secQuarterly(sym = 'CRCL') {
   const E = await earnCfg(sym);
   const r = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${E.cik}.json`, {
-    headers: { 'user-agent': 'YongsPortfolio personal dashboard (https://yongs-portfolio.pages.dev)', accept: 'application/json' },
+    headers: { 'user-agent': 'FirePortfolio dashboard (https://yongs-portfolio.pages.dev)', accept: 'application/json' },
     signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error('sec ' + r.status);
@@ -1037,7 +1037,7 @@ export async function summarizeMissing(env, sym, data, max = 5) {
 //    "DATA AS OF JULY 31, 2026 … JOBY 100% 97% 83% FAA 100% 97% 77% 100% 100% 20% 10%"
 //    (서한마다 차트 글자 순서가 두 가지라 둘 다 처리하고, 범위·순서 검증을 통과할 때만 쓴다)
 // 2) 스페이스X: 상장 후 나온 8-K 중 보호예수(lock-up) 면제·조기 해제 문구가 있는 공시, 추가 매도 등록(S-1·S-3·424B)
-const SEC_H = { 'user-agent': 'YongsPortfolio personal dashboard (https://yongs-portfolio.pages.dev)' };
+const SEC_H = { 'user-agent': 'FirePortfolio dashboard (https://yongs-portfolio.pages.dev)' };
 const secGet = async (u, type = 'json') => {
   const r = await fetch(u, { headers: { ...SEC_H, accept: type === 'json' ? 'application/json' : 'text/html' }, signal: AbortSignal.timeout(10000) });
   if (!r.ok) throw new Error('sec ' + r.status);
@@ -1168,32 +1168,6 @@ export async function handleMarket(url, cache, cors, ctx) {
       const items = MARKET.map(([sym, name], i) => (res[i].status === 'fulfilled' ? { sym, name, ...res[i].value, pct: res[i].value.prev ? res[i].value.price / res[i].value.prev - 1 : null } : { sym, name, error: true }));
       if (!items.some((x) => !x.error)) throw new Error('시장 지표를 받지 못했습니다');
       return JSON.stringify({ at: new Date().toISOString(), items });
-    },
-  });
-}
-
-// ---------------------------------------------------------------- 주간 등락 (인스타 카드용) — 지수 + 요청 종목의 최근 1개월 일봉 종가
-const WEEKLY_IDX = [['^GSPC', 'S&P500'], ['^IXIC', '나스닥'], ['^DJI', '다우'], ['^VIX', 'VIX'], ['^TNX', '미 10년물'], ['BTC-USD', '비트코인']];
-async function dailyCloses(sym) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1mo&interval=1d&includePrePost=false`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
-  if (!r.ok) throw new Error('yahoo ' + r.status);
-  const j = (await r.json()).chart.result[0], q = j.indicators?.quote?.[0] || {};
-  const pts = (j.timestamp || []).map((t, i) => [t * 1000, q.close?.[i]]).filter((p) => p[1] != null).map(([t, c]) => [t, Math.round(c * 10000) / 10000]);
-  if (j.meta?.regularMarketPrice != null && pts.length) pts[pts.length - 1][1] = j.meta.regularMarketPrice; // 장중이면 현재가
-  return pts;
-}
-export async function handleWeekly(url, cache, cors, ctx) {
-  const syms = [...new Set(String(url.searchParams.get('s') || '').toUpperCase().split(',').filter((x) => SYM_RE.test(x)))].sort().slice(0, 12);
-  return swr(cache, ctx, `${url.origin}/weekly?v=1&s=${syms.join(',')}`, {
-    freshSec: 1800, keepSec: 86400, cors,
-    build: async () => {
-      const all = [...WEEKLY_IDX.map(([s]) => s), ...syms];
-      const res = await Promise.allSettled(all.map(dailyCloses));
-      const pick = (i) => (res[i].status === 'fulfilled' ? res[i].value : null);
-      const idx = WEEKLY_IDX.map(([sym, name], i) => ({ sym, name, pts: pick(i) }));
-      const stocks = Object.fromEntries(syms.map((s, k) => [s, pick(WEEKLY_IDX.length + k)]));
-      if (!idx.some((x) => x.pts?.length)) throw new Error('주간 데이터를 받지 못했습니다');
-      return JSON.stringify({ at: new Date().toISOString(), idx, stocks });
     },
   });
 }
@@ -1347,7 +1321,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/weekly'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
@@ -1362,7 +1336,6 @@ export default {
     if (url.pathname === '/short') return handleShort(url, cache, cors, ctx);
     if (url.pathname === '/lookup') return handleLookup(url, cache, cors, ctx);
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
-    if (url.pathname === '/weekly') return handleWeekly(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);

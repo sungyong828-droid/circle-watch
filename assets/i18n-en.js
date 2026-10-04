@@ -1526,7 +1526,9 @@ window.__I18N_EN = {
 "방금 업데이트": "Updated just now",
 "연환산": "annualized",
 "유통 파트너 몫 차감 전": "before distribution partners' share",
-"코인리더스": "CoinReaders"
+"코인리더스": "CoinReaders",
+"퇴사를 위한 미국 주식 실시간 대시보드 · 서클·조비·스페이스X·템퍼스, 관심 종목 추가도 돼요": "US stock dashboard for financial independence (FIRE) · Circle · Joby · SpaceX · Tempus, plus your own watchlist",
+"Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·차트·뉴스 AI 요약·공매도·기관 보유·애널리스트 목표가를 보여주는 무료 미국 주식 대시보드예요. 화면을 보려면 자바스크립트를 켜 주세요.": "Fire Portfolio is a free US stock dashboard with real-time prices, charts, AI news summaries, short interest, institutional holdings and analyst targets for Circle (CRCL), Joby (JOBY), SpaceX (SPCX) and Tempus AI (TEM). Please enable JavaScript."
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
