@@ -37,6 +37,8 @@ export async function onRequest({ request, next, waitUntil }) {
   const out = new Response(res.body, res);
   out.headers.set('x-content-type-options', 'nosniff');
   out.headers.set('x-robots-tag', 'noindex');
+  out.headers.set('cross-origin-resource-policy', 'same-origin'); // 다른 사이트가 <script>·<img>로 끌어다 쓰지 못하게
+  out.headers.set('x-permitted-cross-domain-policies', 'none');
   out.headers.set('cache-control', out.headers.get('cache-control') || 'no-store');
   out.headers.delete('access-control-allow-origin'); // 같은 주소 전용이므로 CORS 허용 안 함
   out.headers.delete('x-built');

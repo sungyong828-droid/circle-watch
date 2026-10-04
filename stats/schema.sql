@@ -11,12 +11,33 @@ CREATE TABLE IF NOT EXISTS visits (
   country TEXT,
   device TEXT,                -- m(휴대폰) / d(PC)
   iph TEXT,                   -- IP를 비밀값과 날짜로 섞은 해시(원래 IP는 저장 안 함)
+  used INTEGER NOT NULL DEFAULT 0, -- 연 화면·쓴 기능 비트
+  lang TEXT,                  -- ko / en
   PRIMARY KEY (day, vid)
 );
 CREATE INDEX IF NOT EXISTS visits_vid ON visits (vid);
+CREATE INDEX IF NOT EXISTS visits_iph ON visits (day, iph);
 
 -- 통계에서 뺄 기기(관리자 기기 등). 관리자 페이지의 '이 기기 방문은 집계하지 않기'로 켜고 끈다.
 CREATE TABLE IF NOT EXISTS excluded (
   vid TEXT PRIMARY KEY,
   at INTEGER NOT NULL
+);
+
+-- 2026-10-04 추가 (이미 만든 DB에는 stats/migrate-2.sql 로 한 번 적용)
+-- visits.used: 그날 그 기기가 연 화면·쓴 기능 비트(값·종목은 보내지 않음) / visits.lang: ko·en
+-- errors: 화면 오류(같은 메시지는 하루 한 줄로 합침) / auth_fail: 관리자 키 틀린 횟수(IP 해시 기준, 잠금용)
+CREATE TABLE IF NOT EXISTS errors (
+  day TEXT NOT NULL,
+  msg TEXT NOT NULL,
+  n INTEGER NOT NULL DEFAULT 1,
+  last_at INTEGER NOT NULL,
+  PRIMARY KEY (day, msg)
+);
+CREATE TABLE IF NOT EXISTS auth_fail (
+  day TEXT NOT NULL,
+  iph TEXT NOT NULL,
+  n INTEGER NOT NULL DEFAULT 1,
+  last_at INTEGER NOT NULL,
+  PRIMARY KEY (day, iph)
 );

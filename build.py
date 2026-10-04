@@ -47,6 +47,22 @@ lines += [f'  <url><loc>{landing.SITE}{u}</loc><lastmod>{today}</lastmod><change
 lines += ['</urlset>', '']
 with open(os.path.join(DIST, 'sitemap.xml'), 'w', encoding='utf-8') as f:
     f.write(chr(10).join(lines))
+# 소개·관리자 페이지도 대시보드와 같은 style.css 버전을 쓰게 맞춘다(예전 버전이 캐시에 남아 화면이 어긋나지 않게)
+sv = re.search(r'assets/style\.css\?v=(\d+)', open(os.path.join(DIST, 'index.html'), encoding='utf-8').read())
+if sv:
+    for fn in os.listdir(DIST):
+        if fn.endswith('.html') and fn != 'index.html':
+            fp = os.path.join(DIST, fn)
+            t = open(fp, encoding='utf-8').read()
+            t2 = re.sub(r'assets/style\.css\?v=\d+', 'assets/style.css?v=' + sv.group(1), t)
+            if t2 != t:
+                open(fp, 'w', encoding='utf-8').write(t2)
+# 보안 문의 안내(security.txt · RFC 9116) — 연락처는 공개 블로그
+wk = os.path.join(DIST, '.well-known')
+os.makedirs(wk, exist_ok=True)
+exp = (datetime.date.today() + datetime.timedelta(days=330)).isoformat()
+with open(os.path.join(wk, 'security.txt'), 'w', encoding='utf-8') as f:
+    f.write(f'Contact: https://blog.naver.com/ky828\nExpires: {exp}T00:00:00.000Z\nPreferred-Languages: ko, en\nCanonical: {landing.SITE}.well-known/security.txt\n')
 # IndexNow(네이버·Bing 등에 새 페이지 알림) 소유 확인 파일
 key = open(os.path.join(ROOT, 'indexnow.key'), encoding='utf-8').read().strip()
 with open(os.path.join(DIST, key + '.txt'), 'w', encoding='utf-8') as f:

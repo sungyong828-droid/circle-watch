@@ -1717,7 +1717,9 @@ window.__I18N_EN = {
 "자동: 날짜 순서를 보고 해를 넘긴 거래는 작년으로 넣어요.": "Auto: trades that cross back over New Year go into the previous year.",
 "읽은 거래는 모두": "All trades read will be dated",
 "날짜로 넣어요.": ".",
-"오늘 이후 날짜예요. 연도를 확인하거나 날짜를 고쳐 주세요": "is in the future. Check the year or fix the date"
+"오늘 이후 날짜예요. 연도를 확인하거나 날짜를 고쳐 주세요": "is in the future. Check the year or fix the date",
+"배당금 계산기": "Dividend calculator",
+"퇴사 계산기": "FIRE calculator"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

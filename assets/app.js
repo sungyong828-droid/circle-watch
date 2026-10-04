@@ -2,12 +2,17 @@
  * data/latest.json(수집기 결과)을 그리고, 시세·뉴스·실적·기관 보유는 중계 서버와 각 출처에서 직접 갱신한다. */
 (() => {
   'use strict';
+  // 예전 GitHub Pages 사본으로 들어오면 새 주소로 보낸다(같은 화면이 두 주소에 있으면 검색 순위가 나뉜다). data/ 파일은 그대로 제공된다
+  if (/\.github\.io$/.test(location.hostname)) { location.replace('https://my-fire-portfolio.pages.dev/' + (location.search || '?ref=old-github') + location.hash); return; }
 
   // Cloudflare Pages(공유용 주소)에서는 같은 주소의 /api 중계를 쓰고, GitHub Pages에서는 Worker를 쓴다
   const ON_PAGES = /\.pages\.dev$/.test(location.hostname);
   // 운영 주소인지(테스트 환경 test.my-fire-portfolio.pages.dev 등은 방문 집계 안 함 · 상단에 TEST 표시)
   const IS_PROD = location.hostname === 'my-fire-portfolio.pages.dev';
   if (ON_PAGES && !IS_PROD) document.documentElement.classList.add('is-test');
+  // 화면 오류 보고(reportErr)는 시작 코드의 오류도 잡도록 맨 앞에서 건다
+  window.addEventListener('error', (e) => reportErr(e.message, e.filename ? `${e.filename}:${e.lineno}` : ''));
+  window.addEventListener('unhandledrejection', (e) => reportErr('promise: ' + (e.reason?.message || e.reason)));
   const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
   const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
   const DATA_FALLBACK = 'https://sungyong828-droid.github.io/circle-watch/data/latest.json'; // /api/data가 막혔을 때만
@@ -50,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=9';
+    sc.src = 'assets/i18n-en.js?v=10';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2390,7 +2395,7 @@
     for (const b of document.querySelectorAll('[data-ftab]')) b.setAttribute('aria-selected', String(b.dataset.ftab === state.fireTab));
     for (const el of document.querySelectorAll('#view-fire [data-pane]')) el.classList.toggle('pane-off', el.dataset.pane !== state.fireTab);
     if (state.fireTab === 'div') for (const id of ['div-month']) charts[id]?.resize();
-    if (state.view === 'fire') document.getElementById('view-title').textContent = viewTitle('fire');
+    if (state.view === 'fire') { document.getElementById('view-title').textContent = viewTitle('fire'); markUse(state.fireTab === 'div' ? 'div' : 'fire'); }
   }
   function renderDiv() {
     renderHomeFire();
@@ -2640,6 +2645,7 @@
         else if (/load|initializ/i.test(m.status || '')) st.textContent = `글자 읽기 엔진 준비 중… ${Math.round((m.progress || 0) * 100)}%`;
       });
       ocrRows = window.__tradeOcr.assignYears(rows, ocrYear());
+      if (rows.length) markUse('ocr');
       renderOcrResult();
     } catch (e) {
       st.textContent = `읽지 못했어요: ${e.message || e}`;
@@ -4588,6 +4594,7 @@
     if (v === 'crcl') { renderHolders('CRCL', 'holders'); renderAnalyst('CRCL'); renderInsider('CRCL'); renderOptions('CRCL'); }
     if (v === 'news' || v === 'snews') { markNewsSeen(); renderNewsSummary(); renderNews(); renderKwNews(); } else updateNewsBadge();
     updateFireChip();
+    if (v !== 'fire') markUse(v);
     if (target) {
       const el = document.getElementById(target);
       if (el) {
@@ -4731,8 +4738,11 @@
   // ---------------------------------------------------------------- 방문 집계(익명) · 공유
   // 공유 주소에서만, 페이지를 열 때 한 번: 기기마다 무작위 ID + 유입 경로만 보낸다(관리자 페이지에서만 조회)
   const SITE_URL = 'https://my-fire-portfolio.pages.dev/';
+  // 한 번만 보낸다(시작할 때 · 또는 그 전에 오류가 나면 오류 보고와 함께). 시작 코드보다 먼저 불릴 수 있어 window에 둔다
   function countVisit() {
-    if (!ON_PAGES || !IS_PROD || readJSON('cw.noCount', false)) return;
+    if (window.__fpVisit) return window.__fpVisit;
+    const noCount = (() => { try { return JSON.parse(localStorage.getItem('cw.noCount')) === true; } catch { return false; } })();
+    if (!ON_PAGES || !IS_PROD || noCount) return (window.__fpVisit = Promise.resolve(false));
     try {
       let vid = localStorage.getItem('cw.vid'), isNew = 0;
       if (!/^[a-z0-9]{16,40}$/.test(vid || '')) {
@@ -4743,9 +4753,46 @@
       let ref = qs.get('ref') || qs.get('utm_source') || '';
       if (!ref && document.referrer) { try { const h = new URL(document.referrer).hostname; if (h !== location.hostname) ref = h; } catch {} }
       const dev = matchMedia('(pointer: coarse)').matches ? 'm' : 'd';
-      fetch(`/api/hit?v=${vid}&n=${isNew}&d=${dev}${ref ? '&r=' + encodeURIComponent(ref.slice(0, 80)) : ''}`, { cache: 'no-store', keepalive: true }).catch(() => {});
+      window.__fpVisit = fetch(`/api/hit?v=${vid}&n=${isNew}&d=${dev}&l=${LANG}${ref ? '&r=' + encodeURIComponent(ref.slice(0, 80)) : ''}`, { cache: 'no-store', keepalive: true }).then(() => vid, () => false);
       // 주소창에 붙은 ?ref=… 는 지운다(화면 이동은 #으로 하므로 그대로)
       if (location.search) history.replaceState(null, '', location.pathname + location.hash);
+    } catch { window.__fpVisit = Promise.resolve(false); }
+    return window.__fpVisit;
+  }
+  // 그날 처음 연 화면·처음 쓴 기능만 비트 하나로 알린다(종목·금액 같은 값은 보내지 않음) → 관리자 페이지 '많이 쓰는 화면·기능'
+  // 순서는 functions/api/admin/stats.js 의 USE_BITS 와 같아야 한다
+  function markUse(name) {
+    try {
+      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog'];
+      const i = BITS.indexOf(name);
+      if (i < 0 || !IS_PROD) return;
+      const U = (window.__fpUse ||= { day: '', sent: 0, pend: 0, t: null });
+      const day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+      if (U.day !== day) { const m = String(localStorage.getItem('cw.useSent') || '').split(':'); U.day = day; U.sent = m[0] === day ? +m[1] || 0 : 0; }
+      const b = 1 << i;
+      if ((U.sent | U.pend) & b) return;
+      U.pend |= b;
+      clearTimeout(U.t);
+      U.t = setTimeout(() => countVisit().then((vid) => {
+        if (!vid || !U.pend) return;
+        const bits = U.pend; U.pend = 0; U.sent |= bits;
+        try { localStorage.setItem('cw.useSent', `${U.day}:${U.sent}`); } catch {}
+        fetch(`/api/hit?k=u&v=${vid}&u=${bits}`, { cache: 'no-store', keepalive: true }).catch(() => {});
+      }), 1200);
+    } catch {}
+  }
+  // 화면 오류는 관리자 페이지 '화면 오류'에 모은다(운영 주소만 · 한 번 열 때 최대 3건 · 네트워크 끊김 같은 흔한 일은 빼고)
+  function reportErr(msg, file) {
+    try {
+      if (!IS_PROD) return;
+      const E = (window.__fpErr ||= { n: 0, seen: new Set() });
+      msg = String(msg || '').slice(0, 300);
+      if (!msg || E.n >= 3 || E.seen.has(msg)) return;
+      if (/Failed to fetch|Load failed|NetworkError|network error|AbortError|aborted|timed? ?out|ResizeObserver loop|^Script error\.?$|WebSocket|ChunkLoad/i.test(msg)) return;
+      if (file && !/^https:\/\/my-fire-portfolio\.pages\.dev\//.test(file)) return; // 확장 프로그램·다른 사이트 스크립트
+      E.seen.add(msg); E.n++;
+      const where = file ? ' @' + String(file).split('/').pop().split('?')[0] : '';
+      countVisit().then((vid) => { if (vid) fetch(`/api/hit?k=e&v=${vid}&m=${encodeURIComponent((msg + where).slice(0, 200))}`, { cache: 'no-store', keepalive: true }).catch(() => {}); });
     } catch {}
   }
   // 처음 온 방문자에게만 사용법 안내(닫으면 다시 안 보임). 기존 사용자(저장된 화면이 있는 기기)는 건너뛴다
@@ -4765,6 +4812,7 @@
       <button type="button" class="btn-primary wc-ok" data-welcome-close>알겠어요</button>`;
   }
   async function shareSite() {
+    markUse('share');
     // 보고 있는 종목 화면으로 바로 열리는 링크(기본 종목일 때)
     const s = BUILTIN.includes(state.stock) && state.stock !== 'CRCL' ? `s=${state.stock}&` : '';
     const name = STOCK_INFO[state.stock]?.name || '';
@@ -4792,7 +4840,11 @@
   renderTabbar();
   renderStockSwitch();
   updateFireChip();
-  { let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0; showView(viewAllowed(v0) ? v0 : 'home'); }
+  {
+    let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0;
+    if (v0 === 'dividend' || v0 === 'quit') { state.fireTab = v0 === 'dividend' ? 'div' : 'fire'; savePref('fireTab', state.fireTab); v0 = 'fire'; } // 소개 페이지(/dividend · /fire)에서 바로 열기
+    showView(viewAllowed(v0) ? v0 : 'home');
+  }
   if (fromSnap) { try { renderAll(); } catch (e) { console.error(e); } } // 지난번 화면을 즉시
   busyBar(true);
   initPrice();
@@ -4806,6 +4858,10 @@
   renderWelcome(firstVisit && !MIGRATED);
   if (MIGRATED) setTimeout(() => toast(EN ? '✓ Moved your data from the old address' : '✓ 예전 주소에서 쓰던 보유 정보·관심 종목을 옮겼어요'), 800);
   countVisit();
+  if (fireCfg?.positions?.length) markUse('fireSet');
+  if (divCfg?.hold?.length) markUse('divSet');
+  if (WATCH.some((x) => STOCK_INFO[x]?.custom)) markUse('watch');
+  document.addEventListener('click', (ev) => { if (ev.target.closest?.('a[href*="blog.naver.com"]')) markUse('blog'); }, true);
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);

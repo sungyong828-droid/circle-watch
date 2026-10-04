@@ -1010,6 +1010,19 @@ async function readSums(env, sym) {
 function attachSums(data, sums) {
   for (const k of ['official', 'kr', 'en', 'crypto']) for (const n of data[k] || []) { const x = sums[sumKey(n.title)]; if (x?.s) n.sum = x.s; }
 }
+// 기본 종목 밖(사용자가 추가한 종목) 요약은 하루 상한을 둔다 — 누가 종목을 바꿔 가며 대량으로 불러도
+// AI 사용량·KV 쓰기 한도가 바닥나지 않게(데이터센터마다 따로 센다). 기본 종목·시장 뉴스는 제한 없음.
+const EXTRA_AI_PER_DAY = 200;
+async function takeAiBudget(n) {
+  try {
+    const key = new Request(`https://budget.internal/ai/${new Date().toISOString().slice(0, 10)}`);
+    const hit = await caches.default.match(key);
+    const used = hit ? Number(await hit.text()) || 0 : 0;
+    if (used + n > EXTRA_AI_PER_DAY) return false;
+    await caches.default.put(key, new Response(String(used + n), { headers: { 'cache-control': 'public, max-age=90000' } }));
+    return true;
+  } catch { return true; }
+}
 // 아직 요약이 없는 최신 기사 max개를 요약해 KV에 더한다
 export async function summarizeMissing(env, sym, data, max = 5) {
   if (!env?.AI || !env?.SUMS || !data) return 0;
@@ -1020,6 +1033,7 @@ export async function summarizeMissing(env, sym, data, max = 5) {
     .filter((n, i, a) => a.findIndex((x) => sumKey(x.title) === sumKey(n.title)) === i)
     .slice(0, max);
   if (!todo.length) return 0;
+  if (!STOCKS.includes(sym) && sym !== 'MKT' && !(await takeAiBudget(todo.length))) return 0;
   const res = await Promise.allSettled(todo.map((n) => summarizeOne(env, sym, n)));
   const latest = await readSums(env, sym); // 그 사이 다른 요청이 쓴 값과 합친다
   const now = Date.now();
@@ -1351,6 +1365,17 @@ export async function handleNews(url, cache, cors, ctx, env) {
 
 export { circleSupply };
 
+const WORKER_PER_MIN = 120;
+async function workerTooMany(ip, ctx) {
+  try {
+    const key = new Request(`https://ratelimit.internal/w/${encodeURIComponent(ip)}/${Math.floor(Date.now() / 60000)}`);
+    const hit = await caches.default.match(key);
+    const n = (hit ? Number(await hit.text()) || 0 : 0) + 1;
+    ctx.waitUntil(caches.default.put(key, new Response(String(n), { headers: { 'cache-control': 'public, max-age=120' } })));
+    return n > WORKER_PER_MIN;
+  } catch { return false; }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -1361,6 +1386,10 @@ export default {
     if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
+    // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
+    if (await workerTooMany(request.headers.get('cf-connecting-ip') || 'unknown', ctx)) {
+      return new Response(JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }), { status: 429, headers: { ...cors, 'content-type': 'application/json; charset=utf-8', 'retry-after': '60' } });
+    }
     const cache = caches.default;
     if (url.pathname === '/circle') return circleSupply(url, cache, cors, ctx);
     if (url.pathname === '/earnings') return handleEarnings(url, cache, cors, ctx);
