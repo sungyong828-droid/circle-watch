@@ -51,16 +51,22 @@
     return out;
   }
 
-  // 연도: 맨 위(가장 최근)가 오늘 이후 날짜면 작년, 아니면 올해. 아래로 내려가며 날짜가 커지면 한 해 전으로.
+  // 연도: 연도를 고르면(newestYear) 모든 줄을 그 해로 넣는다.
+  // 자동이면 맨 위(가장 최근)가 오늘 이후 날짜면 작년, 아니면 올해. 아래로 내려가며 날짜가 한 달 넘게 커지면(12월 → 1월을 거꾸로 넘음) 한 해 전으로.
+  // 하루이틀 순서가 뒤바뀐 건 글자를 잘못 읽은 것일 수 있어 해를 넘기지 않는다.
+  const doy = (md) => (md[0] - 1) * 31 + md[1];
   function assignYears(rows, newestYear) {
     const today = new Date(), tOrd = (today.getMonth() + 1) * 100 + today.getDate();
-    let year = newestYear, prev = null;
+    const fixed = Number.isInteger(newestYear) && newestYear > 1900;
+    let year = fixed ? newestYear : null, prev = null;
     for (const r of rows) {
       const o = ord(r);
       if (o == null) { r.d = ''; continue; }
-      if (year == null) year = o > tOrd ? today.getFullYear() - 1 : today.getFullYear();
-      if (prev != null && o > prev) year--;
-      prev = o;
+      if (!fixed) {
+        if (year == null) year = o > tOrd ? today.getFullYear() - 1 : today.getFullYear();
+        if (prev != null && doy(r.md) - prev > 31) year--;
+        prev = doy(r.md);
+      }
       r.d = `${year}-${String(r.md[0]).padStart(2, '0')}-${String(r.md[1]).padStart(2, '0')}`;
     }
     return rows;

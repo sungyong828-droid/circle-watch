@@ -1075,3 +1075,23 @@ html.is-test .top::after { content: '🧪 TEST'; position: absolute; left: 50%; 
 .tx-f span { font-size: 11.5px; font-weight: 600; color: var(--muted); }
 .tx-manual { align-items: end; }
 @media (max-width: 480px) { .tx-manual .tx-f-d { grid-column: 1 / -1; } }
+
+/* 거래 내역 창: 연도 고르기 → 사진 고르기 순서 */
+.tx-photo-row { grid-template-columns: minmax(0, 132px) minmax(0, 1fr); align-items: end; }
+.tx-photo-row .oc-pick { height: 46px; border-radius: 12px; white-space: nowrap; }
+.oc-y-note { font-size: 12px; color: var(--muted); }
+.oc-y-note b { color: var(--accent); }
+.sheet-h b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-h .ws-btn { flex: none; }
+.tx-tbl td, .tx-tbl th, .oc-tbl td, .oc-tbl th { white-space: nowrap; }
+.tx-box label.chk { display: flex; align-items: flex-start; gap: 8px; color: var(--ink-2); font-size: 13px; line-height: 1.5; cursor: pointer; }
+.tx-box input[type="checkbox"] { flex: none; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--accent); }
+@media (max-width: 480px) { .tx-manual .btn-ghost { grid-column: auto; } }
+/* 좁은 폰: 읽은 결과 표에서 금액 칸은 빼고(⚠ 줄은 색으로 표시) 날짜 칸을 좁게 */
+@media (max-width: 380px) {
+  .oc-tbl th:nth-child(6), .oc-tbl td:nth-child(6) { display: none; }
+  .oc-tbl input[type="date"] { font-size: 11.5px; padding: 0 4px; }
+  .oc-tbl td, .oc-tbl th { padding-left: 3px; padding-right: 3px; }
+}
+@media (min-width: 481px) { .tx-manual { grid-template-columns: minmax(158px, 1.6fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 0.8fr) auto; } }
+.tx-manual input[type="date"] { padding-right: 6px; }

@@ -50,7 +50,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=8';
+    sc.src = 'assets/i18n-en.js?v=9';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2578,8 +2578,9 @@
       <section class="tx-box tx-photo">
         <b>📷 거래 내역 사진으로 넣기</b>
         <p class="note">증권 앱(예: 도미노)에서 <b>${esc(r.t)}</b> → <b>거래</b> 화면을 캡처해 골라 주세요. 여러 장을 한 번에 골라도 되고, 겹친 부분은 한 번만 넣어요. 사진은 이 기기 안에서만 읽어요.</p>
-        <div class="tx-photo-row"><label class="btn-primary oc-pick">사진 고르기<input type="file" id="oc-file" accept="image/*" multiple hidden></label>
-          <select id="oc-y" aria-label="가장 최근 거래의 연도"><option value="">연도 자동</option>${[0, 1, 2, 3].map((k) => `<option value="${Y - k}">${Y - k}년</option>`).join('')}</select></div>
+        <div class="tx-photo-row"><label class="tx-f"><span>거래 연도</span><select id="oc-y" aria-label="거래 연도"><option value="">자동 인식</option>${[0, 1, 2, 3].map((k) => `<option value="${Y - k}">${Y - k}년</option>`).join('')}</select></label>
+          <label class="btn-primary oc-pick">사진 고르기<input type="file" id="oc-file" accept="image/*" multiple hidden></label></div>
+        <p class="note oc-y-note" id="oc-y-note">자동: 날짜 순서를 보고 해를 넘긴 거래는 작년으로 넣어요.</p>
         <p class="oc-status" id="oc-status">처음 한 번은 글자 읽기 엔진(약 7MB)을 받느라 시간이 걸려요.</p>
         <div id="oc-result"></div>
       </section>
@@ -2587,7 +2588,7 @@
         <b>캘린더로 직접 넣기</b>
         <div class="tx-manual">
           <label class="tx-f tx-f-d"><span>거래일</span><input type="date" id="tx-d" max="${isoToday()}" value="${esc(r.d && !r.trades?.length ? r.d : '')}"></label>
-          <label class="tx-f"><span>구분</span><select id="tx-side"><option value="buy">매수</option><option value="sell">매도</option></select></label>
+          <label class="tx-f"><span>${EN ? 'Type' : '구분'}</span><select id="tx-side"><option value="buy">매수</option><option value="sell">매도</option></select></label>
           <label class="tx-f"><span>수량</span><input id="tx-sh" inputmode="decimal" placeholder="주" value="${!r.trades?.length && r.sh ? r.sh : ''}"></label>
           <label class="tx-f"><span>가격</span><input id="tx-p" inputmode="decimal" placeholder="$" value="${!r.trades?.length && r.avg ? r.avg : ''}"></label>
           <button type="button" class="btn-ghost" id="tx-add">+ 추가</button>
@@ -2605,8 +2606,8 @@
     const L = [...txDraft].map((x, i) => ({ ...x, i })).sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : b.i - a.i));
     const H = holdFromTrades(txDraft);
     el.innerHTML = L.length
-      ? `<div class="tx-sum"><b>넣은 거래 ${L.length}건</b><span>남은 수량 <b>${fmtSh(H.sh)}주</b> · 평단 <b>${H.sh ? '$' + H.avg.toFixed(2) : '–'}</b></span></div>
-        <div class="div-scroll"><table class="div-tbl tx-tbl"><thead><tr><th>날짜</th><th>구분</th><th>수량</th><th>가격</th><th></th></tr></thead><tbody>
+      ? `<div class="tx-sum">${EN ? `<b>${L.length} trades</b><span>Shares held <b>${fmtSh(H.sh)}</b> · Avg cost <b>${H.sh ? '$' + H.avg.toFixed(2) : '–'}</b></span>` : `<b>넣은 거래 ${L.length}건</b><span>남은 수량 <b>${fmtSh(H.sh)}주</b> · 평단 <b>${H.sh ? '$' + H.avg.toFixed(2) : '–'}</b></span>`}</div>
+        <div class="div-scroll"><table class="div-tbl tx-tbl"><thead><tr><th>날짜</th><th>${EN ? 'Type' : '구분'}</th><th>수량</th><th>가격</th><th></th></tr></thead><tbody>
         ${L.map((x) => `<tr><td>${x.d.slice(2).replace(/-/g, '.')}</td><td class="${x.sell ? 'down' : 'up'}">${x.sell ? '매도' : '매수'}</td><td>${fmtSh(x.sh)}</td><td>$${x.price.toFixed(2)}</td><td><button type="button" class="tx-rm" data-txrm="${x.i}" aria-label="이 거래 삭제">×</button></td></tr>`).join('')}
         </tbody></table></div><button type="button" class="btn-ghost tx-clear" id="tx-clear">거래 내역 모두 지우기</button>`
       : '<p class="note">아직 넣은 거래가 없어요. 사진으로 넣거나 캘린더로 직접 넣어 주세요. 한 번에 샀다면 매수일·수량·가격 한 줄만 넣으면 돼요.</p>';
@@ -2626,7 +2627,7 @@
     paintRows();
     closeTxSheet();
     const det = document.querySelector('#c-div-set details'); if (det) det.open = true;
-    toast(txDraft.length ? `✓ ${r.t} 거래 ${txDraft.length}건 · 수량 ${fmtSh(r.sh)}주로 채웠어요 · 아래 저장을 눌러 주세요` : '거래 내역을 비웠어요 · 저장을 눌러 주세요');
+    toast(txDraft.length ? (EN ? `✓ ${r.t}: ${txDraft.length} trades · ${fmtSh(r.sh)} shares · tap Save below` : `✓ ${r.t} 거래 ${txDraft.length}건 · 수량 ${fmtSh(r.sh)}주로 채웠어요 · 아래 저장을 눌러 주세요`) : (EN ? 'Trade history cleared · tap Save' : '거래 내역을 비웠어요 · 저장을 눌러 주세요'));
   }
   async function runOcr(files) {
     const st = document.getElementById('oc-status'), out = document.getElementById('oc-result');
@@ -2638,12 +2639,25 @@
         if (m.status === 'image') st.textContent = `사진 읽는 중… ${Math.round(m.progress * files.length) + 1}/${files.length}`;
         else if (/load|initializ/i.test(m.status || '')) st.textContent = `글자 읽기 엔진 준비 중… ${Math.round((m.progress || 0) * 100)}%`;
       });
-      const y = parseInt(document.getElementById('oc-y')?.value, 10) || null;
-      ocrRows = window.__tradeOcr.assignYears(rows, y);
+      ocrRows = window.__tradeOcr.assignYears(rows, ocrYear());
       renderOcrResult();
     } catch (e) {
       st.textContent = `읽지 못했어요: ${e.message || e}`;
     }
+  }
+  function ocrYear() { return parseInt(document.getElementById('oc-y')?.value, 10) || null; }
+  function paintYearNote() {
+    const n = document.getElementById('oc-y-note'), y = ocrYear();
+    if (n) n.innerHTML = y ? (EN ? `Every trade read will be dated <b>${y}</b>.` : `읽은 거래는 모두 <b>${y}년</b> 날짜로 넣어요.`) : '자동: 날짜 순서를 보고 해를 넘긴 거래는 작년으로 넣어요.';
+  }
+  function applyOcrYear() {
+    paintYearNote();
+    if (!ocrRows?.length) return;
+    // 표에서 고친 체크는 그대로 두고 날짜만 다시 매긴다
+    const off = new Set([...document.querySelectorAll('#oc-result .oc-on')].filter((c) => !c.checked).map((c) => c.dataset.i));
+    window.__tradeOcr.assignYears(ocrRows, ocrYear());
+    renderOcrResult();
+    off.forEach((i) => { const c = document.querySelector(`#oc-result .oc-on[data-i="${i}"]`); if (c) c.checked = false; });
   }
   function renderOcrResult() {
     const st = document.getElementById('oc-status'), out = document.getElementById('oc-result');
@@ -2651,16 +2665,19 @@
     if (!R.length) { st.textContent = '거래 내역을 찾지 못했어요. 증권 앱의 거래 화면 캡처인지 확인해 주세요.'; return; }
     const buys = R.filter((r) => r.side === 'buy'), sells = R.filter((r) => r.side === 'sell');
     const net = buys.reduce((n, r) => n + r.sh, 0) - sells.reduce((n, r) => n + r.sh, 0);
-    const warn = R.filter((r) => !r.ok).length;
-    st.innerHTML = `<b>${R.length}건</b>을 읽었어요 · 매수 ${buys.length}건 · 매도 ${sells.length}건 · 매수−매도 <b>${fmtSh(net)}주</b>${warn ? ` · <span class="warn">⚠ 확인 필요 ${warn}건</span>` : ''}`;
-    out.innerHTML = `<div class="div-scroll oc-scroll"><table class="div-tbl oc-tbl"><thead><tr><th></th><th>날짜</th><th>구분</th><th>수량</th><th>가격</th><th>금액</th></tr></thead><tbody>
-      ${R.map((r, i) => `<tr class="${r.ok ? '' : 'oc-warn'}"><td><input type="checkbox" class="oc-on" data-i="${i}" checked aria-label="넣기"></td>
+    const today = isoToday(), bad = (r) => !r.ok || !r.d || r.d > today;
+    const warn = R.filter(bad).length;
+    st.innerHTML = EN
+      ? `Read <b>${R.length} trades</b> · ${buys.length} buys · ${sells.length} sells · net <b>${fmtSh(net)} sh</b>${warn ? ` · <span class="warn">⚠ ${warn} to check</span>` : ''}`
+      : `<b>${R.length}건</b>을 읽었어요 · 매수 ${buys.length}건 · 매도 ${sells.length}건 · 매수−매도 <b>${fmtSh(net)}주</b>${warn ? ` · <span class="warn">⚠ 확인 필요 ${warn}건</span>` : ''}`;
+    out.innerHTML = `<div class="div-scroll oc-scroll"><table class="div-tbl oc-tbl"><thead><tr><th></th><th>날짜</th><th>${EN ? 'Type' : '구분'}</th><th>수량</th><th>가격</th><th>금액</th></tr></thead><tbody>
+      ${R.map((r, i) => `<tr class="${bad(r) ? 'oc-warn' : ''}"><td><input type="checkbox" class="oc-on" data-i="${i}" checked aria-label="넣기"></td>
         <td><input type="date" class="oc-d" data-i="${i}" value="${esc(r.d || '')}" max="${isoToday()}" aria-label="날짜"></td>
-        <td class="${r.side === 'buy' ? 'up' : 'down'}">${r.side === 'buy' ? '매수' : '매도'}</td><td>${nf(r.sh % 1 ? 4 : 0).format(r.sh)}</td><td>$${r.price.toFixed(2)}</td><td>$${nf(2).format(r.amount)}${r.ok ? '' : '<small>⚠ 확인</small>'}</td></tr>`).join('')}
+        <td class="${r.side === 'buy' ? 'up' : 'down'}">${r.side === 'buy' ? '매수' : '매도'}</td><td>${nf(r.sh % 1 ? 4 : 0).format(r.sh)}</td><td>$${r.price.toFixed(2)}</td><td>$${nf(2).format(r.amount)}${bad(r) ? '<small>⚠ 확인</small>' : ''}</td></tr>`).join('')}
       </tbody></table></div>
-      <p class="note">⚠ 표시는 날짜를 못 읽었거나 금액 ÷ 가격이 딱 떨어지지 않은 줄이에요. 날짜를 고치거나 체크를 빼 주세요. 수량은 금액 ÷ 가격으로 계산했어요.</p>
+      <p class="note">⚠ 표시는 날짜를 못 읽었거나 오늘 이후 날짜이거나, 금액 ÷ 가격이 딱 떨어지지 않은 줄이에요. 날짜를 고치거나 체크를 빼 주세요. 수량은 금액 ÷ 가격으로 계산했어요.</p>
       <label class="chk oc-replace"><input type="checkbox" id="oc-replace" ${txDraft.length ? '' : 'checked'}> 지금 넣어 둔 거래 내역은 지우고 이 기록으로 바꾸기</label>
-      <button type="button" class="btn-primary oc-add" id="oc-add">${R.length}건 거래 내역에 넣기</button>`;
+      <button type="button" class="btn-primary oc-add" id="oc-add">${EN ? `Add ${R.length} trades to history` : `${R.length}건 거래 내역에 넣기`}</button>`;
   }
   function addOcrRows() {
     const pick = [];
@@ -2668,13 +2685,14 @@
       if (!cb.checked) continue;
       const r = ocrRows[+cb.dataset.i], d = document.querySelector(`#oc-result .oc-d[data-i="${cb.dataset.i}"]`)?.value || '';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast('날짜가 빈 줄이 있어요. 날짜를 넣거나 체크를 빼 주세요', true); return; }
+      if (d > isoToday()) { toast(`${d}: 오늘 이후 날짜예요. 연도를 확인하거나 날짜를 고쳐 주세요`, true); return; }
       pick.push({ d, sh: r.sh, price: r.price, ...(r.side === 'sell' ? { sell: true } : {}) });
     }
     if (!pick.length) { toast('넣을 줄을 골라 주세요', true); return; }
     txDraft = document.getElementById('oc-replace')?.checked ? pick : [...txDraft, ...pick];
     ocrRows = null;
     document.getElementById('oc-result').innerHTML = '';
-    document.getElementById('oc-status').innerHTML = `✓ <b>${pick.length}건</b>을 아래 거래 내역에 넣었어요. 확인하고 <b>완료</b>를 눌러 주세요.`;
+    document.getElementById('oc-status').innerHTML = EN ? `✓ Added <b>${pick.length} trades</b> below. Check them and tap <b>Done</b>.` : `✓ <b>${pick.length}건</b>을 아래 거래 내역에 넣었어요. 확인하고 <b>완료</b>를 눌러 주세요.`;
     paintTxList();
     document.getElementById('tx-list')?.scrollIntoView({ block: 'nearest' });
   }
@@ -4794,6 +4812,7 @@
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { closeWatchSheet(); closeTxSheet(); } });
   document.addEventListener('change', (ev) => {
     if (ev.target.id === 'oc-file') runOcr(ev.target.files);
+    if (ev.target.id === 'oc-y') applyOcrYear();
   });
   document.addEventListener('toggle', (ev) => {
     const d = ev.target;

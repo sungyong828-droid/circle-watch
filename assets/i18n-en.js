@@ -1664,7 +1664,7 @@ window.__I18N_EN = {
 "사진 고르기": "Choose screenshots",
 "🔒 사진은 이 기기 안에서만 읽고 어디에도 보내지 않아요. 처음 한 번은 글자 읽기 엔진(약 7MB)을 받느라 시간이 걸려요.": "🔒 Screenshots are read on this device only and never uploaded. The first time, the text-recognition engine (~7MB) takes a moment to download.",
 "글자 읽기 엔진 준비 중…": "Preparing the text-recognition engine…",
-"⚠ 표시는 날짜를 못 읽었거나 금액 ÷ 가격이 딱 떨어지지 않은 줄이에요. 날짜를 고치거나 체크를 빼 주세요. 수량은 금액 ÷ 가격으로 계산했어요.": "⚠ marks rows whose date couldn't be read or whose amount ÷ price isn't a whole number. Fix the date or uncheck them. Shares are amount ÷ price.",
+"⚠ 표시는 날짜를 못 읽었거나 오늘 이후 날짜이거나, 금액 ÷ 가격이 딱 떨어지지 않은 줄이에요. 날짜를 고치거나 체크를 빼 주세요. 수량은 금액 ÷ 가격으로 계산했어요.": "⚠ marks rows whose date couldn't be read or is in the future, or whose amount ÷ price isn't a whole number. Fix the date or uncheck them. Shares are amount ÷ price.",
 "이 종목의 기존 줄은 지우고 이 기록으로 바꾸기": "Replace existing rows for this ticker with these records",
 "거래 내역을 찾지 못했어요. 증권 앱의 거래 화면 캡처인지 확인해 주세요.": "No trades found. Make sure it's a screenshot of the trade history screen.",
 "종목 티커를 넣어 주세요(예: MSTY)": "Enter the ticker (e.g. MSTY)",
@@ -1711,7 +1711,13 @@ window.__I18N_EN = {
 "를 눌러 주세요.": ".",
 "🔥 보유 종목을 불러왔어요 · 거래 내역은 넣어도 되고 비워도 돼요": "🔥 Holdings imported · trade history is optional",
 "티커를 확인해 주세요": "Check the ticker",
-"각 줄에 수량·평균 단가를 넣거나 거래 내역을 넣어 주세요": "Enter shares and average price, or add trade history, on every row"
+"각 줄에 수량·평균 단가를 넣거나 거래 내역을 넣어 주세요": "Enter shares and average price, or add trade history, on every row",
+"거래 연도": "Trade year",
+"자동 인식": "Auto-detect",
+"자동: 날짜 순서를 보고 해를 넘긴 거래는 작년으로 넣어요.": "Auto: trades that cross back over New Year go into the previous year.",
+"읽은 거래는 모두": "All trades read will be dated",
+"날짜로 넣어요.": ".",
+"오늘 이후 날짜예요. 연도를 확인하거나 날짜를 고쳐 주세요": "is in the future. Check the year or fix the date"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
