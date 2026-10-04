@@ -19,7 +19,7 @@
       return /^ko\b/i.test(navigator.language || '') ? 'ko' : 'en';
     } catch { return 'ko'; }
   })();
-  const EN = LANG === 'en', LOC = EN ? 'en-US' : LOC;
+  const EN = LANG === 'en', LOC = EN ? 'en-US' : 'ko-KR';
   // 영어 보기: 사전·번역기를 불러오고, 번역이 끝날 때까지(최대 1.5초) 한국어가 잠깐 보이지 않게 가린다
   const T = (x) => (EN && typeof x === 'string' && window.__tr ? window.__tr(x) : x);
   if (EN) {
