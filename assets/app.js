@@ -8,6 +8,29 @@
   const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
   const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
   const DATA_FALLBACK = 'https://sungyong828-droid.github.io/circle-watch/data/latest.json'; // /api/data가 막혔을 때만
+  // 언어: ?lang= 링크 → 이 기기 저장값 → 브라우저 언어(한국어가 아니면 영어). 검색 로봇은 한국어로 본다.
+  const LANG = (() => {
+    try {
+      const q = new URLSearchParams(location.search).get('lang');
+      if (q === 'ko' || q === 'en') { localStorage.setItem('cw.lang', q); return q; }
+      const saved = localStorage.getItem('cw.lang');
+      if (saved === 'ko' || saved === 'en') return saved;
+      if (/bot|crawl|spider|slurp|lighthouse|inspectiontool/i.test(navigator.userAgent)) return 'ko';
+      return /^ko\b/i.test(navigator.language || '') ? 'ko' : 'en';
+    } catch { return 'ko'; }
+  })();
+  const EN = LANG === 'en', LOC = EN ? 'en-US' : LOC;
+  // 영어 보기: 사전·번역기를 불러오고, 번역이 끝날 때까지(최대 1.5초) 한국어가 잠깐 보이지 않게 가린다
+  const T = (x) => (EN && typeof x === 'string' && window.__tr ? window.__tr(x) : x);
+  if (EN) {
+    document.documentElement.lang = 'en';
+    document.documentElement.classList.add('i18n-wait');
+    setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
+    const sc = document.createElement('script');
+    sc.src = 'assets/i18n-en.js?v=5';
+    document.head.appendChild(sc);
+    document.title = "Yong's Portfolio · Real-time US stock dashboard — Circle, Joby, SpaceX, Tempus";
+  }
   const DATA_REFRESH_MS = 5 * 60 * 1000;
   const LIVE_REFRESH_MS = 60 * 1000;
   const LIVE = {
@@ -307,6 +330,10 @@
     if (v == null || !isFinite(v)) return '–';
     if (v === 0) return '0';
     const a = Math.abs(v), s = v < 0 ? '-' : '';
+    if (EN) { // 영어: K · M · B · T
+      for (const [n, u] of [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) if (a >= n) return s + nf(a / n >= 100 ? 0 : 1).format(a / n) + u;
+      return s + nf(a < 10 ? 2 : 0).format(a);
+    }
     if (a >= 1e12) return s + nf(a >= 1e13 ? 0 : 1).format(a / 1e12) + '조';
     if (a >= 1e11) return s + nf(0).format(a / 1e8) + '억';
     if (a >= 1e8) return s + nf(1).format(a / 1e8) + '억';
@@ -325,7 +352,7 @@
   const safeUrl = (u) => (/^https?:\/\//i.test(String(u || '')) ? esc(u) : '#'); // javascript: 같은 주소 차단
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const dtf = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  const dtf = new Intl.DateTimeFormat(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
   const when = (t) => (t ? dtf.format(new Date(t)) : '–');
   const md = (ts) => { const d = new Date(ts * 1000); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
   const ym = (ts) => { const d = new Date(ts * 1000); return `'${String(d.getUTCFullYear()).slice(2)}.${d.getUTCMonth() + 1}`; };
@@ -418,7 +445,7 @@
       position: 'right',
       grid: { color: C.lineSoft, drawTicks: false },
       border: { display: false },
-      ticks: { maxTicksLimit: 4, padding: 6, callback: (v) => fmt(v).replace(/\.0(?=[조억만])/, '') },
+      ticks: { maxTicksLimit: 4, padding: 6, callback: (v) => fmt(v).replace(/\.0(?=[조억만KMBT])/, '') },
       ...extra,
     };
   }
@@ -441,6 +468,11 @@
   }
   function draw(id, cfg) {
     if (!window.Chart) return;
+    if (EN) { // 캔버스 안 글자는 화면 번역기가 못 보므로 여기서 바꾼다(데이터셋 이름은 코드가 쓰므로 그대로 둔다)
+      const cb = cfg.options?.plugins?.tooltip?.callbacks;
+      if (cb) for (const k of Object.keys(cb)) { const f = cb[k]; if (typeof f === 'function') cb[k] = (...a) => { const r = f(...a); return Array.isArray(r) ? r.map(T) : T(r); }; }
+      for (const sc of Object.values(cfg.options?.scales || {})) { const f = sc?.ticks?.callback; if (f) sc.ticks.callback = (...a) => T(f(...a)); }
+    }
     charts[id]?.destroy();
     const cv = document.getElementById('cv-' + id);
     if (cv) charts[id] = new Chart(cv, cfg);
@@ -497,7 +529,7 @@
     if (last != null && isFinite(last)) { const k = V.at(-1); k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last); }
     const labels = V.map((k) => k.t), D = candleParts(V);
     const line = ind && state.chartType === 'line';
-    const title = tip || ((it) => new Date(labels[it.dataIndex]).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }));
+    const title = tip || ((it) => new Date(labels[it.dataIndex]).toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }));
     const ds = [];
     if (line) {
       const col = V.at(-1).c >= V[0].o ? C.up : C.down;
@@ -1067,7 +1099,7 @@
   };
   const px = state.px;
   const price = (v) => (v == null || !isFinite(v) ? '–' : '$' + nf(2).format(v));
-  const hm = (ms) => new Date(ms).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const hm = (ms) => new Date(ms).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit', hour12: false });
   const mdLocal = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
@@ -1195,7 +1227,7 @@
     if (!k?.length) return;
     const tip = (it) => {
       const d = new Date(k[it.dataIndex][0]);
-      return RANGES[range].interval === '1d' ? d.toLocaleDateString('ko-KR') : d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+      return RANGES[range].interval === '1d' ? d.toLocaleDateString(LOC) : d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
     };
     drawCandles(id, k, { compact, xf: range === '1d' ? hm : mdLocal, tip, last: px.t?.last, ind: !compact });
   }
@@ -1914,6 +1946,7 @@
   // ₩2억 4,712만 처럼 억·만 단위로 자세히
   const wonFull = (v) => {
     if (v == null || !isFinite(v)) return '–';
+    if (EN) return (v < 0 ? '-₩' : '₩') + unit(Math.abs(v));
     const a = Math.abs(v), sg = v < 0 ? '-' : '';
     let eok = Math.floor(a / 1e8), man = Math.round((a - eok * 1e8) / 1e4);
     if (man >= 10000) { eok += 1; man -= 10000; }
@@ -2187,7 +2220,7 @@
   const qLabel = (end) => { const [y, m] = end.split('-'); return `'${y.slice(2)} ${Math.ceil(+m / 3)}Q`; };
   const qLabelLong = (end) => { const [y, m] = end.split('-'); return `${y}년 ${Math.ceil(+m / 3)}분기`; };
   const dday = (iso) => Math.ceil((Date.parse(iso + 'T00:00:00') - new Date(new Date().toDateString()).getTime()) / 86400000);
-  const krDate = (iso) => { const d = new Date(iso + 'T00:00:00'); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`; };
+  const krDate = (iso) => { const d = new Date(iso + 'T00:00:00'); if (EN) return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`; };
   const usdS = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
 
   function renderEarnings() {
@@ -2471,6 +2504,7 @@
   const dayLabel = (ms) => {
     const d = new Date(ms), today = new Date();
     const diff = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+    if (EN) return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     if (diff === 0) return '오늘';
     if (diff === 1) return '어제';
     return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`;
@@ -2478,8 +2512,8 @@
   const timeLabel = (it) => {
     if (it.dateOnly) return '';
     const m = Math.round((Date.now() - it.t) / 60000);
-    if (m < 60) return `${Math.max(1, m)}분 전`;
-    if (m < 24 * 60) return `${Math.floor(m / 60)}시간 전`;
+    if (m < 60) return EN ? `${Math.max(1, m)}m ago` : `${Math.max(1, m)}분 전`;
+    if (m < 24 * 60) return EN ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 60)}시간 전`;
     return hm(it.t);
   };
 
@@ -2495,7 +2529,7 @@
     const k8 = last(/^8-K/), q = last(/^10-[QK]/);
     const off = (N.official || [])[0];
     const unseen = newsItems(sym).filter((i) => i.t > seen[sym].prev && i.level !== 'low').length;
-    const upd = (t) => (t ? `${ago(t)} 업데이트` : `${ago(state.data?.updatedAt)} 업데이트`);
+    const upd = (t) => (EN ? `Updated ${ago(t || state.data?.updatedAt)}` : t ? `${ago(t)} 업데이트` : `${ago(state.data?.updatedAt)} 업데이트`);
     card(id, {
       title: '공시 · 발표 한눈에', sub: `공시 ${upd(N.filingsAt)} · 뉴스 ${upd(N.newsAt)}`, info: INFO.news,
       body: `<div class="ns-grid">
@@ -2693,7 +2727,7 @@
     if (!pts?.length) return;
     const q = pq(sym);
     const intraday = range === '1d' || range === 'bn' || range === '1w';
-    const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString('ko-KR'); };
+    const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString(LOC); };
     // 바이낸스는 24시간 이어지므로 어느 기간이든 마지막 캔들에 현재가 반영, Yahoo는 오늘(1일) 캔들만
     const last = BN24[sym] || range === '1d' || range === 'bn' ? q?.price : null;
     drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : mdLocal, tip, last, ind: !compact });
@@ -2832,7 +2866,7 @@
     card(id, {
       title, sub: `${S.short} · 13F 신고 기준 · Nasdaq · ${latest ? md(isoToTs(latest)) + ' 분기 말' : ''}`, info: INFO.holders,
       body: `<div class="ns-grid h-grid">
-          <div><span>기관 보유 비율</span><b>${pctPlain(H.ownershipPct)}</b><small>발행 주식 ${unit(H.sharesOut)}주 중</small></div>
+          <div><span>기관 보유 비율</span><b>${pctPlain(H.ownershipPct)}</b><small>${EN ? `of ${unit(H.sharesOut)} shares outstanding` : `발행 주식 ${unit(H.sharesOut)}주 중`}</small></div>
           <div><span>보유 기관 수</span><b>${H.holders != null ? nf(0).format(H.holders) + '곳' : '–'}</b><small>보유 ${unit(H.totalShares?.shares)}주 · ${usd(H.totalValue)}</small></div>
           <div><span>직전 13F 대비 늘린 곳</span><b class="up">${inc ? nf(0).format(inc.holders) + '곳' : '–'}</b><small>+${unit(inc?.shares)}주${H.newPos ? ` · 신규 ${nf(0).format(H.newPos.holders)}곳` : ''}</small></div>
           <div><span>줄인 곳</span><b class="down">${dec ? nf(0).format(dec.holders) + '곳' : '–'}</b><small>-${unit(dec?.shares)}주${H.soldOut ? ` · 전량 매도 ${nf(0).format(H.soldOut.holders)}곳` : ''}</small></div>
@@ -2850,7 +2884,15 @@
   function marketSession(ms = Date.now()) {
     const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(ms).map((x) => [x.type, x.value]));
     const mins = (+p.hour % 24) * 60 + +p.minute;
-    const left = (to) => { const m = to - mins; return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
+    const left = (to) => { const m = to - mins; return m >= 60 ? (EN ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 60)}시간 ${m % 60}분`) : (EN ? `${m}m` : `${m}분`); };
+    if (EN) {
+      if (p.weekday === 'Sat' || p.weekday === 'Sun') return { k: 'closed', label: 'Weekend — closed', next: 'Trading resumes Monday pre-market' };
+      if (mins < 240) return { k: 'closed', label: 'Closed', next: `Pre-market in ${left(240)}` };
+      if (mins < 570) return { k: 'pre', label: 'Pre-market', next: `Opens in ${left(570)}` };
+      if (mins < 960) return { k: 'open', label: 'Market open', next: `Closes in ${left(960)}` };
+      if (mins < 1200) return { k: 'post', label: 'After-hours', next: `After-hours ends in ${left(1200)}` };
+      return { k: 'closed', label: 'Closed', next: p.weekday === 'Fri' ? 'Trading resumes Monday pre-market' : `Pre-market in ${left(240 + 1440)}` };
+    }
     if (p.weekday === 'Sat' || p.weekday === 'Sun') return { k: 'closed', label: '주말 휴장', next: '월요일 장전부터 다시 거래' };
     if (mins < 240) return { k: 'closed', label: '장 마감', next: `장전 시작까지 ${left(240)}` };
     if (mins < 570) return { k: 'pre', label: '장전 거래 중', next: `정규장 개장까지 ${left(570)}` };
@@ -2880,7 +2922,7 @@
 
   // ---------------------------------------------------------------- 키워드 속보 (News 탭)
   const KW_KEY = 'cw.kw';
-  state.kw = readJSON(KW_KEY, null) || ['FOMC', 'CPI', '금리', '관세', 'stablecoin', '스테이블코인', 'FAA', 'Starship'];
+  state.kw = readJSON(KW_KEY, null) || (EN ? ['FOMC', 'CPI', 'rate cut', 'tariff', 'stablecoin', 'FAA', 'Starship', 'earnings'] : ['FOMC', 'CPI', '금리', '관세', 'stablecoin', '스테이블코인', 'FAA', 'Starship']);
   let kwNotified = new Set(readJSON('cw.kwNoti', [])), kwBoot = true;
   const kwEsc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   function kwItems() {
@@ -3100,7 +3142,7 @@
     if (D.phase === 'pre') {
       const at = N?.date && D.time ? Date.parse(`${N.date}T${D.time === 'BMO' ? '08:00' : '16:05'}:00${etOffset(N.date)}`) : null;
       const left = at ? at - Date.now() : null;
-      const kst = at ? new Date(at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null;
+      const kst = at ? new Date(at).toLocaleString(LOC, { month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null;
       const sur = (D.E.surprises || []).slice(0, 4);
       const beats = sur.filter((x) => x.eps >= x.consensus).length;
       card(id, {
@@ -3127,7 +3169,7 @@
     const EN_RE = /earnings|results|quarter|revenue|guidance|EPS|실적|분기|매출|어닝/i;
     const news = newsItems(sym).filter((i) => i.kind !== 'filing' && EN_RE.test(i.title) && Date.now() - i.t < 2 * 86400000).slice(0, 4);
     card(id, {
-      title: `📊 ${S.short} 실적 발표 결과`, sub: `${q ? qLabelLong(q.end) : ''} · 발표 ${D.repMs ? new Date(D.repMs).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}`, info: INFO.earnday,
+      title: `📊 ${S.short} 실적 발표 결과`, sub: `${q ? qLabelLong(q.end) : ''} · 발표 ${D.repMs ? new Date(D.repMs).toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}`, info: INFO.earnday,
       body: `<div class="ns-grid er-grid">
           <div><span>EPS</span><b class="${cls(epsS)}">${eps != null ? '$' + (+eps).toFixed(2) : '–'}</b><small>${epsEst != null ? `예상 $${(+epsEst).toFixed(2)} · ` : ''}${epsS != null ? `<span class="${cls(epsS)}">${epsS >= 0 ? '예상 상회' : '예상 하회'} ${pct(epsS, 0)}</span>` : ''}</small></div>
           <div><span>매출</span><b class="${cls(salesS)}">${fq?.sales ? usd(fq.sales) : usdS2(q?.revenue)}</b><small>${fq?.salesEst ? `예상 ${usd(fq.salesEst)} · <span class="${cls(salesS)}">${salesS >= 0 ? '상회' : '하회'} ${pct(salesS, 1)}</span>` : ''}</small></div>
@@ -3856,6 +3898,7 @@
   function ago(t) {
     const ms = typeof t === 'number' ? t : Date.parse(t);
     const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (EN) return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ${m % 60}m ago`;
     return m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 ${m % 60}분 전`;
   }
   function renderStatus() {
@@ -3865,7 +3908,7 @@
     if (state.booting) { document.getElementById('status').innerHTML = '<span class="spin-dot"></span>최신 값 받는 중…'; return; }
     const fails = state.syncFail || [];
     document.getElementById('status').innerHTML = state.syncedAt
-      ? `<span class="live-dot"></span>${ago(state.syncedAt)} 업데이트` + (fails.length ? ` · <span class="warn">일부 항목 실패</span>` : '')
+      ? `<span class="live-dot"></span>${EN ? `Updated ${ago(state.syncedAt)}` : `${ago(state.syncedAt)} 업데이트`}` + (fails.length ? ` · <span class="warn">일부 항목 실패</span>` : '')
       : '불러오는 중…';
   }
 
@@ -4104,6 +4147,7 @@
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
     if (ev.target.closest('#refresh')) manualRefresh();
     if (ev.target.closest('#share-btn')) shareSite();
+    if (ev.target.closest('#lang-btn')) { try { localStorage.setItem('cw.lang', EN ? 'ko' : 'en'); } catch {} location.replace(location.pathname + location.hash); return; }
     if (ev.target.closest('#card-btn')) { openCardSheet(); return; }
     if (ev.target.closest('[data-cclose]')) { closeCardSheet(); return; }
     const ct = ev.target.closest('[data-ctype2]');
@@ -4126,7 +4170,7 @@
   const imgCache = {};
   const loadImg = (src) => (imgCache[src] ||= new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }));
   const cmd = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
-  const ymdDot = (d = new Date()) => `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} (${'일월화수목금토'[d.getDay()]})`;
+  const ymdDot = (d = new Date()) => EN ? d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} (${'일월화수목금토'[d.getDay()]})`;
 
   // 일봉 종가로 '1주 전 종가 대비' 등락(비트코인처럼 주말에도 거래되는 것도 같은 기준)
   function changeSince(pts, days) {
@@ -4151,7 +4195,7 @@
   function rrect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
   function txt(g, s, x, y, { size = 32, weight = 600, color = CK.ink, font = CF, align = 'left', base = 'alphabetic', max = 0 } = {}) {
     g.font = `${weight} ${size}px ${font}`; g.fillStyle = color; g.textAlign = align; g.textBaseline = base;
-    s = String(s ?? '');
+    s = T(String(s ?? ''));
     if (max && g.measureText(s).width > max) { while (s.length > 1 && g.measureText(s + '…').width > max) s = s.slice(0, -1); s += '…'; }
     g.fillText(s, x, y);
     return g.measureText(s).width;
@@ -4389,7 +4433,7 @@
     vg.clearRect(0, 0, CARD_W, CARD_H); vg.drawImage(off, 0, 0);
     if (wait) wait.hidden = true;
     const ta = document.getElementById('cs-caption');
-    if (ta) ta.value = cap;
+    if (ta) ta.value = T(cap);
   }
   async function saveCard() {
     const cv = document.getElementById('cs-canvas');
@@ -4461,6 +4505,7 @@
 
   if (!RANGES[state.range]) state.range = '1d';
   if (!SRANGES[state.srange]) state.srange = '1d';
+  { const lb = document.getElementById('lang-btn'); if (lb) { lb.textContent = EN ? '한국어' : 'EN'; lb.setAttribute('aria-label', EN ? '한국어로 보기' : 'View in English'); lb.setAttribute('lang', EN ? 'ko' : 'en'); } }
   const firstVisit = (() => { try { return !localStorage.getItem('cw.snapshot.v1'); } catch { return false; } })();
   const fromSnap = loadSnapshot();
   state.booting = true;

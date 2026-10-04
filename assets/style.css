@@ -840,3 +840,17 @@ details.more[open] > summary span { font-size: 0; } details.more[open] > summary
 .cs-btns { display: flex; gap: 8px; }
 .cs-cap { display: grid; gap: 6px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
 .cs-cap textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--ink); padding: 10px; font: 13px/1.5 var(--sans); }
+
+/* 언어 전환 버튼(상단) */
+.lang-btn { height: 34px; min-width: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink-2); font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; }
+.lang-btn:active { background: var(--surface-2); }
+/* 영어 보기: 번역 전 한국어가 잠깐 보이지 않게, AI 한국어 요약은 숨김 */
+html.i18n-wait body { visibility: hidden; }
+html[lang="en"] .nsum { display: none; }
+/* 운영자 블로그 카드 */
+.blog-card { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 16px; border: 1px solid color-mix(in srgb, #03c75a 45%, var(--line)); border-radius: var(--radius); background: var(--surface); color: var(--ink); text-decoration: none; }
+.blog-card .bc-ic { font-size: 22px; }
+.blog-card .bc-t { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.blog-card .bc-t b { font-size: 15px; }
+.blog-card .bc-t small { color: var(--muted); font-size: 12.5px; }
+.blog-card .bc-go { color: #03c75a; font-size: 18px; font-weight: 700; }

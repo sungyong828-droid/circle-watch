@@ -13,6 +13,10 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DIST = os.path.join(ROOT, 'dist')
 PRIVATE = re.compile(r'sungyong828', re.I)  # 공개되면 안 되는 식별자
 
+# 영어 사전(assets/i18n-en.js)을 먼저 새로 만든다
+import subprocess
+subprocess.run([sys.executable, os.path.join(ROOT, 'i18n', 'build_dict.py')], check=True)
+
 shutil.rmtree(DIST, ignore_errors=True)
 os.makedirs(os.path.join(DIST, 'data'))
 for f in ['index.html', 'admin.html', '_headers', 'robots.txt']:

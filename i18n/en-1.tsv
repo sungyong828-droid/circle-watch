@@ -1,0 +1,256 @@
+0	#USstocks #WeeklyBriefing #Investing
+1	#USstocks #Investing #StockJournal
+2	#StockJournal #InvestingJournal
+3	#FIRE #FinancialFreedom #EarlyRetirement #USstocks #InvestingJournal #StockJournal
+4	% · Open Fire
+5	% · Holdings
+6	% basis
+7	% done
+8	(Q3)
+9	(TradFi stock perpetual futures). Connected directly to Binance (WebSocket), so it updates on every trade.
+10	(removed from watchlist)
+11	(other holdings at current price)
+12	(Buy
+13	(buy · hold · sell) and
+14	(range $
+15	(read automatically by the server), cash burn, commercial launch timeline
+16	(optional): calculated after Korean overseas-stock capital gains tax (22% after a ₩2.5M annual deduction). Actual tax depends on your other overseas gains/losses and FX.
+17	(after tax)
+18	(new
+19	(est.)
+20	(on-chain totalSupply). History is end-of-day (UTC) values; the last point is the current value.
+21	(insider Form 4 · planned-sale 144 hidden)
+22	(after-hours mood)
+23	(YoY
+24	(amended)
+25	(Joby): only filings/news containing certification terms like FAA · TIA · eIPP.
+26	(vs last week
+27	(tallying)
+28	) · 1M avg
+29	) · total accounts
+30	) · new
+31	) · showing previous value
+32	) · auto-updated
+33	) · low
+34	) · avg target
+35	) — the schedule below may have changed →
+36	) vs
+37	) vs · short
+38	) live price · chart · news —
+39	) view original →
+41	) — total amount users have borrowed (outstanding loans).
+42	) indexed to 100 · DefiLlama
+43	+ Add holding
+44	+ Add
+45	+ Add · Edit
+46	+ Add keyword
+50	, inflow
+51	, vs regular-session close)
+52	, tallying)
+53	, above current price
+54	. Will retry on the next collection.
+55	. If both move together it's likely an industry-wide issue; if they diverge, a company-specific one.
+56	/ Sell
+57	/ Hold
+58	/ total
+59	/5 stages
+61	0 sh
+62	100x
+63	10Y
+64	per +₩10
+65	12-month price target
+66	13F filings
+67	13F filings are holdings reports that institutions with $100M+ AUM file within 45 days after quarter end, so
+68	13 wks
+69	updates every 15s
+70	1M
+71	1M avg
+72	1Y
+73	Stage 1 Certification Basis
+74	every minute
+75	1D
+76	1D / 7D / 30D
+77	1W
+78	24h volume
+79	24h
+80	24h price range
+81	24h change
+82	Top 24h:
+83	24h ago
+84	24h estimate
+85	The Q2 '25 loss reflects one-time IPO-related costs.
+86	Up to 1.3B shares unlock in 2 trading days
+87	Stage 2 Means of Compliance
+88	2x
+89	30D
+90	30D · Form 4
+91	30-day total
+92	over 30 days
+93	36 hours
+94	3M
+95	Stage 3 Certification Plans
+96	Stage 4 Testing & Analysis
+97	5%+ holder report
+98	5%+ holder report (activist)
+99	52W
+100	52W position
+101	52W high
+102	52W low
+103	Stage 5 Demonstration & Verification
+104	Stage 5 trend
+105	Stage 5 (final)
+106	updates every 5s
+107	7D
+108	8-K filing
+109	: judged by (buy − sell) ÷ total brokers. 40%+ means buy-leaning.
+110	: (revenue − cost of revenue) ÷ revenue. Higher means more profit per sale.
+111	: includes revenue from the helicopter passenger business (Blade) acquired from Q3 2025.
+112	: compared with the June 2026 IPO price ($135). Less than a year since listing, so
+113	: change vs the price 24 hours ago (
+114	: USDC burned on Arc → sent to other chains.
+115	: BlackRock tokenized MMF — for comparison with USYC.
+116	: actual vs expected EPS and revenue, price reaction, the earnings 8-K, plus earnings news with AI summaries.
+117	: the final stage, where FAA pilots fly a conforming aircraft for credit (TIA). Completing it yields the Type Certificate.
+118	: Form 4 = insiders/major holders report trades within 2 business days; Form 144 = advance notice of an insider's planned sale. Clustered selling is read as supply pressure.
+119	: the share Joby has submitted vs the share FAA has reviewed/accepted. The FAA number is closer to real progress.
+120	: the lowest and highest targets. A wider range means more disagreement.
+121	: share of returning accounts among active accounts in the most recent full week. Helps tell one-off inflows (e.g. airdrop farming) from real repeat users.
+122	: a fellow electric air taxi (eVTOL) company. If both move together it's likely an industry-wide issue; if they diverge, a company-specific one.
+123	: the fear index. Below 20 is calm; above 30 is a nervous market.
+124	: Google News search results (last 30 days). Phones can't fetch Google News directly, so it goes through a relay server (Cloudflare Worker) on each refresh (up to 3-min cache; the refresh button bypasses it). Duplicate titles are merged.
+125	: the institution's shares ÷ shares outstanding (per Nasdaq).
+126	: accounts seen for the first time that day.
+127	: shows how much annual revenue falls if rates drop 0.25%p, and how much it rises if USDC grows by $1B. That's why CRCL is sensitive to rate-cut news.
+128	: the default holdings (CRCA · CRCL · JOBY · SPCX · TEM) plus, from Home's
+129	: the gray text under each headline is a Korean summary written by AI (Cloudflare Workers AI) from the start of the article. If the article couldn't be fetched, it's a rewording of the title, so check the original for anything important. New articles take a few minutes to get a summary.
+130	: an insider bought shares in the market with their own money — the most meaningful signal.
+131	: USDC burned on other chains → minted on Arc.
+132	: a strong dollar weighs on risk assets. Bitcoin is tied to Circle/crypto sentiment.
+133	: large-cap, tech, blue-chip and small-cap indexes. Compare whether your stocks moved with the market.
+134	: the price where option buyers lose the most at expiry. Folklore says the stock gets pulled toward it near expiry (for reference only).
+135	: compared with your cost (shares × average price). Without an average FX rate, the current rate is used.
+136	: profit after all costs and taxes. About half of revenue goes out as distribution costs to Coinbase and others.
+137	: fetched directly from SEC EDGAR on every refresh (falls back to the server's list). Key filings = 8-K (major events like M&A, management changes, earnings — filed within 4 business days), 10-Q (quarterly), 10-K (annual), securities offerings (S-1 · 424B), etc.
+138	: US Eastern time — pre-market (04:00–09:30), regular (09:30–16:00), after-hours (16:00–20:00). US holidays are not detected.
+139	: uses Binance's 24/7 CRCL price to estimate the next open even on weekends/nights (CRCA assumed at 2x the daily return). The actual open may differ.
+140	: trade even when the regular US session is closed, hinting at the next session's mood.
+141	: executed automatically on a pre-scheduled trading plan (10b5-1).
+142	: Binance's
+143	: converting received options into shares (not a trading decision).
+144	: release time (KST), countdown, EPS estimate, the earnings move implied by options, and recent beat count.
+145	: compared with the average analyst estimate before the release. Beating estimates is usually positive for the stock.
+146	: share of outstanding shares held by institutions. Higher means big-money flows matter more.
+147	: by position value.
+148	: the stage where component/system test results are submitted to and reviewed by the FAA.
+149	: amount lent out.
+150	: on paper
+151	: every 3 hours the server reads SpaceX's new SEC filings; if lock-up waiver/early-release language or a resale registration appears, an alert shows above this card. Related news is shown too.
+152	: general crypto market news beyond Circle. To block spam/fake articles, instead of search
+153	: Circle
+154	: Circle's euro stablecoin (in €, official Circle supply).
+155	: Circle's tokenized short-term Treasury money market fund (a yield-bearing token). Reflects institutional collateral/deposit demand.
+156	: before Circle officially announces the date, it's estimated from past patterns (Zacks), and
+157	: a fee longs and shorts pay each other to keep futures near spot. Positive means longs pay shorts → more bullish bets.
+158	: many sales are for taxes, living costs or diversification, so don't over-read single ones. Watch out when several executives sell a lot at once.
+159	: the bottom bars. Tap the chart to see that candle's values.
+160	: shares sold short and not yet covered (published twice a month). Rising means more bearish bets are piling up.
+161	: size of open futures positions (in USD). Rising means new money is coming in.
+162	: compared with the average analyst estimate (Nasdaq · Zacks). Nasdaq EPS may be adjusted to exclude one-off costs.
+163	: operating cash flow + capex. Using the last 2 quarters' average,
+164	: deposits not lent out (DefiLlama TVL, incl. collateral).
+165	: today's put (downside hedge) volume ÷ call (upside bet) volume. Below 0.7 = bullish; above 1 = defensive.
+166	: rising yields weigh on growth stocks (Joby, Tempus…), while Circle earns more reserve interest.
+167	: the next-30-day volatility priced into options (annualized). Higher means bigger expected moves.
+168	: outflow
+169	: this figure includes brief short sales by market makers filling buy orders, so 40–50% is common even for ordinary stocks.
+170	: well-known large financial firms only.
+171	: growth vs the same quarter last year — the key metric for growth stocks.
+172	: flipping from loss to profit is shown as
+173	: negative because the company is loss-making. A smaller-than-expected loss counts as
+174	: Joby = UAM trade media (eVTOL Insights · Urban Air Mobility News · FlightGlobal), SpaceX = space media (SpaceNews · NASASpaceflight · Spaceflight Now), Tempus = healthcare media (STAT · MedCity News · Fierce Healthcare), AI/genomics/cancer-diagnostics stories only.
+175	: the stock price that reaches your goal at today's FX rate.
+176	: number of institutions and shares that increased/decreased vs the prior quarter's filing. More increases = institutional buying.
+177	: items posted since you last opened this tab. The number on the bottom tab uses the same rule (insider filings excluded).
+178	: sorted by change in shares vs the prior quarter. The left number is the rank (major firms also ranked by total value; top 3 in gold).
+179	: the day total borrowing first passed each amount. Green = reached, dashed = next milestone.
+180	: if the close was 30%+ above the IPO price (≥ $175.5) on 5 of the 10 trading days before the first earnings, 456M more shares could unlock — closes were $108–125, so they didn't.
+181	: average close of the last 5/20/60/120 candles (yellow/pink/green/purple) — price above the averages suggests an uptrend.
+182	: candles show open/high/low/close in one bar (red up · blue down); line connects closes only.
+183	: heavy calls are often read as resistance, heavy puts as support.
+184	: provisional value still being tallied by the explorer (usually finalized — and higher — on the next collection).
+185	: the higher the average target vs price, the more upside brokers see. If price exceeds the target,
+186	: supply change vs 1/7/30 days ago.
+187	: cash + investments convertible within a year.
+188	: (call + put price at the nearest strike) ÷ stock price. The up/down move the market expects by that expiry (~68% range). Expiries spanning earnings show the expected earnings reaction.
+189	: active accounts − new accounts (accounts that were used before).
+190	: official company releases (Business Wire · company site) plus news with the company name in the title. Korean/English views are by language, so the same story may appear in both.
+191	: before the company announces it, the date is estimated from past patterns, so
+192	= USDC supply ÷ total USD stablecoin supply (DefiLlama). Most of Circle's revenue is interest on USDC reserves (T-bills · cash), so
+193	= short interest ÷ average daily volume. Days needed for shorts to buy back; higher means stronger squeeze pressure.
+194	= share of that day's CRCL volume executed as short sales (selling borrowed shares). Source: FINRA daily short volume (Reg SHO), posted the evening after the US close (next morning in Korea).
+195	= shares × live price (Nasdaq, incl. pre/regular/after-hours) × live USD/KRW rate.
+196	= net mint: someone deposits dollars and receives new USDC → Circle's reserves rise → interest income rises
+197	= net burn: USDC redeemed for dollars → reserves fall
+198	= inflow − outflow. Negative means money is leaving Arc.
+199	= borrowed ÷ (deposits + borrowed). The share of deposits lent out; higher means funds are actively used.
+200	Aave V4 borrowing
+201	Arc DEX 24h
+202	Arc DEX volume
+203	Arc DEX daily volume
+204	Arc TVL down
+205	Arc TVL up
+206	Arc TVL trend
+207	Arc network activity
+208	Arc lending down
+209	Arc lending surging
+210	Arc lending market
+211	Daily status of the Arc lending market (DefiLlama, Morpho Blue + Aave V4).
+212	Arc lending up
+213	Arc lending · borrowed
+214	Arc borrowed balance trend
+215	Arc rank
+216	EURC on Arc
+217	USDC on Arc
+218	USDC · EURC on Arc
+219	Traded in one day on decentralized exchanges (Uniswap etc.) on Arc
+220	Arc daily fees
+221	Arc daily transactions
+222	Arc net inflow
+223	Arc net outflow
+224	Arc borrowed balance
+225	Arc chain
+226	On the Arc chain
+227	Processed in one day on the Arc chain
+228	Arc activity
+229	Arc active accounts
+230	Arc charges fees in USDC. Steadily rising transactions and fees signal the chain Circle built is actually being used. Check whether a spike is just temporary airdrop hype.
+231	Dollars flowing into Arc
+232	Into Arc →
+233	Inflow to Arc
+234	From Arc
+235	Outflow from Arc
+236	Plotted from the daily totalSupply of the Arc and Ethereum contracts; the last point is current supply. Rising means BTC was deposited to mint cirBTC; falling means it was redeemed for BTC (burned). Cross-chain moves can shrink one side and grow the other, so
+237	Arc lending protocols (
+238	Binance CRCLUSDT perpetual
+239	Binance CRCLUSDT perpetual · 24h trading
+240	CCTP 24h net
+241	CCTP net inflow 24h
+242	CRCA · ProShares Ultra CRCL (2x)
+243	CRCL · Circle Internet Group
+244	CRCL price trend
+245	CRCL live price
+246	CRCL last 24h price
+247	CRCLUSDT perpetual
+248	D. E. Shaw
+249	D1 Capital
+250	DefiLlama's default basis, so
+251	EPS basis
+252	EPS actual
+253	EPS actual vs estimate
+254	EPS actual & estimate
+255	The gray number under EPS is the pre-release estimate.
+256	EPS (earnings per share)
+257	EPS & estimate
+258	EURC (euro)
+259	EURC supply
+260	Total EURC supply
