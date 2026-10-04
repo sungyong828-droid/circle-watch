@@ -2227,7 +2227,7 @@
   try { localStorage.removeItem('cw.divCache'); localStorage.removeItem('cw.divCache2'); } catch {} // 매수일 기준으로 잘라 저장하던 예전 캐시
   const normDiv = (V) => {
     if (!V || !Array.isArray(V.lots)) return null;
-    V.lots = V.lots.filter((l) => TICKER_RE.test(l?.t || '') && l.sh > 0 && l.avg > 0 && /^\d{4}-\d{2}-\d{2}$/.test(l.d || ''));
+    V.lots = V.lots.filter((l) => TICKER_RE.test(l?.t || '') && l.sh > 0 && l.avg > 0 && /^\d{4}-\d{2}-\d{2}$/.test(l.d || '')).map((l) => (l.sell ? { ...l, sell: true } : { t: l.t, sh: l.sh, avg: l.avg, d: l.d }));
     V.tax = [0, 0.15].includes(V.tax) ? V.tax : 0.15;
     return V.lots.length ? V : null;
   };
@@ -2277,17 +2277,28 @@
     if (!divCfg) return null;
     const today = isoToday(), yearAgo = addDays(today, -365), tax = divCfg.tax;
     const per = {}, received = [], pending = [], missing = [];
-    for (const L of divCfg.lots) {
-      const D = state.divData[L.t]?.d;
-      const P = (per[L.t] ||= { sym: L.t, sh: 0, cost: 0, gross: 0, count: new Set(), D, lots: 0 });
-      P.sh += L.sh; P.cost += L.sh * L.avg; P.lots++;
-      if (!D) { if (!missing.includes(L.t)) missing.push(L.t); continue; }
+    const byT = {};
+    for (const L of divCfg.lots) (byT[L.t] ||= []).push(L);
+    for (const [sym, lots] of Object.entries(byT)) {
+      lots.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+      // 원가(평균 단가 방식): 매수는 더하고, 매도는 그때의 평균 단가만큼 뺀다
+      let sh = 0, cost = 0;
+      for (const L of lots) {
+        if (L.sell) { const out = Math.min(L.sh, sh); cost -= sh ? cost * (out / sh) : 0; sh -= out; }
+        else { sh += L.sh; cost += L.sh * L.avg; }
+      }
+      const D = state.divData[sym]?.d;
+      const P = (per[sym] = { sym, sh, cost, gross: 0, count: new Set(), D, lots: lots.filter((l) => !l.sell).length, sells: lots.filter((l) => l.sell).length });
+      if (!D) { missing.push(sym); continue; }
+      // 배당락일 전날까지 가진 수량(그 전에 판 수량은 뺀다. 배당락일 당일 이후에 팔아도 그 배당은 받는다)
+      const heldAt = (ex) => Math.max(0, lots.reduce((n, L) => (L.d < ex ? n + (L.sell ? -L.sh : L.sh) : n), 0));
       const evs = [...D.events];
       if (D.next?.ex && !evs.some((e) => e.ex === D.next.ex)) evs.push({ ex: D.next.ex, amt: D.next.amt ?? evs.at(-1)?.amt ?? 0, declared: true, pay: D.next.pay });
       for (const e of evs) {
-        if (e.ex <= L.d) continue; // 배당락일 전날까지 사야 받는다
+        const held = heldAt(e.ex);
+        if (!(held > 0)) continue;
         const { pay, est } = e.pay ? { pay: e.pay, est: false } : payDateOf(D, e.ex);
-        const row = { sym: L.t, ex: e.ex, pay, est, dps: e.amt, sh: L.sh, gross: e.amt * L.sh };
+        const row = { sym, ex: e.ex, pay, est, dps: e.amt, sh: held, gross: e.amt * held };
         if (pay <= today && e.ex <= today) { received.push(row); P.gross += row.gross; P.count.add(e.ex); }
         else pending.push(row);
       }
@@ -2370,7 +2381,7 @@
     const errs = c.missing.filter((s) => state.divErr[s]);
     const taxLabel = c.tax ? `세후(미국 원천징수 ${Math.round(c.tax * 100)}%)` : '세전';
     const P = Object.values(c.per);
-    const rows = P.map((p) => `<tr><td>${logoOf(p.sym) ? `<img class="div-logo" src="${logoOf(p.sym)}" alt="" width="18" height="18" loading="lazy">` : ''}<b>${esc(p.sym)}</b><small>${esc(p.D && !p.D.events.length ? '배당 없음' : p.freqLabel || '–')}${p.yoc != null ? ` · YOC ${pctPlain(p.yoc, 1)}` : ''}${p.lots > 1 ? (EN ? ` · ${p.lots} buys` : ` · 매수 ${p.lots}회`) : ''}</small></td>
+    const rows = P.map((p) => `<tr><td>${logoOf(p.sym) ? `<img class="div-logo" src="${logoOf(p.sym)}" alt="" width="18" height="18" loading="lazy">` : ''}<b>${esc(p.sym)}</b><small>${esc(p.D && !p.D.events.length ? '배당 없음' : p.freqLabel || '–')}${p.yoc != null ? ` · YOC ${pctPlain(p.yoc, 1)}` : ''}${p.lots > 1 ? (EN ? ` · ${p.lots} buys` : ` · 매수 ${p.lots}회`) : ''}${p.sells ? (EN ? ` · ${p.sells} sells` : ` · 매도 ${p.sells}회`) : ''}${p.sh <= 0 ? (EN ? ' · sold out' : ' · 전량 매도') : ` · ${nf(p.sh % 1 ? 2 : 0).format(p.sh)}${EN ? ' sh' : '주'}`}</small></td>
         <td>${p.payments ?? 0}회</td><td>${usd2(p.received)}</td><td>${p.annual != null ? usd2(p.annual * (1 - c.tax)) : '–'}</td>
         <td>${p.next ? `${+p.next.ex.slice(5, 7)}/${+p.next.ex.slice(8)}${p.next.est ? '<small>예상</small>' : '<small>확정</small>'}` : '–'}</td></tr>`).join('');
     const bar = Math.min(100, c.payback * 100);
@@ -2448,10 +2459,11 @@
 
   // ---- 입력 폼
   function divRowHtml(r, i) {
-    return `<div class="f-row d-row" data-row="${i}">
+    return `<div class="f-row d-row${r.sell ? ' is-sell' : ''}" data-row="${i}">
       <input class="d-t" list="d-tickers" value="${esc(r.t || '')}" placeholder="티커 (예: SCHD)" aria-label="티커" autocapitalize="characters" autocomplete="off" maxlength="8">
-      <input class="d-sh" inputmode="decimal" value="${r.sh ?? ''}" placeholder="수량" aria-label="보유 수량">
-      <input class="d-avg" inputmode="decimal" value="${r.avg ?? ''}" placeholder="평단($)" aria-label="평균 단가(달러)">
+      <select class="d-side" aria-label="매수 또는 매도"><option value="buy">매수</option><option value="sell" ${r.sell ? 'selected' : ''}>매도</option></select>
+      <input class="d-sh" inputmode="decimal" value="${r.sh ?? ''}" placeholder="수량" aria-label="수량">
+      <input class="d-avg" inputmode="decimal" value="${r.avg ?? ''}" placeholder="${r.sell ? '판 가격($)' : '평단($)'}" aria-label="가격(달러)">
       <input class="d-d" type="date" value="${esc(r.d || '')}" max="${isoToday()}" aria-label="매수일(선택 — 비우면 오늘)">
       <button type="button" class="f-rm" data-drm="${i}" aria-label="이 매수 기록 삭제" ${divRows.length < 2 ? 'hidden' : ''}>×</button>
     </div>`;
@@ -2464,7 +2476,11 @@
     el.innerHTML = `<details class="fire-set" ${divCfg ? '' : 'open'}>
       <summary>${divCfg ? '배당 종목 수정' : '배당 종목 입력'}</summary>
       <form id="div-form" autocomplete="off">
-        <div class="f-rows-h"><span>매수 기록</span><small>티커 · 수량 · 평단($) · 매수일(선택)</small></div>
+        <div class="d-import">
+          <button type="button" class="btn-primary d-ocr" id="d-ocr">📷 거래 내역 사진으로 넣기</button>
+          <p class="note">증권 앱의 거래 화면을 캡처해 올리면 매수·매도 기록을 자동으로 넣어요.</p>
+        </div>
+        <div class="f-rows-h"><span>매수 기록</span><small>티커 · 매수/매도 · 수량 · 가격($) · 날짜(선택)</small></div>
         <div id="d-rows">${divRows.map(divRowHtml).join('')}</div>
         <datalist id="d-tickers">${tickers.map((t) => `<option value="${esc(t)}">`).join('')}</datalist>
         <div class="d-btns"><button type="button" class="btn-ghost f-add" id="d-add">+ 매수 기록 추가</button>${fireCfg ? '<button type="button" class="btn-ghost f-add" id="d-import">🔥 보유 종목 불러오기</button>' : ''}</div>
@@ -2481,6 +2497,7 @@
       sh: parseFloat(r.querySelector('.d-sh').value.replace(/,/g, '')) || undefined,
       avg: parseFloat(r.querySelector('.d-avg').value.replace(/[,$]/g, '')) || undefined,
       d: r.querySelector('.d-d').value,
+      ...(r.querySelector('.d-side')?.value === 'sell' ? { sell: true } : {}),
     }));
   }
   function saveDivForm() {
@@ -2501,6 +2518,86 @@
     try { localStorage.removeItem(DIV_KEY); localStorage.removeItem(DIV_CACHE); } catch {}
     toast('이 기기에서 배당 정보를 지웠어요');
     renderDivSet(); renderDiv();
+  }
+  // ---- 사진으로 거래 내역 넣기(도미노 등 증권 앱의 종목 → '거래' 화면 캡처). 글자 읽기는 이 기기에서(assets/trade-ocr.js)
+  let ocrRows = null;
+  function openOcrSheet() {
+    let el = document.getElementById('ocr-sheet');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ocr-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '거래 내역 사진으로 넣기');
+      document.body.appendChild(el);
+    }
+    const Y = new Date().getFullYear();
+    const curT = (readDivRows().find((r) => r.t) || {}).t || '';
+    ocrRows = null;
+    el.hidden = false;
+    document.body.classList.add('sheet-open');
+    el.innerHTML = `<div class="sheet-bg" data-oclose="1"></div><div class="sheet-panel oc-panel">
+      <div class="sheet-h"><b>📷 거래 내역 사진으로 넣기</b><button type="button" class="ws-btn" data-oclose="1">닫기</button></div>
+      <ol class="oc-steps"><li>증권 앱(예: 도미노)에서 종목을 고르고 <b>거래</b> 화면을 캡처해요.</li><li>아래에 종목 티커를 넣고 캡처 사진을 골라요. 여러 장을 한 번에 골라도 되고, 겹친 부분은 한 번만 넣어요.</li><li>읽은 내용을 확인하고 <b>매수 기록에 넣기</b> → 아래 <b>저장</b>을 눌러요.</li></ol>
+      <div class="oc-fields">
+        <label>종목 티커<input id="oc-t" list="d-tickers" placeholder="예: MSTY" value="${esc(curT)}" autocapitalize="characters" autocomplete="off" maxlength="8"></label>
+        <label>가장 최근 거래의 연도<select id="oc-y"><option value="">자동 (오늘 기준)</option>${[0, 1, 2, 3].map((k) => `<option value="${Y - k}">${Y - k}년</option>`).join('')}</select></label>
+      </div>
+      <label class="btn-primary oc-pick">사진 고르기<input type="file" id="oc-file" accept="image/*" multiple hidden></label>
+      <p class="oc-status" id="oc-status">🔒 사진은 이 기기 안에서만 읽고 어디에도 보내지 않아요. 처음 한 번은 글자 읽기 엔진(약 7MB)을 받느라 시간이 걸려요.</p>
+      <div id="oc-result"></div>
+    </div>`;
+  }
+  function closeOcrSheet() { const el = document.getElementById('ocr-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+  async function runOcr(files) {
+    const st = document.getElementById('oc-status'), out = document.getElementById('oc-result');
+    if (!files?.length || !window.__tradeOcr) return;
+    out.innerHTML = '';
+    st.textContent = '글자 읽기 엔진 준비 중…';
+    try {
+      const rows = await window.__tradeOcr.readShots(files, (m) => {
+        if (m.status === 'image') st.textContent = `사진 읽는 중… ${Math.round(m.progress * files.length) + 1}/${files.length}`;
+        else if (/load|initializ/i.test(m.status || '')) st.textContent = `글자 읽기 엔진 준비 중… ${Math.round((m.progress || 0) * 100)}%`;
+      });
+      const y = parseInt(document.getElementById('oc-y')?.value, 10) || null;
+      ocrRows = window.__tradeOcr.assignYears(rows, y);
+      renderOcrResult();
+    } catch (e) {
+      st.textContent = `읽지 못했어요: ${e.message || e}`;
+    }
+  }
+  function renderOcrResult() {
+    const st = document.getElementById('oc-status'), out = document.getElementById('oc-result');
+    const R = ocrRows || [];
+    if (!R.length) { st.textContent = '거래 내역을 찾지 못했어요. 증권 앱의 거래 화면 캡처인지 확인해 주세요.'; return; }
+    const buys = R.filter((r) => r.side === 'buy'), sells = R.filter((r) => r.side === 'sell');
+    const net = buys.reduce((n, r) => n + r.sh, 0) - sells.reduce((n, r) => n + r.sh, 0);
+    const warn = R.filter((r) => !r.ok).length;
+    st.innerHTML = `<b>${R.length}건</b>을 읽었어요 · 매수 ${buys.length}건 · 매도 ${sells.length}건 · 매수−매도 <b>${nf(net % 1 ? 2 : 0).format(net)}주</b>${warn ? ` · <span class="warn">⚠ 확인 필요 ${warn}건</span>` : ''}`;
+    out.innerHTML = `<div class="div-scroll"><table class="div-tbl oc-tbl"><thead><tr><th></th><th>날짜</th><th>구분</th><th>수량</th><th>가격</th><th>금액</th></tr></thead><tbody>
+      ${R.map((r, i) => `<tr class="${r.ok ? '' : 'oc-warn'}"><td><input type="checkbox" class="oc-on" data-i="${i}" checked aria-label="넣기"></td>
+        <td><input type="date" class="oc-d" data-i="${i}" value="${esc(r.d || '')}" max="${isoToday()}" aria-label="날짜"></td>
+        <td class="${r.side === 'buy' ? 'up' : 'down'}">${r.side === 'buy' ? '매수' : '매도'}</td><td>${nf(r.sh % 1 ? 4 : 0).format(r.sh)}</td><td>$${r.price.toFixed(2)}</td><td>$${nf(2).format(r.amount)}${r.ok ? '' : '<small>⚠ 확인</small>'}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="note">⚠ 표시는 날짜를 못 읽었거나 금액 ÷ 가격이 딱 떨어지지 않은 줄이에요. 날짜를 고치거나 체크를 빼 주세요. 수량은 금액 ÷ 가격으로 계산했어요.</p>
+      <label class="chk oc-replace"><input type="checkbox" id="oc-replace" checked> 이 종목의 기존 줄은 지우고 이 기록으로 바꾸기</label>
+      <button type="button" class="btn-primary oc-add" id="oc-add">${R.length}건 매수 기록에 넣기</button>`;
+  }
+  function addOcrRows() {
+    const t = (document.getElementById('oc-t')?.value || '').trim().toUpperCase();
+    if (!TICKER_RE.test(t)) { toast('종목 티커를 넣어 주세요(예: MSTY)', true); document.getElementById('oc-t')?.focus(); return; }
+    const pick = [];
+    for (const cb of document.querySelectorAll('#oc-result .oc-on')) {
+      if (!cb.checked) continue;
+      const r = ocrRows[+cb.dataset.i], d = document.querySelector(`#oc-result .oc-d[data-i="${cb.dataset.i}"]`)?.value || '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast('날짜가 빈 줄이 있어요. 날짜를 넣거나 체크를 빼 주세요', true); return; }
+      pick.push({ t, sh: r.sh, avg: r.price, d, ...(r.side === 'sell' ? { sell: true } : {}) });
+    }
+    if (!pick.length) { toast('넣을 줄을 골라 주세요', true); return; }
+    const replace = document.getElementById('oc-replace')?.checked;
+    const keep = readDivRows().filter((r) => (r.t || r.sh || r.avg) && !(replace && r.t === t));
+    divRows = [...keep, ...pick.sort((a, b) => (a.d < b.d ? -1 : 1))];
+    document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join('');
+    closeOcrSheet();
+    const det = document.querySelector('#c-div-set details'); if (det) det.open = true;
+    toast(`✓ ${t} ${pick.length}건을 넣었어요 · 아래 저장을 눌러 주세요`);
   }
   function importFireToDiv() {
     const have = readDivRows().filter((r) => r.t);
@@ -4491,6 +4588,9 @@
     const drm = ev.target.closest('[data-drm]');
     if (drm) { divRows = readDivRows(); divRows.splice(+drm.dataset.drm, 1); document.getElementById('d-rows').innerHTML = divRows.map(divRowHtml).join(''); return; }
     if (ev.target.closest('#d-del')) { deleteDiv(); return; }
+    if (ev.target.closest('#d-ocr')) { openOcrSheet(); return; }
+    if (ev.target.closest('[data-oclose]')) { closeOcrSheet(); return; }
+    if (ev.target.closest('#oc-add')) { addOcrRows(); return; }
     if (ev.target.closest('#d-import')) { importFireToDiv(); return; }
     if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: fireTickerOrder().find((k) => !fireRows.some((r) => r.ticker === k)) || 'CRCA' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
     const rmBtn = ev.target.closest('[data-rm]');
@@ -4605,7 +4705,11 @@
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
-  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeWatchSheet(); });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { closeWatchSheet(); closeOcrSheet(); } });
+  document.addEventListener('change', (ev) => {
+    if (ev.target.id === 'oc-file') runOcr(ev.target.files);
+    if (ev.target.classList?.contains('d-side')) { const row = ev.target.closest('.d-row'); row?.classList.toggle('is-sell', ev.target.value === 'sell'); const a = row?.querySelector('.d-avg'); if (a) a.placeholder = ev.target.value === 'sell' ? '판 가격($)' : '평단($)'; }
+  });
   document.addEventListener('toggle', (ev) => {
     const d = ev.target;
     if (!(d instanceof HTMLElement) || !d.matches('details.more')) return;

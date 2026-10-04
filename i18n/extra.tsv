@@ -149,3 +149,29 @@ Fire 화면 전환	Switch Fire view
 배당 종목을 넣으면 계산돼요	Enter dividend stocks to calculate
 이 대시보드를 만든 사람의	Investing journal by the maker
 미국 주식 투자 기록 · 네이버 블로그	of this dashboard · Naver Blog (Korean)
+📷 거래 내역 사진으로 넣기	📷 Import trades from screenshots
+증권 앱의 거래 화면을 캡처해 올리면 매수·매도 기록을 자동으로 넣어요.	Upload screenshots of your brokerage app's trade history and buy/sell records are added automatically.
+티커 · 매수/매도 · 수량 · 가격($) · 날짜(선택)	ticker · buy/sell · shares · price ($) · date (optional)
+매수 또는 매도	Buy or sell
+판 가격($)	Sell price ($)
+종목 티커	Ticker
+가장 최근 거래의 연도	Year of the latest trade
+자동 (오늘 기준)	Auto (based on today)
+사진 고르기	Choose screenshots
+🔒 사진은 이 기기 안에서만 읽고 어디에도 보내지 않아요. 처음 한 번은 글자 읽기 엔진(약 7MB)을 받느라 시간이 걸려요.	🔒 Screenshots are read on this device only and never uploaded. The first time, the text-recognition engine (~7MB) takes a moment to download.
+글자 읽기 엔진 준비 중…	Preparing the text-recognition engine…
+⚠ 표시는 날짜를 못 읽었거나 금액 ÷ 가격이 딱 떨어지지 않은 줄이에요. 날짜를 고치거나 체크를 빼 주세요. 수량은 금액 ÷ 가격으로 계산했어요.	⚠ marks rows whose date couldn't be read or whose amount ÷ price isn't a whole number. Fix the date or uncheck them. Shares are amount ÷ price.
+이 종목의 기존 줄은 지우고 이 기록으로 바꾸기	Replace existing rows for this ticker with these records
+거래 내역을 찾지 못했어요. 증권 앱의 거래 화면 캡처인지 확인해 주세요.	No trades found. Make sure it's a screenshot of the trade history screen.
+종목 티커를 넣어 주세요(예: MSTY)	Enter the ticker (e.g. MSTY)
+날짜가 빈 줄이 있어요. 날짜를 넣거나 체크를 빼 주세요	Some rows have no date. Add a date or uncheck them
+넣을 줄을 골라 주세요	Select rows to add
+거래 내역 사진으로 넣기	Import trades from screenshots
+증권 앱(예: 도미노)에서 종목을 고르고	In your brokerage app (e.g. Domino), pick the stock and screenshot the
+화면을 캡처해요.	screen.
+아래에 종목 티커를 넣고 캡처 사진을 골라요. 여러 장을 한 번에 골라도 되고, 겹친 부분은 한 번만 넣어요.	Enter the ticker below and choose the screenshots. Several at once is fine; overlapping rows are added only once.
+읽은 내용을 확인하고	Check the result, tap
+매수 기록에 넣기	Add to buy records
+→ 아래	→ then
+을 눌러요.	below.
+전량 매도	sold out

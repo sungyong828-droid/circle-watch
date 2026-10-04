@@ -999,3 +999,41 @@ body {
 
 /* 테스트 환경 표시(운영 주소가 아닐 때) */
 html.is-test .top::after { content: '🧪 TEST'; position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%); padding: 2px 10px; border-radius: 999px; background: #7c3aed; color: #fff; font: 800 11px var(--sans); letter-spacing: 0.04em; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4); z-index: 11; }
+
+/* 배당 종목 입력: 간격 넉넉하게 */
+#div-form { display: grid; gap: 16px; margin-top: 14px; }
+#div-form .note { margin: 0; line-height: 1.65; }
+#div-form > label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+#div-form .f-rows-h { margin-top: 4px; }
+#d-rows { display: grid; gap: 12px; }
+.d-row { gap: 8px; padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, 0.025); border: 1px solid var(--line-soft); grid-template-columns: minmax(0, 1fr) 84px minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 1.25fr) 32px; }
+.d-row input, .d-row select { height: 46px; padding: 0 12px; font-size: 14px; }
+.d-row select.d-side { font: 600 14px var(--sans); padding: 0 10px; }
+.d-row.is-sell { border-color: rgba(91, 155, 255, 0.35); background: rgba(91, 155, 255, 0.05); }
+.d-row.is-sell .d-side { color: var(--down); }
+.d-btns { gap: 10px; }
+.d-import { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(242, 153, 74, 0.12), rgba(242, 153, 74, 0.03)); border: 1px solid rgba(242, 153, 74, 0.3); }
+.d-import .btn-primary { width: 100%; }
+@media (max-width: 420px) {
+  .d-row { grid-template-columns: minmax(0, 1fr) 84px 32px; padding-bottom: 12px; border-bottom: 1px solid var(--line-soft); }
+  .d-row .d-t { grid-column: 1; grid-row: 1; }
+  .d-row .d-side { grid-column: 2; grid-row: 1; }
+  .d-row .f-rm { grid-column: 3; grid-row: 1; }
+  .d-row .d-sh { grid-column: 1; grid-row: 2; }
+  .d-row .d-avg { grid-column: 2 / 4; grid-row: 2; }
+  .d-row .d-d { grid-column: 1 / 4; grid-row: 3; }
+}
+/* 사진으로 넣기 */
+.oc-panel { display: grid; gap: 14px; }
+.oc-steps { margin: 0; padding-left: 20px; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
+.oc-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.oc-fields label { display: grid; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.oc-fields input, .oc-fields select { height: 46px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--surface-2); color: var(--ink); font: 600 14px var(--sans); }
+.oc-pick { display: grid; place-items: center; height: 50px; cursor: pointer; }
+.oc-status { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+.oc-status .warn { color: var(--warn); }
+.oc-tbl input[type="date"] { height: 34px; padding: 0 6px; border-radius: 8px; border: 0; background: var(--surface-2); color: var(--ink); font: 12px var(--sans); }
+.oc-tbl tr.oc-warn td { background: rgba(224, 164, 58, 0.08); }
+.oc-tbl td small { color: var(--warn); }
+.oc-add { width: 100%; height: 50px; }
+.oc-replace { font-size: 13px; }
