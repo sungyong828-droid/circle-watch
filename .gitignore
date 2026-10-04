@@ -5,3 +5,4 @@ _site/
 worker/.wrangler/
 dist/
 .dev.vars
+promo/
