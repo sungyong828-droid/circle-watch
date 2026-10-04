@@ -4506,6 +4506,8 @@
   if (!RANGES[state.range]) state.range = '1d';
   if (!SRANGES[state.srange]) state.srange = '1d';
   { const lb = document.getElementById('lang-btn'); if (lb) { lb.textContent = EN ? '한국어' : 'EN'; lb.setAttribute('aria-label', EN ? '한국어로 보기' : 'View in English'); lb.setAttribute('lang', EN ? 'ko' : 'en'); } }
+  // 인스타 카드 만들기는 사이트 주인용: 관리자 페이지(/admin)에 로그인한 기기에서만 버튼을 보인다
+  try { if (localStorage.getItem('cw.adminKey')) document.getElementById('card-btn').hidden = false; } catch {}
   const firstVisit = (() => { try { return !localStorage.getItem('cw.snapshot.v1'); } catch { return false; } })();
   const fromSnap = loadSnapshot();
   state.booting = true;

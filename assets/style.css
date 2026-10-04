@@ -826,7 +826,9 @@ details.more[open] > summary span { font-size: 0; } details.more[open] > summary
 .top > .top-row { min-width: 0; }
 
 /* 인스타 카드 만들기 */
-.foot-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 14px; }
+.foot-btns { display: flex; gap: 8px; margin: 0 0 14px; }
+.foot-btns .share-btn { flex: 1; }
+.foot-btns .share-btn[hidden] { display: none; }
 .foot-btns .share-btn { margin: 0; }
 .cs-panel { max-height: 94vh; }
 .cs-tabs, .cs-sym { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
