@@ -35,7 +35,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=60">
+<link rel="stylesheet" href="assets/style.css?v=62">
 </head>
 <body>
 <noscript><p style="padding:16px">Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·차트·뉴스 AI 요약·공매도·기관 보유·애널리스트 목표가를 보여주는 무료 미국 주식 대시보드예요. 화면을 보려면 자바스크립트를 켜 주세요. <a href="about">사이트 소개 보기</a></p></noscript>
@@ -147,9 +147,12 @@
 
   <section class="view" id="view-fire" data-view="fire" hidden>
     <article class="card fire-card" id="c-fire"></article>
+    <article class="card div-card" id="c-div"></article>
+    <article class="card" id="c-div-month" hidden></article>
     <article class="card" id="c-fire-sim"></article>
     <article class="card" id="c-fire-hist"></article>
     <article class="card" id="c-fire-set"></article>
+    <article class="card" id="c-div-set"></article>
   </section>
 
   <section class="view" id="view-news" data-view="news" hidden>
@@ -172,6 +175,6 @@
 <nav class="tabbar" id="tabbar" aria-label="화면 전환"></nav>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
-<script src="assets/app.js?v=60"></script>
+<script src="assets/app.js?v=62"></script>
 </body>
 </html>

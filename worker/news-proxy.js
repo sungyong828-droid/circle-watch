@@ -1173,6 +1173,42 @@ export async function handleMarket(url, cache, cors, ctx) {
   });
 }
 
+// ---------------------------------------------------------------- 배당 내역 (Fire 배당금 계산용)
+// Yahoo 차트 이벤트(최근 30년 — range=max는 중간 배당이 빠짐): 배당락일·주당 배당금(분할 반영), 주식 분할. ETF·리츠 포함 거의 모든 종목에 있다.
+// Nasdaq 배당 표: 지급일·발표된 다음 배당(있는 종목만 — 일부 ETF는 비어 있음).
+const ymdUtc = (ms) => new Date(ms).toISOString().slice(0, 10);
+const mdyIso = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '')); return m ? `${m[3]}-${m[1]}-${m[2]}` : null; };
+async function buildDividends(sym) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=30y&interval=1mo&events=div,splits`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart?.result?.[0];
+  if (!j) throw new Error('배당 자료 없음');
+  const ev = j.events || {}, m = j.meta || {};
+  const events = Object.values(ev.dividends || {}).filter((d) => d?.amount > 0).sort((a, b) => a.date - b.date).map((d) => ({ ex: ymdUtc(d.date * 1000), amt: Math.round(d.amount * 1e6) / 1e6 }));
+  const splits = Object.values(ev.splits || {}).sort((a, b) => a.date - b.date).map((s) => ({ d: ymdUtc(s.date * 1000), ratio: s.denominator ? s.numerator / s.denominator : null, text: s.splitRatio || '' }));
+  // Nasdaq: 배당락일 → 지급일, 발표만 된 다음 배당
+  const pay = {};
+  let next = null;
+  for (const cls of [String(m.instrumentType || '').toUpperCase() === 'ETF' ? 'etf' : 'stocks', 'etf', 'stocks']) {
+    try {
+      const d = await nasdaqJson(`quote/${sym}/dividends?assetclass=${cls}`);
+      const rows = d?.dividends?.rows || [];
+      if (!rows.length) continue;
+      for (const row of rows.slice(0, 40)) { const ex = mdyIso(row.exOrEffDate), p = mdyIso(row.paymentDate); if (ex && p) pay[ex] = p; }
+      const nx = mdyIso(d.exDividendDate), np = mdyIso(d.dividendPaymentDate), na = parseFloat(String(rows[0]?.amount || '').replace(/[^0-9.]/g, '')) || null; // 주당 금액(달러) 그대로
+      if (nx && nx > ymdUtc(Date.now() - 86400000)) next = { ex: nx, pay: np, amt: rows[0] && mdyIso(rows[0].exOrEffDate) === nx ? na : null };
+      break;
+    } catch {}
+  }
+  return { at: new Date().toISOString(), symbol: sym, name: m.longName || m.shortName || sym, type: m.instrumentType || '', currency: m.currency || 'USD', price: m.regularMarketPrice ?? null, events, splits, pay, next };
+}
+export async function handleDividends(url, cache, cors, ctx) {
+  const sym = String(url.searchParams.get('s') || '').toUpperCase();
+  if (!SYM_RE.test(sym)) return json({ error: 'bad request' }, cors, 400);
+  if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
+  return swr(cache, ctx, `${url.origin}/dividends?v=2&s=${sym}`, { freshSec: 12 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildDividends(sym)) });
+}
+
 // ---------------------------------------------------------------- 시장 전체 뉴스 (키워드 속보·브리핑용) — 신뢰 매체 RSS만
 const MARKET_FEEDS = [
   { url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', source: 'CNBC', lang: 'en', host: 'cnbc.com' },
@@ -1322,7 +1358,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     const cache = caches.default;
@@ -1337,6 +1373,7 @@ export default {
     if (url.pathname === '/short') return handleShort(url, cache, cors, ctx);
     if (url.pathname === '/lookup') return handleLookup(url, cache, cors, ctx);
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
+    if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);
