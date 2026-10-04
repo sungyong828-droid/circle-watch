@@ -3279,7 +3279,6 @@
   const KW_KEY = 'cw.kw';
   state.kw = readJSON(KW_KEY, null) || (EN ? ['FOMC', 'CPI', 'rate cut', 'tariff', 'stablecoin', 'FAA', 'Starship', 'earnings'] : ['FOMC', 'CPI', '금리', '관세', 'stablecoin', '스테이블코인', 'FAA', 'Starship']);
   let kwNotified = new Set(readJSON('cw.kwNoti', [])), kwBoot = true;
-  const kwEsc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   function kwItems() {
     const kws = state.kw.filter(Boolean);
     if (!kws.length) return [];
