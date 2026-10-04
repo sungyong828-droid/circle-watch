@@ -3299,7 +3299,7 @@
     }
     return out.slice(0, 25);
   }
-  const hl = (s, kws) => kws.reduce((acc, w) => acc.replace(new RegExp(`(${kwEsc(esc(w))})`, 'gi'), '<mark>$1</mark>'), esc(s));
+  const hl = (s) => esc(s); // 키워드 형광 표시는 하지 않는다(사용자 요청)
   function renderKwNews() {
     const items = kwItems(), kws = state.kw;
     for (const id of ['kwnews', 'skwnews']) {
