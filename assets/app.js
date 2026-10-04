@@ -4100,7 +4100,37 @@
     }
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
     if (ev.target.closest('#refresh')) manualRefresh();
+    if (ev.target.closest('#share-btn')) shareSite();
   });
+
+  // ---------------------------------------------------------------- 방문 집계(익명) · 공유
+  // 공유 주소에서만, 페이지를 열 때 한 번: 기기마다 무작위 ID + 유입 경로만 보낸다(관리자 페이지에서만 조회)
+  const SITE_URL = 'https://yongs-portfolio.pages.dev/';
+  function countVisit() {
+    if (!ON_PAGES || readJSON('cw.noCount', false)) return;
+    try {
+      let vid = localStorage.getItem('cw.vid'), isNew = 0;
+      if (!/^[a-z0-9]{16,40}$/.test(vid || '')) {
+        vid = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(36).padStart(2, '0')).join('').slice(0, 24);
+        localStorage.setItem('cw.vid', vid); isNew = 1;
+      }
+      const qs = new URLSearchParams(location.search);
+      let ref = qs.get('ref') || qs.get('utm_source') || '';
+      if (!ref && document.referrer) { try { const h = new URL(document.referrer).hostname; if (h !== location.hostname) ref = h; } catch {} }
+      const dev = matchMedia('(pointer: coarse)').matches ? 'm' : 'd';
+      fetch(`/api/hit?v=${vid}&n=${isNew}&d=${dev}${ref ? '&r=' + encodeURIComponent(ref.slice(0, 80)) : ''}`, { cache: 'no-store', keepalive: true }).catch(() => {});
+      // 주소창에 붙은 ?ref=… 는 지운다(화면 이동은 #으로 하므로 그대로)
+      if (location.search) history.replaceState(null, '', location.pathname + location.hash);
+    } catch {}
+  }
+  async function shareSite() {
+    const data = { title: "Yong's Portfolio", text: '미국 주식 실시간 대시보드 — 서클(CRCL)·조비·스페이스X·템퍼스, 관심 종목 추가도 돼요', url: SITE_URL + '?ref=share' };
+    try {
+      if (navigator.share) { await navigator.share(data); return; }
+      await navigator.clipboard.writeText(data.url);
+      toast('✓ 링크를 복사했어요');
+    } catch (e) { if (e?.name !== 'AbortError') toast(`링크: ${esc(SITE_URL)}`); }
+  }
 
   if (!RANGES[state.range]) state.range = '1d';
   if (!SRANGES[state.srange]) state.srange = '1d';
@@ -4124,6 +4154,7 @@
   bConnect();
   for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
   refresh('auto');
+  countVisit();
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);

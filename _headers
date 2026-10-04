@@ -9,4 +9,11 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# 관리자 페이지는 검색에 노출하지 않고 저장(캐시)도 하지 않는다
+/admin
   X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
+/admin.html
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store

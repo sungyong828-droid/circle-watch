@@ -15,7 +15,7 @@ PRIVATE = re.compile(r'sungyong828', re.I)  # 공개되면 안 되는 식별자
 
 shutil.rmtree(DIST, ignore_errors=True)
 os.makedirs(os.path.join(DIST, 'data'))
-for f in ['index.html', '_headers']:
+for f in ['index.html', 'admin.html', '_headers', 'robots.txt', 'sitemap.xml']:
     shutil.copy(os.path.join(ROOT, f), os.path.join(DIST, f))
 shutil.copytree(os.path.join(ROOT, 'assets'), os.path.join(DIST, 'assets'))
 for f in ['faa-joby.json', 'spcx-facts.json']:

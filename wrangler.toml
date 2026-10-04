@@ -11,3 +11,9 @@ binding = "AI"
 [[kv_namespaces]]
 binding = "SUMS"
 id = "a8b6d687f1e140d38b1d720e20afb360"
+
+# 방문자 통계(익명 기기 ID·날짜·유입 경로만, 개인 정보 없음) — 관리자 페이지 /admin 에서만 조회
+[[d1_databases]]
+binding = "STATS"
+database_name = "yongs-portfolio-stats"
+database_id = "38560b19-4d2e-4459-b7b9-7800e5cfbd9c"
