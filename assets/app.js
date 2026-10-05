@@ -3580,7 +3580,7 @@
         <div class="fg-iv"><span class="fg-bar"><i class="${fgCls(I.score)}" style="width:${Math.max(3, I.score)}%"></i></span><b class="${fgCls(I.score)}">${fgRate(I.rating, I.score)}</b><small>${I.y != null ? esc(fmt(I.y, C.ref || {})) : ''}</small></div></li>`;
     }).join('') : '';
     card('feargreed', {
-      title: '공포·탐욕 지수', sub: `${EN ? 'Stocks: CNN · Crypto: alternative.me' : '주식 CNN · 코인 alternative.me'} · ${C?.t ? md(Date.parse(C.t) / 1000) + ' ' + new Date(C.t).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' }) + (EN ? '' : ' 기준') : ''}`, info: INFO.feargreed,
+      title: '공포·탐욕 지수', sub: `${EN ? 'Stocks: CNN · Crypto: alternative.me' : '주식 CNN · 코인 alternative.me'} · ${C?.t ? `<span class="nw">${md(Date.parse(C.t) / 1000)} ${new Date(C.t).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' })}${EN ? '' : ' 기준'}</span>` : ''}`, info: INFO.feargreed,
       easy: `시장 사람들의 '기분 온도계'예요. 0에 가까울수록 겁을 먹고 파는 분위기(공포), 100에 가까울수록 들떠서 사는 분위기(탐욕)예요. "남들이 겁낼 때 사라"는 말처럼 반대로 활용하는 사람도 많아요.`,
       body: `
         <div class="fg-two">
