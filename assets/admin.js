@@ -173,7 +173,7 @@
     const c = cnt || {};
     const rows = (list || []).filter((f) => fbFilter === 'all' || f.status === fbFilter);
     const tabs = [['new', `새 글 ${nf(c.new)}`], ['done', `처리함 ${nf(c.done)}`], ['all', '전체']];
-    return `<div class="nf fb-tabs" role="group" aria-label="문의 보기">${tabs.map(([k, l]) => `<button type="button" class="btn-ghost sm" data-fbf="${k}" aria-pressed="${k === fbFilter}">${l}</button>`).join('')}</div>
+    return `<div class="fb-tabs" role="group" aria-label="문의 보기">${tabs.map(([k, l]) => `<button type="button" class="btn-ghost sm" data-fbf="${k}" aria-pressed="${k === fbFilter}">${l}</button>`).join('')}</div>
       ${rows.length ? `<ul class="fb-list">${rows.map((f) => {
         const [ic, kl] = FB_KIND[f.kind] || FB_KIND.etc;
         const when = new Date(f.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });

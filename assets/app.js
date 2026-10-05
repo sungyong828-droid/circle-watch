@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=12';
+    sc.src = 'assets/i18n-en.js?v=13';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -1129,7 +1129,7 @@
         <div class="chart"><canvas id="cv-${id}" role="img" aria-label="${name} 일별 공매도 비율"></canvas></div>
         <div class="legend"><span><i style="background:${C.purple}"></i>일별 공매도 비율</span><span><i class="line" style="background:${C.ink2}"></i>1개월 평균</span></div>
         ${si.length ? `<div class="tbl-wrap"><table>
-          <thead><tr><th>공매도 잔고 기준일</th><th>잔고</th>${sOut ? '<th>발행 주식 대비</th>' : ''}<th>직전 대비</th><th>커버 일수</th></tr></thead>
+          <thead><tr><th>잔고 기준일</th><th>잔고</th>${sOut ? '<th>발행 대비</th>' : ''}<th>직전 대비</th><th>커버 일수</th></tr></thead>
           <tbody>${si.map((r, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${esc(r.d.slice(5).replace('-', '/'))}</td><td class="strong">${shares(r.qty)}</td>${sOut ? `<td>${pctPlain(r.qty / sOut, 1)}</td>` : ''}
             <td class="${cls(r.chg)}">${r.chg > 0 ? '+' : ''}${r.chg.toFixed(1)}%</td><td>${r.dtc.toFixed(2)}일</td></tr>`).join('')}</tbody></table></div>
           <p class="note">${EN ? '<b>Short interest</b> = shares sold short and not yet bought back (FINRA, twice a month: mid-month and month-end). <b>Days to cover</b> = days of average volume needed to buy them all back — the longer, the easier a “short squeeze” when the price rises.' : '<b>공매도 잔고</b> = 아직 갚지 않고 남아 있는 공매도 주식 수(FINRA가 한 달에 두 번, 15일·월말 기준 발표). <b>커버 일수</b> = 하루 평균 거래량으로 그 잔고를 다 사서 갚는 데 걸리는 날 수 — 길수록 주가가 오를 때 급하게 사들이는 \'숏 스퀴즈\'가 나기 쉬워요.'}</p>` : ''}`,

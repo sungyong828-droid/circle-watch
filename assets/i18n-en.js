@@ -1785,7 +1785,9 @@ window.__I18N_EN = {
 "💡 블랙록·뱅가드 같은 큰 기관(펀드)들이 이 주식을 얼마나 들고 있는지예요. 기관이 늘리면 큰손이 사 모으는 중이라는 뜻이고, '평단≈'은 기관들이 대략 얼마에 샀는지 추정한 값이에요.": "💡 How much big institutions (BlackRock, Vanguard…) hold. Rising holdings mean big money is buying; “avg≈” is a rough estimate of what they paid.",
 "블랙록·뱅가드 같은 큰 기관(펀드)들이 이 주식을 얼마나 들고 있는지예요. 기관이 늘리면 큰손이 사 모으는 중이라는 뜻이고, '평단≈'은 기관들이 대략 얼마에 샀는지 추정한 값이에요.": "How much big institutions (BlackRock, Vanguard…) hold. Rising holdings mean big money is buying; “avg≈” is a rough estimate of what they paid.",
 "평단≈": "avg≈",
-"💬 문의·개선 제안": "💬 Feedback"
+"💬 문의·개선 제안": "💬 Feedback",
+"발행 대비": "% out",
+"잔고 기준일": "As of"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
