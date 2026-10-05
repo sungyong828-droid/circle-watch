@@ -225,3 +225,65 @@ Fire 화면 전환	Switch Fire view
 명이 추가	users added
 🔒 보유 정보(수량·평단·매수 기록)와 관심 종목은 이 기기에만 저장돼요. 사이트는 방문 수 집계를 위해 익명 기기 ID·유입 경로를, 인기 종목 순위를 위해 새로 추가한 티커 이름만 익명으로 기록하고, 이름·연락처 같은 개인 정보는 받지 않아요.	🔒 Holdings (shares, average cost, trades) and your watchlist stay on this device. The site records only an anonymous device ID and referrer to count visits, and the ticker names you add (anonymously) for the popular ranking. No names or contact details.
 🔒 종목 목록은 이 기기(브라우저)에 저장돼요. '많이 추가한 종목' 순위를 위해 새로 추가한 티커 이름만 익명으로 모으고, 수량·금액 같은 보유 정보는 보내지 않아요. 기본 4종목(CRCL·JOBY·SPCX·TEM)은 전용 화면(FAA 인증·보호예수 등)이 있고, 새로 추가한 종목은 공통 화면(주가·실적·뉴스·공시·공매도·기관·애널리스트·옵션)으로 보여요. 바이낸스에 24시간 주식 선물이 있는 종목은 CRCL처럼 바이낸스 가격으로 표시돼요.	🔒 Your stock list is saved in this browser. Only the ticker names you add are collected anonymously for the “popular” ranking; shares, prices and holdings are never sent. The 4 defaults (CRCL · JOBY · SPCX · TEM) have dedicated screens (FAA certification, lock-up, etc.); added stocks use the common screen (price · earnings · news · filings · short · institutions · analysts · options). Stocks with 24/7 Binance stock futures show Binance prices like CRCL.
+💡 달러와 1:1로 바꿀 수 있는 '디지털 달러'들의 시장이에요. USDC가 서클이 만든 것이고, 점유율이 오르면 서클이 경쟁에서 이기고 있다는 뜻이에요.	💡 The market for “digital dollars” you can swap 1:1 for real dollars. USDC is Circle’s; a rising share means Circle is winning against rivals.
+달러와 1:1로 바꿀 수 있는 '디지털 달러'들의 시장이에요. USDC가 서클이 만든 것이고, 점유율이 오르면 서클이 경쟁에서 이기고 있다는 뜻이에요.	The market for “digital dollars” you can swap 1:1 for real dollars. USDC is Circle’s; a rising share means Circle is winning against rivals.
+💡 서클이 발행한 디지털 달러(USDC)가 지금 세상에 얼마나 풀려 있는지예요. 서클은 이만큼의 진짜 달러를 국채 등에 맡겨 이자를 버는데, 이게 매출의 대부분이라 이 숫자가 늘면 서클 매출도 늘어요.	💡 How many USDC (Circle’s digital dollars) are out there. Circle keeps the same amount of real dollars in Treasuries and earns interest on it — most of its revenue — so when this grows, revenue grows.
+서클이 발행한 디지털 달러(USDC)가 지금 세상에 얼마나 풀려 있는지예요. 서클은 이만큼의 진짜 달러를 국채 등에 맡겨 이자를 버는데, 이게 매출의 대부분이라 이 숫자가 늘면 서클 매출도 늘어요.	How many USDC (Circle’s digital dollars) are out there. Circle keeps the same amount of real dollars in Treasuries and earns interest on it — most of its revenue — so when this grows, revenue grows.
+💡 하루 동안 새로 만들어진 USDC(발행)에서 없어진 USDC(소각)를 뺀 값이에요. 플러스면 사람들이 달러를 맡기고 USDC를 더 받아 간 것, 마이너스면 USDC를 다시 달러로 바꿔 간 거예요.	💡 New USDC created in a day minus USDC redeemed. Positive: people deposited dollars for more USDC. Negative: people cashed USDC back into dollars.
+하루 동안 새로 만들어진 USDC(발행)에서 없어진 USDC(소각)를 뺀 값이에요. 플러스면 사람들이 달러를 맡기고 USDC를 더 받아 간 것, 마이너스면 USDC를 다시 달러로 바꿔 간 거예요.	New USDC created in a day minus USDC redeemed. Positive: people deposited dollars for more USDC. Negative: people cashed USDC back into dollars.
+💡 USDC 뒤에는 같은 금액의 달러가 있고, 서클은 그 돈으로 미국 국채 이자를 받아요. 금리가 내리면 이자 수입이 줄고, USDC가 늘면 늘어요. 코인베이스 등 파트너와 나누기 전 금액이라 서클 실제 수입은 이보다 적어요.	💡 Every USDC is backed by a real dollar that Circle parks in Treasuries. Lower rates mean less interest; more USDC means more. This is before sharing with partners like Coinbase, so Circle keeps less than this.
+USDC 뒤에는 같은 금액의 달러가 있고, 서클은 그 돈으로 미국 국채 이자를 받아요. 금리가 내리면 이자 수입이 줄고, USDC가 늘면 늘어요. 코인베이스 등 파트너와 나누기 전 금액이라 서클 실제 수입은 이보다 적어요.	Every USDC is backed by a real dollar that Circle parks in Treasuries. Lower rates mean less interest; more USDC means more. This is before sharing with partners like Coinbase, so Circle keeps less than this.
+💡 USDC의 유로 버전이에요. 1유로 = 1 EURC. 아직 작지만 서클의 유럽 사업이 얼마나 크는지 보여줘요.	💡 The euro version of USDC (1 EURC = €1). Still small, but it shows how Circle’s European business is growing.
+USDC의 유로 버전이에요. 1유로 = 1 EURC. 아직 작지만 서클의 유럽 사업이 얼마나 크는지 보여줘요.	The euro version of USDC (1 EURC = €1). Still small, but it shows how Circle’s European business is growing.
+💡 USDC 말고 서클이 직접 만든 다른 상품이에요. USYC는 국채 펀드를 코인으로 만든 것(이자가 붙는 달러), EURC는 유로 코인이에요.	💡 Circle’s other products besides USDC: USYC is a Treasury fund turned into a token (dollars that earn interest), EURC is its euro coin.
+USDC 말고 서클이 직접 만든 다른 상품이에요. USYC는 국채 펀드를 코인으로 만든 것(이자가 붙는 달러), EURC는 유로 코인이에요.	Circle’s other products besides USDC: USYC is a Treasury fund turned into a token (dollars that earn interest), EURC is its euro coin.
+💡 USDC는 여러 블록체인(인터넷 위의 여러 '도로') 위에서 쓰여요. 어느 도로에 USDC가 많은지, 서클이 직접 만든 Arc가 몇 위인지 보여줘요.	💡 USDC runs on many blockchains (think of them as different roads). This shows where most USDC sits and where Circle’s own chain, Arc, ranks.
+USDC는 여러 블록체인(인터넷 위의 여러 '도로') 위에서 쓰여요. 어느 도로에 USDC가 많은지, 서클이 직접 만든 Arc가 몇 위인지 보여줘요.	USDC runs on many blockchains (think of them as different roads). This shows where most USDC sits and where Circle’s own chain, Arc, ranks.
+💡 Arc는 서클이 직접 만든 블록체인이에요. TVL은 사람들이 Arc 위 금융 서비스(예금·대출·환전소)에 맡겨 둔 돈의 합계로, 은행으로 치면 '예금 잔액'이에요.	💡 Arc is Circle’s own blockchain. TVL is the money people have parked in apps on Arc (lending, exchanges) — like a bank’s total deposits.
+Arc는 서클이 직접 만든 블록체인이에요. TVL은 사람들이 Arc 위 금융 서비스(예금·대출·환전소)에 맡겨 둔 돈의 합계로, 은행으로 치면 '예금 잔액'이에요.	Arc is Circle’s own blockchain. TVL is the money people have parked in apps on Arc (lending, exchanges) — like a bank’s total deposits.
+💡 Arc 위의 '무인 환전소(DEX)'에서 하루 동안 사고판 금액이에요. 많을수록 Arc가 실제로 많이 쓰인다는 뜻이에요.	💡 How much was traded in a day on Arc’s self-service exchanges (DEXs). More trading means Arc is actually being used.
+Arc 위의 '무인 환전소(DEX)'에서 하루 동안 사고판 금액이에요. 많을수록 Arc가 실제로 많이 쓰인다는 뜻이에요.	How much was traded in a day on Arc’s self-service exchanges (DEXs). More trading means Arc is actually being used.
+💡 Arc에서 하루에 처리된 거래(송금·환전 등) 건수와 사람들이 낸 수수료예요. 수수료는 USDC로 내요.	💡 Number of transactions (transfers, swaps…) processed on Arc per day and the fees paid — fees are paid in USDC.
+Arc에서 하루에 처리된 거래(송금·환전 등) 건수와 사람들이 낸 수수료예요. 수수료는 USDC로 내요.	Number of transactions (transfers, swaps…) processed on Arc per day and the fees paid — fees are paid in USDC.
+💡 Arc 위 대출 서비스에서 사람들이 빌려 간 돈의 합계예요. 빌리는 사람이 늘면 진짜 금융 수요가 생기고 있다는 신호예요.	💡 Total amount people have borrowed from lending apps on Arc. More borrowing is a sign of real financial demand.
+Arc 위 대출 서비스에서 사람들이 빌려 간 돈의 합계예요. 빌리는 사람이 늘면 진짜 금융 수요가 생기고 있다는 신호예요.	Total amount people have borrowed from lending apps on Arc. More borrowing is a sign of real financial demand.
+💡 맡긴 돈 중 몇 %가 대출로 나가 있는지(이용률)예요. 은행의 '예금 대비 대출 비율'과 비슷해요.	💡 What share of deposited money is lent out (utilization) — like a bank’s loan-to-deposit ratio.
+맡긴 돈 중 몇 %가 대출로 나가 있는지(이용률)예요. 은행의 '예금 대비 대출 비율'과 비슷해요.	What share of deposited money is lent out (utilization) — like a bank’s loan-to-deposit ratio.
+💡 Arc 위에 올라와 있는 USDC·EURC의 양이에요. Arc로 들어온 '돈의 크기'를 가장 직접적으로 보여줘요.	💡 How much USDC and EURC sits on Arc — the most direct measure of how much money has moved onto Arc.
+Arc 위에 올라와 있는 USDC·EURC의 양이에요. Arc로 들어온 '돈의 크기'를 가장 직접적으로 보여줘요.	How much USDC and EURC sits on Arc — the most direct measure of how much money has moved onto Arc.
+💡 서클이 진짜 비트코인을 맡아 두고 같은 양으로 발행한 '블록체인용 비트코인'이에요. 늘면 비트코인을 맡긴 사람이 늘었다는 뜻이에요.	💡 Bitcoin that Circle holds in custody and issues 1:1 as a token for blockchains. Growth means more people deposited bitcoin.
+서클이 진짜 비트코인을 맡아 두고 같은 양으로 발행한 '블록체인용 비트코인'이에요. 늘면 비트코인을 맡긴 사람이 늘었다는 뜻이에요.	Bitcoin that Circle holds in custody and issues 1:1 as a token for blockchains. Growth means more people deposited bitcoin.
+💡 다른 블록체인에서 Arc로 들어온 USDC와 Arc에서 빠져나간 USDC예요. 플러스면 Arc로 돈이 모이는 중이에요.	💡 USDC moving into Arc from other blockchains vs. out of Arc. Positive means money is flowing into Arc.
+다른 블록체인에서 Arc로 들어온 USDC와 Arc에서 빠져나간 USDC예요. 플러스면 Arc로 돈이 모이는 중이에요.	USDC moving into Arc from other blockchains vs. out of Arc. Positive means money is flowing into Arc.
+💡 하루 동안 Arc를 쓴 지갑(계정) 수예요. '재방문'이 많을수록 한 번 쓰고 떠나는 게 아니라 계속 쓰는 사람이 많다는 뜻이에요.	💡 Number of wallets that used Arc in a day. More returning wallets means people keep coming back, not just trying it once.
+하루 동안 Arc를 쓴 지갑(계정) 수예요. '재방문'이 많을수록 한 번 쓰고 떠나는 게 아니라 계속 쓰는 사람이 많다는 뜻이에요.	Number of wallets that used Arc in a day. More returning wallets means people keep coming back, not just trying it once.
+💡 서클은 어떻게 돈을 버나요?	💡 How does Circle make money?
+서클은 어떻게 돈을 버나요?	How does Circle make money?
+USDC = 디지털 달러	USDC = digital dollars
+서클은 1달러를 받으면 1 USDC를 만들어 줘요. 언제든 다시 1달러로 바꿔 줘요.	Give Circle $1 and it issues 1 USDC, redeemable for $1 anytime.
+맡은 달러로 이자 수입	Interest on the dollars
+받은 달러는 미국 국채·현금으로 보관하고, 거기서 나오는 이자가 서클 매출의 대부분이에요.	Circle keeps those dollars in US Treasuries and cash; the interest is most of its revenue.
+그래서 이 화면이 중요해요	Why this screen matters
+USDC가 많이 풀릴수록, 금리가 높을수록 서클이 버는 돈이 늘어요. 이 화면은 그 두 가지를 보여줘요.	More USDC in circulation and higher rates mean more income for Circle. This screen tracks both.
+💡 Arc는 뭔가요?	💡 What is Arc?
+Arc는 뭔가요?	What is Arc?
+서클이 만든 블록체인	Circle’s own blockchain
+Arc는 서클이 직접 만든 금융용 블록체인이에요. 수수료를 USDC로 내요.	Arc is a blockchain Circle built for finance. Fees are paid in USDC.
+왜 중요한가요	Why it matters
+사람들이 Arc 위에서 송금·대출·환전을 많이 할수록 서클의 새 수익원(수수료·서비스)이 커져요.	The more people send, lend and trade on Arc, the bigger Circle’s new income streams (fees, services) get.
+이 화면 읽는 법	How to read this screen
+맡긴 돈(TVL)·거래액·사용자 수가 꾸준히 늘면 Arc가 실제로 쓰이고 있다는 신호예요.	Steady growth in deposits (TVL), trading volume and users means Arc is really being used.
+접기	Collapse
+펼치기	Expand
+최근 분기 기관 매입 평균가	Avg price institutions paid last quarter
+보유 주식 가중 평균 · 최근 1년 매입 가정	share-weighted · assumes bought within the past year
+지금 주가 대비	vs. current price
+장외 거래 중 공매도	short share of off-exchange volume
+장외 집계	off-exchange
+발행 주식 대비	of shares out
+최근 1개월 · 장외(FINRA 집계) 거래 중 공매도 비중 · FINRA	Last month · short share of off-exchange (FINRA-reported) volume · FINRA
+경쟁 코인과 서클 자체 상품 · DefiLlama (USDC는 서클 공식 값)	Rivals and Circle’s own products · DefiLlama (USDC: Circle official)
+💡 블랙록·뱅가드 같은 큰 기관(펀드)들이 이 주식을 얼마나 들고 있는지예요. 기관이 늘리면 큰손이 사 모으는 중이라는 뜻이고, '평단≈'은 기관들이 대략 얼마에 샀는지 추정한 값이에요.	💡 How much big institutions (BlackRock, Vanguard…) hold. Rising holdings mean big money is buying; “avg≈” is a rough estimate of what they paid.
+블랙록·뱅가드 같은 큰 기관(펀드)들이 이 주식을 얼마나 들고 있는지예요. 기관이 늘리면 큰손이 사 모으는 중이라는 뜻이고, '평단≈'은 기관들이 대략 얼마에 샀는지 추정한 값이에요.	How much big institutions (BlackRock, Vanguard…) hold. Rising holdings mean big money is buying; “avg≈” is a rough estimate of what they paid.
+평단≈	avg≈
+💬 문의·개선 제안	💬 Feedback

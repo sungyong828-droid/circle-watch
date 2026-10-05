@@ -8,7 +8,7 @@ import json
 import os
 
 SITE = 'https://my-fire-portfolio.pages.dev/'
-VER = '1'
+VER = '2'
 
 COMMON_FEATURES = [
     ('실시간 주가 · 캔들 차트', '1일·1주·1개월·3개월·1년 캔들 차트에 이동평균선(5·20·60·120일)과 거래량. 캔들/라인 전환.'),
@@ -87,7 +87,7 @@ def esc(s):
     return html.escape(str(s), quote=True)
 
 
-def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3'):
+def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noindex=False, script=''):
     url = SITE + slug
     en = lang == 'en'
     # 같은 내용의 다른 언어 페이지(about ↔ en)
@@ -99,7 +99,7 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3'):
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d1015">
 <title>{esc(title)} | Fire Portfolio</title>
-<meta name="description" content="{esc(desc)}">
+<meta name="description" content="{esc(desc)}">{'\n<meta name="robots" content="noindex">' if noindex else ''}
 <link rel="canonical" href="{url}">{hl}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fire Portfolio">
@@ -126,15 +126,15 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3'):
 <footer class="lp-foot">
   {FOOT_EN if en else FOOT_KO}
 </footer>
-<script src="assets/landing.js?v={VER}"></script>
+<script src="assets/landing.js?v={VER}"></script>{f'\n<script src="assets/{script}"></script>' if script else ''}
 </body>
 </html>
 '''
 
 
-FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="en" hreflang="en">English</a></nav>
+FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
   <p>투자 조언이 아닌 개인 모니터링 도구예요. 데이터는 공개 출처(Nasdaq·SEC·Yahoo Finance·Binance·FINRA·CBOE 등)에서 가져오며 지연·오류가 있을 수 있어요.</p>'''
-FOOT_EN = '''<nav aria-label="Pages"><a href="about" hreflang="ko">한국어</a><a href="en">About</a><a href="./?lang=en&ref=page-en#dividend">Dividend tracker</a><a href="./?lang=en&ref=page-en#quit">FIRE calculator</a></nav>
+FOOT_EN = '''<nav aria-label="Pages"><a href="about" hreflang="ko">한국어</a><a href="en">About</a><a href="./?lang=en&ref=page-en#dividend">Dividend tracker</a><a href="./?lang=en&ref=page-en#quit">FIRE calculator</a><a href="feedback?lang=en">💬 Feedback</a></nav>
   <p>A personal monitoring tool, not investment advice. Data comes from public sources (Nasdaq, SEC, Yahoo Finance, Binance, FINRA, CBOE and others) and may be delayed or wrong.</p>'''
 
 
@@ -312,8 +312,41 @@ def en_page():
     return page('en', title, desc, body, app_ld('Fire Portfolio', 'en', desc, 'en', 'USD'), lang='en', alt={'ko': 'about', 'en': 'en', 'x-default': 'about'})
 
 
+def feedback_page():
+    title = '문의 · 개선 제안'
+    desc = 'Fire Portfolio를 쓰면서 불편한 점, 있었으면 하는 기능, 잘못된 숫자를 알려 주세요.'
+    body = '''<section class="lp-hero fb-hero">
+  <h1 data-en="Questions &amp; suggestions">문의 · 개선 제안</h1>
+  <p class="lp-lead" data-en="Tell us what’s confusing, what you’d like to see, or any number that looks wrong. Every message is read and used to improve the dashboard.">쓰면서 불편했던 점, 있었으면 하는 기능, 이상해 보이는 숫자를 알려 주세요. 보내 주신 글은 하나하나 읽고 대시보드를 고치는 데 써요.</p>
+</section>
+<form class="fb-form" id="fb-form" autocomplete="off" novalidate>
+  <fieldset class="fb-kinds">
+    <legend data-en="Type">종류</legend>
+    <label><input type="radio" name="kind" value="idea" checked><span data-en="💡 Idea">💡 개선 제안</span></label>
+    <label><input type="radio" name="kind" value="bug"><span data-en="🐞 Bug / wrong number">🐞 오류·숫자 이상</span></label>
+    <label><input type="radio" name="kind" value="question"><span data-en="❓ Question">❓ 질문</span></label>
+    <label><input type="radio" name="kind" value="etc"><span data-en="💬 Other">💬 기타</span></label>
+  </fieldset>
+  <label class="fb-f"><span data-en="Message">내용</span>
+    <textarea id="fb-msg" name="msg" rows="7" maxlength="1000" required placeholder="예: 배당금 화면에서 ○○ 종목 배당이 실제보다 적게 나와요 / ○○ 지표도 보고 싶어요" data-en-ph="e.g. The dividend for XYZ looks lower than what I received / I’d love to see ○○"></textarea>
+    <small class="fb-count"><b id="fb-n">0</b> / 1000</small>
+  </label>
+  <label class="fb-f"><span data-en="Contact (optional)">연락받을 곳 (선택)</span>
+    <input id="fb-contact" name="contact" maxlength="100" placeholder="답장을 원하면 이메일이나 블로그 아이디" data-en-ph="Email or handle if you’d like a reply">
+    <small data-en="Only the site owner can see this. Leave it empty to stay anonymous.">사이트 운영자만 볼 수 있어요. 비워 두면 익명으로 보내져요.</small>
+  </label>
+  <label class="fb-hp" aria-hidden="true">웹사이트<input name="website" tabindex="-1" autocomplete="off"></label>
+  <button type="submit" class="lp-cta fb-send" id="fb-send" data-en="Send">보내기</button>
+  <p class="fb-status" id="fb-status" role="status" aria-live="polite"></p>
+</form>
+<section class="lp-sec"><p class="lp-note" data-en="Please don’t include personal or account details. Messages are rate-limited to stop spam (a few per 10 minutes).">개인 정보나 증권 계좌 정보는 적지 말아 주세요. 도배를 막기 위해 10분에 몇 건까지만 보낼 수 있어요.</p>
+<p class="lp-note"><a href="./?ref=page-feedback" data-en="← Back to the dashboard">← 대시보드로 돌아가기</a></p></section>'''
+    return page('feedback', title, desc, body, {'@context': 'https://schema.org', '@type': 'ContactPage', 'name': title, 'url': SITE + 'feedback', 'inLanguage': 'ko'},
+                noindex=True, script='feedback.js?v=1')
+
+
 def build(dist):
-    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'en': en_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
+    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'en': en_page(), 'feedback': feedback_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
     for slug, text in out.items():
         with open(os.path.join(dist, slug + '.html'), 'w', encoding='utf-8') as f:
             f.write(text)

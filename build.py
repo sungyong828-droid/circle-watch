@@ -41,7 +41,7 @@ import datetime
 import landing
 slugs = landing.build(DIST)
 today = datetime.date.today().isoformat()
-urls = [('', '1.0')] + [(s, '0.8') for s in slugs]
+urls = [('', '1.0')] + [(s, '0.8') for s in slugs if s != 'feedback']  # 문의 페이지는 검색에 안 내보냄
 lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
 lines += [f'  <url><loc>{landing.SITE}{u}</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>{pr}</priority></url>' for u, pr in urls]
 lines += ['</urlset>', '']

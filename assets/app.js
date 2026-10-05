@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=11';
+    sc.src = 'assets/i18n-en.js?v=12';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -189,6 +189,7 @@
         <li><b>직전 13F 대비</b>: 지난 분기 신고보다 주식을 늘린/줄인 기관 수와 주식 수. 늘린 곳이 많으면 기관 매수 우위로 봐요.</li>
         <li><b>상위 보유</b>: 보유 금액 순. <b>주요 금융사</b>: 이름이 알려진 대형 금융사만. <b>많이 산/판 곳</b>: 직전 분기 대비 주식 수 변화 순. 왼쪽 숫자는 순위예요(주요 금융사도 전체 보유 금액 기준 순위, 1~3위는 금색).</li>
         <li><b>지분</b>: 그 기관의 보유 주식 ÷ 발행 주식 수(Nasdaq 기준).</li>
+        <li><b>평단≈ (추정)</b>: 13F에는 매입 가격이 없어서, 분기마다 늘린 주식은 그 분기의 평균 거래가(거래량 가중)로, 그 전부터 들고 있던 주식은 직전 1년 평균 거래가로 계산한 <b>대략적인 값</b>이에요. <b>최근 분기 기관 매입 평균가</b>는 그 분기에 새로 사거나 늘린 주식의 평균가라 비교적 정확하고, 지금 주가보다 낮으면 최근에 산 기관들이 수익, 높으면 손실 중이라는 뜻이에요. 상장 전 투자자(벤처캐피털·전략적 투자 회사)는 실제 평단이 훨씬 낮아요.</li>
       </ul>
       <p>⚠️ 분기 말 기준이고 45일 뒤에 신고하므로 <b>최대 4개월 늦은 정보</b>예요. 그 사이 사고판 것은 반영되지 않고, 공매도·옵션 포지션은 빠져 있어요.</p>`,
     lockup: `
@@ -301,10 +302,11 @@
       <p>바이낸스 CRCLUSDT 선물의 가격 추이입니다. 기간을 바꾸면 봉 간격이 달라집니다(1일=15분, 1주=1시간, 1개월=4시간, 3개월=1일). 마지막 점은 실시간 가격입니다.</p>
       <p>선이 <span class="up">빨강</span>이면 기간 시작보다 오른 상태, <span class="down">파랑</span>이면 내린 상태입니다.</p>`,
     short: `
-      <p><b>공매도 비율</b> = 그날 서클 주식(CRCL) 거래량 중 공매도(빌린 주식을 파는 거래)로 체결된 비중입니다. 출처는 FINRA 일별 공매도 거래량(Reg SHO)이며, 미국 장 마감 후 저녁(한국 시간 다음 날 아침)에 전날 값이 올라옵니다.</p>
+      <p><b>공매도 비율</b> = 그날 <b>장외(FINRA에 신고된) 거래</b> 중 공매도(빌린 주식을 파는 거래)로 체결된 비중입니다. 출처는 FINRA 일별 공매도 거래량(Reg SHO, CNMS 파일)이며, 미국 장 마감 후 저녁(한국 시간 다음 날 아침)에 전날 값이 올라옵니다. 숫자는 FINRA 원본 파일과 한 주 단위까지 같아요.</p>
+      <p>⚠️ <b>"그날 거래의 60%가 공매도"라는 뜻은 아니에요.</b> FINRA 파일은 거래소 밖(장외·다크풀·증권사 내부 체결)에서 신고된 거래만 담고 있어서, 모든 거래소를 합친 전체 거래량보다 작습니다. 그래서 화면에 <b>그날 전체 거래량 대비 비율</b>도 함께 보여줘요(거래소 안에서 체결된 공매도는 공개되지 않아 이 값은 실제보다 조금 낮을 수 있어요).</p>
       <ul>
         <li><b>해석 주의</b>: 이 수치엔 시장조성자(마켓메이커)가 매수 주문을 받아주면서 잠깐 하는 공매도가 포함돼, 보통 종목도 40~50%대가 흔합니다. <b>절대 수준보다 평소(1개월 평균) 대비 얼마나 높아졌는지</b>를 보세요.</li>
-        <li><b>전체 거래량</b>은 FINRA에 보고된 장외·대체거래소 거래 기준이라, 거래소 전체 거래량보다 작습니다.</li>
+        <li><b>장외 집계</b>는 FINRA에 보고된 장외·대체거래소 거래량, <b>전체 거래량</b>은 모든 거래소 합계(Yahoo)예요.</li>
         <li><b>공매도 잔고</b>: 아직 되갚지 않은 공매도 주식 수(월 2회 발표). 늘면 하락에 베팅하는 물량이 쌓이는 중입니다.</li>
         <li><b>커버 일수</b> = 공매도 잔고 ÷ 하루 평균 거래량. 공매도 세력이 전부 되사는 데 며칠 걸리는지로, 높을수록 급등(숏 스퀴즈) 때 되사기 압력이 큽니다.</li>
       </ul>`,
@@ -457,6 +459,26 @@
   const deltaLine = (key, opts) => { const x = delta(key, opts); return `<div class="delta-line">${x.html}<span class="when">${x.when}</span></div>`; };
 
   // ---------------------------------------------------------------- 카드 틀
+  // 카드 제목 아래에 늘 보이는 "쉽게 말하면" 한 줄(ⓘ를 누르지 않아도 처음 보는 사람이 이해할 수 있게)
+  const EASY = {
+    stables: "달러와 1:1로 바꿀 수 있는 '디지털 달러'들의 시장이에요. USDC가 서클이 만든 것이고, 점유율이 오르면 서클이 경쟁에서 이기고 있다는 뜻이에요.",
+    usdc: '서클이 발행한 디지털 달러(USDC)가 지금 세상에 얼마나 풀려 있는지예요. 서클은 이만큼의 진짜 달러를 국채 등에 맡겨 이자를 버는데, 이게 매출의 대부분이라 이 숫자가 늘면 서클 매출도 늘어요.',
+    usdcflow: '하루 동안 새로 만들어진 USDC(발행)에서 없어진 USDC(소각)를 뺀 값이에요. 플러스면 사람들이 달러를 맡기고 USDC를 더 받아 간 것, 마이너스면 USDC를 다시 달러로 바꿔 간 거예요.',
+    reserve: 'USDC 뒤에는 같은 금액의 달러가 있고, 서클은 그 돈으로 미국 국채 이자를 받아요. 금리가 내리면 이자 수입이 줄고, USDC가 늘면 늘어요. 코인베이스 등 파트너와 나누기 전 금액이라 서클 실제 수입은 이보다 적어요.',
+    eurc: 'USDC의 유로 버전이에요. 1유로 = 1 EURC. 아직 작지만 서클의 유럽 사업이 얼마나 크는지 보여줘요.',
+    products: 'USDC 말고 서클이 직접 만든 다른 상품이에요. USYC는 국채 펀드를 코인으로 만든 것(이자가 붙는 달러), EURC는 유로 코인이에요.',
+    chains: "USDC는 여러 블록체인(인터넷 위의 여러 '도로') 위에서 쓰여요. 어느 도로에 USDC가 많은지, 서클이 직접 만든 Arc가 몇 위인지 보여줘요.",
+    tvl: "Arc는 서클이 직접 만든 블록체인이에요. TVL은 사람들이 Arc 위 금융 서비스(예금·대출·환전소)에 맡겨 둔 돈의 합계로, 은행으로 치면 '예금 잔액'이에요.",
+    dex: "Arc 위의 '무인 환전소(DEX)'에서 하루 동안 사고판 금액이에요. 많을수록 Arc가 실제로 많이 쓰인다는 뜻이에요.",
+    arcactivity: 'Arc에서 하루에 처리된 거래(송금·환전 등) 건수와 사람들이 낸 수수료예요. 수수료는 USDC로 내요.',
+    borrow: 'Arc 위 대출 서비스에서 사람들이 빌려 간 돈의 합계예요. 빌리는 사람이 늘면 진짜 금융 수요가 생기고 있다는 신호예요.',
+    lending: "맡긴 돈 중 몇 %가 대출로 나가 있는지(이용률)예요. 은행의 '예금 대비 대출 비율'과 비슷해요.",
+    arcsupply: "Arc 위에 올라와 있는 USDC·EURC의 양이에요. Arc로 들어온 '돈의 크기'를 가장 직접적으로 보여줘요.",
+    cirbtc: "서클이 진짜 비트코인을 맡아 두고 같은 양으로 발행한 '블록체인용 비트코인'이에요. 늘면 비트코인을 맡긴 사람이 늘었다는 뜻이에요.",
+    cctp: '다른 블록체인에서 Arc로 들어온 USDC와 Arc에서 빠져나간 USDC예요. 플러스면 Arc로 돈이 모이는 중이에요.',
+    accounts: "하루 동안 Arc를 쓴 지갑(계정) 수예요. '재방문'이 많을수록 한 번 쓰고 떠나는 게 아니라 계속 쓰는 사람이 많다는 뜻이에요.",
+  };
+  EASY.holders = EASY.sholders = "블랙록·뱅가드 같은 큰 기관(펀드)들이 이 주식을 얼마나 들고 있는지예요. 기관이 늘리면 큰손이 사 모으는 중이라는 뜻이고, '평단≈'은 기관들이 대략 얼마에 샀는지 추정한 값이에요.";
   function card(id, { title, sub, info, body }) {
     const el = document.getElementById('c-' + id);
     const open = state.openInfo.has(id);
@@ -465,6 +487,7 @@
         <div><h3>${title}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}</div>
         ${info ? `<button class="info-btn" type="button" data-info="${id}" aria-expanded="${open}" aria-controls="info-${id}" aria-label="${esc(title)} 설명">i</button>` : ''}
       </div>
+      ${EASY[id] ? `<p class="easy">💡 ${EASY[id]}</p>` : ''}
       ${info ? `<div class="info" id="info-${id}" ${open ? '' : 'hidden'}>${info}</div>` : ''}
       ${body}`;
     return el;
@@ -721,18 +744,20 @@
   function renderStables() {
     const s = state.data.stables;
     if (!s) return failed('stables', '달러 스테이블코인 공급량', state.data.errors?.stables);
-    const eurcOfficial = current('eurcTotal').v;
+    const eurcOfficial = current('eurcTotal').v, usdcOfficial = current('usdcTotal').v, shareNow = current('usdcShare').v;
     const row = (r, isProduct) => {
       const hl = r.sym === 'USDC' ? ' class="hl"' : '';
-      const supply = r.cur === 'EUR' ? eur(r.sym === 'EURC' && eurcOfficial ? eurcOfficial : r.supply) : usd(r.supply);
-      const share = isProduct ? '<td class="dim">–</td>' : `<td>${pctPlain(r.share)}<span class="share-bar"><i style="width:${Math.min(100, r.share * 100 / 0.6)}%"></i></span></td>`;
+      const off = r.sym === 'USDC' && usdcOfficial;
+      const supply = r.cur === 'EUR' ? eur(r.sym === 'EURC' && eurcOfficial ? eurcOfficial : r.supply) : usd(off ? usdcOfficial : r.supply);
+      const sh = off && shareNow != null ? shareNow : r.share;
+      const share = isProduct ? '<td class="dim">–</td>' : `<td>${pctPlain(sh)}<span class="share-bar"><i style="width:${Math.min(100, sh * 100 / 0.6)}%"></i></span></td>`;
       return `<tr${hl}><td class="name"><b>${r.sym}</b><span>${esc(r.issuer)}</span></td><td>${supply}</td>${share}
         <td class="${cls(r.ch1, 5e-5)}">${r.ch1 == null ? '–' : Math.abs(r.ch1) < 5e-5 ? '0.00%' : pct(r.ch1, Math.abs(r.ch1) < 0.001 ? 2 : 1)}</td><td class="${cls(r.ch7, 5e-5)}">${pct(r.ch7)}</td><td class="${cls(r.ch30, 5e-5)}">${pct(r.ch30)}</td></tr>`;
     };
     const x = delta('usdcShare', { mode: 'pp' });
     card('stables', {
       title: '달러 스테이블코인 공급량',
-      sub: '경쟁 코인과 서클 자체 상품 · DefiLlama',
+      sub: '경쟁 코인과 서클 자체 상품 · DefiLlama (USDC는 서클 공식 값)',
       info: INFO.stables,
       body: `
         <div class="headline"><span class="lbl">USDC 점유율</span><span class="big">${pctPlain(x.c.v)}</span>${x.html.replace('class="', 'style="font:500 13px var(--mono)" class="')}</div>
@@ -1093,17 +1118,20 @@
     const shares = (v) => (v == null ? '–' : unit(v) + '주');
     const hi = days.reduce((a, r) => (r.ratio > a.ratio ? r : a)), lo = days.reduce((a, r) => (r.ratio < a.ratio ? r : a));
     const si = (S.interest || []).slice(-3).reverse();
+    const sym = id === 'short' ? 'CRCL' : state.stock, sOut = state.holders?.[sym]?.sharesOut;
+    const ofAll = last.vol ? last.short / last.vol : null;
     card(id, {
-      title: `${name} 공매도 비율`, sub: '최근 1개월 · 일별 공매도 거래 비중 · FINRA', info: INFO.short,
-      body: `<div class="headline"><span class="lbl">${md(labels.at(-1))} 공매도 비율</span><span class="big">${pctPlain(last.ratio)}</span><span class="lbl">1개월 평균 ${pctPlain(S.avgRatio)}</span></div>
-        <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비 · 공매도 ${shares(last.short)} / 전체 ${shares(last.total)} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
+      title: `${name} 공매도 비율`, sub: '최근 1개월 · 장외(FINRA 집계) 거래 중 공매도 비중 · FINRA', info: INFO.short,
+      body: `<p class="easy">💡 공매도는 주식을 빌려서 먼저 팔고, 나중에 사서 갚는 거래예요. 주가가 내려야 돈을 버는 거래라 비중이 높으면 하락에 거는 사람이 많다는 뜻이지만, 시장 조성자(증권사)의 일상적인 거래도 섞여 있어 40~60%는 흔한 수준이에요.</p>
+        <div class="headline"><span class="lbl">${md(labels.at(-1))} 장외 거래 중 공매도</span><span class="big">${pctPlain(last.ratio)}</span><span class="lbl">1개월 평균 ${pctPlain(S.avgRatio)}</span></div>
+        <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비 · 공매도 ${shares(last.short)} / 장외 집계 ${shares(last.total)}${ofAll != null ? ` · <b>그날 전체 거래량(${shares(last.vol)}) 대비 약 ${pctPlain(ofAll)}</b>` : ''} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
         <div class="chart"><canvas id="cv-${id}" role="img" aria-label="${name} 일별 공매도 비율"></canvas></div>
         <div class="legend"><span><i style="background:${C.purple}"></i>일별 공매도 비율</span><span><i class="line" style="background:${C.ink2}"></i>1개월 평균</span></div>
         ${si.length ? `<div class="tbl-wrap"><table>
-          <thead><tr><th>공매도 잔고 기준일</th><th>잔고</th><th>직전 대비</th><th>커버 일수</th></tr></thead>
-          <tbody>${si.map((r, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${esc(r.d.slice(5).replace('-', '/'))}</td><td class="strong">${shares(r.qty)}</td>
+          <thead><tr><th>공매도 잔고 기준일</th><th>잔고</th>${sOut ? '<th>발행 주식 대비</th>' : ''}<th>직전 대비</th><th>커버 일수</th></tr></thead>
+          <tbody>${si.map((r, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${esc(r.d.slice(5).replace('-', '/'))}</td><td class="strong">${shares(r.qty)}</td>${sOut ? `<td>${pctPlain(r.qty / sOut, 1)}</td>` : ''}
             <td class="${cls(r.chg)}">${r.chg > 0 ? '+' : ''}${r.chg.toFixed(1)}%</td><td>${r.dtc.toFixed(2)}일</td></tr>`).join('')}</tbody></table></div>
-          <p class="note">공매도 잔고는 FINRA가 한 달에 두 번(15일·월말 기준) 발표합니다.</p>` : ''}`,
+          <p class="note"><b>공매도 잔고</b> = 아직 갚지 않고 남아 있는 공매도 주식 수(FINRA가 한 달에 두 번, 15일·월말 기준 발표). <b>커버 일수</b> = 하루 평균 거래량으로 그 잔고를 다 사서 갚는 데 걸리는 날 수 — 길수록 주가가 오를 때 급하게 사들이는 '숏 스퀴즈'가 나기 쉬워요.</p>` : ''}`,
     });
     draw(id, {
       type: 'bar',
@@ -1123,7 +1151,7 @@
             callbacks: {
               title: (items) => fullDay(labels[items[0].dataIndex]),
               label: (it) => ` ${it.dataset.label}: ${pctPlain(it.raw)}`,
-              footer: (items) => { const r = days[items[0].dataIndex]; return `공매도 ${shares(r.short)} / 전체 ${shares(r.total)}`; },
+              footer: (items) => { const r = days[items[0].dataIndex]; return `공매도 ${shares(r.short)} / 장외 집계 ${shares(r.total)}${r.vol ? ` · 전체 거래량 대비 ${pctPlain(r.short / r.vol)}` : ''}`; },
             },
           },
         },
@@ -3411,7 +3439,7 @@
       // 순위: 상위 보유·주요 금융사는 전체 보유 금액 순위, 많이 산/판 곳은 그 목록 안의 순위
       const rank = tab === 'top' || tab === 'major' ? H.top.indexOf(r) + 1 : i + 1;
       return `<li><span class="h-rank${rank <= 3 ? ' top3' : ''}" aria-label="${rank}위">${rank}</span><div class="h-name"><b>${esc(inst ? inst[1] : titleCase(r.name))}</b><small>${inst ? esc(titleCase(r.name)) + ' · ' : ''}${r.date ? md(isoToTs(r.date)) + ' 기준' : ''}${old ? ' <i class="h-old">지난 분기</i>' : ''}</small></div>
-        <div class="h-sh"><b>${r.soldOut ? '0주' : unit(r.shares) + '주'}</b><small>${shareOf(r) != null && !r.soldOut ? '지분 ' + pctPlain(shareOf(r), 2) : r.value != null ? usd(r.value) : ''}</small></div>
+        <div class="h-sh"><b>${r.soldOut ? '0주' : unit(r.shares) + '주'}</b><small>${shareOf(r) != null && !r.soldOut ? '지분 ' + pctPlain(shareOf(r), 2) : r.value != null ? usd(r.value) : ''}</small>${r.est != null ? `<small class="h-est" title="추정 평단(대략)">평단≈${price(r.est)}</small>` : ''}</div>
         <div class="h-chg">${chgTxt(r)}</div></li>`;
     }).join('');
     // 다음 13F 마감: 분기 말 + 45일
@@ -3419,6 +3447,15 @@
     const nextQ = qEnd ? new Date(qEnd.getFullYear(), qEnd.getMonth() + 4, 0) : null;
     const nextDue = nextQ ? new Date(nextQ.getTime() + 45 * 86400000) : null;
     const flow = inc && dec ? (inc.shares || 0) - (dec.shares || 0) : null;
+    // 기관 추정 평단(13F에는 매입가가 없어 분기별 평균 거래가로 근사) vs 지금 주가
+    const E = H.est, nowPx = state.quote?.[sym]?.price ?? E?.last;
+    const vsNow = (v) => (v && nowPx ? `<b class="${cls(nowPx - v)}">${pct(nowPx / v - 1, 1)}</b>` : '');
+    const qName = (q) => { const m = +q.to.slice(5, 7); return EN ? `Q${Math.ceil(m / 3)} ${q.to.slice(0, 4)}` : `${q.to.slice(2, 4)}년 ${Math.ceil(m / 3)}분기(${+q.from.slice(5, 7)}~${m}월)`; };
+    const estHtml = E ? `<div class="h-est-box">
+        ${E.q?.vwap ? `<div><span>최근 분기 기관 매입 평균가 <small>${esc(qName(E.q))} · 새로 사거나 늘린 ${unit(E.q.added)}주</small></span><b>≈ ${price(E.q.vwap)}</b><em>지금 주가 대비 ${vsNow(E.q.vwap)}</em></div>` : ''}
+        <div><span>상위 ${E.holders}곳 추정 평단 <small>보유 주식 가중 평균 · 최근 1년 매입 가정</small></span><b>≈ ${price(E.avg)}</b><em>지금 주가 대비 ${vsNow(E.avg)}</em></div>
+        <p class="note">💡 기관이 실제로 얼마에 샀는지는 공개되지 않아요. 분기마다 늘린 주식 수 × 그 분기 평균 거래가로 <b>대략</b> 계산한 값이에요. 상장 전부터 투자한 회사·벤처캐피털이나 몇 년째 들고 있는 기관은 실제 평단이 훨씬 낮을 수 있어요.</p>
+      </div>` : '';
     card(id, {
       title, sub: `${S.short} · 13F 신고 기준 · Nasdaq · ${latest ? md(isoToTs(latest)) + ' 분기 말' : ''}`, info: INFO.holders,
       body: `<div class="ns-grid h-grid">
@@ -3428,6 +3465,7 @@
           <div><span>줄인 곳</span><b class="down">${dec ? nf(0).format(dec.holders) + '곳' : '–'}</b><small>-${unit(dec?.shares)}주${H.soldOut ? ` · 전량 매도 ${nf(0).format(H.soldOut.holders)}곳` : ''}</small></div>
         </div>
         ${flow != null ? `<div class="h-flow"><span>기관 순매수(직전 분기 대비)</span><b class="${cls(flow)}">${flow > 0 ? '+' : ''}${unit(flow)}주</b></div>` : ''}
+        ${estHtml}
         ${more(id + ':more', `기관별 보유 목록 ${H.top.length}곳 보기`)}
         <div class="nf h-tabs" role="group" aria-label="기관 목록 보기">${HOLD_TABS.map(([k, l]) => `<button type="button" data-htab="${k}" aria-pressed="${k === tab}">${l}</button>`).join('')}</div>
         <ul class="h-list">${list || '<li class="empty">해당하는 기관이 없어요.</li>'}</ul>
@@ -4907,7 +4945,11 @@
   if (divCfg?.hold?.length) markUse('divSet');
   if (WATCH.some((x) => STOCK_INFO[x]?.custom)) markUse('watch');
   sendPicks();
-  document.addEventListener('click', (ev) => { if (ev.target.closest?.('a[href*="blog.naver.com"]')) markUse('blog'); }, true);
+  document.addEventListener('click', (ev) => {
+    if (ev.target.closest?.('a[href*="blog.naver.com"]')) markUse('blog');
+    const fb = ev.target.closest?.('a.fl-fb');
+    if (fb) fb.href = `feedback?from=${encodeURIComponent(state.view)}${EN ? '&lang=en' : ''}`; // 어느 화면에서 문의했는지 함께
+  }, true);
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
@@ -4916,6 +4958,13 @@
     if (ev.target.id === 'oc-file') runOcr(ev.target.files);
     if (ev.target.id === 'oc-y') applyOcrYear();
   });
+  // USDC·Arc 화면 맨 위 소개: 접은 상태를 기억한다
+  for (const d of document.querySelectorAll('details.intro-card')) {
+    if (loadPref('intro.' + d.dataset.intro, '') === 'closed') d.open = false;
+    const lab = () => { const s = d.querySelector('summary small'); if (s) s.textContent = T(d.open ? '접기' : '펼치기'); };
+    lab();
+    d.addEventListener('toggle', () => { savePref('intro.' + d.dataset.intro, d.open ? 'open' : 'closed'); lab(); });
+  }
   document.addEventListener('toggle', (ev) => {
     const d = ev.target;
     if (!(d instanceof HTMLElement) || !d.matches('details.more')) return;

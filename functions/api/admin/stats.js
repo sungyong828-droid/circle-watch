@@ -40,6 +40,11 @@ export async function onRequestGet({ request, env }) {
     q(`SELECT sym, COUNT(*) AS n, SUM(day >= ?2) AS week FROM picks WHERE day >= ?1 AND ${EX} GROUP BY sym ORDER BY n DESC, sym LIMIT 25`, from30, from7),
     q(`SELECT COUNT(DISTINCT vid) AS n FROM picks WHERE day >= ?1 AND ${EX}`, from30),
   ]).catch(() => [[], []]);
+  // 고객 문의(숨긴 글 제외 최근 60건 + 상태별 개수)
+  const [fb, fbN] = await Promise.all([
+    q(`SELECT id, at, kind, msg, contact, page, lang, status FROM feedback WHERE status != 'hidden' ORDER BY id DESC LIMIT 60`),
+    q(`SELECT status, COUNT(*) AS n FROM feedback GROUP BY status`),
+  ]).catch(() => [[], []]);
   // 오래된 기록 정리(오류·틀린 키는 30일만 보관)
   try { await env.STATS.prepare('DELETE FROM errors WHERE day < ?1').bind(from30).run(); await env.STATS.prepare('DELETE FROM auth_fail WHERE day < ?1').bind(from30).run(); } catch {}
   // 이 기기(관리자 화면을 연 기기)
@@ -57,6 +62,7 @@ export async function onRequestGet({ request, env }) {
     liveNow: live[0]?.n || 0, week: week[0]?.n || 0, weekNew: week[0]?.newbies || 0, prevWeek: prevWeek[0]?.n || 0, prevWeekNew: prevWeek[0]?.newbies || 0,
     returning: back[0]?.n || 0, excludedDevices: exN[0]?.n || 0,
     picks, pickDevices: pickDev[0]?.n || 0,
+    feedback: fb, feedbackCount: Object.fromEntries(fbN.map((r) => [r.status, r.n])),
     usage: usage[0] || {}, useBits: USE_BITS, langs, hours, errors: errs, authFails: fails, lockRule: { fails: LOCK_FAILS, minutes: LOCK_MS / 60000 },
     me,
   });

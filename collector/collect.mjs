@@ -464,10 +464,19 @@ async function collectShort(state) {
     } catch (e) { log('finra 잔고 실패', sym, e.message); return []; }
   };
   const avgOf = (d) => d.reduce((s, r) => s + r.short, 0) / (d.reduce((s, r) => s + r.total, 0) || 1);
+  // 그날 전체 거래량(모든 거래소 합계, Yahoo) — FINRA 파일의 '전체'는 장외(FINRA 신고분)만이라 따로 붙인다
+  const withVol = async (sym, rows) => {
+    try {
+      const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=3mo`, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(30000) });
+      const j = (await res.json()).chart.result[0];
+      const vol = Object.fromEntries((j.timestamp || []).map((t, i) => [new Date(t * 1000).toISOString().slice(0, 10), j.indicators.quote[0].volume?.[i] || null]));
+      return rows.map((r) => ({ ...r, vol: vol[r.d] || null }));
+    } catch (e) { log('전체 거래량 실패', sym, e.message); return rows; }
+  };
   // 다른 보유 종목(JOBY·SPCX·TEM)도 같은 파일에서 뽑는다
   const by = {};
   for (const sym of OTHER_SHORT) {
-    const dd = dailyOf((r) => r.O?.[sym]);
+    const dd = await withVol(sym, dailyOf((r) => r.O?.[sym]));
     by[sym] = { daily: dd, avgRatio: avgOf(dd), interest: await interestOf(sym) };
   }
 
@@ -493,7 +502,7 @@ async function collectShort(state) {
 
   if (!daily.length) throw new Error('FINRA 일별 공매도 데이터 없음');
   const sumS = daily.reduce((s, r) => s + r.short, 0), sumT = daily.reduce((s, r) => s + r.total, 0);
-  return { daily, avgRatio: sumS / sumT, interest, by, joby: by.JOBY };
+  return { daily: await withVol('CRCL', daily), avgRatio: sumS / sumT, interest, by, joby: by.JOBY };
 }
 
 const isoToTs = (s) => Date.parse(s + 'T00:00:00Z') / 1000;

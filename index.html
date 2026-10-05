@@ -32,7 +32,7 @@
 <link rel="icon" type="image/png" href="assets/favicon.png?v=2">
 <link rel="apple-touch-icon" href="assets/icon.png?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j" crossorigin="anonymous">
-<link rel="stylesheet" href="assets/style.css?v=73">
+<link rel="stylesheet" href="assets/style.css?v=74">
 </head>
 <body>
 <noscript><p style="padding:16px">Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·차트·뉴스 AI 요약·공매도·기관 보유·애널리스트 목표가를 보여주는 무료 미국 주식 대시보드예요. 화면을 보려면 자바스크립트를 켜 주세요. <a href="about">사이트 소개 보기</a></p></noscript>
@@ -125,6 +125,7 @@
   </section>
 
   <section class="view" id="view-usdc" data-view="usdc" hidden>
+    <details class="card intro-card" data-intro="usdc" open><summary><span>💡 서클은 어떻게 돈을 버나요?</span><small>접기</small></summary><ol class="intro-steps"><li><b>USDC = 디지털 달러</b><span>서클은 1달러를 받으면 1 USDC를 만들어 줘요. 언제든 다시 1달러로 바꿔 줘요.</span></li><li><b>맡은 달러로 이자 수입</b><span>받은 달러는 미국 국채·현금으로 보관하고, 거기서 나오는 이자가 서클 매출의 대부분이에요.</span></li><li><b>그래서 이 화면이 중요해요</b><span>USDC가 많이 풀릴수록, 금리가 높을수록 서클이 버는 돈이 늘어요. 이 화면은 그 두 가지를 보여줘요.</span></li></ol></details>
     <article class="card" id="c-stables"></article>
     <article class="card" id="c-usdc"></article>
     <article class="card" id="c-usdcflow"></article>
@@ -135,6 +136,7 @@
   </section>
 
   <section class="view" id="view-arc" data-view="arc" hidden>
+    <details class="card intro-card" data-intro="arc" open><summary><span>💡 Arc는 뭔가요?</span><small>접기</small></summary><ol class="intro-steps"><li><b>서클이 만든 블록체인</b><span>Arc는 서클이 직접 만든 금융용 블록체인이에요. 수수료를 USDC로 내요.</span></li><li><b>왜 중요한가요</b><span>사람들이 Arc 위에서 송금·대출·환전을 많이 할수록 서클의 새 수익원(수수료·서비스)이 커져요.</span></li><li><b>이 화면 읽는 법</b><span>맡긴 돈(TVL)·거래액·사용자 수가 꾸준히 늘면 Arc가 실제로 쓰이고 있다는 신호예요.</span></li></ol></details>
     <article class="card" id="c-tvl"></article>
     <article class="card" id="c-dex"></article>
     <article class="card" id="c-arcactivity"></article>
@@ -168,7 +170,7 @@
 
   <footer class="foot">
     <div class="foot-btns"><button type="button" class="share-btn" id="share-btn">🔗 공유하기</button></div>
-    <nav class="foot-links" aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a></nav>
+    <nav class="foot-links" aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="feedback" class="fl-fb">💬 문의·개선 제안</a></nav>
     <p>데이터: Binance · Nasdaq(시세·실적·13F 기관 보유) · Yahoo Finance · SEC · 구글 뉴스 · 전문 매체 RSS · Cloudflare Workers AI(뉴스 요약) · DefiLlama · 서클 공식 API · FINRA · 미 재무부 · Arc/Ethereum RPC · Arc 탐색기(Blockscout).</p>
     <p>우측 상단 새로고침(↻)을 누르면 모든 데이터를 지금 시각 기준으로 다시 불러와요. 가만히 두어도 5분마다(주가·환율은 더 자주) 자동으로 업데이트돼요. 🟢 표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
     <p>🔒 보유 정보(수량·평단·매수 기록)와 관심 종목은 이 기기에만 저장돼요. 사이트는 방문 수 집계를 위해 익명 기기 ID·유입 경로를, 인기 종목 순위를 위해 새로 추가한 티커 이름만 익명으로 기록하고, 이름·연락처 같은 개인 정보는 받지 않아요.</p>
@@ -182,6 +184,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
 <script src="assets/logo-list.js?v=1"></script>
 <script src="assets/trade-ocr.js?v=2"></script>
-<script src="assets/app.js?v=78"></script>
+<script src="assets/app.js?v=79"></script>
 </body>
 </html>

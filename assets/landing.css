@@ -36,3 +36,26 @@ body.lp { max-width: 760px; margin: 0 auto; padding-top: 10px; line-height: 1.65
 body.lp { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
 .lp-top { padding-top: 6px; }
 .lp-open { padding: 9px 14px; }
+
+/* 문의·개선 제안 */
+.fb-hero h1 { margin-top: 4px; }
+.fb-form { display: grid; gap: 16px; margin-top: 8px; padding: 18px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line-soft); }
+.fb-kinds { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.fb-kinds legend { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; padding: 0; }
+.fb-kinds label { cursor: pointer; }
+.fb-kinds input { position: absolute; opacity: 0; pointer-events: none; }
+.fb-kinds span { display: inline-block; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); font-size: 14px; color: var(--ink-2); }
+.fb-kinds input:checked + span { border-color: var(--c-orange); background: color-mix(in srgb, var(--c-orange) 14%, transparent); color: var(--ink); font-weight: 600; }
+.fb-kinds input:focus-visible + span { outline: 2px solid var(--c-orange); outline-offset: 2px; }
+.fb-f { display: grid; gap: 6px; }
+.fb-f > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+.fb-f textarea, .fb-f input { width: 100%; box-sizing: border-box; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: 15px/1.6 var(--sans); padding: 12px 14px; }
+.fb-f textarea { resize: vertical; min-height: 150px; }
+.fb-f small { color: var(--muted); font-size: 12px; }
+.fb-count { text-align: right; }
+.fb-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.fb-send { border: 0; cursor: pointer; width: 100%; font-family: inherit; }
+.fb-send:disabled { opacity: 0.6; cursor: default; }
+.fb-status { margin: 0; min-height: 1.4em; font-size: 14px; color: var(--ink-2); text-align: center; }
+.fb-status.ok { color: var(--c-teal); font-weight: 600; }
+.fb-status.err { color: var(--up); }

@@ -1095,3 +1095,25 @@ html.is-test .top::after { content: '🧪 TEST'; position: absolute; left: 50%; 
 }
 @media (min-width: 481px) { .tx-manual { grid-template-columns: minmax(158px, 1.6fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 0.8fr) auto; } }
 .tx-manual input[type="date"] { padding-right: 6px; }
+
+/* 기관 추정 평단 */
+.h-sh small.h-est { color: var(--accent); }
+.h-est-box { display: grid; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 12px; background: var(--surface-2); }
+.h-est-box > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px 10px; font-size: 12.5px; color: var(--ink-2); }
+.h-est-box > div span small { display: block; color: var(--muted); font-size: 11px; margin-top: 1px; }
+.h-est-box > div b { font: 700 16px var(--mono); color: var(--ink); text-align: right; }
+.h-est-box > div em { grid-column: 1 / -1; font-style: normal; font-size: 11.5px; color: var(--muted); text-align: right; }
+.h-est-box > div em b { font: 600 12px var(--mono); }
+.h-est-box .note { margin: 2px 0 0; font-size: 11.5px; }
+
+/* 처음 보는 사람용 설명: 카드 '쉽게 말하면' 한 줄 · 화면 맨 위 소개 */
+.card > .easy, .easy { margin: 2px 0 12px; padding: 9px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 9%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); color: var(--ink-2); font-size: 12.5px; line-height: 1.6; }
+.intro-card { padding: 14px 16px; }
+.intro-card summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; list-style: none; font-weight: 700; font-size: 15px; }
+.intro-card summary::-webkit-details-marker { display: none; }
+.intro-card summary small { flex: none; font-weight: 500; font-size: 12px; color: var(--muted); padding: 4px 10px; border-radius: 999px; background: var(--surface-2); }
+.intro-steps { margin: 12px 0 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: 10px; }
+.intro-steps li { counter-increment: st; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 10px; font-size: 13px; line-height: 1.55; }
+.intro-steps li::before { content: counter(st); grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); font: 700 12px var(--mono); }
+.intro-steps li b { color: var(--ink); }
+.intro-steps li span { color: var(--ink-2); }

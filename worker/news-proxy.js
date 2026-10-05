@@ -740,8 +740,38 @@ const holderRow = (r) => {
     isNew: /new/i.test(pctTxt), soldOut: /sold/i.test(pctTxt), value: num(r.marketValue) != null ? num(r.marketValue) * 1000 : null,
   };
 };
+// 기관 추정 평단: 13F에는 매입 가격이 없어서, 분기마다 거래량 가중 평균가(VWAP)로 근사한다.
+//  - 이번 분기에 새로 샀거나 늘린 몫 → 그 분기 VWAP
+//  - 그 전부터 들고 있던 몫 → 직전 4개 분기(상장 이후만) VWAP
+//  - 줄인 기관은 남은 주식의 평단이 그대로라 직전 기간 VWAP
+// 실제 매입가와 다를 수 있는 '대략적인 추정'이다(Yahoo 일봉 · 분할 반영 가격).
+async function dailyBars(sym) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym.replace('.', '-')}?interval=1d&range=2y`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart.result[0], Q = j.indicators?.quote?.[0] || {};
+  return (j.timestamp || []).map((t, i) => ({ d: new Date(t * 1000).toISOString().slice(0, 10), p: (Q.high?.[i] + Q.low?.[i] + Q.close?.[i]) / 3, v: Q.volume?.[i] || 0, c: Q.close?.[i] }))
+    .filter((b) => isFinite(b.p) && b.p > 0);
+}
+const qStart = (end) => { const d = new Date(end + 'T00:00:00Z'); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 2, 1)).toISOString().slice(0, 10); }; // 분기 말 → 분기 첫날
+function vwap(bars, from, to) {
+  let pv = 0, vv = 0, ps = 0, n = 0;
+  for (const b of bars) if (b.d >= from && b.d <= to) { pv += b.p * b.v; vv += b.v; ps += b.p; n++; }
+  return vv > 0 ? pv / vv : n ? ps / n : null;
+}
+function estCost(r, bars) {
+  if (!bars?.length || !r.date || r.soldOut || !(r.shares > 0)) return null;
+  const qs = qStart(r.date), yearAgo = qStart(new Date(Date.parse(qs + 'T00:00:00Z') - 300 * 86400000).toISOString().slice(0, 10));
+  const pq = vwap(bars, qs, r.date);
+  const pb = vwap(bars, yearAgo, new Date(Date.parse(qs + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10)) ?? pq;
+  if (pq == null) return null;
+  const prev = r.isNew ? 0 : r.shares - (r.chg || 0);
+  if (prev <= 0) return pq;
+  if ((r.chg || 0) > 0) return (prev * pb + r.chg * pq) / r.shares;
+  return pb;
+}
 export async function buildHolders(sym) {
   const base = `company/${sym}/institutional-holdings`;
+  const barsP = dailyBars(sym).catch(() => null);
   const [tot, inc, dec] = await Promise.allSettled([
     nasdaqJson(`${base}?limit=40&type=TOTAL&sortColumn=marketValue&sortOrder=DESC`),
     nasdaqJson(`${base}?limit=8&type=INCREASED&sortColumn=sharesChange&sortOrder=DESC`),
@@ -750,8 +780,21 @@ export async function buildHolders(sym) {
   if (tot.status !== 'fulfilled' || !tot.value) throw new Error('기관 보유 데이터를 받지 못했습니다');
   const d = tot.value, os = d.ownershipSummary || {};
   const act = Object.fromEntries((d.activePositions?.rows || []).concat(d.newSoldOutPositions?.rows || []).map((r) => [r.positions, { holders: num(r.holders), shares: num(r.shares) }]));
-  const rows = (x) => (x.status === 'fulfilled' ? x.value?.holdingsTransactions?.table?.rows || [] : []).map(holderRow);
+  const bars = await barsP;
+  const r2 = (v) => (v == null || !isFinite(v) ? null : Math.round(v * 100) / 100);
+  const rows = (x) => (x.status === 'fulfilled' ? x.value?.holdingsTransactions?.table?.rows || [] : []).map(holderRow).map((r) => ({ ...r, est: r2(estCost(r, bars)) }));
+  const top = rows(tot);
+  // 상위 기관 전체의 보유 주식 가중 평균
+  let es = 0, ew = 0;
+  for (const r of top) if (r.est != null && r.shares > 0) { es += r.est * r.shares; ew += r.shares; }
   return {
+    est: ew ? (() => {
+      // 가장 최근 분기에 기관이 새로 사거나 늘린 몫의 평균 매입가 ≈ 그 분기 VWAP(가장 믿을 만한 값)
+      const qEnd = top.reduce((m, r) => (r.date > m ? r.date : m), '');
+      const addSh = top.filter((r) => r.date === qEnd && (r.isNew || (r.chg || 0) > 0)).reduce((a, r) => a + (r.isNew ? r.shares : r.chg), 0);
+      return { avg: r2(es / ew), shares: ew, holders: top.filter((r) => r.est != null).length, last: r2(bars?.at(-1)?.c), lastDate: bars?.at(-1)?.d || null,
+        q: qEnd ? { from: qStart(qEnd), to: qEnd, vwap: r2(vwap(bars, qStart(qEnd), qEnd)), added: addSh } : null };
+    })() : null,
     at: new Date().toISOString(), symbol: sym,
     ownershipPct: num(os.SharesOutstandingPCT?.value) != null ? num(os.SharesOutstandingPCT.value) / 100 : null,
     sharesOut: num(os.ShareoutstandingTotal?.value) != null ? num(os.ShareoutstandingTotal.value) * 1e6 : null,
@@ -759,13 +802,13 @@ export async function buildHolders(sym) {
     holders: num(d.holdingsTransactions?.totalRecords),
     increased: act['Increased Positions'] || null, decreased: act['Decreased Positions'] || null, held: act['Held Positions'] || null,
     totalShares: act['Total Institutional Shares'] || null, newPos: act['New Positions'] || null, soldOut: act['Sold Out Positions'] || null,
-    top: rows(tot), buyers: rows(inc), sellers: rows(dec),
+    top, buyers: rows(inc), sellers: rows(dec),
   };
 }
 export async function handleHolders(url, cache, cors, ctx) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/holders?s=${sym}&v=swr`, { freshSec: 6 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildHolders(sym)) });
+  return swr(cache, ctx, `${url.origin}/holders?s=${sym}&v=swr2`, { freshSec: 6 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildHolders(sym)) });
 }
 
 // ---------------------------------------------------------------- 애널리스트 의견 · 내부자 매매 (Nasdaq 집계)
@@ -901,7 +944,7 @@ async function finraPost(name, body) {
 export async function handleShort(url, cache, cors, ctx) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/short?s=${sym}&v=1`, {
+  return swr(cache, ctx, `${url.origin}/short?s=${sym}&v=2`, {
     freshSec: 3 * 3600, keepSec: 3 * 86400, cors,
     build: async () => {
       const day = (ms) => new Date(ms).toISOString().slice(0, 10), now = Date.now();
@@ -914,7 +957,9 @@ export async function handleShort(url, cache, cors, ctx) {
         const x = (by[r.tradeReportDate] ||= { d: r.tradeReportDate, short: 0, exempt: 0, total: 0 });
         x.short += r.shortParQuantity || 0; x.exempt += r.shortExemptParQuantity || 0; x.total += r.totalParQuantity || 0;
       }
-      const rows = Object.values(by).filter((x) => x.total > 0).sort((a, b) => a.d.localeCompare(b.d)).map((x) => ({ ...x, ratio: x.short / x.total }));
+      let rows = Object.values(by).filter((x) => x.total > 0).sort((a, b) => a.d.localeCompare(b.d)).map((x) => ({ ...x, ratio: x.short / x.total }));
+      // 그날 전체 거래량(모든 거래소 합계) — FINRA '전체'는 장외 신고분만이라 따로 붙인다
+      try { const vol = Object.fromEntries((await dailyBars(sym)).map((b) => [b.d, b.v])); rows = rows.map((r) => ({ ...r, vol: vol[r.d] || null })); } catch {}
       const sS = rows.reduce((a, r) => a + r.short, 0), sT = rows.reduce((a, r) => a + r.total, 0);
       const interest = (si.status === 'fulfilled' && Array.isArray(si.value) ? si.value : []).map((r) => ({ d: r.settlementDate, qty: r.currentShortPositionQuantity, prev: r.previousShortPositionQuantity, chg: r.changePercent, dtc: r.daysToCoverQuantity, adv: r.averageDailyVolumeQuantity })).sort((a, b) => a.d.localeCompare(b.d));
       if (!rows.length && !interest.length) throw new Error('공매도 자료 없음');

@@ -165,6 +165,26 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   let lastStats = null;
+  // 고객 문의(/feedback)
+  const FB_KIND = { idea: ['💡', '개선 제안'], bug: ['🐞', '오류·숫자'], question: ['❓', '질문'], etc: ['💬', '기타'] };
+  const VIEW_NAME = { home: '홈', crcl: '서클 주가', earn: '서클 실적', usdc: 'USDC', arc: 'Arc', news: '뉴스', fire: 'Fire', sprice: '종목 주가', searn: '종목 실적', snews: '종목 뉴스', app: '대시보드' };
+  let fbFilter = 'new';
+  function feedbackHtml(list, cnt) {
+    const c = cnt || {};
+    const rows = (list || []).filter((f) => fbFilter === 'all' || f.status === fbFilter);
+    const tabs = [['new', `새 글 ${nf(c.new)}`], ['done', `처리함 ${nf(c.done)}`], ['all', '전체']];
+    return `<div class="nf fb-tabs" role="group" aria-label="문의 보기">${tabs.map(([k, l]) => `<button type="button" class="btn-ghost sm" data-fbf="${k}" aria-pressed="${k === fbFilter}">${l}</button>`).join('')}</div>
+      ${rows.length ? `<ul class="fb-list">${rows.map((f) => {
+        const [ic, kl] = FB_KIND[f.kind] || FB_KIND.etc;
+        const when = new Date(f.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `<li class="fb-${f.status}"><div class="fb-meta"><span class="fb-kind">${ic} ${kl}</span><small>${esc(when)}${f.page ? ` · ${esc(VIEW_NAME[f.page] || f.page)}에서` : ''}${f.lang === 'en' ? ' · 영어' : ''}</small></div>
+          <p class="fb-msg">${esc(f.msg)}</p>
+          ${f.contact ? `<p class="fb-contact">연락처: <b>${esc(f.contact)}</b></p>` : ''}
+          <div class="fb-act">${f.status === 'new' ? `<button type="button" class="btn-ghost sm" data-fbid="${f.id}" data-fbs="done">✓ 처리 완료</button>` : `<button type="button" class="btn-ghost sm" data-fbid="${f.id}" data-fbs="new">새 글로 되돌리기</button>`}
+            <button type="button" class="btn-ghost sm fb-hide" data-fbid="${f.id}" data-fbs="hidden">숨기기</button></div></li>`;
+      }).join('')}</ul>` : `<p class="adm-dim">${fbFilter === 'new' ? '✅ 새로 들어온 문의가 없어요.' : '아직 문의가 없어요.'}</p>`}
+      <p class="adm-dim">방문자는 대시보드 맨 아래 <b>💬 문의·개선 제안</b>에서 글을 남겨요. 도배를 막으려고 한 사람(IP·기기)당 10분에 3건·하루 8건, 사이트 전체 하루 150건까지만 받고, 같은 내용은 7일 동안 다시 받지 않아요. '숨기기'는 목록에서만 빼고 지우지는 않아요.</p>`;
+  }
   function picksHtml(rows, dev) {
     if (!rows?.length) return '<p class="adm-dim">아직 기록이 없어요. 방문자가 관심 종목을 추가하면 여기에 쌓여요.</p>';
     const max = rows[0].n || 1;
@@ -209,6 +229,7 @@
         ${bars(j.days, j.today)}
         <div class="adm-row"><span class="adm-dim">최근 7일 신규 ${nf(j.weekNew)} ${delta(j.weekNew, j.prevWeekNew)} · 지난 7일 신규 ${nf(j.prevWeekNew)}</span><button type="button" class="btn-ghost sm" id="adm-csv">CSV 내려받기</button></div>
       </section>
+      <section class="card" id="adm-fb"><h2>💬 고객 문의 · 개선 제안 ${j.feedbackCount?.new ? `<em class="fb-badge">새 글 ${nf(j.feedbackCount.new)}</em>` : ''}</h2><div id="adm-fb-body">${feedbackHtml(j.feedback, j.feedbackCount)}</div></section>
       <section class="card"><h2>인기 종목 <small>관심 종목에 새로 추가한 티커 · 최근 30일</small></h2>${picksHtml(j.picks, j.pickDevices)}</section>
       <section class="card"><h2>많이 쓰는 화면 · 기능 <small>최근 7일</small></h2>${usageHtml(j.usage, j.useBits || [])}</section>
       <div class="adm-2">
@@ -271,6 +292,15 @@
 
   btn.addEventListener('click', () => load());
   main.addEventListener('click', async (ev) => {
+    const ff = ev.target.closest('[data-fbf]');
+    if (ff) { fbFilter = ff.dataset.fbf; const box = document.getElementById('adm-fb-body'); if (box && lastStats) box.innerHTML = feedbackHtml(lastStats.feedback, lastStats.feedbackCount); return; }
+    const fa = ev.target.closest('[data-fbid]');
+    if (fa) {
+      if (fa.dataset.fbs === 'hidden' && !confirm('이 문의를 목록에서 숨길까요? (지우지는 않아요)')) return;
+      fa.disabled = true;
+      try { await api(`/api/admin/feedback?id=${fa.dataset.fbid}&status=${fa.dataset.fbs}`); await load(false, true); } catch { fa.disabled = false; }
+      return;
+    }
     const b = ev.target.closest('[data-copy]');
     if (!b) return;
     try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = '✓ 복사됨'; } catch { b.textContent = '복사 실패'; }
