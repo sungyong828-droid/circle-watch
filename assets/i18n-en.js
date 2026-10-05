@@ -1818,7 +1818,8 @@ window.__I18N_EN = {
 "순 신고가": "Net new highs",
 "125일 평균": "125-day avg",
 "50일 평균": "50-day avg",
-"금리 차": "Spread"
+"금리 차": "Spread",
+"시장 사람들의 '기분 온도계'예요. 0에 가까울수록 겁을 먹고 파는 분위기(공포), 100에 가까울수록 들떠서 사는 분위기(탐욕)예요. \"남들이 겁낼 때 사라\"는 말처럼 반대로 활용하는 사람도 많아요.": "A mood thermometer for the market. Near 0, people are scared and selling (fear); near 100, they’re excited and buying (greed). Many use it as a contrarian signal — “be greedy when others are fearful.”"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

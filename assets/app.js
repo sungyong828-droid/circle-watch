@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=14';
+    sc.src = 'assets/i18n-en.js?v=15';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -495,6 +495,11 @@
     accounts: "하루 동안 Arc를 쓴 지갑(계정) 수예요. '재방문'이 많을수록 한 번 쓰고 떠나는 게 아니라 계속 쓰는 사람이 많다는 뜻이에요.",
   };
   EASY.holders = EASY.sholders = "블랙록·뱅가드 같은 큰 기관(펀드)들이 이 주식을 얼마나 들고 있는지예요. 기관이 늘리면 큰손이 사 모으는 중이라는 뜻이고, '평단≈'은 기관들이 대략 얼마에 샀는지 추정한 값이에요.";
+  // 💡 쉬운 설명: 평소엔 '💡 설명'만 보이고 누르면 펼쳐진다(자동 새로고침으로 다시 그려도 펼친 상태 유지)
+  function easyBox(key, html) {
+    const k = 'easy:' + key;
+    return `<details class="easy" data-more="${k}" ${state.openMore.has(k) ? 'open' : ''}><summary><span class="easy-ic" aria-hidden="true">💡</span><span>${EN ? 'What’s this?' : '설명'}</span></summary><p>${html}</p></details>`;
+  }
   function card(id, { title, sub, info, body }) {
     const el = document.getElementById('c-' + id);
     const open = state.openInfo.has(id);
@@ -503,7 +508,7 @@
         <div><h3>${title}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}</div>
         ${info ? `<button class="info-btn" type="button" data-info="${id}" aria-expanded="${open}" aria-controls="info-${id}" aria-label="${esc(title)} 설명">i</button>` : ''}
       </div>
-      ${EASY[id] ? `<p class="easy">💡 ${EASY[id]}</p>` : ''}
+      ${EASY[id] ? easyBox(id, EASY[id]) : ''}
       ${info ? `<div class="info" id="info-${id}" ${open ? '' : 'hidden'}>${info}</div>` : ''}
       ${body}`;
     return el;
@@ -1138,7 +1143,7 @@
     const ofAll = last.vol ? last.short / last.vol : null;
     card(id, {
       title: `${name} 공매도 비율`, sub: '최근 1개월 · 장외(FINRA 집계) 거래 중 공매도 비중 · FINRA', info: INFO.short,
-      body: `<p class="easy">💡 ${EN ? 'Short selling means borrowing shares to sell now and buying them back later — a bet that the price falls. A high ratio means more bets on a drop, but routine market-maker trades are mixed in, so 40–60% is common.' : '공매도는 주식을 빌려서 먼저 팔고, 나중에 사서 갚는 거래예요. 주가가 내려야 돈을 버는 거래라 비중이 높으면 하락에 거는 사람이 많다는 뜻이지만, 시장 조성자(증권사)의 일상적인 거래도 섞여 있어 40~60%는 흔한 수준이에요.'}</p>
+      body: `${easyBox(id, EN ? 'Short selling means borrowing shares to sell now and buying them back later — a bet that the price falls. A high ratio means more bets on a drop, but routine market-maker trades are mixed in, so 40–60% is common.' : '공매도는 주식을 빌려서 먼저 팔고, 나중에 사서 갚는 거래예요. 주가가 내려야 돈을 버는 거래라 비중이 높으면 하락에 거는 사람이 많다는 뜻이지만, 시장 조성자(증권사)의 일상적인 거래도 섞여 있어 40~60%는 흔한 수준이에요.')}
         <div class="headline"><span class="lbl">${md(labels.at(-1))} 장외 거래 중 공매도</span><span class="big">${pctPlain(last.ratio)}</span><span class="lbl">1개월 평균 ${pctPlain(S.avgRatio)}</span></div>
         <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비 · 공매도 ${shares(last.short)} / 장외 집계 ${shares(last.total)}${ofAll != null ? ` · <b>${EN ? `≈ ${pctPlain(ofAll)} of total volume (${shares(last.vol)})` : `그날 전체 거래량(${shares(last.vol)}) 대비 약 ${pctPlain(ofAll)}`}</b>` : ''} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
         <div class="chart"><canvas id="cv-${id}" role="img" aria-label="${name} 일별 공매도 비율"></canvas></div>
@@ -3471,7 +3476,7 @@
     const estHtml = E ? `<div class="h-est-box">
         ${E.q?.vwap ? `<div><span>${EN ? 'Avg price institutions paid last quarter' : '최근 분기 기관 매입 평균가'} <small>${esc(qName(E.q))} · ${EN ? `${unit(E.q.added)} sh newly bought or added` : `새로 사거나 늘린 ${unit(E.q.added)}주`}</small></span><b>≈ ${price(E.q.vwap)}</b><em>${EN ? 'vs. current price' : '지금 주가 대비'} ${vsNow(E.q.vwap)}</em></div>` : ''}
         <div><span>${EN ? `Est. avg cost, top ${E.holders}` : `상위 ${E.holders}곳 추정 평단`} <small>${EN ? 'share-weighted · assumes bought within the past year' : '보유 주식 가중 평균 · 최근 1년 매입 가정'}</small></span><b>≈ ${price(E.avg)}</b><em>${EN ? 'vs. current price' : '지금 주가 대비'} ${vsNow(E.avg)}</em></div>
-        <p class="note">${EN ? '💡 Institutions don’t disclose what they paid. This is a <b>rough</b> estimate: shares added each quarter × that quarter’s average price. Pre-IPO investors and long-time holders likely paid much less.' : '💡 기관이 실제로 얼마에 샀는지는 공개되지 않아요. 분기마다 늘린 주식 수 × 그 분기 평균 거래가로 <b>대략</b> 계산한 값이에요. 상장 전부터 투자한 회사·벤처캐피털이나 몇 년째 들고 있는 기관은 실제 평단이 훨씬 낮을 수 있어요.'}</p>
+        ${easyBox(id + ':est', EN ? 'Institutions don’t disclose what they paid. This is a <b>rough</b> estimate: shares added each quarter × that quarter’s average price. Pre-IPO investors and long-time holders likely paid much less.'  : '기관이 실제로 얼마에 샀는지는 공개되지 않아요. 분기마다 늘린 주식 수 × 그 분기 평균 거래가로 <b>대략</b> 계산한 값이에요. 상장 전부터 투자한 회사·벤처캐피털이나 몇 년째 들고 있는 기관은 실제 평단이 훨씬 낮을 수 있어요.')}
       </div>` : '';
     card(id, {
       title, sub: `${S.short} · 13F 신고 기준 · Nasdaq · ${latest ? md(isoToTs(latest)) + ' 분기 말' : ''}`, info: INFO.holders,
@@ -3578,7 +3583,7 @@
     }).join('') : '';
     card('feargreed', {
       title: '공포·탐욕 지수', sub: `${EN ? 'Stocks: CNN · Crypto: alternative.me' : '주식 CNN · 코인 alternative.me'} · ${C?.t ? md(Date.parse(C.t) / 1000) + ' ' + new Date(C.t).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' }) + (EN ? '' : ' 기준') : ''}`, info: INFO.feargreed,
-      body: `<p class="easy">💡 시장 사람들의 '기분 온도계'예요. 0에 가까울수록 겁을 먹고 파는 분위기(공포), 100에 가까울수록 들떠서 사는 분위기(탐욕)예요. "남들이 겁낼 때 사라"는 말처럼 반대로 활용하는 사람도 많아요.</p>
+      body: `${easyBox('feargreed', `시장 사람들의 '기분 온도계'예요. 0에 가까울수록 겁을 먹고 파는 분위기(공포), 100에 가까울수록 들떠서 사는 분위기(탐욕)예요. "남들이 겁낼 때 사라"는 말처럼 반대로 활용하는 사람도 많아요.`)}
         <div class="fg-two">
           ${side(C, '미국 주식', 'CNN Fear & Greed', [['전일', C?.prev?.close], ['1주 전', C?.prev?.w1], ['1개월 전', C?.prev?.m1], ['1년 전', C?.prev?.y1]], '최근 1년')}
           ${side(K, '코인', 'Crypto Fear & Greed', [['어제', K?.prev?.d1], ['1주 전', K?.prev?.w1], ['1개월 전', K?.prev?.m1]], '최근 30일')}
@@ -5040,7 +5045,7 @@
   }
   document.addEventListener('toggle', (ev) => {
     const d = ev.target;
-    if (!(d instanceof HTMLElement) || !d.matches('details.more')) return;
+    if (!(d instanceof HTMLElement) || !d.matches('details.more, details.easy')) return;
     d.open ? state.openMore.add(d.dataset.more) : state.openMore.delete(d.dataset.more);
     if (d.open) for (const cv of d.querySelectorAll('canvas')) charts[cv.id.replace(/^cv-/, '')]?.resize();
   }, true);
