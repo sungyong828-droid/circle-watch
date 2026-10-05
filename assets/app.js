@@ -189,7 +189,7 @@
         <li><b>직전 13F 대비</b>: 지난 분기 신고보다 주식을 늘린/줄인 기관 수와 주식 수. 늘린 곳이 많으면 기관 매수 우위로 봐요.</li>
         <li><b>상위 보유</b>: 보유 금액 순. <b>주요 금융사</b>: 이름이 알려진 대형 금융사만. <b>많이 산/판 곳</b>: 직전 분기 대비 주식 수 변화 순. 왼쪽 숫자는 순위예요(주요 금융사도 전체 보유 금액 기준 순위, 1~3위는 금색).</li>
         <li><b>지분</b>: 그 기관의 보유 주식 ÷ 발행 주식 수(Nasdaq 기준).</li>
-        <li><b>평단≈ (추정)</b>: 13F에는 매입 가격이 없어서, 분기마다 늘린 주식은 그 분기의 평균 거래가(거래량 가중)로, 그 전부터 들고 있던 주식은 직전 1년 평균 거래가로 계산한 <b>대략적인 값</b>이에요. <b>최근 분기 기관 매입 평균가</b>는 그 분기에 새로 사거나 늘린 주식의 평균가라 비교적 정확하고, 지금 주가보다 낮으면 최근에 산 기관들이 수익, 높으면 손실 중이라는 뜻이에요. 상장 전 투자자(벤처캐피털·전략적 투자 회사)는 실제 평단이 훨씬 낮아요.</li>
+        ${EN ? '<li><b>avg≈ (estimate)</b>: 13F filings have no purchase prices, so shares added in a quarter are priced at that quarter’s volume-weighted average price and older shares at the prior year’s average — a <b>rough</b> figure. <b>Avg price institutions paid last quarter</b> covers only shares bought or added in that quarter, so it’s fairly reliable: below today’s price means recent buyers are in profit, above means at a loss. Pre-IPO investors (VCs, strategic partners) paid far less.</li>' : `<li><b>평단≈ (추정)</b>: 13F에는 매입 가격이 없어서, 분기마다 늘린 주식은 그 분기의 평균 거래가(거래량 가중)로, 그 전부터 들고 있던 주식은 직전 1년 평균 거래가로 계산한 <b>대략적인 값</b>이에요. <b>최근 분기 기관 매입 평균가</b>는 그 분기에 새로 사거나 늘린 주식의 평균가라 비교적 정확하고, 지금 주가보다 낮으면 최근에 산 기관들이 수익, 높으면 손실 중이라는 뜻이에요. 상장 전 투자자(벤처캐피털·전략적 투자 회사)는 실제 평단이 훨씬 낮아요.</li>`}
       </ul>
       <p>⚠️ 분기 말 기준이고 45일 뒤에 신고하므로 <b>최대 4개월 늦은 정보</b>예요. 그 사이 사고판 것은 반영되지 않고, 공매도·옵션 포지션은 빠져 있어요.</p>`,
     lockup: `
@@ -302,11 +302,12 @@
       <p>바이낸스 CRCLUSDT 선물의 가격 추이입니다. 기간을 바꾸면 봉 간격이 달라집니다(1일=15분, 1주=1시간, 1개월=4시간, 3개월=1일). 마지막 점은 실시간 가격입니다.</p>
       <p>선이 <span class="up">빨강</span>이면 기간 시작보다 오른 상태, <span class="down">파랑</span>이면 내린 상태입니다.</p>`,
     short: `
-      <p><b>공매도 비율</b> = 그날 <b>장외(FINRA에 신고된) 거래</b> 중 공매도(빌린 주식을 파는 거래)로 체결된 비중입니다. 출처는 FINRA 일별 공매도 거래량(Reg SHO, CNMS 파일)이며, 미국 장 마감 후 저녁(한국 시간 다음 날 아침)에 전날 값이 올라옵니다. 숫자는 FINRA 원본 파일과 한 주 단위까지 같아요.</p>
-      <p>⚠️ <b>"그날 거래의 60%가 공매도"라는 뜻은 아니에요.</b> FINRA 파일은 거래소 밖(장외·다크풀·증권사 내부 체결)에서 신고된 거래만 담고 있어서, 모든 거래소를 합친 전체 거래량보다 작습니다. 그래서 화면에 <b>그날 전체 거래량 대비 비율</b>도 함께 보여줘요(거래소 안에서 체결된 공매도는 공개되지 않아 이 값은 실제보다 조금 낮을 수 있어요).</p>
+      ${EN ? `<p><b>Short volume ratio</b> = the share of that day’s <b>off-exchange (FINRA-reported) volume</b> that was short sales. Source: FINRA daily Reg SHO short volume (CNMS file), posted the evening after each US session. Figures match FINRA’s raw file to the share.</p>
+      <p>⚠️ <b>It does not mean “60% of all trading was short”.</b> FINRA’s file only covers trades reported off-exchange (dark pools, broker internalization), which is smaller than total volume across all exchanges. So the card also shows the <b>ratio to total market volume</b> (on-exchange short sales aren’t published, so that figure can be a bit low).</p>` : `<p><b>공매도 비율</b> = 그날 <b>장외(FINRA에 신고된) 거래</b> 중 공매도(빌린 주식을 파는 거래)로 체결된 비중입니다. 출처는 FINRA 일별 공매도 거래량(Reg SHO, CNMS 파일)이며, 미국 장 마감 후 저녁(한국 시간 다음 날 아침)에 전날 값이 올라옵니다. 숫자는 FINRA 원본 파일과 한 주 단위까지 같아요.</p>
+      <p>⚠️ <b>"그날 거래의 60%가 공매도"라는 뜻은 아니에요.</b> FINRA 파일은 거래소 밖(장외·다크풀·증권사 내부 체결)에서 신고된 거래만 담고 있어서, 모든 거래소를 합친 전체 거래량보다 작습니다. 그래서 화면에 <b>그날 전체 거래량 대비 비율</b>도 함께 보여줘요(거래소 안에서 체결된 공매도는 공개되지 않아 이 값은 실제보다 조금 낮을 수 있어요).</p>`}
       <ul>
         <li><b>해석 주의</b>: 이 수치엔 시장조성자(마켓메이커)가 매수 주문을 받아주면서 잠깐 하는 공매도가 포함돼, 보통 종목도 40~50%대가 흔합니다. <b>절대 수준보다 평소(1개월 평균) 대비 얼마나 높아졌는지</b>를 보세요.</li>
-        <li><b>장외 집계</b>는 FINRA에 보고된 장외·대체거래소 거래량, <b>전체 거래량</b>은 모든 거래소 합계(Yahoo)예요.</li>
+        ${EN ? '<li><b>Off-exchange</b> is volume reported to FINRA (off-exchange and ATS); <b>total volume</b> is all exchanges combined (Yahoo).</li>' : '<li><b>장외 집계</b>는 FINRA에 보고된 장외·대체거래소 거래량, <b>전체 거래량</b>은 모든 거래소 합계(Yahoo)예요.</li>'}
         <li><b>공매도 잔고</b>: 아직 되갚지 않은 공매도 주식 수(월 2회 발표). 늘면 하락에 베팅하는 물량이 쌓이는 중입니다.</li>
         <li><b>커버 일수</b> = 공매도 잔고 ÷ 하루 평균 거래량. 공매도 세력이 전부 되사는 데 며칠 걸리는지로, 높을수록 급등(숏 스퀴즈) 때 되사기 압력이 큽니다.</li>
       </ul>`,
@@ -1122,16 +1123,16 @@
     const ofAll = last.vol ? last.short / last.vol : null;
     card(id, {
       title: `${name} 공매도 비율`, sub: '최근 1개월 · 장외(FINRA 집계) 거래 중 공매도 비중 · FINRA', info: INFO.short,
-      body: `<p class="easy">💡 공매도는 주식을 빌려서 먼저 팔고, 나중에 사서 갚는 거래예요. 주가가 내려야 돈을 버는 거래라 비중이 높으면 하락에 거는 사람이 많다는 뜻이지만, 시장 조성자(증권사)의 일상적인 거래도 섞여 있어 40~60%는 흔한 수준이에요.</p>
+      body: `<p class="easy">💡 ${EN ? 'Short selling means borrowing shares to sell now and buying them back later — a bet that the price falls. A high ratio means more bets on a drop, but routine market-maker trades are mixed in, so 40–60% is common.' : '공매도는 주식을 빌려서 먼저 팔고, 나중에 사서 갚는 거래예요. 주가가 내려야 돈을 버는 거래라 비중이 높으면 하락에 거는 사람이 많다는 뜻이지만, 시장 조성자(증권사)의 일상적인 거래도 섞여 있어 40~60%는 흔한 수준이에요.'}</p>
         <div class="headline"><span class="lbl">${md(labels.at(-1))} 장외 거래 중 공매도</span><span class="big">${pctPlain(last.ratio)}</span><span class="lbl">1개월 평균 ${pctPlain(S.avgRatio)}</span></div>
-        <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비 · 공매도 ${shares(last.short)} / 장외 집계 ${shares(last.total)}${ofAll != null ? ` · <b>그날 전체 거래량(${shares(last.vol)}) 대비 약 ${pctPlain(ofAll)}</b>` : ''} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
+        <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비 · 공매도 ${shares(last.short)} / 장외 집계 ${shares(last.total)}${ofAll != null ? ` · <b>${EN ? `≈ ${pctPlain(ofAll)} of total volume (${shares(last.vol)})` : `그날 전체 거래량(${shares(last.vol)}) 대비 약 ${pctPlain(ofAll)}`}</b>` : ''} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
         <div class="chart"><canvas id="cv-${id}" role="img" aria-label="${name} 일별 공매도 비율"></canvas></div>
         <div class="legend"><span><i style="background:${C.purple}"></i>일별 공매도 비율</span><span><i class="line" style="background:${C.ink2}"></i>1개월 평균</span></div>
         ${si.length ? `<div class="tbl-wrap"><table>
           <thead><tr><th>공매도 잔고 기준일</th><th>잔고</th>${sOut ? '<th>발행 주식 대비</th>' : ''}<th>직전 대비</th><th>커버 일수</th></tr></thead>
           <tbody>${si.map((r, i) => `<tr${i === 0 ? ' class="today"' : ''}><td>${esc(r.d.slice(5).replace('-', '/'))}</td><td class="strong">${shares(r.qty)}</td>${sOut ? `<td>${pctPlain(r.qty / sOut, 1)}</td>` : ''}
             <td class="${cls(r.chg)}">${r.chg > 0 ? '+' : ''}${r.chg.toFixed(1)}%</td><td>${r.dtc.toFixed(2)}일</td></tr>`).join('')}</tbody></table></div>
-          <p class="note"><b>공매도 잔고</b> = 아직 갚지 않고 남아 있는 공매도 주식 수(FINRA가 한 달에 두 번, 15일·월말 기준 발표). <b>커버 일수</b> = 하루 평균 거래량으로 그 잔고를 다 사서 갚는 데 걸리는 날 수 — 길수록 주가가 오를 때 급하게 사들이는 '숏 스퀴즈'가 나기 쉬워요.</p>` : ''}`,
+          <p class="note">${EN ? '<b>Short interest</b> = shares sold short and not yet bought back (FINRA, twice a month: mid-month and month-end). <b>Days to cover</b> = days of average volume needed to buy them all back — the longer, the easier a “short squeeze” when the price rises.' : '<b>공매도 잔고</b> = 아직 갚지 않고 남아 있는 공매도 주식 수(FINRA가 한 달에 두 번, 15일·월말 기준 발표). <b>커버 일수</b> = 하루 평균 거래량으로 그 잔고를 다 사서 갚는 데 걸리는 날 수 — 길수록 주가가 오를 때 급하게 사들이는 \'숏 스퀴즈\'가 나기 쉬워요.'}</p>` : ''}`,
     });
     draw(id, {
       type: 'bar',
@@ -3452,9 +3453,9 @@
     const vsNow = (v) => (v && nowPx ? `<b class="${cls(nowPx - v)}">${pct(nowPx / v - 1, 1)}</b>` : '');
     const qName = (q) => { const m = +q.to.slice(5, 7); return EN ? `Q${Math.ceil(m / 3)} ${q.to.slice(0, 4)}` : `${q.to.slice(2, 4)}년 ${Math.ceil(m / 3)}분기(${+q.from.slice(5, 7)}~${m}월)`; };
     const estHtml = E ? `<div class="h-est-box">
-        ${E.q?.vwap ? `<div><span>최근 분기 기관 매입 평균가 <small>${esc(qName(E.q))} · 새로 사거나 늘린 ${unit(E.q.added)}주</small></span><b>≈ ${price(E.q.vwap)}</b><em>지금 주가 대비 ${vsNow(E.q.vwap)}</em></div>` : ''}
-        <div><span>상위 ${E.holders}곳 추정 평단 <small>보유 주식 가중 평균 · 최근 1년 매입 가정</small></span><b>≈ ${price(E.avg)}</b><em>지금 주가 대비 ${vsNow(E.avg)}</em></div>
-        <p class="note">💡 기관이 실제로 얼마에 샀는지는 공개되지 않아요. 분기마다 늘린 주식 수 × 그 분기 평균 거래가로 <b>대략</b> 계산한 값이에요. 상장 전부터 투자한 회사·벤처캐피털이나 몇 년째 들고 있는 기관은 실제 평단이 훨씬 낮을 수 있어요.</p>
+        ${E.q?.vwap ? `<div><span>${EN ? 'Avg price institutions paid last quarter' : '최근 분기 기관 매입 평균가'} <small>${esc(qName(E.q))} · ${EN ? `${unit(E.q.added)} sh newly bought or added` : `새로 사거나 늘린 ${unit(E.q.added)}주`}</small></span><b>≈ ${price(E.q.vwap)}</b><em>${EN ? 'vs. current price' : '지금 주가 대비'} ${vsNow(E.q.vwap)}</em></div>` : ''}
+        <div><span>${EN ? `Est. avg cost, top ${E.holders}` : `상위 ${E.holders}곳 추정 평단`} <small>${EN ? 'share-weighted · assumes bought within the past year' : '보유 주식 가중 평균 · 최근 1년 매입 가정'}</small></span><b>≈ ${price(E.avg)}</b><em>${EN ? 'vs. current price' : '지금 주가 대비'} ${vsNow(E.avg)}</em></div>
+        <p class="note">${EN ? '💡 Institutions don’t disclose what they paid. This is a <b>rough</b> estimate: shares added each quarter × that quarter’s average price. Pre-IPO investors and long-time holders likely paid much less.' : '💡 기관이 실제로 얼마에 샀는지는 공개되지 않아요. 분기마다 늘린 주식 수 × 그 분기 평균 거래가로 <b>대략</b> 계산한 값이에요. 상장 전부터 투자한 회사·벤처캐피털이나 몇 년째 들고 있는 기관은 실제 평단이 훨씬 낮을 수 있어요.'}</p>
       </div>` : '';
     card(id, {
       title, sub: `${S.short} · 13F 신고 기준 · Nasdaq · ${latest ? md(isoToTs(latest)) + ' 분기 말' : ''}`, info: INFO.holders,
