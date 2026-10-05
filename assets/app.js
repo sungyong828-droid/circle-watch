@@ -3458,7 +3458,7 @@
       const old = r.date && latest && r.date < latest;
       // 순위: 상위 보유·주요 금융사는 전체 보유 금액 순위, 많이 산/판 곳은 그 목록 안의 순위
       const rank = tab === 'top' || tab === 'major' ? H.top.indexOf(r) + 1 : i + 1;
-      return `<li><span class="h-rank${rank <= 3 ? ' top3' : ''}" aria-label="${rank}위">${rank}</span><div class="h-name"><b>${esc(inst ? inst[1] : titleCase(r.name))}</b><small>${inst ? esc(titleCase(r.name)) + ' · ' : ''}${r.date ? md(isoToTs(r.date)) + ' 기준' : ''}${old ? ' <i class="h-old">지난 분기</i>' : ''}</small></div>
+      return `<li><span class="h-rank${rank <= 3 ? ' top3' : ''}" aria-label="${rank}위">${rank}</span><div class="h-name"><b>${esc(inst ? inst[1] : titleCase(r.name))}</b><small>${inst ? esc(titleCase(r.name)) + ' · ' : ''}${r.date ? `<span class="nw">${md(isoToTs(r.date))} 기준${old ? ' <i class="h-old">지난 분기</i>' : ''}</span>` : ''}</small></div>
         <div class="h-sh"><b>${r.soldOut ? '0주' : unit(r.shares) + '주'}</b><small>${shareOf(r) != null && !r.soldOut ? '지분 ' + pctPlain(shareOf(r), 2) : r.value != null ? usd(r.value) : ''}</small>${r.est != null ? `<small class="h-est" title="추정 평단(대략)">평단≈${price(r.est)}</small>` : ''}</div>
         <div class="h-chg">${chgTxt(r)}</div></li>`;
     }).join('');

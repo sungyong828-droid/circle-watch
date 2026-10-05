@@ -1184,3 +1184,4 @@ body { text-wrap: pretty; }
 td.name span { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
 @media (max-width: 480px) { td.name span, #c-stables td.name span { max-width: 96px; text-overflow: clip; } }
 .px-stats small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; }
+.br-list .h-name small { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; overflow: visible; -webkit-line-clamp: unset; }
