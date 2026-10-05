@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=15';
+    sc.src = 'assets/i18n-en.js?v=16';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -1139,7 +1139,7 @@
     const sym = id === 'short' ? 'CRCL' : state.stock, sOut = state.holders?.[sym]?.sharesOut;
     const ofAll = last.vol ? last.short / last.vol : null;
     card(id, {
-      title: `${name} 공매도 비율`, sub: '최근 1개월 · 장외(FINRA 집계) 거래 중 공매도 비중 · FINRA', info: INFO.short,
+      title: `${name} 공매도 비율`, sub: '최근 1개월 · 장외(FINRA 집계) 거래 중 공매도 비중', info: INFO.short,
       easy: EN ? 'Short selling means borrowing shares to sell now and buying them back later — a bet that the price falls. A high ratio means more bets on a drop, but routine market-maker trades are mixed in, so 40–60% is common.' : '공매도는 주식을 빌려서 먼저 팔고, 나중에 사서 갚는 거래예요. 주가가 내려야 돈을 버는 거래라 비중이 높으면 하락에 거는 사람이 많다는 뜻이지만, 시장 조성자(증권사)의 일상적인 거래도 섞여 있어 40~60%는 흔한 수준이에요.',
       body: `
         <div class="headline"><span class="lbl">${md(labels.at(-1))} 장외 거래 중 공매도</span><span class="big">${pctPlain(last.ratio)}</span><span class="lbl">1개월 평균 ${pctPlain(S.avgRatio)}</span></div>
@@ -3580,7 +3580,7 @@
         <div class="fg-iv"><span class="fg-bar"><i class="${fgCls(I.score)}" style="width:${Math.max(3, I.score)}%"></i></span><b class="${fgCls(I.score)}">${fgRate(I.rating, I.score)}</b><small>${I.y != null ? esc(fmt(I.y, C.ref || {})) : ''}</small></div></li>`;
     }).join('') : '';
     card('feargreed', {
-      title: '공포·탐욕 지수', sub: `${EN ? 'Stocks: CNN · Crypto: alternative.me' : '주식 CNN · 코인 alternative.me'} · ${C?.t ? `<span class="nw">${md(Date.parse(C.t) / 1000)} ${new Date(C.t).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' })}${EN ? '' : ' 기준'}</span>` : ''}`, info: INFO.feargreed,
+      title: '공포·탐욕 지수', sub: `${EN ? 'Stocks: CNN · Crypto: alternative.me' : '주식 CNN · 코인 alternative.me'}${C?.t ? `<span class="sub-when">${md(Date.parse(C.t) / 1000)} ${new Date(C.t).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' })}${EN ? '' : ' 기준'}</span>` : ''}`, info: INFO.feargreed,
       easy: `시장 사람들의 '기분 온도계'예요. 0에 가까울수록 겁을 먹고 파는 분위기(공포), 100에 가까울수록 들떠서 사는 분위기(탐욕)예요. "남들이 겁낼 때 사라"는 말처럼 반대로 활용하는 사람도 많아요.`,
       body: `
         <div class="fg-two">
