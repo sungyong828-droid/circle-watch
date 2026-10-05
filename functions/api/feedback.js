@@ -59,3 +59,6 @@ export async function onRequestPost({ request, env }) {
   }
   return json({ ok: true });
 }
+
+// 읽기 요청은 받지 않는다(문의 목록은 관리자 페이지에서만)
+export const onRequestGet = () => new Response(JSON.stringify({ error: 'method not allowed' }), { status: 405, headers: { allow: 'POST', 'content-type': 'application/json; charset=utf-8' } });

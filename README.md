@@ -50,6 +50,16 @@
 
 이후엔 15분마다 자동으로 수집·배포됩니다. 매월 1일에 `.github/keepalive` 파일이 자동 커밋되는데, 예약 실행이 60일 무활동으로 꺼지는 것을 막기 위한 것입니다.
 
+## 배포 · 버전 기록
+
+1. `python deploy.py test` → https://test.my-fire-portfolio.pages.dev 에서 확인
+2. `python deploy.py prod` → 실제 사이트 배포. 이때 자동으로
+   - 버전 이름 `v연.월.일-N`을 정해 Cloudflare 배포 메시지에 붙이고(대시보드 Deployments 목록),
+   - [CHANGELOG.md](CHANGELOG.md)의 **다음 배포** 칸을 그 버전으로 옮기고('이 버전 보기' 고정 주소 포함),
+   - 배포한 커밋에 같은 이름의 git 태그를 붙여 GitHub 에 올린다(GitHub CLI가 로그인돼 있으면 Releases 도 생성).
+
+변경을 하면서 CHANGELOG.md의 **다음 배포** 칸에 사용자에게 보이는 변화를 적어 두면 그대로 기록된다(비워 두면 커밋 제목).
+
 ## 로컬에서 보기
 
 ```bash
