@@ -968,6 +968,44 @@ export async function handleShort(url, cache, cors, ctx) {
   });
 }
 
+// ---------------------------------------------------------------- 공포·탐욕 지수 — 주식(CNN Fear & Greed) · 코인(alternative.me Crypto Fear & Greed)
+// CNN은 7개 지표를 0~100점으로 바꿔 평균한 값. 지표 원래 값(y)도 같이 돌려준다. 15분 저장.
+const FG_IND = ['market_momentum_sp500', 'stock_price_strength', 'stock_price_breadth', 'put_call_options', 'market_volatility_vix', 'safe_haven_demand', 'junk_bond_demand'];
+export async function buildFearGreed() {
+  const r1 = (v) => (v == null || !isFinite(v) ? null : Math.round(v * 100) / 100);
+  const [cnn, cry] = await Promise.allSettled([
+    fetch('https://production.dataviz.cnn.io/index/fearandgreed/graphdata', { headers: { 'user-agent': BROWSER_UA, accept: 'application/json', referer: 'https://edition.cnn.com/', origin: 'https://edition.cnn.com' }, signal: AbortSignal.timeout(9000) })
+      .then((r) => { if (!r.ok) throw new Error('cnn ' + r.status); return r.json(); }),
+    fetch('https://api.alternative.me/fng/?limit=31&format=json', { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) })
+      .then((r) => { if (!r.ok) throw new Error('fng ' + r.status); return r.json(); }),
+  ]);
+  const out = { at: new Date().toISOString(), cnn: null, crypto: null };
+  if (cnn.status === 'fulfilled' && cnn.value?.fear_and_greed) {
+    const j = cnn.value, F = j.fear_and_greed;
+    const last = (k) => j[k]?.data?.at(-1)?.y;
+    // 1년치 하루 1개(같은 날 여러 점이면 마지막)
+    const byDay = new Map();
+    for (const p of j.fear_and_greed_historical?.data || []) byDay.set(new Date(p.x).toISOString().slice(0, 10), [Math.round(p.x / 1000), r1(p.y)]);
+    out.cnn = {
+      score: r1(F.score), rating: F.rating, t: F.timestamp,
+      prev: { close: r1(F.previous_close), w1: r1(F.previous_1_week), m1: r1(F.previous_1_month), y1: r1(F.previous_1_year) },
+      hist: [...byDay.values()],
+      ind: Object.fromEntries(FG_IND.filter((k) => j[k]).map((k) => [k, { score: r1(j[k].score), rating: j[k].rating, y: r1(last(k)), t: Math.round((j[k].timestamp || 0) / 1000) }])),
+      ref: { sp125: r1(last('market_momentum_sp125')), vix50: r1(last('market_volatility_vix_50')) },
+    };
+  }
+  if (cry.status === 'fulfilled' && Array.isArray(cry.value?.data) && cry.value.data.length) {
+    const d = cry.value.data;
+    const v = (i) => (d[i] ? +d[i].value : null);
+    out.crypto = { score: v(0), rating: String(d[0].value_classification || '').toLowerCase(), t: +d[0].timestamp, prev: { d1: v(1), w1: v(7), m1: v(30) }, hist: d.slice().reverse().map((x) => [+x.timestamp, +x.value]) };
+  }
+  if (!out.cnn && !out.crypto) throw new Error('공포·탐욕 지수를 받지 못했습니다');
+  return out;
+}
+export async function handleFearGreed(url, cache, cors, ctx) {
+  return swr(cache, ctx, `${url.origin}/feargreed?v=1`, { freshSec: 900, keepSec: 3 * 86400, cors, build: async () => JSON.stringify(await buildFearGreed()) });
+}
+
 // ---------------------------------------------------------------- 종목 검색 (종목 추가 화면)
 export async function handleLookup(url, cache, cors, ctx) {
   const q = String(url.searchParams.get('q') || '').trim().slice(0, 40);
@@ -1428,7 +1466,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
@@ -1448,6 +1486,7 @@ export default {
     if (url.pathname === '/lookup') return handleLookup(url, cache, cors, ctx);
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
     if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
+    if (url.pathname === '/feargreed') return handleFearGreed(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);

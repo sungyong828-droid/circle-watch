@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=13';
+    sc.src = 'assets/i18n-en.js?v=14';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -132,6 +132,21 @@
         ${STOCK_INFO[sym].peer ? `<li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>` : ''}
         ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : ''}
       </ul>`,
+    feargreed: EN ? `
+      <p>The <b>Fear &amp; Greed Index</b> sums up investor mood as one number from 0 (extreme fear) to 100 (extreme greed): 0–24 extreme fear · 25–44 fear · 45–55 neutral · 56–75 greed · 76–100 extreme greed.</p>
+      <ul>
+        <li><b>US stocks (CNN)</b>: an equal-weighted average of 7 indicators — market momentum, stock price strength, breadth, put/call ratio, volatility (VIX), safe-haven demand and junk bond demand. It moves intraday.</li>
+        <li><b>Crypto (alternative.me)</b>: built from bitcoin volatility, volume, social media, bitcoin dominance and Google Trends. Updates once a day (00:00 UTC).</li>
+        <li>Markets often bounce after extreme fear and cool off after extreme greed, so many read it <b>contrarian</b>. Use it as context, not as a buy/sell signal on its own.</li>
+      </ul>
+      <p>Refreshed every 15 minutes. Sources: CNN Business Fear &amp; Greed Index, alternative.me Crypto Fear &amp; Greed Index.</p>` : `
+      <p><b>공포·탐욕 지수</b>는 투자자들의 심리를 0(극단적 공포)~100(극단적 탐욕) 숫자 하나로 나타낸 거예요. 0~24 극단적 공포 · 25~44 공포 · 45~55 중립 · 56~75 탐욕 · 76~100 극단적 탐욕.</p>
+      <ul>
+        <li><b>미국 주식(CNN)</b>: 시장 모멘텀·주가 강도·시장 폭·풋/콜 비율·변동성(VIX)·안전자산 선호·정크본드 수요, 7개 지표를 같은 비중으로 평균해요. 장중에도 바뀌어요.</li>
+        <li><b>코인(alternative.me)</b>: 비트코인 변동성·거래량·SNS 언급·비트코인 점유율·구글 검색 추세로 계산해요. 하루 한 번(한국 시간 오전 9시) 바뀌어요.</li>
+        <li>극단적 공포 때 많이 떨어져 있다가 반등하거나, 극단적 탐욕 때 과열됐다가 조정받는 경우가 많아 <b>반대로 보는 지표</b>로도 써요. 단독으로 사고팔 근거로 쓰기보다는 분위기 참고용이에요.</li>
+      </ul>
+      <p>15분마다 새로 받아요. 출처: CNN Business Fear &amp; Greed Index, alternative.me Crypto Fear &amp; Greed Index.</p>`,
     market: `
       <p>미국 증시 전체 분위기예요(Yahoo Finance, 1분마다 새로).</p>
       <ul>
@@ -1828,6 +1843,7 @@
       } catch (er) { (state.optionsErr ||= {})[sym] = String(er.message || er); if (!state.options?.[sym] && !/옵션이 없어요/.test(er.message)) throw er; }
     },
     async market() { const j = await getJ(`${NEWS_API}/market`, 15000); if (j.error) throw new Error(j.error); state.market = j; },
+    async feargreed() { const j = await getJ(`${NEWS_API}/feargreed`, 15000); if (j.error) throw new Error(j.error); state.fg = j; }, // 공포·탐욕 지수(서버 15분 캐시)
     async mnews() { const j = await getJ(`${NEWS_API}/mnews${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 20000); if (j.error) throw new Error(j.error); state.mnews = j; },
     async sshort(d, L, sym = state.stock) { // 추가한 종목의 공매도(FINRA, 서버 3시간마다)
       const j = await getJ(`${NEWS_API}/short?s=${sym}`, 20000);
@@ -3515,6 +3531,62 @@
     });
   }
 
+  // ---------------------------------------------------------------- 공포·탐욕 지수 (주식: CNN · 코인: alternative.me)
+  const FG_RATE = { 'extreme fear': '극단적 공포', fear: '공포', neutral: '중립', greed: '탐욕', 'extreme greed': '극단적 탐욕' };
+  const fgCls = (v) => (v == null ? '' : v < 25 ? 'fg-xf' : v < 45 ? 'fg-f' : v <= 55 ? 'fg-n' : v <= 75 ? 'fg-g' : 'fg-xg');
+  const FG_EN = { 'extreme fear': 'Extreme fear', fear: 'Fear', neutral: 'Neutral', greed: 'Greed', 'extreme greed': 'Extreme greed' };
+  const fgRate = (r, v) => { const k = String(r || '').toLowerCase() || (v == null ? '' : v < 25 ? 'extreme fear' : v < 45 ? 'fear' : v <= 55 ? 'neutral' : v <= 75 ? 'greed' : 'extreme greed'); return (EN ? FG_EN : FG_RATE)[k] || '–'; };
+  // CNN 7개 지표: 이름 · 쉬운 설명 · 원래 값 표시
+  const FG_IND = [
+    ['market_momentum_sp500', '시장 모멘텀', 'S&P500이 최근 125일 평균보다 얼마나 위에 있나', (y, R) => `S&P500 ${nf(0).format(y)}${R.sp125 ? ` · 125일 평균 ${nf(0).format(R.sp125)}` : ''}`],
+    ['stock_price_strength', '주가 강도', '52주 신고가 종목 수 − 신저가 종목 수(뉴욕증시)', (y) => `순 신고가 ${y > 0 ? '+' : ''}${y.toFixed(1)}%`],
+    ['stock_price_breadth', '시장 폭', '오르는 종목 거래량 − 내리는 종목 거래량(맥클렐런 지수)', (y) => nf(0).format(y)],
+    ['put_call_options', '풋/콜 비율', '하락에 거는 옵션(풋) ÷ 상승에 거는 옵션(콜), 5일 평균 — 높을수록 겁', (y) => y.toFixed(2)],
+    ['market_volatility_vix', '변동성(VIX)', 'VIX가 50일 평균보다 높으면 겁이 많은 상태', (y, R) => `VIX ${y.toFixed(1)}${R.vix50 ? ` · 50일 평균 ${R.vix50.toFixed(1)}` : ''}`],
+    ['safe_haven_demand', '안전자산 선호', '최근 20일 주식 수익률 − 국채 수익률 — 낮을수록 안전자산으로 피신', (y) => `${y > 0 ? '+' : ''}${y.toFixed(2)}%p`],
+    ['junk_bond_demand', '정크본드 수요', '위험 회사채와 우량 회사채의 금리 차 — 벌어질수록 겁', (y) => `금리 차 ${y.toFixed(2)}%p`],
+  ];
+  function fgGauge(v, label) {
+    // 반원 게이지(0 왼쪽 → 100 오른쪽) + 바늘
+    const a = Math.PI * (1 - Math.max(0, Math.min(100, v ?? 50)) / 100), cx = 60, cy = 58, r = 46;
+    const seg = (from, to, c) => { const p = (t) => [cx + r * Math.cos(Math.PI * (1 - t / 100)), cy - r * Math.sin(Math.PI * (1 - t / 100))]; const [x1, y1] = p(from), [x2, y2] = p(to); return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" class="${c}"/>`; };
+    return `<svg class="fg-gauge" viewBox="0 0 120 66" role="img" aria-label="${esc(label)} ${v ?? '–'}">
+      <g class="fg-arc">${seg(0, 24.5, 'fg-xf')}${seg(25.5, 44.5, 'fg-f')}${seg(45.5, 54.5, 'fg-n')}${seg(55.5, 74.5, 'fg-g')}${seg(75.5, 100, 'fg-xg')}</g>
+      ${v == null ? '' : `<line x1="${cx}" y1="${cy}" x2="${(cx + (r - 10) * Math.cos(a)).toFixed(1)}" y2="${(cy - (r - 10) * Math.sin(a)).toFixed(1)}" class="fg-needle"/><circle cx="${cx}" cy="${cy}" r="3.5" class="fg-hub"/>`}</svg>`;
+  }
+  function fgSpark(hist) {
+    if (!hist?.length) return '';
+    const W = 120, H = 26, n = hist.length, x = (i) => (i / Math.max(1, n - 1)) * W, y = (v) => H - (v / 100) * H;
+    return `<svg class="fg-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="${W}" y1="${H / 2}" y2="${H / 2}" class="fg-mid"/><polyline points="${hist.map((p, i) => `${x(i).toFixed(1)},${y(p[1]).toFixed(1)}`).join(' ')}"/></svg>`;
+  }
+  function renderFearGreed() {
+    if (!document.getElementById('c-feargreed')) return;
+    const G = state.fg, C = G?.cnn, K = G?.crypto;
+    if (!G) { card('feargreed', { title: '공포·탐욕 지수', info: INFO.feargreed, body: '<p class="skeleton">불러오는 중…</p>' }); return; }
+    const ch = (now, was) => (now == null || was == null ? '' : `<em class="${cls(now - was)}">${now - was > 0 ? '+' : ''}${Math.round(now - was)}</em>`);
+    const side = (X, name, src, rows, span) => X ? `<div class="fg-side">
+        <div class="fg-h"><b>${name}</b><small>${src}</small></div>
+        ${fgGauge(X.score, name)}
+        <div class="fg-score ${fgCls(X.score)}"><b>${Math.round(X.score)}</b><span>${fgRate(X.rating, X.score)}</span></div>
+        <ul class="fg-prev">${rows.filter(([, v]) => v != null).map(([k, v]) => `<li><span>${k}</span><b class="${fgCls(v)}">${Math.round(v)}</b>${ch(X.score, v)}</li>`).join('')}</ul>
+        ${fgSpark(X.hist)}<small class="fg-span">${span}</small>
+      </div>` : `<div class="fg-side"><div class="fg-h"><b>${name}</b><small>${src}</small></div><p class="adm-dim">지금은 불러오지 못했어요.</p></div>`;
+    const ind = C?.ind ? FG_IND.filter(([k]) => C.ind[k]).map(([k, name, desc, fmt]) => {
+      const I = C.ind[k];
+      return `<li><div class="fg-in"><b>${name}</b><small>${desc}</small></div>
+        <div class="fg-iv"><span class="fg-bar"><i class="${fgCls(I.score)}" style="width:${Math.max(3, I.score)}%"></i></span><b class="${fgCls(I.score)}">${fgRate(I.rating, I.score)}</b><small>${I.y != null ? esc(fmt(I.y, C.ref || {})) : ''}</small></div></li>`;
+    }).join('') : '';
+    card('feargreed', {
+      title: '공포·탐욕 지수', sub: `주식 CNN · 코인 alternative.me · ${C?.t ? md(Date.parse(C.t) / 1000) + ' ' + new Date(C.t).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' }) + (EN ? '' : ' 기준') : ''}`, info: INFO.feargreed,
+      body: `<p class="easy">💡 시장 사람들의 '기분 온도계'예요. 0에 가까울수록 겁을 먹고 파는 분위기(공포), 100에 가까울수록 들떠서 사는 분위기(탐욕)예요. "남들이 겁낼 때 사라"는 말처럼 반대로 활용하는 사람도 많아요.</p>
+        <div class="fg-two">
+          ${side(C, '미국 주식', 'CNN Fear & Greed', [['전일', C?.prev?.close], ['1주 전', C?.prev?.w1], ['1개월 전', C?.prev?.m1], ['1년 전', C?.prev?.y1]], '최근 1년')}
+          ${side(K, '코인', 'Crypto Fear & Greed', [['어제', K?.prev?.d1], ['1주 전', K?.prev?.w1], ['1개월 전', K?.prev?.m1]], '최근 30일')}
+        </div>
+        ${ind ? `${more('feargreed:ind', 'CNN 세부 지표 7개 보기')}<ul class="fg-ind">${ind}</ul><p class="note">CNN 지수는 이 7개 지표를 각각 0~100점으로 바꿔 평균한 값이에요. 막대가 왼쪽일수록 공포, 오른쪽일수록 탐욕. 지표마다 갱신 시각이 달라요(장 마감 기준).</p></details>` : ''}`,
+    });
+  }
+
   // ---------------------------------------------------------------- 키워드 속보 (News 탭)
   const KW_KEY = 'cw.kw';
   state.kw = readJSON(KW_KEY, null) || (EN ? ['FOMC', 'CPI', 'rate cut', 'tariff', 'stablecoin', 'FAA', 'Starship', 'earnings'] : ['FOMC', 'CPI', '금리', '관세', 'stablecoin', '스테이블코인', 'FAA', 'Starship']);
@@ -4554,7 +4626,7 @@
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderKwNews];
+      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderFearGreed, renderKwNews];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }
@@ -4580,8 +4652,8 @@
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
   const SYNC_SETS = {
-    manual: ['market', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
-    auto: ['market', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    manual: ['market', 'feargreed', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
+    auto: ['market', 'feargreed', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
     light: ['circle', 'cirbtc', 'quote', 'market', 'mnews'],
   };
   let manualRunning = false, manualQueued = false, doneTimer = null;

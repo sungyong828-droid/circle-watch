@@ -289,3 +289,36 @@ Arc는 서클이 직접 만든 금융용 블록체인이에요. 수수료를 USD
 💬 문의·개선 제안	💬 Feedback
 발행 대비	% out
 잔고 기준일	As of
+공포·탐욕 지수	Fear & Greed
+극단적 공포	Extreme fear
+극단적 탐욕	Extreme greed
+미국 주식	US stocks
+코인	Crypto
+최근 1년	Past year
+최근 30일	Past 30 days
+어제	Yesterday
+1주 전	1 week ago
+1개월 전	1 month ago
+1년 전	1 year ago
+CNN 세부 지표 7개 보기	See CNN’s 7 indicators
+시장 모멘텀	Market momentum
+S&P500이 최근 125일 평균보다 얼마나 위에 있나	How far the S&P 500 is above its 125-day average
+주가 강도	Stock price strength
+52주 신고가 종목 수 − 신저가 종목 수(뉴욕증시)	NYSE stocks at 52-week highs minus lows
+시장 폭	Stock price breadth
+오르는 종목 거래량 − 내리는 종목 거래량(맥클렐런 지수)	Volume in rising minus falling stocks (McClellan)
+풋/콜 비율	Put/call ratio
+하락에 거는 옵션(풋) ÷ 상승에 거는 옵션(콜), 5일 평균 — 높을수록 겁	Bearish puts ÷ bullish calls, 5-day avg — higher means more fear
+변동성(VIX)	Volatility (VIX)
+VIX가 50일 평균보다 높으면 겁이 많은 상태	VIX above its 50-day average signals fear
+안전자산 선호	Safe-haven demand
+최근 20일 주식 수익률 − 국채 수익률 — 낮을수록 안전자산으로 피신	20-day stock return minus Treasury return — lower means flight to safety
+정크본드 수요	Junk bond demand
+위험 회사채와 우량 회사채의 금리 차 — 벌어질수록 겁	Yield gap between junk and investment-grade bonds — wider means fear
+💡 시장 사람들의 '기분 온도계'예요. 0에 가까울수록 겁을 먹고 파는 분위기(공포), 100에 가까울수록 들떠서 사는 분위기(탐욕)예요. "남들이 겁낼 때 사라"는 말처럼 반대로 활용하는 사람도 많아요.	💡 A mood thermometer for the market. Near 0, people are scared and selling (fear); near 100, they’re excited and buying (greed). Many use it as a contrarian signal — “be greedy when others are fearful.”
+CNN 지수는 이 7개 지표를 각각 0~100점으로 바꿔 평균한 값이에요. 막대가 왼쪽일수록 공포, 오른쪽일수록 탐욕. 지표마다 갱신 시각이 달라요(장 마감 기준).	CNN’s index averages these 7 indicators, each scaled 0–100. Bars further left mean fear, right mean greed. Each updates on its own schedule (mostly at the close).
+지금은 불러오지 못했어요.	Couldn’t load right now.
+순 신고가	Net new highs
+125일 평균	125-day avg
+50일 평균	50-day avg
+금리 차	Spread
