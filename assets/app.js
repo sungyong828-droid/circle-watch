@@ -2522,12 +2522,12 @@
         <td>${p.next ? `${+p.next.ex.slice(5, 7)}/${+p.next.ex.slice(8)}${p.next.est ? '<small>예상</small>' : '<small>확정</small>'}` : '–'}</td></tr>`).join('');
     const bar = Math.min(100, c.payback * 100);
     // 받은 배당이 없을 때 이유: 배당을 안 주는 종목 / 매수일 이후 배당락이 아직 없음
-    const noDiv = P.filter((p) => p.D && !p.D.events.length).map((p) => p.sym);
-    const notYet = P.filter((p) => p.D && p.D.events.length && !p.payments).map((p) => p.sym);
+    const noDiv = P.filter((p) => p.D && !p.D.events.length).map((p) => fireName(p.sym));
+    const notYet = P.filter((p) => p.D && p.D.events.length && !p.payments).map((p) => fireName(p.sym));
     const why = [noDiv.length ? (EN ? `${noDiv.join(', ')} ${noDiv.length > 1 ? "don't" : "doesn't"} pay dividends` : `배당을 주지 않는 종목: ${noDiv.join('·')}`) : '', notYet.length ? (EN ? `${notYet.join(', ')}: no ex-dividend date has passed since the buy date yet` : `매수일 이후 아직 배당락일이 없어 받은 배당이 없는 종목: ${notYet.join('·')} (앞으로 받을 배당만 계산)`) : ''].filter(Boolean).join(EN ? ' · ' : ' · ');
     const big = Object.entries(c.byYear).find(([, v]) => state.quote?.fx?.rate && v.gross * state.quote.fx.rate > 2e7 * 0.8);
     card('div', {
-      title: '배당금', sub: EN ? `${P.length} stocks · ${c.tax ? 'after 15% US withholding' : 'pre-tax'} · current shares` : `${P.length}종목 · ${taxLabel} 기준 · 현재 보유 수량 기준`, info: INFO.div,
+      title: '배당금', sub: EN ? `${P.length} stocks · ${c.tax ? `after tax (US 15%${P.some((x) => krTk(x.sym)) ? ' · KR 15.4%' : ''})` : 'pre-tax'} · current shares` : `${P.length}종목 · ${taxLabel} 기준 · 현재 보유 수량 기준`, info: INFO.div,
       body: `${loading.length ? `<p class="skeleton">배당 내역 불러오는 중… (${esc(loading.join(', '))})</p>` : ''}
         ${errs.length ? `<p class="err">배당 내역을 받지 못한 종목: ${esc(errs.join(', '))} — 티커를 확인해 주세요.</p>` : ''}
         <div class="div-hero">
@@ -3089,7 +3089,9 @@
     const tot = simCfg.rows.filter((r) => r.t).reduce((a, r) => a + (+r.w || 0), 0), t = Math.round(tot * 10) / 10;
     if (!simCfg.rows.some((r) => r.t)) return '';
     if (Math.abs(t - 100) < 0.05) return '<span class="ok">✓ 비중 합계 100%</span>';
-    return `<span class="warn">비중 합계 ${t}% · ${t > 100 ? `${Math.round((t - 100) * 10) / 10}% 넘어요` : `${Math.round((100 - t) * 10) / 10}% 모자라요`}</span> <small>계산할 때 비율대로 100%에 맞춰요</small>`;
+    const gap = Math.round(Math.abs(t - 100) * 10) / 10;
+    if (EN) return `<span class="warn">Weight total ${t}% · ${gap}% ${t > 100 ? 'over' : 'short'}</span> <small>Scaled to 100% when you calculate</small>`;
+    return `<span class="warn">비중 합계 ${t}% · ${gap}% ${t > 100 ? '넘어요' : '모자라요'}</span> <small>계산할 때 비율대로 100%에 맞춰요</small>`;
   }
   function paintSimWeight() { const el = document.getElementById('sim-wsum'); if (el) el.innerHTML = simWeightHtml(); }
   // 비중 합계가 100%가 아니면 입력한 비율대로 100%에 맞춘다(마지막 종목이 반올림 차이를 가져감)
@@ -3117,7 +3119,7 @@
     const bad = simCfg.rows.find((r) => r.t && !TICKER_RE.test(r.t));
     if (bad) { renderDivSim(); toast(`${esc(bad.t)}: 티커(예: SCHD)나 종목코드(예: 005930)로 넣어 주세요`, true); return; }
     const was = normalizeSimWeights();
-    if (was !== false) toast(`비중 합계가 ${Math.round(was * 10) / 10}%라서 입력한 비율대로 100%에 맞췄어요`);
+    if (was !== false) toast(EN ? `Weights added up to ${Math.round(was * 10) / 10}%, so they were scaled to 100%` : `비중 합계가 ${Math.round(was * 10) / 10}%라서 입력한 비율대로 100%에 맞췄어요`);
     writeJSON(SIM_KEY, simCfg);
     const btn = document.querySelector('[data-simrun]'); if (btn) { btn.disabled = true; btn.textContent = '계산 중…'; }
     if (!state.quote?.fx || simCfg.rows.some((r) => krTk(r.t))) await loadQuote().catch(() => {});
@@ -4824,7 +4826,7 @@
           <div><span>투자의견</span><b>${KR_RATING(C.mean)}</b><small>${C.mean != null ? (EN ? `${C.mean.toFixed(2)} / 5` : `5점 만점 ${C.mean.toFixed(2)}`) : ''}</small></div>
           <div><span>평균 목표주가</span><b>${C.target ? wonPx(C.target) : '–'}</b><small>${up != null ? `현재가 대비 <span class="${cls(up)}">${pct(up, 1)}</span>` : ''}</small></div>
         </div>` : ''}
-        ${R.length ? `<ul class="kr-rs">${R.map((r) => `<li><a href="https://finance.naver.com/research/company_read.naver?nid=${encodeURIComponent(r.id)}" target="_blank" rel="noopener"><b>${esc(r.title)}</b><small>${esc(r.broker || '')} · ${r.date ? r.date.slice(2).replace(/-/g, '.') : ''}</small></a></li>`).join('')}</ul>` : ''}` : `<p class="note">${K.type === 'etf' ? 'ETF는 애널리스트 의견이 없어요.' : '애널리스트 자료가 없어요.'}</p>`,
+        ${R.length ? `<ul class="kr-rs" data-noi18n>${R.map((r) => `<li><a href="https://finance.naver.com/research/company_read.naver?nid=${encodeURIComponent(r.id)}" target="_blank" rel="noopener"><b>${esc(r.title)}</b><small>${esc(r.broker || '')} · ${r.date ? r.date.slice(2).replace(/-/g, '.') : ''}</small></a></li>`).join('')}</ul>` : ''}` : `<p class="note">${K.type === 'etf' ? 'ETF는 애널리스트 의견이 없어요.' : '애널리스트 자료가 없어요.'}</p>`,
     });
   }
   function renderKrEarn(sym) {
