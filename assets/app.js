@@ -2039,6 +2039,7 @@
   for (const p of readJSON(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= p.ticker;
   // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지 기본 종목. 관심 종목에서 뺀 종목은 목록에서 빠진다
   // (keep: 이미 그 종목으로 저장된 행은 값이 바뀌지 않도록 그 행에만 남긴다)
+  const fireName = (t) => (krTk(t) ? STOCK_INFO[t]?.short || state.divData?.[t]?.d?.name || (FIRE_TICKERS[t] || t).split(' · ')[0].replace(/\.K[SQ]$/, '') : t);
   const fireTickerOrder = (keep) => [...new Set(['CRCA', ...WATCH, ...FIRE_BASE, ...(keep ? [keep] : [])])].filter((k) => FIRE_TICKERS[k]);
   const firePicked = (k) => FIRE_BASE.includes(k) || WATCH.includes(k);
   // Nasdaq에서 받는 시세에 따로 요청해야 하는 보유 종목(기본 5종목 외)
@@ -2239,7 +2240,7 @@
       return `<div class="fire-pos"><b>${logoOf(r.ticker) ? `<img class="fp-logo" src="${logoOf(r.ticker)}" alt="" width="16" height="16">` : ''}${r.kr ? esc((FIRE_TICKERS[r.ticker] || r.ticker).split(' · ')[0]) : r.ticker}</b><span>${nf(0).format(r.shares)}주 · ${pxS(r.ticker, r.px)} <span class="${cls(r.q?.pct)}">${pct(r.q?.pct, 2)}</span> · ${esc(mktStatus(r.q?.status))}</span><span>${wonFull(r.valueUsd * c.fx)} <span class="${cls(g)}">${pct(g)}</span></span></div>`;
     }).join('');
     card('fire', {
-      title: '퇴사까지', sub: `${c.rows.map((r) => `${r.ticker} ${nf(0).format(r.shares)}주`).join(' · ')} · 목표 ${wonFull(F.goal)}${F.afterTax ? ' · 세후 기준' : ''}`, info: INFO.fire,
+      title: '퇴사까지', sub: `${c.rows.map((r) => `${esc(fireName(r.ticker))} ${nf(0).format(r.shares)}주`).join(' · ')} · 목표 ${wonFull(F.goal)}${F.afterTax ? ' · 세후 기준' : ''}`, info: INFO.fire,
       body: `
         <div class="fire-hero">
           <div class="fire-pct"><span id="fire-pct">${(pctDone * 100).toFixed(1)}</span><small>%</small></div>
@@ -2251,11 +2252,11 @@
         <div class="ns-grid fire-grid">
           <div><span>평가금액${F.afterTax ? '(세후)' : ''}</span><b>${wonFull(c.basis)}</b><small>${dollar(c.valueUsd)}${F.afterTax ? ` · 세전 ${wonFull(c.valueKrw)}` : ''}</small></div>
           <div><span>평가손익</span><b class="${cls(c.gainKrw)}">${signed(c.gainKrw, wonFull)}</b><small><span class="${cls(c.gainPct)}">${pct(c.gainPct)}</span> · ${signed(c.gainUsd, dollar)}</small></div>
-          <div><span>오늘 변동</span><b class="${cls(c.todayKrw)}">${signed(c.todayKrw, wonFull)}</b><small>${multi ? '보유 종목 합계' : `${c.main.ticker} <span class="${cls(c.q?.pct)}">${pct(c.q?.pct, 2)}</span>`} · 전일 종가 대비</small></div>
+          <div><span>오늘 변동</span><b class="${cls(c.todayKrw)}">${signed(c.todayKrw, wonFull)}</b><small>${multi ? '보유 종목 합계' : `${esc(fireName(c.main.ticker))} <span class="${cls(c.q?.pct)}">${pct(c.q?.pct, 2)}</span>`} · 전일 종가 대비</small></div>
           ${multi
             ? `<div><span>필요 상승률</span><b class="up">+${(c.needAll * 100).toFixed(0)}%</b><small>보유 종목이 모두 같은 비율로 오를 때</small></div>`
             : `<div><span>${c.main.ticker} 현재가</span><b>$${c.px.toFixed(2)}</b><small>${esc(mktStatus(c.q?.status))} · 평균 $${c.main.avg.toFixed(2)}</small></div>`}
-          <div><span>${multi ? `${c.main.ticker}만 오를 때 목표가` : '목표 달성 가격'}</span><b>${pxS(c.main.ticker, c.needPx)}</b><small>현재가 대비 <span class="up">+${(c.needPct * 100).toFixed(0)}%</span></small></div>
+          <div><span>${multi ? `${esc(fireName(c.main.ticker))}만 오를 때 목표가` : '목표 달성 가격'}</span><b>${pxS(c.main.ticker, c.needPx)}</b><small>현재가 대비 <span class="up">+${(c.needPct * 100).toFixed(0)}%</span></small></div>
           <div><span>원·달러 환율</span><b>₩${nf(2).format(c.fx)}</b><small>10원 오르면 ${signed(c.valueUsd * 10, wonFull)}</small></div>
         </div>
         ${est ? `<div class="fire-est"><span class="tone px"><span class="live-dot"></span>24시간 추정</span>
@@ -2546,7 +2547,7 @@
           <div><span>배당률(현재가)</span><b>${c.yld != null ? pctPlain(c.yld, 2) : '–'}</b><small>최근 1년 배당 ÷ 평가금액</small></div>
           <div><span>투자금 대비(YOC)</span><b>${c.yoc != null ? pctPlain(c.yoc, 2) : '–'}</b><small>최근 1년 배당 ÷ 매수 금액</small></div>
         </div>
-        ${c.nextAll ? `<p class="div-next">다음 배당락 <b>${esc(c.nextAll.sym)} ${krDate(c.nextAll.next.ex)}</b>${c.nextAll.next.est ? ' (예상)' : ''} · 주당 ${usd2(c.nextAll.next.amt)} — 그 전날까지 보유해야 받아요</p>` : ''}
+        ${c.nextAll ? `<p class="div-next">다음 배당락 <b>${esc(fireName(c.nextAll.sym))} ${krDate(c.nextAll.next.ex)}</b>${c.nextAll.next.est ? ' (예상)' : ''} · 주당 ${krTk(c.nextAll.sym) && state.divData[c.nextAll.sym]?.d?.next?.amt != null ? wonPx(state.divData[c.nextAll.sym].d.next.amt) : usd2(c.nextAll.next.amt)} — 그 전날까지 보유해야 받아요</p>` : ''}
         ${big ? `<p class="note warn-note">⚠️ ${big[0]}년 배당이 ${krwOf(big[1].gross)}(세전)예요. 이자·배당 등 금융소득이 한 해 2,000만원을 넘으면 금융소득종합과세 대상이 될 수 있어요.</p>` : ''}
         ${more('div:per', EN ? `By stock · ${P.length}` : `종목별 보기 · ${P.length}종목`)}
           <div class="div-scroll"><table class="div-tbl"><thead><tr><th>종목</th><th>받은 횟수</th><th>받은 금액</th><th>연 예상</th><th>다음 배당락</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -4784,7 +4785,7 @@
       tile('PER', v('per'), `<span class="flat">추정 ${v('cnsPer')}</span>`, 'searn:c-searnings'),
       tile('PBR', v('pbr'), `<span class="flat">BPS ${v('bps')}</span>`, 'sprice:c-spricechart'),
       tile('배당수익률', v('dividendYieldRatio'), `<span class="flat">주당 ${v('dividend')}</span>`, 'sprice:c-spricechart'),
-      tile('외국인 보유', v('foreignRate'), '<span class="flat">외국인 소진율</span>', 'sprice:c-sholders'),
+      tile('외국인 보유', v('foreignRate'), '<span class="flat">외국인 한도 대비</span>', 'sprice:c-sholders'),
       tile('목표주가', K.consensus?.target ? wonPx(K.consensus.target) : '–', up != null ? `<span class="${cls(up)}">${pct(up, 1)}</span> <span class="flat">${KR_RATING(K.consensus.mean)}</span>` : '', 'sprice:c-sanalyst'),
     ];
     el.innerHTML = tiles.join('');
@@ -5260,7 +5261,8 @@
     if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
-    if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
+    if (v === 'sprice' && isKR(state.stock)) { renderSPriceChart(); renderKrDeal(state.stock); renderKrAnalyst(state.stock); }
+    else if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
     if (v === 'crcl') { renderHolders('CRCL', 'holders'); renderAnalyst('CRCL'); renderInsider('CRCL'); renderOptions('CRCL'); }
     if (v === 'news' || v === 'snews') { markNewsSeen(); renderNewsSummary(); renderNews(); renderKwNews(); } else updateNewsBadge();
     updateFireChip();
