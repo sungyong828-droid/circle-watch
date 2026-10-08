@@ -139,6 +139,9 @@ def main():
     m = re.search(rf'https://[0-9a-f]{{8}}\.{PROJECT}\.pages\.dev', r.stdout or '')
     url = m.group(0) if m else ''
     notes = record_release(rel, sha, url)
+    # CHANGELOG에 버전이 붙었으니 /updates·업데이트 알림을 새 버전 이름으로 다시 만들어 한 번 더 올린다
+    run([sys.executable, 'build.py'])
+    run(cmd + ['--commit-message', f'{rel} ({sha})'], capture=True)
     publish_release(rel, sha, url, notes)
     print(f'\n✅ 실제 사이트: https://{PROJECT}.pages.dev  (버전 {rel} · 커밋 {ver}{" · 이 버전 보기 " + url if url else ""})')
 
