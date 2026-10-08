@@ -2164,7 +2164,7 @@
       setText('hf-bonus-s', br.ready ? `${EN ? 'Take-home · ' : '실수령 · '}${(BONUS_CO[bonusCfg.co] || BONUS_CO.custom).name}` : (EN ? 'Samsung · SK hynix take-home' : '삼성·하이닉스 실수령액'));
       document.querySelector('.hf-bonus3')?.classList.toggle('hf-empty', !br.ready);
     } catch {}
-    setText('hf-div-s', dc ? (ready ? `${EN ? 'Received' : '받은 배당'} ${usd2(dc.recvNet)} · ${EN ? 'recovered' : '원금 회수'} ${(dc.payback * 100).toFixed(1)}%` : (EN ? 'Loading dividends…' : '배당 내역 불러오는 중…')) : (EN ? 'Enter dividend stocks to calculate' : '배당 종목을 넣으면 계산돼요'));
+    setText('hf-div-s', dc ? (ready ? `${EN ? 'Got' : '받은'} ${usd2(dc.recvNet)} · ${EN ? 'back' : '회수'} ${(dc.payback * 100).toFixed(1)}%` : (EN ? 'Loading dividends…' : '배당 내역 불러오는 중…')) : (EN ? 'Enter dividend stocks to calculate' : '배당 종목을 넣으면 계산돼요'));
   }
   function setText(id, t) { const el = document.getElementById(id); if (el && el.textContent !== t) el.textContent = t; }
   function updateFireChip(c = fireCfg ? fireCalc() : null) {
@@ -4804,7 +4804,7 @@
     card('sholders', {
       title: '투자자별 매매 · 외국인 보유', sub: `${esc(S.short)} · 순매수(산 주식 − 판 주식) · 네이버 증권`,
       easy: '하루 동안 외국인·기관(연기금·펀드 등)·개인이 이 종목을 얼마나 사고팔았는지예요. +면 판 것보다 산 게 많다는 뜻이고, 외국인·기관이 꾸준히 사면 큰손이 모으는 중이라고 봐요.',
-      body: D.length ? `<div class="ns-grid h-grid">
+      body: D.length ? `<div class="ns-grid h-grid kr3">
           <div><span>외국인 5일</span><b>${sh(sum('foreign', 5))}</b><small>보유율 ${D[0].hold != null ? D[0].hold.toFixed(2) + '%' : '–'}</small></div>
           <div><span>기관 5일</span><b>${sh(sum('organ', 5))}</b><small>연기금·투신·은행 등</small></div>
           <div><span>개인 5일</span><b>${sh(sum('indiv', 5))}</b><small>${D.length}일 기록</small></div>
@@ -4840,7 +4840,7 @@
       title: `${esc(S.short)} 분기 실적`, sub: '연결 기준 · 단위 억원(조) · 네이버 증권(FnGuide)',
       easy: '분기마다 회사가 얼마를 팔고(매출액) 얼마를 남겼는지(영업이익·순이익)예요. (예상)은 아직 발표 전이라 증권사 예상치 평균(컨센서스)이에요.',
       body: `<div class="div-scroll"><table class="div-tbl kr-earn"><thead><tr><th>분기</th><th>매출액</th><th>영업이익</th><th>이익률</th><th>순이익</th></tr></thead><tbody>
-        ${F.periods.map((pd, i) => `<tr${pd.cns ? ' class="kr-cns"' : ''}><td>${esc(pd.title.replace(/\\.$/, ''))}${pd.cns ? '<small>예상</small>' : ''}</td><td>${cell('매출액', pd.key, eok)}${growth('매출액', pd.key, i)}</td><td>${cell('영업이익', pd.key, (v) => `<span class="${cls(v)}">${eok(v)}</span>`)}</td><td>${cell('영업이익률', pd.key, (v) => v.toFixed(1) + '%')}</td><td>${cell('당기순이익', pd.key, eok)}</td></tr>`).join('')}
+        ${F.periods.map((pd, i) => `<tr${pd.cns ? ' class="kr-cns"' : ''}><td>${esc(pd.title.replace(/\.$/, ''))}${pd.cns ? '<small>예상</small>' : ''}</td><td>${cell('매출액', pd.key, eok)}${growth('매출액', pd.key, i)}</td><td>${cell('영업이익', pd.key, (v) => `<span class="${cls(v)}">${eok(v)}</span>`)}</td><td>${cell('영업이익률', pd.key, (v) => v.toFixed(1) + '%')}</td><td>${cell('당기순이익', pd.key, eok)}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="note">작은 숫자는 1년 전 같은 분기 대비. 한국 종목은 실적 발표일 자동 알림(실적 당일 모드)은 아직 없어요.</p>`,
     });

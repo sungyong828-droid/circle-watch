@@ -1257,7 +1257,7 @@ td.name span { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2;
 .home-fire .hf-tile { padding: 12px 11px; gap: 3px; }
 .home-fire .hf-l { font-size: 12px; white-space: nowrap; }
 .home-fire .hf-v { font-size: clamp(15px, 4.6vw, 21px); }
-.home-fire .hf-s { font-size: 10.5px; line-height: 1.35; }
+.home-fire .hf-s { font-size: 10.5px; line-height: 1.35; align-self: start; max-height: 2.7em; } /* 두 줄까지만(격자가 늘려 세 번째 줄이 비치지 않게) */
 .hf-bonus3 { border: 1px solid color-mix(in srgb, var(--c-blue) 45%, var(--line)); background: linear-gradient(180deg, color-mix(in srgb, var(--c-blue) 12%, transparent), transparent 70%), var(--surface); }
 .hf-bonus3 .hf-v { color: var(--c-blue); }
 .hf-empty .hf-v { font-size: clamp(13px, 3.8vw, 16px); color: var(--ink-2); }
@@ -1270,7 +1270,7 @@ td.name span { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2;
 .sim-pick li:last-child { border-bottom: 0; }
 .sim-pick img, .sim-pick .ws-letter { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font: 700 11px var(--sans); background: var(--surface); }
 .sim-pick b { display: block; font-size: 13.5px; }
-.sim-pick b small { font: 500 11px var(--sans); color: var(--muted); margin-left: 6px; }
+.sim-pick b small { font: 500 11px var(--sans); color: var(--muted); margin-left: 6px; white-space: nowrap; display: inline-block; }
 .sim-pick span { display: block; font-size: 12px; color: var(--ink-2); line-height: 1.45; margin-top: 1px; }
 .sim-pick .btn-ghost { white-space: nowrap; }
 .sim-added { font-style: normal; font-size: 12px; color: var(--good); white-space: nowrap; }
@@ -1291,3 +1291,4 @@ td.name span { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2;
 .kr-deal td, .kr-earn td { white-space: nowrap; }
 .kr-earn td small { display: block; font-size: 10px; }
 .kr-earn tr.kr-cns td { color: var(--ink-2); font-style: italic; }
+.ns-grid.kr3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* 한국 종목 투자자별 매매: 외국인·기관·개인 한 줄 */
