@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=17';
+    sc.src = 'assets/i18n-en.js?v=18';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2791,8 +2791,8 @@
   //  건강보험 3.595%(보수 상한) · 장기요양 = 건강보험료 × 13.14% · 고용보험 0.9%. 국민연금은 전년도 소득 기준이라 이번 성과급으로 바로 늘지 않는다.
   const BONUS_KEY = 'cw.bonus';
   const BONUS_CO = {
-    samsung: { name: '삼성전자', fields: [['opi', 'OPI(초과이익성과급)', '연봉의 %', 50, 50], ['taiH1', 'TAI 상반기(목표달성장려금)', '월 기본급의 %', 100, 100], ['taiH2', 'TAI 하반기', '월 기본급의 %', 100, 100]], special: true, stockLabel: null },
-    hynix: { name: 'SK하이닉스', fields: [['ps', 'PS(초과이익분배금)', '월 기본급의 %', 2964, null], ['piH1', 'PI 상반기(생산성 격려금)', '월 기본급의 %', 150, 150], ['piH2', 'PI 하반기', '월 기본급의 %', 150, 150]], special: false, stockLabel: 'PS 중 자사주 비율' },
+    samsung: { name: EN ? 'Samsung' : '삼성전자', fields: [['opi', 'OPI(초과이익성과급)', '연봉의 %', 50, 50], ['taiH1', 'TAI 상반기(목표달성장려금)', '월 기본급의 %', 100, 100], ['taiH2', 'TAI 하반기', '월 기본급의 %', 100, 100]], special: true, stockLabel: null },
+    hynix: { name: EN ? 'SK hynix' : 'SK하이닉스', fields: [['ps', 'PS(초과이익분배금)', '월 기본급의 %', 2964, null], ['piH1', 'PI 상반기(생산성 격려금)', '월 기본급의 %', 150, 150], ['piH2', 'PI 하반기', '월 기본급의 %', 150, 150]], special: false, stockLabel: 'PS 중 자사주 비율' },
     custom: { name: '직접 입력', fields: [], special: false, stockLabel: null },
   };
   let bonusCfg = Object.assign({ co: 'samsung', salary: 10000, base: null, deps: 1, rates: {}, special: 0, amount: 0, stockPct: 50 }, readJSON(BONUS_KEY, {}) || {});
@@ -2971,7 +2971,7 @@
       info: INFO.divsim,
       body: `<div class="sim-amt">
           <label class="bn-f"><span>투자금</span><div class="bn-in"><input inputmode="decimal" id="sim-amount" value="${esc(String(simCfg.amount ?? ''))}" aria-label="투자금"><em>${simCfg.unit === 'usd' ? '달러' : '만원'}</em></div>
-          <small>${simCfg.unit === 'usd' ? (fx ? `≈ ${manwon((+simCfg.amount || 0) * fx)} · 환율 ${nf(0).format(fx)}원` : '') : `${manwon((+simCfg.amount || 0) * 1e4)}${fx ? ` ≈ ${usd((+simCfg.amount || 0) * 1e4 / fx)} · 환율 ${nf(0).format(fx)}원` : ''}`}</small></label>
+          <small>${simCfg.unit === 'usd' ? (fx ? `≈ ${manwon((+simCfg.amount || 0) * fx)} · ${EN ? `FX ₩${nf(0).format(fx)}` : `환율 ${nf(0).format(fx)}원`}` : '') : `${manwon((+simCfg.amount || 0) * 1e4)}${fx ? ` ≈ ${usd((+simCfg.amount || 0) * 1e4 / fx)} · ${EN ? `FX ₩${nf(0).format(fx)}` : `환율 ${nf(0).format(fx)}원`}` : ''}`}</small></label>
           <div class="sim-unit" role="group" aria-label="단위">${[['manwon', '원'], ['usd', '$']].map(([k, l]) => `<button type="button" data-simunit="${k}" aria-pressed="${simCfg.unit === k}">${l}</button>`).join('')}</div>
         </div>
         <div class="sim-presets">${SIM_PRESETS.map(([l], i) => `<button type="button" class="chip-btn sm" data-simpre="${i}">${l}</button>`).join('')}</div>

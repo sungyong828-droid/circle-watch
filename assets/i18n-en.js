@@ -1826,8 +1826,6 @@ window.__I18N_EN = {
 "삼성전자 · SK하이닉스 성과급 세후 실수령액 추정": "Samsung Electronics · SK hynix bonus, estimated take-home",
 "삼성전자·SK하이닉스 실수령액 → 배당으로": "Samsung · SK hynix take-home → dividends",
 "연봉과 지급률을 넣으면 성과급이 얼마인지, 세금·4대보험을 떼고 실제로 얼마를 받는지 계산해요. 맨 아래 버튼으로 이 돈을 배당주에 넣으면 배당을 얼마나 받는지도 바로 이어서 볼 수 있어요.": "Enter your salary and payout rates to see the bonus and what you actually take home after tax and social insurance. The button at the bottom carries that money into the dividend planner.",
-"삼성전자": "Samsung Electronics",
-"SK하이닉스": "SK hynix",
 "직접 입력": "Custom",
 "연봉": "Annual salary",
 "(성과급 제외)": "(excl. bonus)",
@@ -1888,7 +1886,12 @@ window.__I18N_EN = {
 "한국 장중": "KRX open",
 "한국 장 마감": "KRX closed",
 "코스피": "KOSPI",
-"코스닥": "KOSDAQ"
+"코스닥": "KOSDAQ",
+"만원": "×₩10K",
+"원": "KRW",
+"네이버 증권 실시간": "Naver Finance live",
+"네이버 증권": "Naver Finance",
+"명": "ppl"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
