@@ -94,6 +94,7 @@
     fire: ['🔥 퇴사까지', 'screen'], div: ['💰 배당금', 'screen'], sprice: ['다른 종목 주가', 'screen'], searn: ['다른 종목 실적', 'screen'], snews: ['다른 종목 뉴스', 'screen'],
     fireSet: ['퇴사 계산 입력해 둔 기기', 'feat'], divSet: ['배당 종목 입력해 둔 기기', 'feat'], watch: ['관심 종목을 추가한 기기', 'feat'],
     ocr: ['📷 사진으로 거래 넣기', 'feat'], share: ['공유 버튼', 'feat'], blog: ['📝 블로그 링크 누름', 'feat'],
+    bonus: ['💼 성과급 계산기', 'screen'], divsim: ['🧮 배당 포트폴리오 짜보기', 'feat'], kr: ['한국 종목을 추가한 기기', 'feat'],
   };
   const delta = (a, b) => {
     if (!b) return a ? '<em class="up">새로 시작</em>' : '';

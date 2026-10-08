@@ -8,7 +8,7 @@ import json
 import os
 
 SITE = 'https://my-fire-portfolio.pages.dev/'
-VER = '2'
+VER = '3'
 
 COMMON_FEATURES = [
     ('실시간 주가 · 캔들 차트', '1일·1주·1개월·3개월·1년 캔들 차트에 이동평균선(5·20·60·120일)과 거래량. 캔들/라인 전환.'),
@@ -132,7 +132,7 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noin
 '''
 
 
-FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
+FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="updates">업데이트 소식</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
   <p>투자 조언이 아닌 개인 모니터링 도구예요. 데이터는 공개 출처(Nasdaq·SEC·Yahoo Finance·Binance·FINRA·CBOE 등)에서 가져오며 지연·오류가 있을 수 있어요.</p>'''
 FOOT_EN = '''<nav aria-label="Pages"><a href="about" hreflang="ko">한국어</a><a href="en">About</a><a href="./?lang=en&ref=page-en#dividend">Dividend tracker</a><a href="./?lang=en&ref=page-en#quit">FIRE calculator</a><a href="feedback?lang=en">💬 Feedback</a></nav>
   <p>A personal monitoring tool, not investment advice. Data comes from public sources (Nasdaq, SEC, Yahoo Finance, Binance, FINRA, CBOE and others) and may be delayed or wrong.</p>'''
@@ -345,8 +345,95 @@ def feedback_page():
                 noindex=True, script='feedback.js?v=1')
 
 
+
+# ---------------------------------------------------------------- 업데이트 소식(CHANGELOG.md)
+import hashlib
+import re as _re
+
+CHANGELOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'CHANGELOG.md')
+NEXT_H = '## 다음 배포'
+
+
+def _md_inline(t):
+    t = esc(t)
+    t = _re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', t)
+    t = _re.sub(r'\[([^\]]+)\]\((https?://[^)\s]+)\)', r'<a href="\2" target="_blank" rel="noopener">\1</a>', t)
+    t = _re.sub(r'`([^`]+)`', r'<code>\1</code>', t)
+    return t
+
+
+def changelog_sections():
+    """[(제목, 본문)] — '## ' 단위. 다음 배포 칸 포함"""
+    if not os.path.exists(CHANGELOG):
+        return []
+    text = open(CHANGELOG, encoding='utf-8').read()
+    parts = _re.split(r'(?m)^## ', text)[1:]
+    return [(p.split('\n', 1)[0].strip(), p.split('\n', 1)[1] if '\n' in p else '') for p in parts]
+
+
+def whatsnew():
+    """앱의 '새로 업데이트됐어요' 카드 내용: 다음 배포 칸(있으면) 아니면 가장 최근 버전"""
+    secs = changelog_sections()
+    pick = None
+    for title, body in secs:
+        if title == NEXT_H[3:]:
+            if _re.search(r'(?m)^- ', _re.sub(r'<!--.*?-->', '', body, flags=_re.S)):
+                pick = ('', body)
+                break
+            continue
+        if title.startswith('v20'):
+            pick = (title, body)
+            break
+    if not pick:
+        return None
+    title, body = pick
+    en_m = _re.search(r'<!--\s*EN\s*(.*?)-->', body, _re.S)
+    ko = _re.sub(r'<!--.*?-->', '', body, flags=_re.S)
+    items = [_md_inline(l[2:].strip()) for l in ko.splitlines() if l.startswith('- ')]
+    en = [_md_inline(l[2:].strip()) for l in (en_m.group(1).splitlines() if en_m else []) if l.strip().startswith('- ')]
+    en = [e[2:] if e.startswith('- ') else e for e in en]
+    ver = title.split(' — ')[0] if title else ''
+    nid = hashlib.md5('\n'.join(items).encode('utf-8')).hexdigest()[:10]
+    return {'id': nid, 'ver': ver, 'items': items, 'en': en}
+
+
+def updates_page():
+    title = '업데이트 소식 — 새로 생긴 기능과 바뀐 점'
+    desc = 'Fire Portfolio(퇴사를 위한 미국 주식 대시보드)에 새로 생긴 기능과 바뀐 점을 날짜별로 모았어요.'
+    out = []
+    for t, body in changelog_sections():
+        if t.startswith(NEXT_H[3:]):
+            continue
+        m = _re.match(r'(v(\d{4})\.(\d{2})\.(\d{2})-\d+)', t)
+        head = f'{m.group(2)}.{m.group(3)}.{m.group(4)} 업데이트 <small>{m.group(1)}</small>' if m else esc(t)
+        html_lines, in_ul = [], False
+        for line in _re.sub(r'<!--.*?-->', '', body, flags=_re.S).splitlines():
+            s = line.strip()
+            if not s or s.startswith('[이 버전 보기]') or s.startswith('커밋 ') or s == '---':
+                continue
+            if s.startswith('- '):
+                if not in_ul:
+                    html_lines.append('<ul class="lp-upd">'); in_ul = True
+                html_lines.append(f'<li>{_md_inline(s[2:])}</li>')
+                continue
+            if in_ul:
+                html_lines.append('</ul>'); in_ul = False
+            html_lines.append(f'<h3>{_md_inline(s.strip("*"))}</h3>' if s.startswith('**') and s.endswith('**') else f'<p>{_md_inline(s)}</p>')
+        if in_ul:
+            html_lines.append('</ul>')
+        out.append(f'<section class="lp-sec upd"><h2>{head}</h2>{"".join(html_lines)}</section>')
+    body = f'''<section class="lp-hero">
+  <h1>업데이트 소식</h1>
+  <p class="lp-lead">쓰면서 불편했던 점과 보내 주신 의견으로 계속 고치고 있어요. 새로 생긴 기능과 바뀐 점을 날짜별로 모았어요.</p>
+  <a class="lp-cta" href="./?ref=page-updates">대시보드 열기 →</a>
+</section>
+{''.join(out)}
+<section class="lp-sec lp-end"><a class="lp-cta" href="feedback?from=updates">💬 의견 보내기</a></section>'''
+    ld = {'@context': 'https://schema.org', '@type': 'WebPage', 'name': title, 'description': desc, 'url': SITE + 'updates', 'inLanguage': 'ko'}
+    return page('updates', title, desc, body, ld)
+
 def build(dist):
-    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'en': en_page(), 'feedback': feedback_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
+    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
     for slug, text in out.items():
         with open(os.path.join(dist, slug + '.html'), 'w', encoding='utf-8') as f:
             f.write(text)

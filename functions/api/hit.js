@@ -9,7 +9,7 @@ const VID_RE = /^[a-z0-9]{16,40}$/;
 const BOT_RE = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|monitor/i;
 const PER_IP_DEVICES = 30; // 한 IP에서 하루에 새로 세는 기기 수 상한(무작위 ID로 숫자 부풀리기 방지 · 회사·통신사 공용 IP는 넉넉히)
 const MAX_ERR_ROWS = 300;   // 하루 오류 종류 상한
-const SYM_RE = /^[A-Z][A-Z0-9.-]{0,9}$/;
+const SYM_RE = /^([A-Z][A-Z0-9.-]{0,9}|[0-9A-Z]{6}\.(KS|KQ))$/; // 미국 티커 · 한국 종목코드
 
 const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10);
 

@@ -63,6 +63,16 @@ os.makedirs(wk, exist_ok=True)
 exp = (datetime.date.today() + datetime.timedelta(days=330)).isoformat()
 with open(os.path.join(wk, 'security.txt'), 'w', encoding='utf-8') as f:
     f.write(f'Contact: https://blog.naver.com/ky828\nExpires: {exp}T00:00:00.000Z\nPreferred-Languages: ko, en\nCanonical: {landing.SITE}.well-known/security.txt\n')
+# 앱의 '새로 업데이트됐어요' 카드(CHANGELOG 다음 배포 칸 또는 최근 버전) → assets/whatsnew.js
+import json as _wjson
+wn = landing.whatsnew()
+for d in (os.path.join(ROOT, 'assets'), os.path.join(DIST, 'assets')):
+    with open(os.path.join(d, 'whatsnew.js'), 'w', encoding='utf-8') as f:
+        f.write('// 자동 생성(build.py ← CHANGELOG.md) — 직접 고치지 말 것\n')
+        f.write('window.__WHATSNEW = ' + _wjson.dumps(wn, ensure_ascii=False) + ';\n')
+ix = os.path.join(DIST, 'index.html')  # 알림 내용이 바뀔 때마다 새로 받게
+t = open(ix, encoding='utf-8').read()
+open(ix, 'w', encoding='utf-8').write(re.sub(r'assets/whatsnew\.js\?v=\w+', 'assets/whatsnew.js?v=' + (wn['id'] if wn else '0'), t))
 # IndexNow(네이버·Bing 등에 새 페이지 알림) 소유 확인 파일
 key = open(os.path.join(ROOT, 'indexnow.key'), encoding='utf-8').read().strip()
 with open(os.path.join(DIST, key + '.txt'), 'w', encoding='utf-8') as f:

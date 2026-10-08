@@ -4,7 +4,7 @@
 import { denyUnlessAdmin, json, kstDay, VID_RE, LOCK_FAILS, LOCK_MS } from '../../../worker/admin-auth.js';
 
 // 화면·기능 비트(assets/app.js USE_BITS 와 같은 순서)
-const USE_BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog'];
+const USE_BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr'];
 
 export async function onRequestGet({ request, env }) {
   const deny = await denyUnlessAdmin(request, env);

@@ -10,6 +10,27 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+**새 기능**
+- 🇰🇷 **한국 주식 추가**: 종목 추가에서 회사명(예: "삼성")이나 종목코드(005930)로 코스피·코스닥 종목을 찾아 넣을 수 있어요. 실시간 시세(원)·차트·뉴스를 보여줘요.
+- 💼 **성과급 계산기**: Fire의 세 번째 탭. 삼성전자(OPI·TAI)·SK하이닉스(PS·PI) 성과급과 세금·4대보험을 뗀 실수령액을 계산해요.
+- 🧮 **배당 포트폴리오 짜보기**: 투자금과 종목·비중을 넣으면 현재가로 몇 주를 살 수 있는지, 1년·한 달 배당이 얼마인지 계산해요. 성과급 계산기에서 바로 이어져요.
+- 🎉 **업데이트 알림**: 새 기능이 생기면 홈 맨 위에서 한 번 알려 줘요. 전체 기록은 '업데이트 소식' 페이지에서.
+
+**개선**
+- 🏷️ 종목 로고 약 1만 개로 확대(미국 주식·ETF, 한국 코스피·코스닥).
+- 🔄 사이트를 처음 열 때 공포·탐욕 지수 등 모든 데이터를 최신으로 새로 받아요.
+- 🔍 종목 검색칸의 글자를 다 지워도 입력칸이 닫히지 않아요.
+- 🔥 홈에 퇴사까지·배당금 칸이 생겨 오른쪽 위 Fire 버튼은 뺐어요.
+- 🔒 문의 API(/api/feedback)에 읽기 요청이 오면 화면 대신 "허용 안 됨(405)"으로 답하도록.
+
+<!-- EN
+- 🇰🇷 **Korean stocks**: search KOSPI/KOSDAQ by company name or 6-digit code and add them — live price (KRW), chart and news.
+- 💼 **Bonus calculator**: a third Fire tab estimating Samsung (OPI·TAI) and SK hynix (PS·PI) bonuses after tax and social insurance.
+- 🧮 **Dividend portfolio planner**: enter an amount, tickers and weights to see how many shares you can buy and the yearly/monthly dividends.
+- 🎉 **Update notice**: new features are announced once at the top of Home.
+- 🏷️ About 10,000 logos (US stocks, ETFs and Korean stocks); fresh data on first load; search box no longer closes when cleared.
+-->
+
 ## v2026.10.05-2 — 2026-10-05
 
 [이 버전 보기](https://cc443e0b.my-fire-portfolio.pages.dev) · 커밋 `4e0709e`

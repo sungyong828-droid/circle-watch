@@ -32,7 +32,7 @@
 <link rel="icon" type="image/png" href="assets/favicon.png?v=2">
 <link rel="apple-touch-icon" href="assets/icon.png?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j" crossorigin="anonymous">
-<link rel="stylesheet" href="assets/style.css?v=80">
+<link rel="stylesheet" href="assets/style.css?v=81">
 </head>
 <body>
 <noscript><p style="padding:16px">Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·차트·뉴스 AI 요약·공매도·기관 보유·애널리스트 목표가를 보여주는 무료 미국 주식 대시보드예요. 화면을 보려면 자바스크립트를 켜 주세요. <a href="about">사이트 소개 보기</a></p></noscript>
@@ -47,7 +47,6 @@
     </div>
     <div class="top-actions">
       <button class="lang-btn" id="lang-btn" type="button" aria-label="View in English">EN</button>
-      <button class="fire-chip" id="fire-chip" type="button" data-go="fire" aria-label="Fire 열기"><span aria-hidden="true">🔥</span><b>Fire</b></button>
       <button class="icon-btn" id="refresh" type="button" aria-label="지금 새로고침" title="모든 데이터를 지금 시각 기준으로 다시 불러와요">
         <svg class="ic-refresh" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <svg class="ic-check" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -60,10 +59,12 @@
 
 <main>
   <section class="view" id="view-home" data-view="home">
+    <article class="card welcome-card whatsnew-card" id="c-whatsnew" hidden></article>
     <article class="card welcome-card" id="c-welcome" hidden></article>
     <div class="home-fire" id="home-fire">
       <button type="button" class="hf-tile hf-fire" data-ftabgo="fire"><span class="hf-l">🔥 퇴사까지</span><b class="hf-v" id="hf-fire-v">–</b><small class="hf-s" id="hf-fire-s">보유 정보를 넣으면 계산돼요</small></button>
       <button type="button" class="hf-tile hf-div" data-ftabgo="div"><span class="hf-l">💰 배당금</span><b class="hf-v" id="hf-div-v">–</b><small class="hf-s" id="hf-div-s">배당 종목을 넣으면 계산돼요</small></button>
+      <button type="button" class="hf-bonus" data-ftabgo="bonus"><span>💼 성과급 계산기</span><small>삼성전자·SK하이닉스 실수령액 → 배당으로</small><i aria-hidden="true">›</i></button>
     </div>
     <article class="card market-card" id="c-market"></article>
     <article class="card fg-card" id="c-feargreed"></article>
@@ -153,6 +154,7 @@
     <div class="fire-tabs" role="tablist" aria-label="Fire 화면 전환">
       <button type="button" role="tab" data-ftab="fire" aria-selected="true">🔥 퇴사까지</button>
       <button type="button" role="tab" data-ftab="div" aria-selected="false">💰 배당금</button>
+      <button type="button" role="tab" data-ftab="bonus" aria-selected="false">💼 성과급</button>
     </div>
     <article class="card fire-card" id="c-fire" data-pane="fire"></article>
     <article class="card" id="c-fire-sim" data-pane="fire"></article>
@@ -161,6 +163,8 @@
     <article class="card div-card" id="c-div" data-pane="div"></article>
     <article class="card" id="c-div-month" data-pane="div" hidden></article>
     <article class="card" id="c-div-set" data-pane="div"></article>
+    <article class="card sim-card" id="c-divsim" data-pane="div"></article>
+    <article class="card bonus-card" id="c-bonus" data-pane="bonus"></article>
   </section>
 
   <section class="view" id="view-news" data-view="news" hidden>
@@ -171,7 +175,7 @@
 
   <footer class="foot">
     <div class="foot-btns"><button type="button" class="share-btn" id="share-btn">🔗 공유하기</button></div>
-    <nav class="foot-links" aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="feedback" class="fl-fb">💬 문의·개선 제안</a></nav>
+    <nav class="foot-links" aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="updates">업데이트 소식</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="feedback" class="fl-fb">💬 문의·개선 제안</a></nav>
     <p>데이터: Binance · Nasdaq(시세·실적·13F 기관 보유) · Yahoo Finance · SEC · 구글 뉴스 · 전문 매체 RSS · Cloudflare Workers AI(뉴스 요약) · DefiLlama · 서클 공식 API · FINRA · 미 재무부 · Arc/Ethereum RPC · Arc 탐색기(Blockscout).</p>
     <p>우측 상단 새로고침(↻)을 누르면 모든 데이터를 지금 시각 기준으로 다시 불러와요. 가만히 두어도 5분마다(주가·환율은 더 자주) 자동으로 업데이트돼요. 🟢 표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.</p>
     <p>🔒 보유 정보(수량·평단·매수 기록)와 관심 종목은 이 기기에만 저장돼요. 사이트는 방문 수 집계를 위해 익명 기기 ID·유입 경로를, 인기 종목 순위를 위해 새로 추가한 티커 이름만 익명으로 기록하고, 이름·연락처 같은 개인 정보는 받지 않아요.</p>
@@ -183,8 +187,9 @@
 <nav class="tabbar" id="tabbar" aria-label="화면 전환"></nav>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
-<script src="assets/logo-list.js?v=1"></script>
+<script src="assets/logo-list.js?v=2"></script>
+<script src="assets/whatsnew.js?v=1"></script>
 <script src="assets/trade-ocr.js?v=2"></script>
-<script src="assets/app.js?v=88"></script>
+<script src="assets/app.js?v=89"></script>
 </body>
 </html>

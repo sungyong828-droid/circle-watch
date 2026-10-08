@@ -1,12 +1,18 @@
-"""종목 로고 받기: S&P 500 + 자주 찾는 종목·ETF → assets/logos/t/{티커}.png (96px), 목록 assets/logo-list.js
+"""종목 로고 받기 → assets/logos/t/{티커}.png (64px, 색 수를 줄여 가볍게), 목록 assets/logo-list.js
+
+받는 범위: S&P 500 + 자주 찾는 종목 + 미국 상장 주식(시가총액 1억 달러 이상) + 미국 ETF 전체 + 한국 코스피·코스닥 전 종목
+(한국은 assets/krx.json — 먼저 python tools/fetch_krx.py). 한국 로고 파일 이름은 005930.KS.png 처럼 종목코드.
 
 사이트가 외부 이미지를 직접 불러오지 않도록(보안 정책 img-src 'self') 미리 받아 같이 배포한다.
-사용: python tools/fetch_logos.py   (S&P 500 구성이 바뀌면 다시 실행)
-출처: 종목 목록 github.com/datasets/s-and-p-500-companies, 로고 financialmodelingprep.com/image-stock
+사용: python tools/fetch_logos.py           (새 종목만 받기)
+      python tools/fetch_logos.py --force   (모두 다시 받기)
+출처: 종목 목록 github.com/datasets/s-and-p-500-companies · Nasdaq 스크리너 · 한국거래소, 로고 financialmodelingprep.com/image-stock
 """
 import csv
 import io
+import json
 import os
+import re
 import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -24,11 +30,44 @@ SPY QQQ VOO VTI IVV DIA IWM SCHD JEPI JEPQ VYM DGRO HDV SPYD DIVO QYLD XYLD RYLD
 TQQQ SQQQ SOXL SOXX SMH ARKK XLK XLF XLE XLV GLD SLV TLT BND O""".split()
 
 
+SIZE = 64
+SYM_OK = re.compile(r'^[A-Z]{1,5}(\.[A-Z])?$')
+
+
+def get_json(url):
+    return json.loads(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60).read().decode('utf-8'))
+
+
 def tickers():
     req = urllib.request.Request('https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv', headers=UA)
     rows = csv.DictReader(io.StringIO(urllib.request.urlopen(req, timeout=30).read().decode('utf-8')))
     sp = [r['Symbol'].strip().upper() for r in rows if r.get('Symbol')]
-    return list(dict.fromkeys(sp + EXTRA)), len(sp)
+    us = []
+    try:  # 미국 상장 주식(시가총액 1억 달러 이상)
+        for r in get_json('https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&download=true')['data']['rows']:
+            try:
+                cap = float(r.get('marketCap') or 0)
+            except ValueError:
+                cap = 0
+            sym = str(r.get('symbol') or '').strip().upper().replace('/', '.')
+            if cap >= 1e8 and SYM_OK.match(sym):
+                us.append(sym)
+    except Exception as e:
+        print('nasdaq stocks 실패', e)
+    etf = []
+    try:  # 미국 ETF
+        d = get_json('https://api.nasdaq.com/api/screener/etf?tableonly=true&limit=10000&download=true')['data']
+        for r in (d.get('data') or d)['rows']:
+            sym = str(r.get('symbol') or '').strip().upper()
+            if SYM_OK.match(sym):
+                etf.append(sym)
+    except Exception as e:
+        print('nasdaq etf 실패', e)
+    kr = []
+    kpath = os.path.join(ROOT, 'assets', 'krx.json')
+    if os.path.exists(kpath):  # 한국: 005930.KS / 247540.KQ
+        kr = [f'{c}.{m}' for c, _n, m, *_ in json.load(open(kpath, encoding='utf-8'))]
+    return list(dict.fromkeys(sp + EXTRA + us + etf + kr)), {'S&P500': len(sp), 'US': len(us), 'ETF': len(etf), 'KR': len(kr)}
 
 
 def fix_light(im):
@@ -45,23 +84,41 @@ def fix_light(im):
     return bg
 
 
+# 윈도우에서 파일 이름으로 쓸 수 없는 이름(CON·PRN·AUX·NUL·COM1… — 티커 CON 등)은 건너뛴다
+RESERVED = {'CON', 'PRN', 'AUX', 'NUL', *{f'COM{i}' for i in range(1, 10)}, *{f'LPT{i}' for i in range(1, 10)}}
+
+
 def fetch(sym):
     dst = os.path.join(OUT, sym + '.png')
+    if sym.split('.')[0] in RESERVED:
+        return sym, False
     if os.path.exists(dst) and '--force' not in sys.argv:
         return sym, True
+    urls = [f'https://financialmodelingprep.com/image-stock/{sym}.png']
+    if re.match(r'^[0-9A-Z]{6}\.(KS|KQ)$', sym):  # 한국 종목: 없으면 네이버 증권 로고
+        urls.append(f'https://ssl.pstatic.net/imgstock/fn/real/logo/png/stock/Stock{sym[:6]}.png')
+    for url in urls:
+        got = fetch_one(sym, url, dst)
+        if got:
+            return sym, True
+    return sym, False
+
+
+def fetch_one(sym, url, dst):
     try:
-        req = urllib.request.Request(f'https://financialmodelingprep.com/image-stock/{sym}.png', headers=UA)
+        req = urllib.request.Request(url, headers=UA)
         data = urllib.request.urlopen(req, timeout=20).read()
         im = Image.open(io.BytesIO(data)).convert('RGBA')
         if im.width < 16 or im.getbbox() is None:
-            return sym, False
-        im.thumbnail((96, 96), Image.LANCZOS)
-        canvas = Image.new('RGBA', (96, 96), (0, 0, 0, 0))
-        canvas.alpha_composite(im, ((96 - im.width) // 2, (96 - im.height) // 2))
-        fix_light(canvas).save(dst, optimize=True)
-        return sym, True
+            return False
+        im.thumbnail((SIZE, SIZE), Image.LANCZOS)
+        canvas = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
+        canvas.alpha_composite(im, ((SIZE - im.width) // 2, (SIZE - im.height) // 2))
+        # 64색으로 줄여 파일 크기를 1/3 정도로(작게 보이는 아이콘이라 차이가 거의 없다)
+        fix_light(canvas).quantize(colors=64, method=Image.Quantize.FASTOCTREE).save(dst, optimize=True)
+        return True
     except Exception:
-        return sym, False
+        return False
 
 
 if __name__ == '__main__':
@@ -72,8 +129,9 @@ if __name__ == '__main__':
             im = Image.open(os.path.join(OUT, f)).convert('RGBA'); fx = fix_light(im)
             if fx is not im: fx.save(os.path.join(OUT, f), optimize=True); n += 1
         print('fixed', n); sys.exit()
-    syms, n_sp = tickers()
-    with ThreadPoolExecutor(8) as ex:
+    syms, counts = tickers()
+    print('후보', len(syms), counts, flush=True)
+    with ThreadPoolExecutor(16) as ex:
         res = list(ex.map(fetch, syms))
     ok = sorted(s for s, good in res if good)
     miss = [s for s, good in res if not good]
@@ -81,4 +139,4 @@ if __name__ == '__main__':
         f.write('// 자동 생성(tools/fetch_logos.py) — assets/logos/t/ 에 로고가 있는 티커\n')
         f.write(f"window.__LOGOS = '{' '.join(ok)}';\n")
     size = sum(os.path.getsize(os.path.join(OUT, s + '.png')) for s in ok)
-    print(f'S&P 500 {n_sp} + extra {len(EXTRA)} → logos {len(ok)} ({size // 1024} KB), missing {len(miss)}: {" ".join(miss[:40])}')
+    print(f'{counts} + extra {len(EXTRA)} → logos {len(ok)} ({size // 1024} KB), missing {len(miss)}')

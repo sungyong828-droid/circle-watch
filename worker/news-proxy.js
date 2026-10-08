@@ -164,7 +164,11 @@ const JUNK_SOURCE_RE = /\.(gov|edu|ac|mil)(\.[a-z]{2})?$/i;
 const cleanNews = (list, sym, rel = RELEVANT[sym]) => list.filter((n) => !JUNK_RE.test(n.title) && !JUNK_RE.test(n.source || '') && !JUNK_SOURCE_RE.test(n.source || '') && !SPAM_RE.test(n.title) && rel.test(n.title));
 // 티커 형식만 맞으면 받는다(사용자가 종목을 직접 추가할 수 있게). 예: AAPL, BRK.B
 const SYM_RE = /^[A-Z]{1,5}(\.[A-Z])?$/;
-const pickSym = (url) => { const s = (url.searchParams.get('s') || 'CRCL').toUpperCase(); return SYM_RE.test(s) ? s : 'CRCL'; };
+// 한국 종목: 종목코드.KS(코스피) / .KQ(코스닥) — Yahoo 표기와 같다
+const KR_RE = /^[0-9A-Z]{6}\.(KS|KQ)$/;
+const symOk = (s) => SYM_RE.test(s) || KR_RE.test(s);
+const yahooSym = (s) => (KR_RE.test(s) ? s : s.replace('.', '-')); // BRK.B → BRK-B, 005930.KS 는 그대로
+const pickSym = (url) => { const s = (url.searchParams.get('s') || 'CRCL').toUpperCase(); return symOk(s) ? s : 'CRCL'; };
 const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // 실제로 거래되는 종목인지 확인(Nasdaq 시세 조회, 하루 저장). 아무 글자나 넣어 서버 작업을 늘리는 요청을 막는다.
@@ -174,14 +178,49 @@ async function knownSym(sym, cache, origin) {
   const hit = await cache.match(key);
   if (hit) return (await hit.text()) === '1';
   let ok = false;
-  for (const cls of ['stocks', 'etf']) { try { const d = await nasdaqJson(`quote/${sym}/info?assetclass=${cls}`); if (d?.symbol && d?.primaryData?.lastSalePrice) { ok = true; break; } } catch {} }
+  if (KR_RE.test(sym)) { try { ok = !!(await naverBasic(sym))?.stockName; } catch {} }
+  else for (const cls of ['stocks', 'etf']) { try { const d = await nasdaqJson(`quote/${sym}/info?assetclass=${cls}`); if (d?.symbol && d?.primaryData?.lastSalePrice) { ok = true; break; } } catch {} }
   await cache.put(key, new Response(ok ? '1' : '0', { headers: { 'cache-control': `public, max-age=${ok ? 86400 : 3600}` } }));
   return ok;
 }
 const unknownSym = (cors) => json({ error: '알 수 없는 종목입니다' }, cors, 404);
 
+// ---------------------------------------------------------------- 한국 종목(네이버 증권)
+async function naverBasic(sym) {
+  const r = await fetch(`https://m.stock.naver.com/api/stock/${sym.slice(0, 6)}/basic`, { headers: { 'user-agent': BROWSER_UA, accept: 'application/json' }, signal: AbortSignal.timeout(6000) });
+  if (!r.ok) throw new Error('naver ' + r.status);
+  return r.json();
+}
+const krNum = (s) => { const n = parseFloat(String(s ?? '').replace(/,/g, '')); return isFinite(n) ? n : null; };
+// 실시간 시세(여러 종목 한 번에) — 장 마감 뒤에는 넥스트레이드(NXT) 시간외 가격도 함께
+export async function buildKrQuote(syms) {
+  const codes = syms.map((s) => s.slice(0, 6));
+  const r = await fetch(`https://polling.finance.naver.com/api/realtime/domestic/stock/${codes.join(',')}`, { headers: { 'user-agent': BROWSER_UA, accept: 'application/json' }, signal: AbortSignal.timeout(7000) });
+  if (!r.ok) throw new Error('naver ' + r.status);
+  const j = await r.json();
+  const out = { at: new Date().toISOString() };
+  for (const d of j.datas || []) {
+    const sym = syms.find((s) => s.startsWith(d.itemCode));
+    if (!sym) continue;
+    const price = krNum(d.closePrice), change = krNum(d.compareToPreviousClosePrice), pct = krNum(d.fluctuationsRatio);
+    const O = d.overMarketPriceInfo || null;
+    out[sym] = {
+      name: d.stockName, price, change, pct: pct == null ? null : pct / 100, prevClose: price != null && change != null ? price - change : null,
+      status: d.marketStatus === 'OPEN' ? 'KR_OPEN' : 'KR_CLOSE', time: d.localTradedAt || null, currency: 'KRW',
+      after: O && krNum(O.overPrice) ? { price: krNum(O.overPrice), status: O.overMarketStatus, session: O.tradingSessionType } : null,
+    };
+  }
+  return out;
+}
+export async function handleKrQuote(url, cache, cors, ctx) {
+  const syms = [...new Set(String(url.searchParams.get('s') || '').toUpperCase().split(',').filter((x) => KR_RE.test(x)))].sort().slice(0, 20);
+  if (!syms.length) return json({ error: 'bad request' }, cors, 400);
+  return swr(cache, ctx, `${url.origin}/krquote?s=${syms.join(',')}`, { freshSec: 8, keepSec: 600, cors, build: async () => JSON.stringify(await buildKrQuote(syms)) });
+}
+
 // 회사 이름(Nasdaq) — "Rocket Lab Corporation Common Stock" → { full: "Rocket Lab Corporation", core: "Rocket Lab" }
 async function companyOf(sym) {
+  if (KR_RE.test(sym)) { const b = await naverBasic(sym).catch(() => null); const n = b?.stockName || sym; return { full: n, core: n, asset: 'KR' }; }
   let d = null;
   for (const cls of ['stocks', 'etf']) { try { d = await nasdaqJson(`quote/${sym}/info?assetclass=${cls}`); if (d?.companyName) break; } catch {} }
   const full = String(d?.companyName || sym).replace(/\s+(Class [A-Z] )?(Common Stock|Ordinary Shares|Common Shares|American Depositary Shares.*|ADS.*|Shares)\s*$/i, '').trim();
@@ -191,6 +230,13 @@ async function companyOf(sym) {
 // 기본 설정이 없는 종목의 뉴스 검색어·관련어
 async function genericNewsCfg(sym) {
   const { full, core } = await companyOf(sym);
+  if (KR_RE.test(sym)) { // 한국 종목: 국내 기사 위주(해외는 영문 기사가 있으면)
+    return {
+      korea: true, kr: `"${core}" when:14d`, krBing: [core, `${core} 주가`], en: `"${core}" OR "${sym.slice(0, 6)}.${sym.endsWith('KQ') ? 'KQ' : 'KS'}" when:30d`, enBing: [core],
+      bw: '', bwBing: [], site: null, officialSource: /^$/, officialTitle: /^$/, officialExclude: /^$/, officialStrip: /^$/, industry: null,
+      relevant: new RegExp(reEsc(core), 'i'), company: `${core}(${sym.slice(0, 6)})`,
+    };
+  }
   const word = core.split(/\s+/)[0];
   return {
     kr: `"${core}" OR (${sym} 주가) when:30d`, krBing: [core, `${sym} 주가`],
@@ -310,12 +356,12 @@ async function buildNews(sym = 'CRCL') {
   const [kr, en, bw, site, filings, crypto, pr] = await Promise.all([
     settle(deadline(withFallback(() => googleNews(C.kr, 'ko'), () => bingNews(C.krBing, 'ko'), 'kr', notes))),
     settle(deadline(withFallback(() => googleNews(C.en, 'en'), () => bingNews(C.enBing, 'en'), 'en', notes))),
-    settle(deadline(withFallback(() => googleNews(C.bw, 'en'),
+    C.korea ? Promise.resolve({ ok: true, v: [] }) : settle(deadline(withFallback(() => googleNews(C.bw, 'en'),
       () => bingNews(C.bwBing, 'en').then((l) => l.map((n) => ({ ...n, source: /business ?wire/i.test(n.source) ? 'businesswire.com' : n.source }))), 'bw', notes))),
     C.site ? settle(deadline(withFallback(() => googleNews(C.site, 'en'), null, 'site', notes))) : Promise.resolve({ ok: true, v: [] }),
-    settle(deadline(nasdaqFilings(sym))),
+    C.korea ? Promise.resolve({ ok: true, v: [] }) : settle(deadline(nasdaqFilings(sym))), // 한국 종목은 SEC 공시가 없다
     settle(deadline(industry)),
-    settle(deadline(nasdaqPressReleases(sym))),
+    C.korea ? Promise.resolve({ ok: true, v: [] }) : settle(deadline(nasdaqPressReleases(sym))),
   ]);
   const v = (r) => (r.ok ? r.v : []);
   // 공식 발표: 회사 IR·자사 사이트·Business Wire만, 이름만 같은 다른 회사는 제외
@@ -711,13 +757,13 @@ const CHART_RANGES = { '1d': ['15m', '5d'], '1w': ['1h', '1mo'], '1m': ['1d', '6
 export async function handleChart(url, cache, cors, ctx) {
   const sym = (url.searchParams.get('s') || '').toUpperCase();
   const range = url.searchParams.get('r') || '1d';
-  if (!(CHART_SYMBOLS.includes(sym) || SYM_RE.test(sym)) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
+  if (!(CHART_SYMBOLS.includes(sym) || symOk(sym)) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   return swr(cache, ctx, `${url.origin}/chart?s=${sym}&r=${range}&v=ohlc3`, {
     freshSec: range === '1d' ? 60 : 900, keepSec: 86400, cors,
     build: async () => {
       const [interval, rng] = CHART_RANGES[range];
-      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${rng}&includePrePost=${range === '1d' || range === '1w'}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym(sym)}?interval=${interval}&range=${rng}&includePrePost=${(range === '1d' || range === '1w') && !KR_RE.test(sym)}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error('yahoo ' + r.status);
       const j = (await r.json()).chart.result[0];
       const Q = j.indicators?.quote?.[0] || {}, ts = j.timestamp || [];
@@ -746,7 +792,7 @@ const holderRow = (r) => {
 //  - 줄인 기관은 남은 주식의 평단이 그대로라 직전 기간 VWAP
 // 실제 매입가와 다를 수 있는 '대략적인 추정'이다(Yahoo 일봉 · 분할 반영 가격).
 async function dailyBars(sym) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym.replace('.', '-')}?interval=1d&range=2y`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym(sym)}?interval=1d&range=2y`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart.result[0], Q = j.indicators?.quote?.[0] || {};
   return (j.timestamp || []).map((t, i) => ({ d: new Date(t * 1000).toISOString().slice(0, 10), p: (Q.high?.[i] + Q.low?.[i] + Q.close?.[i]) / 3, v: Q.volume?.[i] || 0, c: Q.close?.[i] }))
@@ -1003,7 +1049,7 @@ export async function buildFearGreed() {
   return out;
 }
 export async function handleFearGreed(url, cache, cors, ctx) {
-  return swr(cache, ctx, `${url.origin}/feargreed?v=1`, { freshSec: 900, keepSec: 3 * 86400, cors, build: async () => JSON.stringify(await buildFearGreed()) });
+  return swr(cache, ctx, `${url.origin}/feargreed?v=1`, { freshSec: url.searchParams.has('fresh') ? 60 : 900, keepSec: 3 * 86400, cors, build: async () => JSON.stringify(await buildFearGreed()) });
 }
 
 // ---------------------------------------------------------------- 종목 검색 (종목 추가 화면)
@@ -1466,7 +1512,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
@@ -1487,6 +1533,7 @@ export default {
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
     if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
     if (url.pathname === '/feargreed') return handleFearGreed(url, cache, cors, ctx);
+    if (url.pathname === '/krquote') return handleKrQuote(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);

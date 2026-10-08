@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=16';
+    sc.src = 'assets/i18n-en.js?v=17';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -131,6 +131,29 @@
         ${BN24[sym] ? `<li><b>바이낸스 24시간</b>: 바이낸스의 ${sym}USDT 주식 선물(TradFi) 가격이에요. 미국 장이 닫힌 밤·주말에도 거래돼 다음 장 분위기를 미리 볼 수 있어요. 선물이라 실제 주가와 조금 차이가 나요("주가와 차이").</li>` : '<li>바이낸스에서 24시간 거래되지 않아, 미국 장이 닫힌 주말·새벽에는 마지막 거래 가격이 보여요.</li>'}
         ${STOCK_INFO[sym].peer ? `<li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>` : ''}
         ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : ''}
+      </ul>`,
+    bonus: `
+      <p><b>성과급 계산법</b>(2026년 기준 · 지급률은 회사 공지에 맞게 바꿔 넣으세요)</p>
+      <ul>
+        <li><b>삼성전자</b>: OPI = 연봉 × 지급률(최대 50%, 1월 지급) · TAI = 월 기본급 × 지급률(최대 100%, 상·하반기) · DS 부문 특별성과급은 영업이익 연동으로 상한이 없어 공지된 금액을 직접 넣어요.</li>
+        <li><b>SK하이닉스</b>: PS = 월 기본급 × 지급률(2026년 2,964%, 영업이익 10% 재원) · PI = 월 기본급 × 지급률(상·하반기). 월 기본급은 보통 연봉 ÷ 20이에요. PS는 현금과 자사주로 나눠 받아요.</li>
+        <li><b>세금</b>: 성과급은 근로소득이라 연봉과 합쳐 누진세율이 적용돼요. '성과급이 있을 때 − 없을 때' 1년 세금 차이(지방소득세 10% 포함)로 계산해서, 높은 세율 구간에 걸리는 만큼 떼는 비율이 커져요.</li>
+        <li><b>4대보험</b>(근로자 부담): 건강보험 3.595% · 장기요양 = 건강보험료 × 13.14% · 고용보험 0.9%. 국민연금은 전년도 소득 기준이라 이번 성과급으로 바로 늘지 않아요.</li>
+      </ul>
+      <p>입력값은 이 기기에만 저장돼요. 실제 지급 때 떼는 금액(간이세액표)은 다를 수 있고 연말정산에서 정산돼요.</p>`,
+    divsim: `
+      <p>투자금을 종목별 비중대로 나눠 <b>현재가로 몇 주를 살 수 있는지</b>(소수점 주식 없이) 계산하고, 그 수량으로 <b>최근 1년 동안 실제로 나온 배당</b>을 받는다고 가정해 1년·한 달 배당을 보여줘요.</p>
+      <ul>
+        <li>원화 투자금은 지금 환율로 달러로 바꿔 계산해요(환전 수수료 제외).</li>
+        <li>배당은 미국 원천징수 15%를 뺀 세후 금액이에요. 국내 금융소득이 연 2,000만원을 넘으면 종합과세 대상이 될 수 있어요.</li>
+        <li>상장 1년이 안 된 ETF는 지금까지 낸 배당을 1년으로 늘려 계산해요.</li>
+      </ul>`,
+    krprice: `
+      <p><b>한국 종목</b>의 시세예요. 네이버 증권 실시간 시세를 15초마다 받아요(원 단위).</p>
+      <ul>
+        <li><b>정규장</b>: 09:00~15:30. 장이 끝난 뒤에는 넥스트레이드(NXT) <b>시간외 가격</b>도 함께 보여줘요.</li>
+        <li><b>차트</b>: Yahoo Finance 일봉·분봉. 한국 종목은 공매도·기관 보유(13F)·애널리스트·옵션 같은 미국 전용 자료가 없어 주가·뉴스만 보여줘요.</li>
+        <li>Fire(퇴사까지·배당금)에는 아직 미국 종목만 넣을 수 있어요.</li>
       </ul>`,
     feargreed: EN ? `
       <p>The <b>Fear &amp; Greed Index</b> sums up investor mood as one number from 0 (extreme fear) to 100 (extreme greed): 0–24 extreme fear · 25–44 fear · 45–55 neutral · 56–75 greed · 76–100 extreme greed.</p>
@@ -611,7 +634,7 @@
       <i class="ct-sep"></i>
       <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button>
     </div><div class="ct-legend" id="ctl-${id}"></div>`;
-  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, ind = false } = {}) {
+  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, ind = false, fmt = price } = {}) { // fmt: 가격 표시(한국 종목은 원)
     if (!pts?.length) return;
     const pre = (pts.pre || []).map(ohlc), V = pts.map(ohlc), all = [...pre, ...V];
     if (last != null && isFinite(last)) { const k = V.at(-1); k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last); }
@@ -659,9 +682,9 @@
               title: (items) => title(items[0]),
               label: (it) => {
                 const k = charts[id]?.$V?.[it.dataIndex] || V[it.dataIndex];
-                const out = [` 시가 ${price(k.o)} · 고가 ${price(k.h)}`, ` 저가 ${price(k.l)} · 종가 ${price(k.c)}`];
+                const out = [` 시가 ${fmt(k.o)} · 고가 ${fmt(k.h)}`, ` 저가 ${fmt(k.l)} · 종가 ${fmt(k.c)}`];
                 if (k.v) out.push(` 거래량 ${unit(k.v)}`);
-                const mas = it.chart.data.datasets.filter((d) => /^MA/.test(d.label) && d.data[it.dataIndex] != null).map((d) => `${d.label} ${price(d.data[it.dataIndex])}`);
+                const mas = it.chart.data.datasets.filter((d) => /^MA/.test(d.label) && d.data[it.dataIndex] != null).map((d) => `${d.label} ${fmt(d.data[it.dataIndex])}`);
                 if (mas.length) out.push(' ' + mas.join(' · '));
                 return out;
               },
@@ -678,7 +701,7 @@
       },
     });
     if (charts[id]) { charts[id].$V = V; charts[id].$line = line; }
-    if (ind) setHtml('ctl-' + id, maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${price(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
+    if (ind) setHtml('ctl-' + id, maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
@@ -1809,7 +1832,7 @@
       const s = sym, x = st(s);
       if (!isOther(s)) return;
       try {
-        const j = await getJ(`${NEWS_API}/earnings?s=${s}${earnDay(s) ? '&live=1' : state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
+        const j = await getJ(`${NEWS_API}/earnings?s=${s}${earnDay(s) ? '&live=1' : freshSync() ? '&fresh=1' : ''}`, 25000);
         if (j.error) throw new Error(j.error);
         x.earn = j; x.earnErr = false;
       } catch (e) { x.earnErr = true; if (!x.earn) throw e; }
@@ -1817,7 +1840,7 @@
     async snews(d, L, sym = state.stock) {
       const s = sym, x = st(s);
       if (!isOther(s)) return;
-      const j = await getJ(`${NEWS_API}/news?s=${s}${state.syncKind === 'manual' ? '&fresh=1' : ''}`, 25000);
+      const j = await getJ(`${NEWS_API}/news?s=${s}${freshSync() ? '&fresh=1' : ''}`, 25000);
       if (j.error) throw new Error(j.error);
       const ownerMap = {};
       for (const f of j.filings || []) (ownerMap[f.d + '|' + f.form] ||= []).push(f.owner);
@@ -1846,8 +1869,8 @@
       } catch (er) { (state.optionsErr ||= {})[sym] = String(er.message || er); if (!state.options?.[sym] && !/옵션이 없어요/.test(er.message)) throw er; }
     },
     async market() { const j = await getJ(`${NEWS_API}/market`, 15000); if (j.error) throw new Error(j.error); state.market = j; },
-    async feargreed() { const j = await getJ(`${NEWS_API}/feargreed`, 15000); if (j.error) throw new Error(j.error); state.fg = j; }, // 공포·탐욕 지수(서버 15분 캐시)
-    async mnews() { const j = await getJ(`${NEWS_API}/mnews${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 20000); if (j.error) throw new Error(j.error); state.mnews = j; },
+    async feargreed() { const j = await getJ(`${NEWS_API}/feargreed${freshSync() ? '?fresh=1' : ''}`, 15000); if (j.error) throw new Error(j.error); state.fg = j; }, // 공포·탐욕 지수(서버 15분 캐시)
+    async mnews() { const j = await getJ(`${NEWS_API}/mnews${freshSync() ? '?fresh=1' : ''}`, 20000); if (j.error) throw new Error(j.error); state.mnews = j; },
     async sshort(d, L, sym = state.stock) { // 추가한 종목의 공매도(FINRA, 서버 3시간마다)
       const j = await getJ(`${NEWS_API}/short?s=${sym}`, 20000);
       if (j.error) throw new Error(j.error);
@@ -1870,7 +1893,7 @@
     },
     async earnings() { // 분기 실적·다음 발표일 (서버에서 6시간 캐시)
       try {
-        const j = await getJ(`${NEWS_API}/earnings${earnDay('CRCL') ? '?live=1' : state.syncKind === 'manual' ? '?fresh=1' : ''}`, 25000);
+        const j = await getJ(`${NEWS_API}/earnings${earnDay('CRCL') ? '?live=1' : freshSync() ? '?fresh=1' : ''}`, 25000);
         if (j.error) throw new Error(j.error);
         state.earnings = j;
         state.earningsErr = false;
@@ -1882,7 +1905,7 @@
     },
     async news(d) { // 구글 뉴스·서클 발표: Cloudflare Worker가 중계 (새로고침 버튼은 캐시 없이)
       if (!NEWS_API || NEWS_API.startsWith('WORKER')) return;
-      const j = await getJ(`${NEWS_API}/news${state.syncKind === 'manual' ? '?fresh=1' : ''}`, 25000);
+      const j = await getJ(`${NEWS_API}/news${freshSync() ? '?fresh=1' : ''}`, 25000);
       if (j.error) throw new Error(j.error);
       const ownerMap = {};
       for (const f of j.filings || []) (ownerMap[f.d + '|' + f.form] ||= []).push(f.owner);
@@ -2050,7 +2073,7 @@
   const won = (v) => (v == null || !isFinite(v) ? '–' : (v < 0 ? '-₩' : '₩') + unit(Math.abs(v)));
   const dollar = (v, dp = 0) => (v == null || !isFinite(v) ? '–' : (v < 0 ? '-$' : '$') + nf(dp).format(Math.abs(v)));
   const signed = (v, f) => (v == null || !isFinite(v) ? '–' : (v > 0 ? '+' : v < 0 ? '-' : '') + f(Math.abs(v)).replace(/^-/, ''));
-  const mktStatus = (s) => ({ 'Pre-Market': '장전', 'Open': '장중', 'Market Open': '장중', 'After-Hours': '장후', 'Closed': '장 마감' }[s] || s || '');
+  const mktStatus = (s) => ({ KR_OPEN: '한국 장중', KR_CLOSE: '한국 장 마감', 'Pre-Market': '장전', 'Open': '장중', 'Market Open': '장중', 'After-Hours': '장후', 'Closed': '장 마감' }[s] || s || '');
 
   // 해외주식 양도소득세: 연 250만원 공제 후 22%(지방세 포함) — 이익일 때만
   const taxOf = (gainKrw) => Math.max(0, gainKrw - 2.5e6) * 0.22;
@@ -2438,12 +2461,12 @@
   }
 
   // Fire 화면 위 탭: 퇴사까지 / 배당금 — 카드의 data-pane으로 보이기·숨기기(선택은 이 기기에 기억)
-  state.fireTab = loadPref('fireTab', 'fire') === 'div' ? 'div' : 'fire';
+  state.fireTab = ['div', 'bonus'].includes(loadPref('fireTab', 'fire')) ? loadPref('fireTab', 'fire') : 'fire';
   function applyFireTab() {
     for (const b of document.querySelectorAll('[data-ftab]')) b.setAttribute('aria-selected', String(b.dataset.ftab === state.fireTab));
     for (const el of document.querySelectorAll('#view-fire [data-pane]')) el.classList.toggle('pane-off', el.dataset.pane !== state.fireTab);
     if (state.fireTab === 'div') for (const id of ['div-month']) charts[id]?.resize();
-    if (state.view === 'fire') { document.getElementById('view-title').textContent = viewTitle('fire'); markUse(state.fireTab === 'div' ? 'div' : 'fire'); }
+    if (state.view === 'fire') { document.getElementById('view-title').textContent = viewTitle('fire'); markUse(state.fireTab); }
   }
   function renderDiv() {
     renderHomeFire();
@@ -2760,13 +2783,253 @@
     toast('🔥 보유 종목을 불러왔어요 · 거래 내역은 넣어도 되고 비워도 돼요');
   }
 
+  // ---------------------------------------------------------------- 💼 성과급 계산기 (Fire · 세 번째 탭)
+  // 회사별 지급 구조(2026년 기사·노사 합의 기준, 지급률은 사내 공지로 바꿔 넣는다):
+  //  - 삼성전자: OPI = 연봉 × 지급률(최대 50%, 연 1회) · TAI = 월 기본급 × 지급률(최대 100%, 상·하반기) · DS 특별성과급(상한 없음, 금액 직접 입력)
+  //  - SK하이닉스: PS = 월 기본급(연봉 ÷ 20) × 지급률(2026년 2,964%) · PI = 월 기본급 × 지급률(상·하반기). PS는 현금·자사주로 나눠 지급
+  // 세금·4대보험(근로자 부담, 2026): 소득세는 '성과급이 있을 때 − 없을 때' 연간 세금 차이(연말정산 기준) + 지방세 10%,
+  //  건강보험 3.595%(보수 상한) · 장기요양 = 건강보험료 × 13.14% · 고용보험 0.9%. 국민연금은 전년도 소득 기준이라 이번 성과급으로 바로 늘지 않는다.
+  const BONUS_KEY = 'cw.bonus';
+  const BONUS_CO = {
+    samsung: { name: '삼성전자', fields: [['opi', 'OPI(초과이익성과급)', '연봉의 %', 50, 50], ['taiH1', 'TAI 상반기(목표달성장려금)', '월 기본급의 %', 100, 100], ['taiH2', 'TAI 하반기', '월 기본급의 %', 100, 100]], special: true, stockLabel: null },
+    hynix: { name: 'SK하이닉스', fields: [['ps', 'PS(초과이익분배금)', '월 기본급의 %', 2964, null], ['piH1', 'PI 상반기(생산성 격려금)', '월 기본급의 %', 150, 150], ['piH2', 'PI 하반기', '월 기본급의 %', 150, 150]], special: false, stockLabel: 'PS 중 자사주 비율' },
+    custom: { name: '직접 입력', fields: [], special: false, stockLabel: null },
+  };
+  let bonusCfg = Object.assign({ co: 'samsung', salary: 10000, base: null, deps: 1, rates: {}, special: 0, amount: 0, stockPct: 50 }, readJSON(BONUS_KEY, {}) || {});
+  // 원 금액을 '6억 1,234만원'처럼
+  const manwon = (v) => {
+    if (v == null || !isFinite(v)) return '–';
+    if (EN) return `₩${nf(0).format(Math.round(v))}`;
+    const sign = v < 0 ? '-' : '', a = Math.abs(v), eok = Math.floor(a / 1e8), man = Math.round((a - eok * 1e8) / 1e4);
+    return sign + (eok ? `${nf(0).format(eok)}억${man ? ` ${nf(0).format(man)}만원` : '원'}` : `${nf(0).format(man)}만원`);
+  };
+  // 근로소득공제(한도 2,000만원)
+  const earnedDed = (G) => Math.min(2e7, G <= 5e6 ? G * 0.7 : G <= 15e6 ? 3.5e6 + (G - 5e6) * 0.4 : G <= 45e6 ? 7.5e6 + (G - 15e6) * 0.15 : G <= 1e8 ? 1.2e7 + (G - 45e6) * 0.05 : 1.475e7 + (G - 1e8) * 0.02);
+  const TAX_BR = [[1.4e7, 0.06], [5e7, 0.15], [8.8e7, 0.24], [1.5e8, 0.35], [3e8, 0.38], [5e8, 0.4], [1e9, 0.42], [Infinity, 0.45]];
+  function progTax(T) { let tax = 0, lo = 0; for (const [hi, r] of TAX_BR) { if (T <= lo) break; tax += (Math.min(T, hi) - lo) * r; lo = hi; } return tax; }
+  function laborCredit(calc, G) {
+    const c = calc <= 1.3e6 ? calc * 0.55 : 715000 + (calc - 1.3e6) * 0.3;
+    const cap = G <= 3.3e7 ? 740000 : G <= 7e7 ? Math.max(660000, 740000 - (G - 3.3e7) * 0.008) : G <= 1.2e8 ? Math.max(500000, 660000 - (G - 7e7) * 0.5) : Math.max(200000, 500000 - (G - 1.2e8) * 0.5);
+    return Math.min(c, cap);
+  }
+  const HEALTH = 0.03595, LTC = 0.1314, EMPLOY = 0.009, HEALTH_CAP_Y = (4591740 / 0.03595) * 12, PENSION_CAP_Y = 6370000 * 12, PENSION = 0.0475;
+  const insOn = (G) => { const h = Math.min(G, HEALTH_CAP_Y) * HEALTH; return { health: h, ltc: h * LTC, employ: G * EMPLOY }; };
+  // 연간 근로소득세(결정세액, 지방세 제외) — 기본공제(본인·부양가족 1인 150만원)와 4대보험 공제만 반영한 단순 계산
+  function incomeTax(G, deps) {
+    const ins = insOn(G), pension = Math.min(G, PENSION_CAP_Y) * PENSION;
+    const T = Math.max(0, G - earnedDed(G) - 1.5e6 * Math.max(1, deps) - pension - ins.health - ins.ltc - ins.employ);
+    const calc = progTax(T);
+    return Math.max(0, calc - laborCredit(calc, G) - 130000);
+  }
+  function bonusCalc(c = bonusCfg) {
+    const CO = BONUS_CO[c.co] || BONUS_CO.custom;
+    const salary = Math.max(0, +c.salary || 0) * 1e4, base = Math.max(0, +(c.base ?? 0) || 0) * 1e4 || salary / 20;
+    const items = [];
+    for (const [k, label, unitTxt] of CO.fields) {
+      const r = Math.max(0, +(c.rates?.[k] ?? CO.fields.find((f) => f[0] === k)[3]) || 0) / 100;
+      const amt = (k === 'opi' ? salary : base) * r;
+      if (amt > 0) items.push({ k, label, amt, rate: r, unitTxt });
+    }
+    if (CO.special && +c.special > 0) items.push({ k: 'special', label: 'DS 특별성과급', amt: +c.special * 1e4 });
+    if (c.co === 'custom' && +c.amount > 0) items.push({ k: 'amount', label: '성과급', amt: +c.amount * 1e4 });
+    const B = items.reduce((a, x) => a + x.amt, 0);
+    if (!(salary > 0) || !(B > 0)) return { items, B, salary, base, ready: false };
+    const deps = Math.max(1, Math.round(+c.deps || 1));
+    const taxInc = (incomeTax(salary + B, deps) - incomeTax(salary, deps)) * 1.1; // 지방소득세 10% 포함
+    const i0 = insOn(salary), i1 = insOn(salary + B);
+    const ins = { health: i1.health - i0.health, ltc: i1.ltc - i0.ltc, employ: i1.employ - i0.employ };
+    const insT = ins.health + ins.ltc + ins.employ, net = B - taxInc - insT;
+    const marginal = TAX_BR.find(([hi]) => (salary + B) - earnedDed(salary + B) <= hi)?.[1] ?? 0.45;
+    const psItem = items.find((x) => x.k === 'ps');
+    const stock = c.co === 'hynix' && psItem ? psItem.amt * Math.min(100, Math.max(0, +c.stockPct || 0)) / 100 : 0;
+    return { items, B, salary, base, ready: true, taxInc, ins, insT, net, eff: (taxInc + insT) / B, marginal, stock, netRatio: net / B };
+  }
+  function renderBonus() {
+    const el = document.getElementById('c-bonus');
+    if (!el) return;
+    const c = bonusCfg, CO = BONUS_CO[c.co] || BONUS_CO.custom, R = bonusCalc(c);
+    const fx = state.quote?.fx?.rate;
+    const field = (k, label, unitTxt, def, max) => `<label class="bn-f"><span>${label}</span><div class="bn-in"><input inputmode="decimal" data-bnrate="${k}" value="${esc(String(c.rates?.[k] ?? def))}" aria-label="${esc(label)}"><em>%</em></div><small>${unitTxt}${max ? ` · 최대 ${max}%` : ''}</small></label>`;
+    card('bonus', {
+      title: '💼 성과급 계산기', sub: '삼성전자 · SK하이닉스 성과급 세후 실수령액 추정',
+      easy: '연봉과 지급률을 넣으면 성과급이 얼마인지, 세금·4대보험을 떼고 실제로 얼마를 받는지 계산해요. 맨 아래 버튼으로 이 돈을 배당주에 넣으면 배당을 얼마나 받는지도 바로 이어서 볼 수 있어요.',
+      info: INFO.bonus,
+      body: `<div class="bn-co" role="group" aria-label="회사 선택">${Object.entries(BONUS_CO).map(([k, v]) => `<button type="button" data-bnco="${k}" aria-pressed="${c.co === k}">${v.name}</button>`).join('')}</div>
+        <div class="bn-grid">
+          <label class="bn-f"><span>연봉 <small>(성과급 제외)</small></span><div class="bn-in"><input inputmode="numeric" id="bn-salary" value="${esc(String(c.salary ?? ''))}" aria-label="연봉(만원)"><em>만원</em></div><small>${manwon((+c.salary || 0) * 1e4)}</small></label>
+          ${c.co !== 'custom' ? `<label class="bn-f"><span>월 기본급</span><div class="bn-in"><input inputmode="numeric" id="bn-base" value="${esc(c.base == null ? '' : String(c.base))}" placeholder="${nf(0).format(Math.round((+c.salary || 0) / 20))}" aria-label="월 기본급(만원)"><em>만원</em></div><small>비우면 연봉 ÷ 20 · 급여명세서 기본급이 정확</small></label>` : ''}
+          ${CO.fields.map(([k, l, u, d, m]) => field(k, l, u, d, m)).join('')}
+          ${CO.special ? `<label class="bn-f"><span>DS 특별성과급 <small>(선택)</small></span><div class="bn-in"><input inputmode="numeric" id="bn-special" value="${esc(String(c.special || ''))}" placeholder="0" aria-label="특별성과급(만원)"><em>만원</em></div><small>영업이익 연동·상한 없음 → 공지된 1인 금액</small></label>` : ''}
+          ${c.co === 'custom' ? `<label class="bn-f"><span>성과급 금액</span><div class="bn-in"><input inputmode="numeric" id="bn-amount" value="${esc(String(c.amount || ''))}" aria-label="성과급(만원)"><em>만원</em></div><small>세전 금액</small></label>` : ''}
+          ${CO.stockLabel ? `<label class="bn-f"><span>${CO.stockLabel}</span><div class="bn-in"><input inputmode="numeric" id="bn-stock" value="${esc(String(c.stockPct ?? 50))}" aria-label="${CO.stockLabel}"><em>%</em></div><small>2026년 합의: 현금 50% · 자사주 50%</small></label>` : ''}
+          <label class="bn-f"><span>본인 포함 부양가족</span><div class="bn-in"><input inputmode="numeric" id="bn-deps" value="${esc(String(c.deps || 1))}" aria-label="부양가족 수"><em>명</em></div><small>1인당 150만원 기본공제</small></label>
+        </div>
+        ${R.ready ? `<div class="bn-out">
+          <div class="bn-hero"><span>예상 실수령액</span><b>${manwon(R.net)}</b><small>세전 ${manwon(R.B)}의 ${pctPlain(R.netRatio, 1)}${fx ? ` · 약 ${usd(R.net / fx)}` : ''}</small></div>
+          <ul class="bn-rows">
+            ${R.items.map((x) => `<li><span>${esc(x.label)}${x.rate != null ? ` <small>${pctPlain(x.rate, 0)} × ${x.k === 'opi' ? '연봉' : '월 기본급'}</small>` : ''}</span><b>${manwon(x.amt)}</b></li>`).join('')}
+            <li class="bn-sum"><span>세전 합계</span><b>${manwon(R.B)}</b></li>
+            <li class="bn-minus"><span>소득세 + 지방소득세 <small>최고 세율 구간 ${pctPlain(R.marginal * 1.1, 1)}</small></span><b>−${manwon(R.taxInc)}</b></li>
+            <li class="bn-minus"><span>건강·장기요양·고용보험</span><b>−${manwon(R.insT)}</b></li>
+            <li class="bn-net"><span>실수령액 <small>떼는 비율 ${pctPlain(R.eff, 1)}</small></span><b>${manwon(R.net)}</b></li>
+            ${R.stock ? `<li><span>그중 자사주로 받는 몫 <small>현금은 약 ${manwon(R.net - R.stock * R.netRatio)}</small></span><b>${manwon(R.stock * R.netRatio)}</b></li>` : ''}
+          </ul>
+          <p class="note">연말정산 기준 추정이에요. 지급하는 달에는 간이세액표로 떼서 금액이 다를 수 있고, 차이는 연말정산에서 정산돼요. 다른 공제(카드·연금저축·주택 등)가 있으면 세금이 줄어요. 지급률·기본급은 사내 공지와 급여명세서로 확인해 주세요.</p>
+          <button type="button" class="btn-primary bn-go" data-bngo="1">💰 이 돈으로 배당 포트폴리오 짜보기 →</button>
+        </div>` : `<p class="note">${c.co === 'custom' ? '연봉과 성과급 금액을 넣어 주세요.' : '연봉과 지급률을 넣으면 바로 계산돼요.'}</p>`}`,
+    });
+  }
+  let bonusTimer = null;
+  function readBonusForm() {
+    const v = (id) => { const x = document.getElementById(id); return x ? x.value.replace(/[,\s]/g, '') : undefined; };
+    const num = (s) => (s === '' || s == null ? null : parseFloat(s));
+    const c = bonusCfg;
+    if (v('bn-salary') !== undefined) c.salary = num(v('bn-salary')) ?? 0;
+    if (v('bn-base') !== undefined) c.base = num(v('bn-base'));
+    if (v('bn-special') !== undefined) c.special = num(v('bn-special')) ?? 0;
+    if (v('bn-amount') !== undefined) c.amount = num(v('bn-amount')) ?? 0;
+    if (v('bn-stock') !== undefined) c.stockPct = num(v('bn-stock')) ?? 0;
+    if (v('bn-deps') !== undefined) c.deps = num(v('bn-deps')) ?? 1;
+    c.rates = c.rates || {};
+    for (const x of document.querySelectorAll('[data-bnrate]')) c.rates[x.dataset.bnrate] = num(x.value.replace(/[,\s]/g, '')) ?? 0;
+    writeJSON(BONUS_KEY, c);
+  }
+  // 입력하는 동안에는 결과만 바꾼다(입력칸을 다시 그리면 커서가 빠지므로)
+  function bonusInput() {
+    readBonusForm();
+    clearTimeout(bonusTimer);
+    bonusTimer = setTimeout(() => {
+      const a = document.activeElement, id = a?.id, rate = a?.dataset?.bnrate, pos = a?.selectionStart;
+      renderBonus();
+      const b = id ? document.getElementById(id) : rate ? document.querySelector(`[data-bnrate="${rate}"]`) : null;
+      if (b) { b.focus({ preventScroll: true }); try { b.setSelectionRange(pos, pos); } catch {} }
+    }, 350);
+  }
+
+  // ---------------------------------------------------------------- 🧮 배당 포트폴리오 짜보기 (배당금 탭)
+  // 투자금과 종목·비중을 넣으면 현재가로 몇 주 살 수 있는지, 그만큼 들고 있으면 배당을 얼마나 받는지(최근 1년 배당 기준) 계산한다.
+  const SIM_KEY = 'cw.divSim';
+  let simCfg = Object.assign({ amount: 40000, unit: 'manwon', rows: [{ t: 'SCHD', w: 40 }, { t: 'JEPI', w: 30 }, { t: 'O', w: 30 }] }, readJSON(SIM_KEY, {}) || {});
+  state.simData = {};
+  state.simErr = {};
+  const SIM_PRESETS = [['SCHD · JEPI · O', [['SCHD', 40], ['JEPI', 30], ['O', 30]]], ['월배당', [['JEPI', 34], ['JEPQ', 33], ['O', 33]]], ['고배당 ETF', [['SCHD', 34], ['VYM', 33], ['HDV', 33]]], ['커버드콜', [['JEPQ', 40], ['QYLD', 30], ['MSTY', 30]]]];
+  async function loadSimData() {
+    const syms = [...new Set(simCfg.rows.map((r) => r.t).filter((t) => TICKER_RE.test(t)))];
+    await Promise.all(syms.map(async (s) => {
+      const c = state.simData[s] || (state.divData[s] ? { t: state.divData[s].t, d: state.divData[s].d } : null);
+      if (c && Date.now() - c.t < 3 * 3600000) { state.simData[s] = c; return; }
+      try {
+        const j = await getJ(`${NEWS_API}/dividends?s=${s}`, 20000);
+        if (j.error) throw new Error(j.error);
+        state.simData[s] = { t: Date.now(), d: j };
+        delete state.simErr[s];
+      } catch (e) { state.simErr[s] = String(e.message || e); }
+    }));
+  }
+  // 최근 1년 주당 배당(세전). 상장 1년이 안 된 종목은 지금까지 낸 배당을 1년으로 늘려 계산
+  function trailingDps(D) {
+    const ev = (D?.events || []).slice().sort((a, b) => a.ex.localeCompare(b.ex));
+    if (!ev.length) return { dps: 0, n: 0, months: [] };
+    const from = addDays(isoToday(), -365), last = ev.filter((e) => e.ex > from);
+    let dps = last.reduce((a, e) => a + e.amt, 0);
+    const first = ev[0].ex;
+    if (first > from) { const days = Math.max(30, daysBetween(first, isoToday())); dps = dps * Math.min(4, 365 / days); }
+    const months = Array(12).fill(0);
+    for (const e of last) months[+e.ex.slice(5, 7) - 1] += e.amt;
+    return { dps, n: last.length, months };
+  }
+  function simCalc() {
+    const fx = state.quote?.fx?.rate;
+    const amt = +simCfg.amount || 0;
+    const budget = simCfg.unit === 'usd' ? amt : fx ? (amt * 1e4) / fx : null; // 달러로 계산
+    const rows = simCfg.rows.filter((r) => r.t);
+    const wSum = rows.reduce((a, r) => a + Math.max(0, +r.w || 0), 0) || 1;
+    const out = rows.map((r) => {
+      const D = state.simData[r.t]?.d, px = D?.price;
+      const share = Math.max(0, +r.w || 0) / wSum, alloc = budget != null ? budget * share : null;
+      const qty = px && alloc != null ? Math.floor(alloc / px) : null;
+      const cost = qty != null ? qty * px : null;
+      const T = trailingDps(D);
+      const yearGross = qty != null ? qty * T.dps : null;
+      return { ...r, D, px, share, alloc, qty, cost, dps: T.dps, n: T.n, months: T.months.map((m) => (qty || 0) * m), yearGross, yearNet: yearGross != null ? yearGross * 0.85 : null, yld: px && T.dps ? T.dps / px : null, err: state.simErr[r.t], name: D?.name };
+    });
+    const tot = (k) => out.reduce((a, r) => a + (r[k] || 0), 0);
+    const months = Array(12).fill(0); for (const r of out) r.months.forEach((m, i) => { months[i] += m * 0.85; });
+    const cost = tot('cost');
+    return { fx, budget, rows: out, cost, left: budget != null ? budget - cost : null, yearGross: tot('yearGross'), yearNet: tot('yearNet'), months, yld: cost ? tot('yearGross') / cost : null, ready: out.length && out.every((r) => r.px != null) };
+  }
+  function renderDivSim() {
+    const el = document.getElementById('c-divsim');
+    if (!el) return;
+    const S = simCalc(), fx = S.fx, krw = (v) => (fx && v != null ? manwon(v * fx) : '–');
+    const MON = EN ? ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'] : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+    const mMax = Math.max(1e-9, ...S.months);
+    const warn = fx && S.yearGross * fx > 2e7;
+    card('divsim', {
+      title: '🧮 배당 포트폴리오 짜보기', sub: '투자금 · 종목 · 비중 → 살 수 있는 주식과 예상 배당',
+      easy: '가진 돈으로 배당주를 산다면 지금 가격으로 몇 주를 살 수 있고, 그만큼 들고 있으면 1년에 배당을 얼마나 받는지 계산해요. 실제 보유 종목과는 따로 저장돼요.',
+      info: INFO.divsim,
+      body: `<div class="sim-amt">
+          <label class="bn-f"><span>투자금</span><div class="bn-in"><input inputmode="decimal" id="sim-amount" value="${esc(String(simCfg.amount ?? ''))}" aria-label="투자금"><em>${simCfg.unit === 'usd' ? '달러' : '만원'}</em></div>
+          <small>${simCfg.unit === 'usd' ? (fx ? `≈ ${manwon((+simCfg.amount || 0) * fx)} · 환율 ${nf(0).format(fx)}원` : '') : `${manwon((+simCfg.amount || 0) * 1e4)}${fx ? ` ≈ ${usd((+simCfg.amount || 0) * 1e4 / fx)} · 환율 ${nf(0).format(fx)}원` : ''}`}</small></label>
+          <div class="sim-unit" role="group" aria-label="단위">${[['manwon', '원'], ['usd', '$']].map(([k, l]) => `<button type="button" data-simunit="${k}" aria-pressed="${simCfg.unit === k}">${l}</button>`).join('')}</div>
+        </div>
+        <div class="sim-presets">${SIM_PRESETS.map(([l], i) => `<button type="button" class="chip-btn sm" data-simpre="${i}">${l}</button>`).join('')}</div>
+        <div class="sim-rows">${simCfg.rows.map((r, i) => `<div class="sim-row" data-simrow="${i}"><input class="sim-t" value="${esc(r.t)}" placeholder="티커" aria-label="티커" autocapitalize="characters"><div class="bn-in"><input class="sim-w" inputmode="decimal" value="${esc(String(r.w ?? ''))}" aria-label="비중"><em>%</em></div><button type="button" class="f-rm" data-simrm="${i}" aria-label="이 종목 빼기">×</button></div>`).join('')}</div>
+        <div class="sim-act"><button type="button" class="btn-ghost sm" data-simadd="1">+ 종목 추가</button><button type="button" class="btn-primary sim-run" data-simrun="1">계산하기</button></div>
+        ${S.rows.some((r) => r.px != null || r.err) ? `<div class="div-scroll"><table class="div-tbl sim-tbl"><thead><tr><th>종목</th><th>현재가</th><th>살 수 있는 주식</th><th>투자액</th><th>연 배당(세후)</th><th>배당률</th></tr></thead><tbody>
+          ${S.rows.map((r) => `<tr><td><b>${esc(r.t)}</b>${r.err ? `<small class="warn">찾지 못했어요</small>` : r.name ? `<small>${esc(r.name).slice(0, 26)}</small>` : ''}</td><td>${r.px != null ? price(r.px) : '–'}</td><td>${r.qty != null ? nf(0).format(r.qty) + '주' : '–'}</td><td>${r.cost != null ? usd2(r.cost) : '–'}<small>${pctPlain(r.share, 0)}</small></td><td>${r.yearNet != null ? usd2(r.yearNet) : '–'}<small>${r.n ? `${r.n}회 · 주당 ${price(r.dps)}` : '배당 없음'}</small></td><td>${r.yld != null ? pctPlain(r.yld, 1) : '–'}</td></tr>`).join('')}
+          </tbody></table></div>` : ''}
+        ${S.ready ? `<div class="sim-sum">
+            <div><span>1년 예상 배당(세후)</span><b>${usd2(S.yearNet)}</b><small>${krw(S.yearNet)}</small></div>
+            <div><span>한 달 평균</span><b>${usd2(S.yearNet / 12)}</b><small>${krw(S.yearNet / 12)}</small></div>
+            <div><span>포트폴리오 배당률</span><b>${pctPlain(S.yld, 2)}</b><small>세전 · 최근 1년 배당 기준</small></div>
+            <div><span>실제 투자액 · 남는 돈</span><b>${usd2(S.cost)}</b><small>남는 돈 ${usd2(S.left)}</small></div>
+          </div>
+          <div class="sim-months" aria-label="월별 예상 배당">${S.months.map((m, i) => `<div title="${i + 1}월 ${usd2(m)}"><i style="height:${Math.max(2, (m / mMax) * 100)}%"></i><span>${MON[i]}</span></div>`).join('')}</div>
+          <p class="note">월별 막대는 최근 1년 배당락일이 있던 달 기준(세후)이에요. 배당은 바뀔 수 있고 과거 배당이 미래를 보장하지 않아요. 미국 원천징수 15%만 뺀 금액이에요.${warn ? ' <b class="warn">⚠ 연 배당이 2,000만원을 넘으면 금융소득종합과세 대상이 될 수 있어요.</b>' : ''}</p>` : `<p class="note">${S.rows.length ? '계산하기를 누르면 현재가와 최근 1년 배당을 받아 와요.' : '종목을 추가해 주세요.'}</p>`}`,
+    });
+  }
+  function readSimForm() {
+    const a = document.getElementById('sim-amount');
+    if (a) simCfg.amount = parseFloat(a.value.replace(/[,\s]/g, '')) || 0;
+    const rows = [];
+    for (const r of document.querySelectorAll('.sim-row')) rows.push({ t: r.querySelector('.sim-t').value.trim().toUpperCase(), w: parseFloat(r.querySelector('.sim-w').value) || 0 });
+    if (document.querySelector('.sim-row')) simCfg.rows = rows;
+    writeJSON(SIM_KEY, simCfg);
+  }
+  async function runSim() {
+    readSimForm();
+    markUse('divsim');
+    const bad = simCfg.rows.find((r) => r.t && !TICKER_RE.test(r.t));
+    if (bad) { toast(`${esc(bad.t)}: 미국 티커로 넣어 주세요(예: SCHD)`, true); return; }
+    const btn = document.querySelector('[data-simrun]'); if (btn) { btn.disabled = true; btn.textContent = '계산 중…'; }
+    if (!state.quote?.fx) await loadQuote().catch(() => {});
+    await loadSimData();
+    renderDivSim();
+    document.getElementById('c-divsim')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  // 성과급 → 배당 포트폴리오: 실수령액을 투자금으로 넣고 배당금 탭으로
+  function bonusToSim() {
+    const R = bonusCalc();
+    if (!R.ready) return;
+    simCfg.unit = 'manwon'; simCfg.amount = Math.floor(R.net / 1e4);
+    writeJSON(SIM_KEY, simCfg);
+    state.fireTab = 'div'; savePref('fireTab', 'div'); applyFireTab(); renderDiv();
+    renderDivSim();
+    runSim();
+  }
+
   // 시세(보유 종목·경쟁사·환율): Fire 화면이거나 CRCL 외 종목을 보고 있을 때 15초마다
   let quoteInflight = null;
   function loadQuote() { return (quoteInflight ||= fetchQuote().finally(() => { quoteInflight = null; })); }
   async function fetchQuote() {
     try {
-      const extra = [...new Set([...WATCH.filter((x) => STOCK_INFO[x]?.custom), ...fireExtraSyms()])];
+      const extra = [...new Set([...WATCH.filter((x) => STOCK_INFO[x]?.custom && US_SYM.test(x)), ...fireExtraSyms()])];
+      const kr = WATCH.filter(isKR);
+      const krP = kr.length ? getJ(`${NEWS_API}/krquote?s=${kr.join(',')}`, 10000).then((k) => { if (!k.error) state.krq = { ...(state.krq || {}), ...k }; }).catch(() => {}) : null;
       const j = await getJ(`${NEWS_API}/quote${extra.length ? `?x=${extra.join(',')}` : ''}`, 15000);
+      await krP;
       if (j.error) throw new Error(j.error);
       state.quote = j;
       for (const sym of Object.keys(live)) applyLive(sym); // 방금 들어온 실시간 체결가가 더 최신이면 유지
@@ -2972,7 +3235,13 @@
   // 관심 종목: 기본 4종목 + 사용자가 추가한 종목(이 기기에만 저장). 순서도 사용자가 정한다.
   const BUILTIN = ['CRCL', 'JOBY', 'SPCX', 'TEM'];
   const BUILTIN_OTHER = ['JOBY', 'SPCX', 'TEM']; // 서버 수집기가 공매도를 모으는 종목
-  const SYM_OK = /^[A-Z]{1,5}(\.[A-Z])?$/;
+  // 한국 종목: 종목코드.KS(코스피)·.KQ(코스닥). 시세는 네이버 증권(원), 차트는 Yahoo, 미국 전용 자료(공매도·13F·애널리스트·옵션·SEC 실적)는 없다
+  const KR_RE = /^[0-9A-Z]{6}\.(KS|KQ)$/, US_SYM = /^[A-Z]{1,5}(\.[A-Z])?$/;
+  const isKR = (s) => KR_RE.test(String(s || ''));
+  const SYM_OK = /^([A-Z]{1,5}(\.[A-Z])?|[0-9A-Z]{6}\.(KS|KQ))$/;
+  const wonPx = (v) => (v == null || !isFinite(v) ? '–' : nf(0).format(Math.round(v)) + (EN ? ' KRW' : '원'));
+  const pxS = (sym, v) => (isKR(sym) ? wonPx(v) : price(v));
+  const symLabel = (sym) => (isKR(sym) ? STOCK_INFO[sym]?.short || sym.slice(0, 6) : sym);
   const WATCH_KEY = 'cw.watch';
   const watchCfg = (() => { const w = readJSON(WATCH_KEY, null); return w?.list?.length ? { list: w.list, custom: w.custom || {} } : { list: BUILTIN.slice(), custom: {} }; })();
   // 추가한 종목의 기본 설정(이름·색·관련어). 로고는 이니셜.
@@ -2980,6 +3249,15 @@
   const LOGOS = new Set(String(window.__LOGOS || '').split(' ').filter(Boolean));
   const logoPath = (sym) => (LOGOS.has(sym) ? `assets/logos/t/${sym}.png` : null);
   function customInfo(sym, meta = {}) {
+    if (isKR(sym)) {
+      const name = String(meta.name || sym.slice(0, 6)), hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
+      const short = name.length > 7 ? name.slice(0, 6) + '…' : name;
+      return {
+        name, short, mark: name[0], color: `hsl(${hue} 62% 60%)`, logo: logoPath(sym), cik: null, peer: null, peerNote: '', mode: 'growth', custom: true, kr: true,
+        exchange: meta.exchange || (sym.endsWith('.KQ') ? 'KOSDAQ' : 'KOSPI'), earnTitle: `${short} 실적`, industry: null, industryBadge: '', relBadge: short,
+        relRe: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), earnNote: '',
+      };
+    }
     const name = String(meta.name || sym).replace(/,?\s+(Inc|Corp|Corporation|Ltd|Limited|Holdings?|Group|plc|Co|Company|Incorporated)\.?$/i, '').replace(/,?\s+(Inc|Corp|Ltd)\.?$/i, '').trim() || sym;
     const word = name.split(/\s+/)[0].replace(/[^\w&.-]/g, '');
     const hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
@@ -3036,8 +3314,8 @@
       const U = NEWS_UI[sym], at = Date.now();
       savePref(U.seenKey, String(at)); seen[sym] = { at, prev: at }; U.filter = 'all';
     }
-    TAB_SETS[sym] ||= [['home', 'Home', 'home'], ['sprice', sym, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']];
-    if (!FIRE_TICKERS[sym] || FIRE_TICKERS[sym] === sym) FIRE_TICKERS[sym] = `${sym} · ${STOCK_INFO[sym].name}`;
+    TAB_SETS[sym] ||= tabsFor(sym);
+    if (US_SYM.test(sym) && (!FIRE_TICKERS[sym] || FIRE_TICKERS[sym] === sym)) FIRE_TICKERS[sym] = `${sym} · ${STOCK_INFO[sym].name}`; // Fire·배당은 미국 종목만
     refreshFireTickers();
   }
 
@@ -3189,7 +3467,8 @@
   const TAB_SETS = {
     CRCL: [['home', 'Home', 'home'], ['crcl', 'CRCL', 'chart'], ['usdc', 'USDC', 'usdc'], ['arc', 'Arc', 'arc'], ['earn', 'Earnings', 'earn'], ['news', 'News', 'news']],
   };
-  for (const s of OTHER) TAB_SETS[s] = [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']];
+  const tabsFor = (s) => (isKR(s) ? [['home', 'Home', 'home'], ['sprice', symLabel(s).replace('…', ''), 'chart'], ['snews', 'News', 'news']] : [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']]);
+  for (const s of OTHER) TAB_SETS[s] = tabsFor(s);
   const OLD_VIEWS = { jprice: 'sprice', jearn: 'searn', jnews: 'snews' }; // 예전 주소(#jprice 등) 호환
   // 종목 바로가기 링크(?s=JOBY)로 들어오면 그 종목부터 보여준다
   const linkStock = (new URLSearchParams(location.search).get('s') || '').toUpperCase();
@@ -3200,7 +3479,7 @@
   state.analyst = {};
   state.holdTab = loadPref('holdTab', 'top');
   const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null) || st(sym).short || null;
-  const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst', 'options'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', 'options',
+  const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst', 'options'] : isKR(sym) ? ['schart', 'snews'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', 'options',
     ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : []), ...(STOCK_INFO[sym]?.custom ? ['sshort'] : [])]);
   const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
@@ -3220,6 +3499,7 @@
 
   // 종목 시세: 바이낸스 선물이 있는 종목(SPCX·TEM)은 CRCL처럼 바이낸스 값만, 나머지(JOBY)는 Nasdaq + Yahoo 실시간 체결
   function pq(sym) {
+    if (isKR(sym)) return state.krq?.[sym] || null;
     if (BN24[sym]) {
       const t = bx[sym]?.t;
       return t ? { price: t.last, pct: t.pct, change: t.last - t.open, prevClose: t.open, status: 'BN24', time: t.E } : null;
@@ -3241,7 +3521,7 @@
     const syms = WATCH;
     if (el.dataset.built !== syms.join(',')) {
       el.innerHTML = syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
-        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(sym[0])}</i>`}<span class="ss-tk">${sym}</span><i class="ss-ed" hidden>실적</i></span>
+        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span><i class="ss-ed" hidden>실적</i></span>
         <span class="ss-px">–</span><em class="ss-ch flat"></em></button>`).join('');
       el.dataset.built = syms.join(',');
     }
@@ -3249,8 +3529,8 @@
       const sym = btn.dataset.stock, p = stockPx(sym);
       const ed = btn.querySelector('.ss-ed'); if (ed) ed.hidden = !earnDay(sym);
       btn.setAttribute('aria-selected', String(sym === state.stock));
-      btn.setAttribute('aria-label', `${STOCK_INFO[sym].name} ${sym} ${p?.price != null ? price(p.price) : ''} ${p?.pct != null ? pct(p.pct, 1) : ''}`);
-      btn.querySelector('.ss-px').textContent = p?.price != null ? price(p.price) : '–';
+      btn.setAttribute('aria-label', `${STOCK_INFO[sym].name} ${sym} ${p?.price != null ? pxS(sym, p.price) : ''} ${p?.pct != null ? pct(p.pct, 1) : ''}`);
+      btn.querySelector('.ss-px').textContent = p?.price != null ? pxS(sym, p.price) : '–';
       const ch = btn.querySelector('.ss-ch');
       ch.className = `ss-ch ${cls(p?.pct)}`;
       ch.textContent = p?.pct != null ? pct(p.pct, 1) : '';
@@ -3290,14 +3570,14 @@
     if (!q) { if (BN24[sym]) setHtml('spx-via', bx[sym]?.err ? '<span class="warn">바이낸스 연결 실패 · 다시 시도 중</span>' : '연결 중…'); return; }
     const last = document.getElementById('spx-last');
     if (last) {
-      last.textContent = price(q.price);
+      last.textContent = pxS(sym, q.price);
       if (sPrev.sym === sym && sPrev.px != null && q.price !== sPrev.px && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         last.classList.remove('flash-up', 'flash-down'); void last.offsetWidth; last.classList.add(q.price > sPrev.px ? 'flash-up' : 'flash-down');
       }
     }
     sPrev = { sym, px: q.price };
-    setHtml('spx-chg', `<span class="${cls(q.pct)}">${arrow(q.pct)} ${q.change >= 0 ? '+' : '-'}$${Math.abs(q.change ?? 0).toFixed(2)} (${pct(q.pct, 2)})</span>`);
-    setHtml('spc-last', price(q.price));
+    setHtml('spx-chg', `<span class="${cls(q.pct)}">${arrow(q.pct)} ${q.change >= 0 ? '+' : '-'}${isKR(sym) ? wonPx(Math.abs(q.change ?? 0)) : '$' + Math.abs(q.change ?? 0).toFixed(2)} (${pct(q.pct, 2)})</span>`);
+    setHtml('spc-last', pxS(sym, q.price));
     if (BN24[sym]) {
       // CRCL 가격 카드와 같은 항목: 24시간 범위·거래대금·펀딩비·미결제약정
       const X = bx[sym], t = X.t;
@@ -3320,7 +3600,8 @@
       return;
     }
     setHtml('spx-via', `<span class="live-dot"></span>${esc(mktStatus(q.status))} · ${isLive(sym) ? '실시간 체결' : '15초마다 갱신'}`);
-    setHtml('spx-time', esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
+    setHtml('spx-time', isKR(sym) ? esc((q.time ? new Date(q.time).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' }) + (EN ? ' KST' : ' 기준') : '') + (q.after?.price && q.status !== 'KR_OPEN' ? ` · ${EN ? 'after-hours' : '시간외'} ${wonPx(q.after.price)}` : ''))
+      : esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
     const S = STOCK_INFO[sym], pr = S.peer ? state.quote?.[S.peer[0]] : null;
     if (pr) setHtml('spx-peer', `$${pr.price?.toFixed(2)} <span class="${cls(pr.pct)}">${pct(pr.pct, 1)}</span>`);
     if (sym === 'SPCX' && ipoPx()) setHtml('spx-ipo', `<span class="${cls(q.price / ipoPx() - 1)}">${pct(q.price / ipoPx() - 1, 1)}</span>`);
@@ -3334,7 +3615,7 @@
     const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString(LOC); };
     // 바이낸스는 24시간 이어지므로 어느 기간이든 마지막 캔들에 현재가 반영, Yahoo는 오늘(1일) 캔들만
     const last = BN24[sym] || range === '1d' || range === 'bn' ? q?.price : null;
-    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : mdLocal, tip, last, ind: !compact });
+    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : mdLocal, tip, last, ind: !compact, fmt: (v) => pxS(sym, v) });
   }
 
   const bxRange = () => (RANGES[state.srange] ? state.srange : '1d'); // 바이낸스 캔들은 1일~3개월
@@ -3344,7 +3625,7 @@
       card('sprice', {
         title: `${sym} 실시간 주가`, sub: `Binance ${BN24[sym]} 무기한 선물 · 24시간 거래`, info: INFO.sprice(sym),
         body: `
-          <div class="px-main"><span class="px-last" id="spx-last">${price(X.t?.last)}</span><span class="px-chg" id="spx-chg"></span></div>
+          <div class="px-main"><span class="px-last" id="spx-last">${pxS(sym, X.t?.last)}</span><span class="px-chg" id="spx-chg"></span></div>
           <div class="px-meta"><span id="spx-via">연결 중…</span><span id="spx-time"></span></div>
           <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 최근 24시간 가격"></canvas></div>
           <div class="px-range" aria-label="24시간 가격 범위"><span id="spx-low">–</span><div class="rb"><i id="spx-rb"></i></div><span id="spx-high">–</span></div>
@@ -3365,17 +3646,17 @@
     const pos = q?.price != null && hi > lo ? (q.price - lo) / (hi - lo) : 0.5;
     const y1 = st(sym).chart['1y'] || ch;
     const stats = sym === 'SPCX'
-      ? `<div><span>상장 후 최고</span><b>${price(y1?.high52)}</b></div><div><span>공모가 대비</span><b id="spx-ipo">–</b><small>공모가 ${price(ipoPx())}</small></div>`
-      : `<div><span>52주 최고</span><b>${price(y1?.high52)}</b></div><div><span>52주 최저</span><b>${price(y1?.low52)}</b></div>`;
+      ? `<div><span>상장 후 최고</span><b>${pxS(sym, y1?.high52)}</b></div><div><span>공모가 대비</span><b id="spx-ipo">–</b><small>공모가 ${pxS(sym, ipoPx())}</small></div>`
+      : `<div><span>52주 최고</span><b>${pxS(sym, y1?.high52)}</b></div><div><span>52주 최저</span><b>${pxS(sym, y1?.low52)}</b></div>`;
     card('sprice', {
-      title: `${sym} 실시간 주가`, sub: `${S.name} · Nasdaq 실시간(장전·장중·장후)`, info: INFO.sprice(sym),
+      title: `${symLabel(sym)} 실시간 주가`, sub: isKR(sym) ? `${S.name} · ${S.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} ${sym.slice(0, 6)} · 네이버 증권 실시간` : `${S.name} · Nasdaq 실시간(장전·장중·장후)`, info: isKR(sym) ? INFO.krprice : INFO.sprice(sym),
       body: `
-        <div class="px-main"><span class="px-last" id="spx-last">${price(q?.price)}</span><span class="px-chg" id="spx-chg"></span></div>
+        <div class="px-main"><span class="px-last" id="spx-last">${pxS(sym, q?.price)}</span><span class="px-chg" id="spx-chg"></span></div>
         <div class="px-meta"><span id="spx-via">불러오는 중…</span><span id="spx-time"></span></div>
         <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 오늘 가격"></canvas></div>
-        <div class="px-range" aria-label="오늘 가격 범위"><span>${price(lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${price(hi)}</span></div>
+        <div class="px-range" aria-label="오늘 가격 범위"><span>${pxS(sym, lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${pxS(sym, hi)}</span></div>
         <div class="px-stats">${stats}${S.peer ? `<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div>` : `<div><span>52주 위치</span><b>${q?.price && y1?.high52 > y1?.low52 ? Math.round(((q.price - y1.low52) / (y1.high52 - y1.low52)) * 100) + '%' : '–'}</b><small>최저 0% · 최고 100%</small></div>`}</div>
-        <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
+        <button type="button" class="link-btn" data-go="sprice:c-spricechart">${isKR(sym) ? '가격 차트 보기' : '가격 차트 · 공매도 · 기관 보유 보기'}${chevron}</button>`,
     });
     sLine('sspark', pts, { compact: true, sym });
     paintStock();
@@ -3385,13 +3666,13 @@
     if (BN24[sym]) {
       const X = bxOf(sym), r = bxRange(), k = X.klines[r];
       let note = '';
-      if (k?.length) note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? k[0][1])} · ${RANGES[r].interval} 캔들`;
+      if (k?.length) note = `${RANGES[r].label} 최고 ${pxS(sym, Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${pxS(sym, Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${pxS(sym, k[0][2] ?? k[0][1])} · ${RANGES[r].interval} 캔들`;
       card('spricechart', {
         title: `${sym} 가격 추이`, sub: `Binance ${BN24[sym]} 무기한 선물`, info: INFO.pricechart,
         body: `
           <div class="seg range" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-srange="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
           ${chartTools('spricechart')}
-          <div class="px-main sm"><span class="px-last" id="spc-last">${price(X.t?.last)}</span><span class="px-chg" id="spc-chg"></span></div>
+          <div class="px-main sm"><span class="px-last" id="spc-last">${pxS(sym, X.t?.last)}</span><span class="px-chg" id="spc-chg"></span></div>
           <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
           <p class="note">${note || '불러오는 중…'}</p>`,
       });
@@ -3405,16 +3686,16 @@
     let note = '';
     if (pts.length) {
       const v = pts.map((p) => p[1]);
-      note = `${SRANGES[r]} 최고 ${price(Math.max(...v))} · 최저 ${price(Math.min(...v))} · 시작 ${price(v[0])}${ch.high52 ? ` · 52주 ${price(ch.low52)}~${price(ch.high52)}` : ''}`;
+      note = `${SRANGES[r]} 최고 ${pxS(sym, Math.max(...v))} · 최저 ${pxS(sym, Math.min(...v))} · 시작 ${pxS(sym, v[0])}${ch.high52 ? ` · 52주 ${pxS(sym, ch.low52)}~${pxS(sym, ch.high52)}` : ''}`;
     }
     const q = state.quote?.[sym];
     const chg = pts.length && q?.price ? q.price / (r === '1d' && (q.prevClose || ch.prevClose) ? (q.prevClose || ch.prevClose) : pts[0][1]) - 1 : null;
     card('spricechart', {
-      title: `${sym} 가격 추이`, sub: `${STOCK_INFO[sym].name} · Yahoo Finance`, info: '',
+      title: `${symLabel(sym)} 가격 추이`, sub: `${STOCK_INFO[sym].name} · Yahoo Finance`, info: '',
       body: `
         <div class="seg range jr" role="group" aria-label="기간 선택">${Object.entries(SRANGES).map(([k, v]) => `<button type="button" data-srange="${k}" aria-pressed="${k === r}">${v}</button>`).join('')}</div>
         ${chartTools('spricechart')}
-        <div class="px-main sm"><span class="px-last" id="spc-last">${price(q?.price)}</span><span class="px-chg">${chg == null ? '' : `<span class="${cls(chg)}">${arrow(chg)} ${pct(chg, 2)}</span> <span class="lbl">${SRANGES[r]} 동안</span>`}</span></div>
+        <div class="px-main sm"><span class="px-last" id="spc-last">${pxS(sym, q?.price)}</span><span class="px-chg">${chg == null ? '' : `<span class="${cls(chg)}">${arrow(chg)} ${pct(chg, 2)}</span> <span class="lbl">${SRANGES[r]} 동안</span>`}</span></div>
         <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
         <p class="note">${note || '불러오는 중…'}</p>`,
     });
@@ -3873,21 +4154,22 @@
     const el = document.getElementById('watch-sheet');
     if (!el || el.hidden) return;
     const q = document.getElementById('watch-q')?.value || '';
+    const typing = document.activeElement?.id === 'watch-q'; // 다시 그린 뒤에도 입력칸에 커서를 둔다(글자를 다 지운 경우 포함)
     const rows = WATCH.map((sym, i) => {
       const S = STOCK_INFO[sym];
       return `<li><span class="ws-logo" style="--sc:${S.color}">${S.logo ? `<img src="${S.logo}" alt="" width="22" height="22">` : esc(sym[0])}</span>
-        <div class="ws-name"><b>${sym}</b><small>${esc(S.name)}${BUILTIN.includes(sym) ? ' · 기본' : ''}</small></div>
+        <div class="ws-name">${S.kr ? `<b>${esc(S.name)}</b><small>${S.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${sym.slice(0, 6)}</small>` : `<b>${sym}</b><small>${esc(S.name)}${BUILTIN.includes(sym) ? ' · 기본' : ''}</small>`}</div>
         <button type="button" class="ws-btn" data-wmove="${i}:-1" aria-label="${sym} 위로" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button type="button" class="ws-btn" data-wmove="${i}:1" aria-label="${sym} 아래로" ${i === WATCH.length - 1 ? 'disabled' : ''}>▼</button>
         <button type="button" class="ws-btn del" data-wdel="${sym}" aria-label="${sym} 삭제" ${WATCH.length < 2 ? 'disabled' : ''}>삭제</button></li>`;
     }).join('');
-    const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String(r.symbol || '?')[0])}</span>`}<div class="ws-name"><b>${esc(r.symbol)}</b><small>${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small></div>
+    const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((r.code ? r.name : r.symbol) || '?')[0])}</span>`}<div class="ws-name">${r.code ? `<b>${esc(r.name)}</b><small>${r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${esc(r.code)}</small>` : `<b>${esc(r.symbol)}</b><small>${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small>`}</div>
       ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}">+ 추가</button>`}</li>`).join('');
     const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
     el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
       <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
-      <label class="ws-search"><input id="watch-q" type="search" placeholder="티커나 영문 회사명 (예: AAPL, Tesla)" autocomplete="off" value="${esc(q)}"></label>
-      ${q ? `<ul class="ws-list">${res || `<li class="empty">${watchResults === null ? '검색 중…' : '검색 결과가 없어요. 영문으로 입력해 보세요.'}</li>`}</ul>` : ''}
+      <label class="ws-search"><input id="watch-q" type="search" placeholder="티커·회사명·종목코드 (예: AAPL, Tesla, 삼성, 005930)" autocomplete="off" value="${esc(q)}"></label>
+      ${q ? `<ul class="ws-list">${res || `<li class="empty">${watchResults === null ? '검색 중…' : '검색 결과가 없어요. 미국 종목은 영문 티커·회사명, 한국 종목은 회사명·종목코드로 찾아 보세요.'}</li>`}</ul>` : ''}
       ${!q ? popularHtml() : ''}
       ${removedBuiltin.length && !q ? `<div class="ws-sub">다시 추가하기</div><ul class="ws-list">${removedBuiltin.map((s) => `<li><div class="ws-name"><b>${s}</b><small>${esc(STOCK_INFO[s].name)} · 기본</small></div><button type="button" class="ws-btn add" data-wadd="${s}">+ 추가</button></li>`).join('')}</ul>` : ''}
       <div class="ws-sub">내 종목 <small>위에서부터 홈 상단에 보여요</small></div>
@@ -3895,7 +4177,7 @@
       <p class="note">🔒 종목 목록은 이 기기(브라우저)에 저장돼요. '많이 추가한 종목' 순위를 위해 새로 추가한 티커 이름만 익명으로 모으고, 수량·금액 같은 보유 정보는 보내지 않아요. 기본 4종목(CRCL·JOBY·SPCX·TEM)은 전용 화면(FAA 인증·보호예수 등)이 있고, 새로 추가한 종목은 공통 화면(주가·실적·뉴스·공시·공매도·기관·애널리스트·옵션)으로 보여요. 바이낸스에 24시간 주식 선물이 있는 종목은 CRCL처럼 바이낸스 가격으로 표시돼요.</p>
     </div>`;
     const inp = document.getElementById('watch-q');
-    if (inp && q) { inp.focus(); inp.setSelectionRange(q.length, q.length); }
+    if (inp && (q || typing)) { inp.focus({ preventScroll: true }); inp.setSelectionRange(q.length, q.length); }
   }
   // 인기 종목 순위: 관심 종목에 '새로 추가한' 티커 이름만 익명으로 보낸다(기본 4종목·수량·금액·보유 정보는 보내지 않음).
   // 목록이 바뀌었을 때와 하루 한 번만. 서버는 3대 이상 기기가 추가한 종목만 공개 순위(/api/popular)에 보여 준다.
@@ -3924,12 +4206,13 @@
     if (!list.length) return '';
     return `<div class="ws-sub">🔥 다른 사람들이 많이 추가한 종목 <small>최근 30일</small></div>
       <ul class="ws-list ws-pop">${list.map((x) => `<li>${logoPath(x.sym) ? `<span class="ws-logo"><img src="${logoPath(x.sym)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(x.sym[0])}</span>`}
-        <div class="ws-name"><b>${esc(x.sym)}</b><small>${x.n}명이 추가</small></div><button type="button" class="ws-btn add" data-wpop="${esc(x.sym)}">+ 추가</button></li>`).join('')}</ul>`;
+        <div class="ws-name"><b>${esc(isKR(x.sym) ? x.sym.slice(0, 6) : x.sym)}</b><small>${isKR(x.sym) ? '한국 · ' : ''}${x.n}명이 추가</small></div><button type="button" class="ws-btn add" data-wpop="${esc(x.sym)}">+ 추가</button></li>`).join('')}</ul>`;
   }
   // 인기 종목에서 추가: 회사 이름을 찾아서 넣는다
   async function addPopular(sym, btn) {
     if (btn) { btn.disabled = true; btn.textContent = '…'; }
     let meta = {};
+    if (isKR(sym)) { addWatch(sym, { name: await krName(sym) || sym.slice(0, 6), exchange: sym.endsWith('.KQ') ? 'KOSDAQ' : 'KOSPI' }); return; }
     try {
       const r = (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(sym)}`, 8000)).results || [];
       const m = r.find((x) => x.symbol === sym);
@@ -3937,11 +4220,26 @@
     } catch {}
     addWatch(sym, meta);
   }
+  // 한국 상장 종목 목록(assets/krx.json · tools/fetch_krx.py) — 한글이나 숫자로 찾을 때 처음 한 번 받는다
+  let krxList = null;
+  const loadKrx = () => (krxList ||= fetch('assets/krx.json?v=1', { cache: 'force-cache' }).then((r) => r.json()).catch(() => { krxList = null; return []; }));
+  const krName = async (sym) => (await loadKrx()).find((r) => `${r[0]}.${r[2]}` === sym)?.[1] || null;
+  function krSearch(list, q) {
+    const t = q.trim().toUpperCase().replace(/\s+/g, ''), out = [];
+    for (const [code, name, mk, cap] of list) {
+      const n = name.toUpperCase().replace(/\s+/g, '');
+      const score = n === t ? 0 : code === t ? 0 : n.startsWith(t) ? 1 : code.startsWith(t) ? 1.5 : n.includes(t) ? 2 : -1;
+      if (score >= 0) out.push({ symbol: `${code}.${mk}`, name, exchange: mk === 'KQ' ? 'KOSDAQ' : 'KOSPI', code, score, cap: cap || 0 });
+    }
+    return out.sort((a, b) => a.score - b.score || b.cap - a.cap).slice(0, 25);
+  }
   function watchSearch(q) {
     clearTimeout(watchSearchTimer);
     if (!q.trim()) { watchResults = []; renderWatchSheet(); return; }
     watchSearchTimer = setTimeout(async () => {
       watchResults = null; renderWatchSheet();
+      const korean = /[가-힣ㄱ-ㅎ]/.test(q) || /^\s*\d/.test(q);
+      if (korean) { watchResults = krSearch(await loadKrx(), q); if ((document.getElementById('watch-q')?.value || '') === q) renderWatchSheet(); return; }
       try { watchResults = (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(q.trim())}`, 10000)).results || []; } catch { watchResults = []; }
       if ((document.getElementById('watch-q')?.value || '') === q) renderWatchSheet();
     }, 300);
@@ -3952,7 +4250,7 @@
     WATCH.push(sym);
     saveWatch();
     afterWatchChange(sym);
-    toast(`✓ ${sym} 추가 · 홈 상단에서 고를 수 있어요`);
+    toast(`✓ ${esc(symLabel(sym))} 추가 · 홈 상단에서 고를 수 있어요`);
   }
   function removeWatch(sym) {
     if (WATCH.length < 2) return;
@@ -4000,6 +4298,7 @@
     } catch {}
   }
   function liveSubscribe(sym) {
+    if (isKR(sym)) return; // 한국 종목은 네이버 시세(15초)로
     if (!YF_SYMS.includes(sym)) YF_SYMS.push(sym);
     try { if (yws?.readyState === 1) yws.send(JSON.stringify({ subscribe: [sym] })); } catch {}
   }
@@ -4305,6 +4604,7 @@
     return out;
   }
   function renderSKpis(sym = state.stock) {
+    if (isKR(sym)) return;
     const el = document.getElementById('skpis');
     if (!el) return;
     const T = commonTiles(sym), E = st(sym).earn, Q = E?.quarters || [], last = Q.at(-1);
@@ -4340,6 +4640,7 @@
 
   // 규칙 기반 자동 요약 (종목 공통 + 종목별 항목)
   function renderSSummary(sym = state.stock) {
+    if (isKR(sym)) return;
     if (!document.getElementById('c-ssummary') || !isOther(sym)) return;
     const S = STOCK_INFO[sym], items = [];
     const add = (tone, go, html, tag, weight = 1) => items.push({ tone, go, html, tag, weight });
@@ -4420,7 +4721,14 @@
     if (!isOther(sym)) { for (const j of [() => renderHolders('CRCL', 'holders'), () => renderAnalyst('CRCL'), () => renderInsider('CRCL'), () => renderOptions('CRCL'), () => renderEarnDay('CRCL')]) { try { j(); } catch (e) { console.error(e); } } return; }
     document.getElementById('c-faa').hidden = sym !== 'JOBY';
     document.getElementById('c-lockup').hidden = sym !== 'SPCX';
-    const S = STOCK_INFO[sym];
+    const S = STOCK_INFO[sym], kr = isKR(sym);
+    for (const id of ['c-sshort', 'c-sanalyst', 'c-sholders', 'c-sinsider', 'c-soptions', 'skpis', 'c-ssummary']) { const el = document.getElementById(id); if (el) el.hidden = kr; }
+    const kh = document.querySelector('#home-stock .group-h'); if (kh) kh.hidden = kr;
+    if (kr) {
+      document.getElementById('c-searnday').hidden = true;
+      for (const j of [() => renderSPriceCard(sym), () => renderSPriceChart(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
+      return;
+    }
     const jobs = [() => renderSPriceCard(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
       () => renderShort(shortOf(sym), 'sshort', S.short), () => renderHolders(sym, 'sholders'), () => renderAnalyst(sym), () => renderInsider(sym), () => renderOptions(sym), () => renderEarnDay(sym), () => renderSEarnings(sym),
       () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge];
@@ -4430,7 +4738,7 @@
   // ---------------------------------------------------------------- 실시간 체결가 (Yahoo Finance 스트림 · 바이낸스 24시간 선물)
   // Nasdaq 시세(15초)는 장 상태·전일 종가를 위한 기본값으로 두고, 체결이 날 때마다 오는 Yahoo 스트림 값으로 바로 덮어쓴다
   // (미국 장전·장중·장후). SPCX·TEM은 바이낸스에도 24시간 거래되는 주식 선물이 있어 밤·주말 흐름을 함께 보여준다.
-  const YF_SYMS = ['JOBY', 'SPCX', 'TEM', 'ACHR', 'RKLB', 'GH', 'CRCA', 'CRCL', ...Object.keys(watchCfg.custom).filter((x) => SYM_OK.test(x))];
+  const YF_SYMS = ['JOBY', 'SPCX', 'TEM', 'ACHR', 'RKLB', 'GH', 'CRCA', 'CRCL', ...Object.keys(watchCfg.custom).filter((x) => US_SYM.test(x))];
   const live = {}; // 티커 → { price, pct, change, at }
   let yws = null, ywsTries = 0, ywsTimer = null;
   const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -4655,11 +4963,13 @@
     toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
   }
   // kind: 'manual'(새로고침 버튼: 전 항목) · 'auto'(5분·화면 복귀: 무거운 대출 제외) · 'light'(1분: Circle·cirBTC)
+  const freshSync = () => state.syncKind === 'manual' || state.syncKind === 'boot'; // 서버 저장값 대신 새로 받기
   const SYNC_SETS = {
     manual: ['market', 'feargreed', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
     auto: ['market', 'feargreed', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
     light: ['circle', 'cirbtc', 'quote', 'market', 'mnews'],
   };
+  SYNC_SETS.boot = SYNC_SETS.manual; // 사이트를 처음 열 때: 전 항목을 새로(조용히)
   let manualRunning = false, manualQueued = false, doneTimer = null;
   function setRefreshUi(mode) { // 'loading' | 'done' | 'fail' | 'idle'
     const btn = document.getElementById('refresh');
@@ -4730,6 +5040,7 @@
     if (v === 'searn') return S.earnTitle;
     if (v === 'snews') return `${S.short} 뉴스 · 공시`;
     if (v === 'fire' && state.fireTab === 'div') return 'Fire · 배당금';
+    if (v === 'fire' && state.fireTab === 'bonus') return 'Fire · 성과급 계산기';
     return VIEW_TITLES[v];
   };
   const scrollMem = {};
@@ -4745,7 +5056,7 @@
     savePref('view', v);
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
     fireLoop(v === 'fire' || isOther());
-    if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
+    if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
     if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
@@ -4778,6 +5089,8 @@
   });
   document.addEventListener('input', (ev) => {
     if (ev.target.id === 'watch-q') { watchSearch(ev.target.value); return; }
+    if (ev.target.closest?.('#c-bonus')) { bonusInput(); return; }
+    if (ev.target.closest?.('#c-divsim')) { readSimForm(); return; }
     if (ev.target.id === 'sim-range') {
       fireSim = parseFloat(ev.target.value);
       const t = document.getElementById('sim-top');
@@ -4858,7 +5171,25 @@
     const fg = ev.target.closest('[data-ftabgo]');
     if (fg) { state.fireTab = fg.dataset.ftabgo; savePref('fireTab', state.fireTab); showView('fire'); window.scrollTo({ top: 0 }); return; }
     const ft = ev.target.closest('[data-ftab]');
-    if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); loadDividends().catch(() => {}); } window.scrollTo({ top: 0 }); return; }
+    if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); renderDivSim(); loadDividends().catch(() => {}); } if (state.fireTab === 'bonus') renderBonus(); window.scrollTo({ top: 0 }); return; }
+    // 성과급 계산기
+    const bco = ev.target.closest('[data-bnco]');
+    if (bco) { readBonusForm(); bonusCfg.co = bco.dataset.bnco; writeJSON(BONUS_KEY, bonusCfg); renderBonus(); return; }
+    if (ev.target.closest('[data-bngo]')) { bonusToSim(); return; }
+    // 배당 포트폴리오 짜보기
+    const su = ev.target.closest('[data-simunit]');
+    if (su) {
+      readSimForm();
+      const fx = state.quote?.fx?.rate, to = su.dataset.simunit;
+      if (to !== simCfg.unit && fx) simCfg.amount = to === 'usd' ? Math.round(((+simCfg.amount || 0) * 1e4) / fx) : Math.round(((+simCfg.amount || 0) * fx) / 1e4);
+      simCfg.unit = to; writeJSON(SIM_KEY, simCfg); renderDivSim(); return;
+    }
+    const spre = ev.target.closest('[data-simpre]');
+    if (spre) { readSimForm(); simCfg.rows = SIM_PRESETS[+spre.dataset.simpre][1].map(([t, w]) => ({ t, w })); writeJSON(SIM_KEY, simCfg); renderDivSim(); runSim(); return; }
+    if (ev.target.closest('[data-simadd]')) { readSimForm(); simCfg.rows.push({ t: '', w: 0 }); renderDivSim(); document.querySelector('.sim-row:last-child .sim-t')?.focus(); return; }
+    const srm = ev.target.closest('[data-simrm]');
+    if (srm) { readSimForm(); simCfg.rows.splice(+srm.dataset.simrm, 1); writeJSON(SIM_KEY, simCfg); renderDivSim(); return; }
+    if (ev.target.closest('[data-simrun]')) { runSim(); return; }
     if (ev.target.closest('#d-add')) { syncRowsFromDom(); divRows.push({}); paintRows(); return; }
     const drm = ev.target.closest('[data-drm]');
     if (drm) { syncRowsFromDom(); divRows.splice(+drm.dataset.drm, 1); paintRows(); return; }
@@ -4903,6 +5234,7 @@
       return;
     }
     if (ev.target.closest('[data-welcome-close]')) { savePref('welcomed', '1'); renderWelcome(false); }
+    if (ev.target.closest('[data-news-close]')) { savePref('seenNews', window.__WHATSNEW?.id || ''); const n = document.getElementById('c-whatsnew'); if (n) n.hidden = true; }
   });
 
   // ---------------------------------------------------------------- 방문 집계(익명) · 공유
@@ -4933,7 +5265,7 @@
   // 순서는 functions/api/admin/stats.js 의 USE_BITS 와 같아야 한다
   function markUse(name) {
     try {
-      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog'];
+      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr'];
       const i = BITS.indexOf(name);
       if (i < 0 || !IS_PROD) return;
       const U = (window.__fpUse ||= { day: '', sent: 0, pend: 0, t: null });
@@ -4966,6 +5298,19 @@
     } catch {}
   }
   // 처음 온 방문자에게만 사용법 안내(닫으면 다시 안 보임). 기존 사용자(저장된 화면이 있는 기기)는 건너뛴다
+  // 새로 업데이트된 내용(assets/whatsnew.js ← CHANGELOG): 전에 와 본 사람에게 업데이트마다 한 번 보여준다. 처음 온 사람은 사용법 안내만
+  function renderWhatsNew(firstVisit) {
+    const el = document.getElementById('c-whatsnew'), W = window.__WHATSNEW;
+    if (!el) return;
+    if (!W?.items?.length) { el.hidden = true; return; }
+    if (firstVisit) { savePref('seenNews', W.id); el.hidden = true; return; }
+    if (loadPref('seenNews', '') === W.id) { el.hidden = true; return; }
+    const items = EN && W.en?.length ? W.en : W.items;
+    el.hidden = false;
+    el.innerHTML = `<div class="wc-head"><b>🎉 ${EN ? 'What’s new' : '새로 업데이트됐어요'}${W.ver ? ` <small>${esc(W.ver)}</small>` : ''}</b><button type="button" class="wc-x" data-news-close aria-label="${EN ? 'Close' : '닫기'}">×</button></div>
+      <ul class="wn-list">${items.slice(0, 7).map((x) => `<li>${x}</li>`).join('')}</ul>
+      <div class="wn-act"><a class="btn-ghost sm" href="updates?ref=whatsnew">${EN ? 'All updates' : '업데이트 소식 전체 보기'} →</a><button type="button" class="btn-primary wc-ok" data-news-close>${EN ? 'Got it' : '확인'}</button></div>`;
+  }
   function renderWelcome(firstVisit) {
     const el = document.getElementById('c-welcome');
     if (!el) return;
@@ -5024,13 +5369,15 @@
   for (const sym of WATCH) if (STOCK_INFO[sym]?.custom) checkBinance(sym);
   bConnect();
   for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
-  refresh('auto');
+  refresh('boot');
   renderWelcome(firstVisit && !MIGRATED);
+  renderWhatsNew(firstVisit && !MIGRATED && !loadPref('welcomed', '') && !loadPref('seenNews', ''));
   if (MIGRATED) setTimeout(() => toast(EN ? '✓ Moved your data from the old address' : '✓ 예전 주소에서 쓰던 보유 정보·관심 종목을 옮겼어요'), 800);
   countVisit();
   if (fireCfg?.positions?.length) markUse('fireSet');
   if (divCfg?.hold?.length) markUse('divSet');
   if (WATCH.some((x) => STOCK_INFO[x]?.custom)) markUse('watch');
+  if (WATCH.some(isKR)) markUse('kr');
   sendPicks();
   document.addEventListener('click', (ev) => {
     if (ev.target.closest?.('a[href*="blog.naver.com"]')) markUse('blog');
