@@ -1248,3 +1248,7 @@ td.name span { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2;
 .wn-act { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .wn-act .btn-ghost { display: grid; place-items: center; height: 40px; text-decoration: none; text-align: center; font-size: 12.5px; }
 .wn-act .wc-ok { width: 100%; }
+.hf-bonus { grid-template-columns: minmax(0, 1fr) auto; }
+.hf-bonus .hb-t { display: grid; gap: 1px; min-width: 0; }
+.hf-bonus .hb-t b { font-size: 13px; font-weight: 700; }
+.hf-bonus .hb-t small { white-space: normal; overflow: visible; }
