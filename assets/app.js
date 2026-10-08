@@ -676,7 +676,7 @@
         plugins: {
           ...noLegend,
           tooltip: {
-            ...tooltip(title, price), enabled: !compact,
+            ...tooltip(title, fmt), enabled: !compact,
             filter: (it) => it.dataset.label === (line ? '종가' : '시가~종가'),
             callbacks: {
               title: (items) => title(items[0]),
@@ -695,7 +695,7 @@
           ? { x: { display: false }, y: { display: false, beginAtZero: false, grace: '6%' } }
           : {
             x: axisX(labels, xf, 5),
-            y: { ...axisY(price), beginAtZero: false, min: yLo - yPad, max: yHi + yPad, ticks: { ...axisY(price).ticks, maxTicksLimit: 5 } },
+            y: { ...axisY(fmt), beginAtZero: false, min: yLo - yPad, max: yHi + yPad, ticks: { ...axisY(fmt).ticks, maxTicksLimit: 5 } },
             ...(hasVol ? { vol: { display: false, beginAtZero: true, max: maxVol * 4.5, grid: { display: false } } } : {}),
           },
       },
@@ -3640,7 +3640,7 @@
       paintStock();
       return;
     }
-    const S = STOCK_INFO[sym], q = state.quote?.[sym], ch = st(sym).chart['1d'];
+    const S = STOCK_INFO[sym], q = isKR(sym) ? pq(sym) : state.quote?.[sym], ch = st(sym).chart['1d'];
     const pts = ch?.points || [];
     const lo = pts.length ? Math.min(...pts.map((p) => p[1])) : null, hi = pts.length ? Math.max(...pts.map((p) => p[1])) : null;
     const pos = q?.price != null && hi > lo ? (q.price - lo) / (hi - lo) : 0.5;
