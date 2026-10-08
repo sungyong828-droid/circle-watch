@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=18';
+    sc.src = 'assets/i18n-en.js?v=19';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2034,12 +2034,14 @@
   // 미국 티커 또는 한국 종목(종목코드.KS/.KQ)
   const FIRE_BASE = Object.keys(FIRE_TICKERS), TICKER_RE = /^([A-Z]{1,5}(\.[A-Z])?|[0-9A-Z]{6}\.(KS|KQ))$/;
   const krTk = (s) => /^[0-9A-Z]{6}\.(KS|KQ)$/.test(String(s || ''));
+  const I18N_KEEP = (window.__i18nKeepSet ||= new Set()); // 영어 보기에서 그대로 둘 한국 종목 이름
+  const keepName = (n) => { if (n && /[가-힣]/.test(n)) I18N_KEEP.add(String(n)); return n; };
   for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (TICKER_RE.test(sym)) FIRE_TICKERS[sym] ||= krTk(sym) ? `${m?.name || sym} · ${sym.slice(0, 6)}` : `${sym} · ${m?.name || sym}`;
   // 관심 종목에서 뺐어도 보유 정보에 남아 있는 종목은 계속 고를 수 있게
   for (const p of readJSON(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= p.ticker;
   // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지 기본 종목. 관심 종목에서 뺀 종목은 목록에서 빠진다
   // (keep: 이미 그 종목으로 저장된 행은 값이 바뀌지 않도록 그 행에만 남긴다)
-  const fireName = (t) => (krTk(t) ? STOCK_INFO[t]?.short || state.divData?.[t]?.d?.name || (FIRE_TICKERS[t] || t).split(' · ')[0].replace(/\.K[SQ]$/, '') : t);
+  const fireName = (t) => (krTk(t) ? keepName(STOCK_INFO[t]?.short || state.divData?.[t]?.d?.name || (FIRE_TICKERS[t] || t).split(' · ')[0].replace(/\.K[SQ]$/, '')) : t);
   const fireTickerOrder = (keep) => [...new Set(['CRCA', ...WATCH, ...FIRE_BASE, ...(keep ? [keep] : [])])].filter((k) => FIRE_TICKERS[k]);
   const firePicked = (k) => FIRE_BASE.includes(k) || WATCH.includes(k);
   // Nasdaq에서 받는 시세에 따로 요청해야 하는 보유 종목(기본 5종목 외)
@@ -2997,6 +2999,7 @@
       ['033780.KS', 'KT&G', '담배·인삼, 반기·연 배당'],
     ]],
   ];
+  for (const c of SIM_CATALOG) for (const x of c[2]) if (krTk(x[0])) keepName(x[1]);
   const simCatName = (t) => SIM_CATALOG.flatMap((c) => c[2]).find((x) => x[0] === t)?.[1];
   let simCat = null; // 펼친 분류
   async function loadSimData() {
@@ -3352,7 +3355,7 @@
   const KR_RE = /^[0-9A-Z]{6}\.(KS|KQ)$/, US_SYM = /^[A-Z]{1,5}(\.[A-Z])?$/;
   const isKR = (s) => KR_RE.test(String(s || ''));
   const SYM_OK = /^([A-Z]{1,5}(\.[A-Z])?|[0-9A-Z]{6}\.(KS|KQ))$/;
-  const wonPx = (v) => (v == null || !isFinite(v) ? '–' : nf(0).format(Math.round(v)) + (EN ? ' KRW' : '원'));
+  const wonPx = (v) => (v == null || !isFinite(v) ? '–' : EN ? `${v < 0 ? '-' : ''}₩${nf(0).format(Math.abs(Math.round(v)))}` : nf(0).format(Math.round(v)) + '원');
   const pxS = (sym, v) => (isKR(sym) ? wonPx(v) : price(v));
   const symLabel = (sym) => (isKR(sym) ? STOCK_INFO[sym]?.short || sym.slice(0, 6) : sym);
   const WATCH_KEY = 'cw.watch';
@@ -3365,6 +3368,7 @@
     if (isKR(sym)) {
       const name = String(meta.name || sym.slice(0, 6)), hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
       const short = name.length > 7 ? name.slice(0, 6) + '…' : name;
+      keepName(name); keepName(short);
       return {
         name, short, mark: name[0], color: `hsl(${hue} 62% 60%)`, logo: logoPath(sym), cik: null, peer: null, peerNote: '', mode: 'growth', custom: true, kr: true,
         exchange: meta.exchange || (sym.endsWith('.KQ') ? 'KOSDAQ' : 'KOSPI'), earnTitle: `${short} 실적`, industry: null, industryBadge: '', relBadge: short,
@@ -4774,7 +4778,7 @@
     const T = K.totals || {}, v = (k) => T[k]?.value || '–', q = pq(sym), E = K.etf;
     const up = K.consensus?.target && q?.price ? K.consensus.target / q.price - 1 : null;
     const tiles = K.type === 'etf' && E ? [
-      tile('시가총액', E.marketValue || '–', `<span class="flat">${esc(E.issuerName || '')}</span>`, 'sprice:c-spricechart'),
+      tile('시가총액', E.marketValue || '–', `<span class="flat">${esc(keepName(E.issuerName) || '')}</span>`, 'sprice:c-spricechart'),
       tile('분배수익률', E.dividendYieldTtm != null ? `${E.dividendYieldTtm}%` : '–', '<span class="flat">최근 1년</span>', 'sprice:c-spricechart'),
       tile('총보수', E.totalFee != null ? `${E.totalFee}%` : v('fundPay'), '<span class="flat">연</span>', 'sprice:c-spricechart'),
       tile('1년 수익률', E.returnRate1y != null ? `<span class="${cls(E.returnRate1y)}">${E.returnRate1y > 0 ? '+' : ''}${E.returnRate1y}%</span>` : '–', `<span class="flat">3개월 ${E.returnRate3m ?? '–'}%</span>`, 'sprice:c-spricechart'),
@@ -4817,7 +4821,7 @@
       title: '애널리스트 의견', sub: `증권사 컨센서스 · 리포트 · 네이버 증권${C?.date ? ` · ${C.date.slice(5).replace('-', '/')} 기준` : ''}`,
       easy: '증권사 애널리스트들이 이 종목을 사라고 하는지(매수) 팔라고 하는지와, 평균적으로 주가가 얼마까지 갈 거라고 보는지(목표주가)예요.',
       body: C || R.length ? `${C ? `<div class="ns-grid h-grid">
-          <div><span>투자의견</span><b>${KR_RATING(C.mean)}</b><small>${C.mean != null ? `5점 만점 ${C.mean.toFixed(2)}` : ''}</small></div>
+          <div><span>투자의견</span><b>${KR_RATING(C.mean)}</b><small>${C.mean != null ? (EN ? `${C.mean.toFixed(2)} / 5` : `5점 만점 ${C.mean.toFixed(2)}`) : ''}</small></div>
           <div><span>평균 목표주가</span><b>${C.target ? wonPx(C.target) : '–'}</b><small>${up != null ? `현재가 대비 <span class="${cls(up)}">${pct(up, 1)}</span>` : ''}</small></div>
         </div>` : ''}
         ${R.length ? `<ul class="kr-rs">${R.map((r) => `<li><a href="https://finance.naver.com/research/company_read.naver?nid=${encodeURIComponent(r.id)}" target="_blank" rel="noopener"><b>${esc(r.title)}</b><small>${esc(r.broker || '')} · ${r.date ? r.date.slice(2).replace(/-/g, '.') : ''}</small></a></li>`).join('')}</ul>` : ''}` : `<p class="note">${K.type === 'etf' ? 'ETF는 애널리스트 의견이 없어요.' : '애널리스트 자료가 없어요.'}</p>`,

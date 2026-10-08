@@ -21,8 +21,8 @@
   const subRe = subKeys.length ? new RegExp(subKeys.map((k) => (/^\d/.test(k) ? '(?<![\\d.,])' : '') + reEsc(k)).join('|'), 'g') : null;
   const subRep = (m, off, str) => {
     let v = sub.get(m) ?? m;
-    if (/^[A-Za-z(#~$]/.test(v) && /[A-Za-z0-9%)$]/.test(str[off - 1] || '')) v = ' ' + v; // 'K계약' → 'K contracts'
-    if (/[A-Za-z)]$/.test(v) && /[A-Za-z0-9$(]/.test(str[off + m.length] || '')) v += ' ';
+    if (/^[A-Za-z(#~$]/.test(v) && /[A-Za-z0-9%)$\uE001]/.test(str[off - 1] || '')) v = ' ' + v; // 'K계약' → 'K contracts'
+    if (/[A-Za-z)]$/.test(v) && /[A-Za-z0-9$(\uE000]/.test(str[off + m.length] || '')) v += ' ';
     return v;
   };
   const WD = { 일: 'Sun', 월: 'Mon', 화: 'Tue', 수: 'Wed', 목: 'Thu', 금: 'Fri', 토: 'Sat' };
@@ -49,6 +49,10 @@
   ];
   // 조각 바꾼 뒤 남은 숫자+단위
   const RULES_B = [
+    // 원화 금액: 1,537조 5,713억 → ₩1,537.6T · 5,713억 → ₩571.3B · 86,052원 → ₩86,052
+    [/(?<![\d.,₩])(\d[\d,]*(?:\.\d+)?)조(?: (\d[\d,]*)억)?/g, (_, a, b) => `₩${(+a.replace(/,/g, '') + (b ? +b.replace(/,/g, '') / 1e4 : 0)).toLocaleString('en-US', { maximumFractionDigits: 1 })}T`],
+    [/(?<![\d.,₩])(\d[\d,]*(?:\.\d+)?)억(?!원)/g, (_, a) => `₩${(+a.replace(/,/g, '') / 10).toLocaleString('en-US', { maximumFractionDigits: 1 })}B`],
+    [/([+-]?)(?<![\d.,])(\d[\d,]*(?:\.\d+)?)원(?![가-힣])/g, '$1₩$2'],
     [/(\d{4})년 (\d{1,2})분기/g, (_, y, q) => `Q${q} ${y}`],
     [/(\d{4})년 (\d{1,2})월/g, (_, y, m) => `${mon(m)} ${y}`],
     [/(\d{4})년/g, '$1'],
@@ -73,14 +77,26 @@
     [/\(([일월화수목금토])\)/g, (_, w) => `(${WD[w]})`],
   ];
   // 영어로 바뀐 말 뒤에 남은 한국어 조사·어미 정리
-  const PART = /([A-Za-z0-9)%$\]’'])(?:으로는|으로|에서|에게|이며|이고|이에요|예요|입니다|은|는|이|가|을|를|의|에|로|와|과|도|만)(?=[\s,.:;·)!?]|$)/g;
+  const PART = /([A-Za-z0-9)%$\]’'\uE001])(?:으로는|으로|에서|에게|이며|이고|이에요|예요|입니다|은|는|이|가|을|를|의|에|로|와|과|도|만)(?=[\s,.:;·)!?]|$)/g;
   const cache = new Map();
+  // 한국 종목 이름(삼성전자·TIGER 미국배당다우존스 등)은 조각 번역으로 망가지지 않게 그대로 둔다 — app.js가 이름을 등록
+  const KEEP = (window.__i18nKeepSet ||= new Set());
+  let keepN = 0, keepRe = null;
+  const syncKeep = () => {
+    if (KEEP.size === keepN) return;
+    keepN = KEEP.size; cache.clear();
+    keepRe = new RegExp([...KEEP].sort((a, b) => b.length - a.length).map(reEsc).join('|'), 'g');
+  };
   function tr(s) {
     if (typeof s !== 'string' || !HAN.test(s)) return s;
+    syncKeep();
     if (cache.has(s)) return cache.get(s);
     const lead = s.match(/^\s*/)[0], trail = s.match(/\s*$/)[0];
     let t = norm(s);
+    const kept = [];
+    if (!exact.has(t) && keepRe) t = t.replace(keepRe, (m) => `\uE000${kept.push(m) - 1}\uE001`);
     if (exact.has(t)) t = exact.get(t);
+    else if (!HAN.test(t)) {} // 이름만 남음
     else {
       for (const [re, rep] of RULES_A) t = t.replace(re, rep);
       if (HAN.test(t) && exact.has(t)) t = exact.get(t);
@@ -89,6 +105,7 @@
       if (HAN.test(t)) t = t.replace(PART, '$1');
       t = t.replace(/([\w%)])· /g, '$1 · ').replace(/ {2,}/g, ' ').replace(/ ([,.)])/g, '$1').replace(/\( /g, '(');
     }
+    if (kept.length) t = t.replace(/\uE000(\d+)\uE001/g, (_, i) => kept[i]);
     const out = lead + t + trail;
     if (cache.size > 8000) cache.clear();
     cache.set(s, out);

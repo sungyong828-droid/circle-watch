@@ -1891,7 +1891,92 @@ window.__I18N_EN = {
 "원": "KRW",
 "네이버 증권 실시간": "Naver Finance live",
 "네이버 증권": "Naver Finance",
-"명": "ppl"
+"명": "ppl",
+"Fire · 성과급 계산기": "Fire · Bonus calculator",
+"+ 직접 추가": "+ Add manually",
+"비중 합계": "Weight total",
+"비중 똑같이": "Equal weights",
+"1년 수익률": "1Y return",
+"52주 범위": "52W range",
+"일 기록": "days of data",
+"보유율": "Holding %",
+"시가총액": "Market cap",
+"매출액": "Revenue",
+"이익률": "Margin",
+"배당수익률": "Dividend yield",
+"분배수익률": "Distribution yield",
+"총보수": "Expense ratio",
+"괴리율": "Premium/discount",
+"연": "per yr",
+"기관": "Institutions",
+"개인": "Individuals",
+"외국인": "Foreigners",
+"외국인 보유": "Foreign ownership",
+"외국인 한도 대비": "of foreign limit",
+"투자자별 매매": "Investor flows",
+"투자자별 매매 · 외국인 보유": "Investor flows · foreign ownership",
+"순매수(산 주식 − 판 주식)": "net buying (bought − sold)",
+"연기금·투신·은행 등": "pensions, funds, banks",
+"증권사 컨센서스": "Broker consensus",
+"리포트": "reports",
+"평균 목표주가": "Avg. target price",
+"목표주가": "Target price",
+"분기 실적": "quarterly earnings",
+"연결 기준 · 단위 억원(조) · 네이버 증권(FnGuide)": "Consolidated · KRW · Naver Finance (FnGuide)",
+"작은 숫자는 1년 전 같은 분기 대비. 한국 종목은 실적 발표일 자동 알림(실적 당일 모드)은 아직 없어요.": "Small numbers are vs. the same quarter a year ago. Earnings-day alerts aren't available for Korean stocks yet.",
+"한국 주식은 미국처럼 기관별 보유 보고서(13F)가 없어서, 대신 매일 발표되는 투자자별 매매와 외국인 보유율을 보여줘요.": "Korean stocks have no per-institution holdings reports (13F) like the US, so this shows daily investor flows and the foreign ownership ratio instead.",
+"하루 동안 외국인·기관(연기금·펀드 등)·개인이 이 종목을 얼마나 사고팔았는지예요. +면 판 것보다 산 게 많다는 뜻이고, 외국인·기관이 꾸준히 사면 큰손이 모으는 중이라고 봐요.": "How much foreigners, institutions (pensions, funds…) and individuals bought or sold this stock each day. + means they bought more than they sold; steady foreign/institutional buying suggests big money is accumulating.",
+"증권사 애널리스트들이 이 종목을 사라고 하는지(매수) 팔라고 하는지와, 평균적으로 주가가 얼마까지 갈 거라고 보는지(목표주가)예요.": "Whether brokerage analysts say buy or sell, and where they expect the price to go on average (target price).",
+"분기마다 회사가 얼마를 팔고(매출액) 얼마를 남겼는지(영업이익·순이익)예요. (예상)은 아직 발표 전이라 증권사 예상치 평균(컨센서스)이에요.": "How much the company sold (revenue) and kept (operating/net income) each quarter. \"Est.\" rows aren't reported yet, so they show the broker consensus.",
+"ETF는 애널리스트 의견이 없어요.": "ETFs don't have analyst ratings.",
+"애널리스트 자료가 없어요.": "No analyst data.",
+"투자자별 매매 자료가 없어요.": "No investor flow data.",
+"ETF는 회사 실적이 없어요. 위 투자 지표에서 분배수익률·총보수·수익률을 확인하세요.": "ETFs have no company earnings. Check the distribution yield, expense ratio and returns above.",
+"실적 자료가 없어요.": "No earnings data.",
+"월별 막대는 최근 1년 배당락일이 있던 달 기준(세후)이에요. 배당은 바뀔 수 있고 과거 배당이 미래를 보장하지 않아요. 세후는 미국 원천징수 15%, 국내 배당소득세 15.4%를 뺀 금액이에요.": "Monthly bars use the months of the past year's ex-dividend dates (after tax). Dividends can change and past payouts don't guarantee future ones. After-tax subtracts 15% US withholding and 15.4% Korean dividend tax.",
+"⚠ 연 배당이 2,000만원을 넘으면 금융소득종합과세 대상이 될 수 있어요.": "⚠ Over ₩20M a year in dividends may trigger Korea's comprehensive financial income tax.",
+"🇰🇷 국내 배당 ETF": "🇰🇷 KR dividend ETFs",
+"🇰🇷 국내 커버드콜": "🇰🇷 KR covered calls",
+"🇰🇷 국내 배당주": "🇰🇷 KR dividend stocks",
+"🇺🇸 월배당": "🇺🇸 Monthly payers",
+"🇺🇸 고배당 ETF": "🇺🇸 High-dividend ETFs",
+"🇺🇸 커버드콜": "🇺🇸 Covered calls",
+"리얼티인컴": "Realty Income",
+"S&P500 우량주 + 콜옵션 매도(커버드콜)로 매달 분배": "S&P 500 blue chips + selling calls (covered calls), monthly payouts",
+"나스닥100 기술주 + 커버드콜, 매달 분배": "Nasdaq-100 tech + covered calls, monthly payouts",
+"상가·물류 건물을 빌려주는 리츠, 매달 배당하는 회사": "REIT leasing retail and logistics buildings; pays monthly",
+"중소기업에 대출·투자하는 회사(BDC), 매달 배당": "Lends to and invests in mid-size companies (BDC); pays monthly",
+"S&P500 중 배당 높고 덜 출렁이는 50종목, 매달 분배": "50 high-dividend, low-volatility S&P 500 stocks, monthly payouts",
+"배당 우량주 + 일부 커버드콜, 매달 분배": "Quality dividend stocks + some covered calls, monthly payouts",
+"미국 물류창고 리츠, 매달 배당": "US warehouse REIT; pays monthly",
+"10년 넘게 배당한 재무 우량 미국 기업 100곳(다우존스 미국배당100), 분기 배당": "100 financially strong US companies with 10+ years of dividends (Dow Jones US Dividend 100), quarterly",
+"배당 높은 미국 대형주 400여 곳, 분기 배당": "~400 high-yield US large caps, quarterly",
+"이익이 탄탄한 고배당 75종목, 분기 배당": "75 high-dividend stocks with solid earnings, quarterly",
+"5년 넘게 배당을 늘려 온 기업, 분기 배당": "Companies raising dividends 5+ years, quarterly",
+"10년 넘게 배당을 늘려 온 기업, 분기 배당": "Companies raising dividends 10+ years, quarterly",
+"25년 넘게 배당을 늘린 S&P500 배당귀족, 분기 배당": "S&P 500 Dividend Aristocrats (25+ years of raises), quarterly",
+"S&P500 중 배당수익률 상위 80종목을 같은 비중으로": "Top 80 S&P 500 yielders, equal-weighted",
+"나스닥100 전체에 콜옵션을 팔아 높은 분배(주가 상승은 제한)": "Sells calls on the Nasdaq-100 for high payouts (limited upside)",
+"S&P500 커버드콜, 매달 분배": "S&P 500 covered calls, monthly payouts",
+"중소형주(러셀2000) 커버드콜, 매달 분배": "Small caps (Russell 2000) covered calls, monthly payouts",
+"스트래티지(MSTR) 한 종목 옵션 수익, 분배가 크고 변동도 커요": "Option income on Strategy (MSTR) alone; big payouts, big swings",
+"엔비디아 한 종목 옵션 수익으로 분배": "Payouts from option income on Nvidia alone",
+"변동성 큰 여러 종목 옵션 수익, 매주 분배": "Option income on several volatile stocks, weekly payouts",
+"SCHD와 같은 지수(미국배당100)를 원화로, 매달 분배": "Same index as SCHD (US Dividend 100) in KRW, monthly payouts",
+"SCHD와 같은 지수를 원화로, 매달 분배": "Same index as SCHD in KRW, monthly payouts",
+"국내 배당 높은 기업 30곳, 매달 분배": "30 high-dividend Korean companies, monthly payouts",
+"국내 고배당 기업, 매달 분배": "High-dividend Korean companies, monthly payouts",
+"국내 상장 리츠·인프라 펀드 모음, 분기 분배": "Korean-listed REITs and infrastructure funds, quarterly",
+"코스피200 + 매주 콜옵션 매도, 매달 분배": "KOSPI 200 + weekly call selling, monthly payouts",
+"나스닥100 + 매일 콜옵션 매도, 매달 분배": "Nasdaq-100 + daily call selling, monthly payouts",
+"나스닥100 + 매일 외가격 콜 매도(상승 여지 남김)": "Nasdaq-100 + daily out-of-the-money calls (keeps some upside)",
+"국내 배당주 + 커버드콜, 매달 분배": "Korean dividend stocks + covered calls, monthly payouts",
+"미국 배당주 + 커버드콜, 매달 분배": "US dividend stocks + covered calls, monthly payouts",
+"반도체·스마트폰, 분기 배당": "Chips and smartphones, quarterly",
+"은행 지주회사, 분기 배당": "Bank holding company, quarterly",
+"통신사, 분기 배당": "Telecom, quarterly",
+"담배·인삼, 반기·연 배당": "Tobacco and ginseng, semiannual/annual",
+"✓ 추가됨": "✓ Added"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
@@ -1916,8 +2001,8 @@ window.__I18N_EN = {
   const subRe = subKeys.length ? new RegExp(subKeys.map((k) => (/^\d/.test(k) ? '(?<![\\d.,])' : '') + reEsc(k)).join('|'), 'g') : null;
   const subRep = (m, off, str) => {
     let v = sub.get(m) ?? m;
-    if (/^[A-Za-z(#~$]/.test(v) && /[A-Za-z0-9%)$]/.test(str[off - 1] || '')) v = ' ' + v; // 'K계약' → 'K contracts'
-    if (/[A-Za-z)]$/.test(v) && /[A-Za-z0-9$(]/.test(str[off + m.length] || '')) v += ' ';
+    if (/^[A-Za-z(#~$]/.test(v) && /[A-Za-z0-9%)$\uE001]/.test(str[off - 1] || '')) v = ' ' + v; // 'K계약' → 'K contracts'
+    if (/[A-Za-z)]$/.test(v) && /[A-Za-z0-9$(\uE000]/.test(str[off + m.length] || '')) v += ' ';
     return v;
   };
   const WD = { 일: 'Sun', 월: 'Mon', 화: 'Tue', 수: 'Wed', 목: 'Thu', 금: 'Fri', 토: 'Sat' };
@@ -1944,6 +2029,10 @@ window.__I18N_EN = {
   ];
   // 조각 바꾼 뒤 남은 숫자+단위
   const RULES_B = [
+    // 원화 금액: 1,537조 5,713억 → ₩1,537.6T · 5,713억 → ₩571.3B · 86,052원 → ₩86,052
+    [/(?<![\d.,₩])(\d[\d,]*(?:\.\d+)?)조(?: (\d[\d,]*)억)?/g, (_, a, b) => `₩${(+a.replace(/,/g, '') + (b ? +b.replace(/,/g, '') / 1e4 : 0)).toLocaleString('en-US', { maximumFractionDigits: 1 })}T`],
+    [/(?<![\d.,₩])(\d[\d,]*(?:\.\d+)?)억(?!원)/g, (_, a) => `₩${(+a.replace(/,/g, '') / 10).toLocaleString('en-US', { maximumFractionDigits: 1 })}B`],
+    [/([+-]?)(?<![\d.,])(\d[\d,]*(?:\.\d+)?)원(?![가-힣])/g, '$1₩$2'],
     [/(\d{4})년 (\d{1,2})분기/g, (_, y, q) => `Q${q} ${y}`],
     [/(\d{4})년 (\d{1,2})월/g, (_, y, m) => `${mon(m)} ${y}`],
     [/(\d{4})년/g, '$1'],
@@ -1968,14 +2057,26 @@ window.__I18N_EN = {
     [/\(([일월화수목금토])\)/g, (_, w) => `(${WD[w]})`],
   ];
   // 영어로 바뀐 말 뒤에 남은 한국어 조사·어미 정리
-  const PART = /([A-Za-z0-9)%$\]’'])(?:으로는|으로|에서|에게|이며|이고|이에요|예요|입니다|은|는|이|가|을|를|의|에|로|와|과|도|만)(?=[\s,.:;·)!?]|$)/g;
+  const PART = /([A-Za-z0-9)%$\]’'\uE001])(?:으로는|으로|에서|에게|이며|이고|이에요|예요|입니다|은|는|이|가|을|를|의|에|로|와|과|도|만)(?=[\s,.:;·)!?]|$)/g;
   const cache = new Map();
+  // 한국 종목 이름(삼성전자·TIGER 미국배당다우존스 등)은 조각 번역으로 망가지지 않게 그대로 둔다 — app.js가 이름을 등록
+  const KEEP = (window.__i18nKeepSet ||= new Set());
+  let keepN = 0, keepRe = null;
+  const syncKeep = () => {
+    if (KEEP.size === keepN) return;
+    keepN = KEEP.size; cache.clear();
+    keepRe = new RegExp([...KEEP].sort((a, b) => b.length - a.length).map(reEsc).join('|'), 'g');
+  };
   function tr(s) {
     if (typeof s !== 'string' || !HAN.test(s)) return s;
+    syncKeep();
     if (cache.has(s)) return cache.get(s);
     const lead = s.match(/^\s*/)[0], trail = s.match(/\s*$/)[0];
     let t = norm(s);
+    const kept = [];
+    if (!exact.has(t) && keepRe) t = t.replace(keepRe, (m) => `\uE000${kept.push(m) - 1}\uE001`);
     if (exact.has(t)) t = exact.get(t);
+    else if (!HAN.test(t)) {} // 이름만 남음
     else {
       for (const [re, rep] of RULES_A) t = t.replace(re, rep);
       if (HAN.test(t) && exact.has(t)) t = exact.get(t);
@@ -1984,6 +2085,7 @@ window.__I18N_EN = {
       if (HAN.test(t)) t = t.replace(PART, '$1');
       t = t.replace(/([\w%)])· /g, '$1 · ').replace(/ {2,}/g, ' ').replace(/ ([,.)])/g, '$1').replace(/\( /g, '(');
     }
+    if (kept.length) t = t.replace(/\uE000(\d+)\uE001/g, (_, i) => kept[i]);
     const out = lead + t + trail;
     if (cache.size > 8000) cache.clear();
     cache.set(s, out);
