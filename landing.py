@@ -352,6 +352,7 @@ import re as _re
 
 CHANGELOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'CHANGELOG.md')
 NEXT_H = '## 다음 배포'
+PUBLIC_FROM = 'v2026.10.05-1'  # 공개 '업데이트 소식'에 보여 줄 첫 버전
 
 
 def _md_inline(t):
@@ -388,6 +389,7 @@ def whatsnew():
         return None
     title, body = pick
     en_m = _re.search(r'<!--\s*EN\s*(.*?)-->', body, _re.S)
+    body = '\n'.join(l for l in body.splitlines() if '<!-- internal -->' not in l)
     ko = _re.sub(r'<!--.*?-->', '', body, flags=_re.S)
     items = [_md_inline(l[2:].strip()) for l in ko.splitlines() if l.startswith('- ')]
     en = [_md_inline(l[2:].strip()) for l in (en_m.group(1).splitlines() if en_m else []) if l.strip().startswith('- ')]
@@ -405,6 +407,12 @@ def updates_page():
         if t.startswith(NEXT_H[3:]):
             continue
         m = _re.match(r'(v(\d{4})\.(\d{2})\.(\d{2})-\d+)', t)
+        # 공개 페이지: 이름을 Fire Portfolio로 바꾼 뒤 사용자에게 보이는 변화만(그 전 기록·내부 작업 제외)
+        if not m or m.group(1) < PUBLIC_FROM:
+            continue
+        body = '\n'.join(l for l in body.splitlines() if '<!-- internal -->' not in l)
+        if not _re.search(r'(?m)^- ', _re.sub(r'<!--.*?-->', '', body, flags=_re.S)):
+            continue
         head = f'{m.group(2)}.{m.group(3)}.{m.group(4)} 업데이트 <small>{m.group(1)}</small>' if m else esc(t)
         html_lines, in_ul = [], False
         for line in _re.sub(r'<!--.*?-->', '', body, flags=_re.S).splitlines():

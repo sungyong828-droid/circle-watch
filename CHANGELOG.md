@@ -4,6 +4,7 @@
 
 - **버전 이름**: `v연.월.일-그날 몇 번째` (예: `v2026.10.05-1`). GitHub 저장소의 **Tags**에서 같은 이름으로 그 시점 코드를 볼 수 있어요.
 - **이 버전 보기**: Cloudflare가 배포마다 남겨 두는 고정 주소예요. 그때 화면을 그대로 열어 볼 수 있어요(블로그 캡처용). 이 주소에서는 방문 집계를 하지 않고, 화면 위에 TEST 표시가 떠요.
+- 공개 '업데이트 소식' 페이지(/updates)에는 v2026.10.05-1 이후의 새 기능·화면 변경만 나가요. 줄 끝에 `<!-- internal -->`를 붙인 항목과 그 전 기록은 이 파일에만 남아요.
 - 배포는 `python deploy.py test`로 먼저 확인한 뒤 `python deploy.py prod`로 올려요. prod 배포 때 아래 **다음 배포** 칸이 새 버전 이름으로 바뀌고 태그가 붙어요.
 
 ## 다음 배포
@@ -11,20 +12,23 @@
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
 **새 기능**
-- 🇰🇷 **한국 주식 추가**: 종목 추가에서 회사명(예: "삼성")이나 종목코드(005930)로 코스피·코스닥 종목을 찾아 넣을 수 있어요. 실시간 시세(원)·차트·뉴스를 보여줘요.
+- 🇰🇷 **한국 주식·ETF 추가**: 종목 추가에서 회사명(예: "삼성", "데일리커버드콜")이나 종목코드(005930)로 코스피·코스닥 종목과 ETF를 찾아 넣을 수 있어요. 실시간 시세(원)·차트·뉴스에 투자 지표(PER·PBR·배당수익률·목표주가), 외국인·기관·개인 매매, 애널리스트 의견·리포트, 분기 실적까지 보여줘요.
+- 🔥 **퇴사까지·배당금에 한국 종목**: 삼성전자, 국내 커버드콜 ETF 같은 한국 종목도 넣어 원으로 계산해요(배당소득세 15.4%).
 - 💼 **성과급 계산기**: Fire의 세 번째 탭. 삼성전자(OPI·TAI)·SK하이닉스(PS·PI) 성과급과 세금·4대보험을 뗀 실수령액을 계산해요.
-- 🧮 **배당 포트폴리오 짜보기**: 투자금과 종목·비중을 넣으면 현재가로 몇 주를 살 수 있는지, 1년·한 달 배당이 얼마인지 계산해요. 성과급 계산기에서 바로 이어져요.
+- 🧮 **배당 포트폴리오 짜보기**: 투자금과 종목·비중을 넣으면 현재가로 몇 주를 살 수 있는지, 1년·한 달 배당이 얼마인지 계산해요. 월배당·고배당·커버드콜·국내 배당 종목을 설명과 함께 골라 넣고, 비중 합계도 바로 알려줘요.
 - 🎉 **업데이트 알림**: 새 기능이 생기면 홈 맨 위에서 한 번 알려 줘요. 전체 기록은 '업데이트 소식' 페이지에서.
 
 **개선**
+- 🏠 홈 위쪽을 퇴사까지 · 배당금 · 성과급 세 칸으로.
 - 🏷️ 종목 로고 약 1만 개로 확대(미국 주식·ETF, 한국 코스피·코스닥).
 - 🔄 사이트를 처음 열 때 공포·탐욕 지수 등 모든 데이터를 최신으로 새로 받아요.
 - 🔍 종목 검색칸의 글자를 다 지워도 입력칸이 닫히지 않아요.
-- 🔥 홈에 퇴사까지·배당금 칸이 생겨 오른쪽 위 Fire 버튼은 뺐어요.
-- 🔒 문의 API(/api/feedback)에 읽기 요청이 오면 화면 대신 "허용 안 됨(405)"으로 답하도록.
+- 🔥 홈에 퇴사까지·배당금·성과급 칸이 생겨 오른쪽 위 Fire 버튼은 뺐어요.
+- 🔒 문의 API(/api/feedback)에 읽기 요청이 오면 화면 대신 "허용 안 됨(405)"으로 답하도록. <!-- internal -->
 
 <!-- EN
-- 🇰🇷 **Korean stocks**: search KOSPI/KOSDAQ by company name or 6-digit code and add them — live price (KRW), chart and news.
+- 🇰🇷 **Korean stocks & ETFs**: search KOSPI/KOSDAQ by name or 6-digit code — live price (KRW), chart, news, key metrics, investor flows, analyst views and quarterly results.
+- 🔥 Korean stocks can now be added to the FIRE and dividend tabs (in KRW, 15.4% dividend tax).
 - 💼 **Bonus calculator**: a third Fire tab estimating Samsung (OPI·TAI) and SK hynix (PS·PI) bonuses after tax and social insurance.
 - 🧮 **Dividend portfolio planner**: enter an amount, tickers and weights to see how many shares you can buy and the yearly/monthly dividends.
 - 🎉 **Update notice**: new features are announced once at the top of Home.
@@ -36,7 +40,7 @@
 [이 버전 보기](https://cc443e0b.my-fire-portfolio.pages.dev) · 커밋 `4e0709e`
 
 **개선**
-- 🔒 문의 API(/api/feedback)에 읽기 요청이 오면 화면 대신 "허용 안 됨(405)"으로 답하도록.
+- 🔒 문의 API(/api/feedback)에 읽기 요청이 오면 화면 대신 "허용 안 됨(405)"으로 답하도록. <!-- internal -->
 
 ## v2026.10.05-1 — 2026-10-05
 

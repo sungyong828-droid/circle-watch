@@ -1,4 +1,4 @@
-"""한국 상장 종목 목록(코스피·코스닥) → assets/krx.json  [[종목코드, 회사명, 'KS'|'KQ', 시가총액(억원)], ...]
+"""한국 상장 종목 목록(코스피·코스닥 + ETF) → assets/krx.json  [[종목코드, 이름, 'KS'|'KQ', 시가총액(억원), 'E'(ETF일 때)], ...]
 
 종목 추가 화면에서 '삼성'처럼 회사명 일부나 '005930' 같은 종목코드로 찾을 때 쓴다(검색은 휴대폰 안에서).
 사용: python tools/fetch_krx.py   (상장·폐지가 있으면 가끔 다시 실행)
@@ -45,11 +45,23 @@ def caps():
     return out
 
 
+def etfs():
+    """상장 ETF(네이버 증권 ETF 목록) — 모두 유가증권시장(.KS)에서 거래"""
+    raw = urllib.request.urlopen(urllib.request.Request('https://finance.naver.com/api/sise/etfItemList.nhn', headers=UA), timeout=60).read()
+    try:
+        j = json.loads(raw.decode('euc-kr'))
+    except Exception:
+        j = json.loads(raw.decode('utf-8'))
+    return [[x['itemcode'], x['itemname'], 'KS', int(x.get('marketSum') or 0), 'E'] for x in j['result']['etfItemList'] if re.fullmatch(r'[0-9A-Z]{6}', x.get('itemcode', ''))]
+
+
 def load():
     cap = caps()
     rows = []
     for kind, suf in MARKETS:
         rows += [[code, name, suf, cap.get(code, 0)] for code, name in market(kind)]
+    have = {r[0] for r in rows}
+    rows += [r for r in etfs() if r[0] not in have]
     rows.sort(key=lambda r: r[0])
     return rows
 
@@ -59,5 +71,6 @@ if __name__ == '__main__':
     path = os.path.join(ROOT, 'assets', 'krx.json')
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(rows, f, ensure_ascii=False, separators=(',', ':'))
-    ks = sum(1 for r in rows if r[2] == 'KS')
-    print(f'코스피 {ks} + 코스닥 {len(rows) - ks} = {len(rows)}종목 → assets/krx.json ({os.path.getsize(path) // 1024} KB)')
+    etf = sum(1 for r in rows if len(r) > 4)
+    ks = sum(1 for r in rows if r[2] == 'KS' and len(r) < 5)
+    print(f'코스피 {ks} + 코스닥 {len(rows) - ks - etf} + ETF {etf} = {len(rows)} → assets/krx.json ({os.path.getsize(path) // 1024} KB)')

@@ -212,6 +212,36 @@ export async function buildKrQuote(syms) {
   }
   return out;
 }
+// 한국 종목 정보(네이버 증권): 투자 지표 · 투자자별 매매(외국인·기관·개인) · 애널리스트 컨센서스·리포트 · 분기 실적
+const KR_TOTALS = ['marketValue', 'per', 'eps', 'cnsPer', 'cnsEps', 'pbr', 'bps', 'dividendYieldRatio', 'dividend', 'foreignRate', 'highPriceOf52Weeks', 'lowPriceOf52Weeks', 'nav', 'totalFee', 'fundPay', 'marketSum'];
+const krIso = (s) => { const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(s || '')); return m ? `${m[1]}-${m[2]}-${m[3]}` : null; };
+export async function buildKrInfo(sym) {
+  const code = sym.slice(0, 6), H = { 'user-agent': BROWSER_UA, accept: 'application/json' };
+  const get = (path) => fetch(`https://m.stock.naver.com/api/stock/${code}/${path}`, { headers: H, signal: AbortSignal.timeout(8000) }).then((r) => { if (!r.ok) throw new Error('naver ' + r.status); return r.json(); });
+  const [ig, fq] = await Promise.allSettled([get('integration'), get('finance/quarter')]);
+  if (ig.status !== 'fulfilled') throw new Error('종목 정보를 받지 못했습니다');
+  const I = ig.value, out = { at: new Date().toISOString(), symbol: sym, name: I.stockName, type: I.stockEndType || 'stock', industry: I.industryCompareInfo?.[0]?.industryName || null };
+  out.totals = Object.fromEntries((I.totalInfos || []).filter((x) => KR_TOTALS.includes(x.code)).map((x) => [x.code, { label: x.key, value: x.value }]));
+  out.etf = I.etfKeyIndicator || null;
+  out.deal = (I.dealTrendInfos || []).map((d) => ({ d: krIso(d.bizdate), foreign: krNum(d.foreignerPureBuyQuant), organ: krNum(d.organPureBuyQuant), indiv: krNum(d.individualPureBuyQuant), hold: krNum(d.foreignerHoldRatio), close: krNum(d.closePrice) })).filter((d) => d.d);
+  const C = I.consensusInfo;
+  out.consensus = C ? { mean: krNum(C.recommMean), target: krNum(C.priceTargetMean), date: C.createDate || null } : null;
+  out.researches = (I.researches || []).slice(0, 8).map((r) => ({ id: r.id, broker: r.bnm, title: r.tit, date: krIso(r.wdt), views: krNum(r.rcnt) }));
+  if (fq.status === 'fulfilled' && fq.value?.financeInfo) {
+    const F = fq.value.financeInfo;
+    out.finance = {
+      periods: (F.trTitleList || []).map((t) => ({ key: t.key, title: t.title, cns: t.isConsensus === 'Y' })),
+      rows: Object.fromEntries((F.rowList || []).filter((r) => ['매출액', '영업이익', '당기순이익', '영업이익률', '순이익률', 'ROE', 'EPS', 'PER', '부채비율', '주당배당금'].includes(r.title))
+        .map((r) => [r.title, Object.fromEntries(Object.entries(r.columns || {}).map(([k, v]) => [k, krNum(v?.value)]))])),
+    };
+  }
+  return out;
+}
+export async function handleKrInfo(url, cache, cors, ctx) {
+  const sym = String(url.searchParams.get('s') || '').toUpperCase();
+  if (!KR_RE.test(sym)) return json({ error: 'bad request' }, cors, 400);
+  return swr(cache, ctx, `${url.origin}/krinfo?s=${sym}&v=1`, { freshSec: 1800, keepSec: 86400, cors, build: async () => JSON.stringify(await buildKrInfo(sym)) });
+}
 export async function handleKrQuote(url, cache, cors, ctx) {
   const syms = [...new Set(String(url.searchParams.get('s') || '').toUpperCase().split(',').filter((x) => KR_RE.test(x)))].sort().slice(0, 20);
   if (!syms.length) return json({ error: 'bad request' }, cors, 400);
@@ -1322,7 +1352,7 @@ export async function handleMarket(url, cache, cors, ctx) {
 const ymdUtc = (ms) => new Date(ms).toISOString().slice(0, 10);
 const mdyIso = (s) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || '')); return m ? `${m[3]}-${m[1]}-${m[2]}` : null; };
 async function buildDividends(sym) {
-  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym.replace('.', '-'))}?range=30y&interval=1wk&events=div,splits`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym(sym))}?range=30y&interval=1wk&events=div,splits`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
   if (!r.ok) throw new Error('yahoo ' + r.status);
   const j = (await r.json()).chart?.result?.[0];
   if (!j) throw new Error('배당 자료 없음');
@@ -1343,11 +1373,12 @@ async function buildDividends(sym) {
       break;
     } catch {}
   }
-  return { at: new Date().toISOString(), symbol: sym, name: m.longName || m.shortName || sym, type: m.instrumentType || '', currency: m.currency || 'USD', price: m.regularMarketPrice ?? null, events, splits, pay, next };
+  const krName = KR_RE.test(sym) ? (await naverBasic(sym).catch(() => null))?.stockName : null; // 한국 종목은 한글 이름
+  return { at: new Date().toISOString(), symbol: sym, name: krName || m.longName || m.shortName || sym, type: m.instrumentType || '', currency: m.currency || 'USD', price: m.regularMarketPrice ?? null, events, splits, pay, next };
 }
 export async function handleDividends(url, cache, cors, ctx) {
   const sym = String(url.searchParams.get('s') || '').toUpperCase();
-  if (!SYM_RE.test(sym)) return json({ error: 'bad request' }, cors, 400);
+  if (!symOk(sym)) return json({ error: 'bad request' }, cors, 400);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   return swr(cache, ctx, `${url.origin}/dividends?v=3&s=${sym}`, { freshSec: 12 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildDividends(sym)) });
 }
@@ -1512,7 +1543,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
@@ -1534,6 +1565,7 @@ export default {
     if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
     if (url.pathname === '/feargreed') return handleFearGreed(url, cache, cors, ctx);
     if (url.pathname === '/krquote') return handleKrQuote(url, cache, cors, ctx);
+    if (url.pathname === '/krinfo') return handleKrInfo(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);
