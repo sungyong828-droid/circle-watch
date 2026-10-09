@@ -5751,7 +5751,11 @@
   updateFireChip();
   {
     let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0;
-    if (v0 === 'dividend' || v0 === 'quit') { state.fireTab = v0 === 'dividend' ? 'div' : 'fire'; savePref('fireTab', state.fireTab); v0 = 'fire'; } // 소개 페이지(/dividend · /fire)에서 바로 열기
+    if (['dividend', 'quit', 'bonus', 'portfolio'].includes(v0)) { // 소개 페이지(/dividend · /fire · /bonus · /portfolio)에서 바로 열기
+      state.fireTab = v0 === 'quit' ? 'fire' : v0 === 'bonus' ? 'bonus' : 'div'; savePref('fireTab', state.fireTab);
+      if (v0 === 'portfolio') setTimeout(() => document.getElementById('c-divsim')?.scrollIntoView({ block: 'start' }), 600);
+      v0 = 'fire';
+    }
     showView(viewAllowed(v0) ? v0 : 'home');
   }
   if (fromSnap) { try { renderAll(); } catch (e) { console.error(e); } } // 지난번 화면을 즉시

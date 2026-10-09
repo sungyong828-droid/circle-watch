@@ -101,6 +101,7 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noin
 <title>{esc(title)} | Fire Portfolio</title>
 <meta name="description" content="{esc(desc)}">{'\n<meta name="robots" content="noindex">' if noindex else ''}
 <link rel="canonical" href="{url}">{hl}
+<link rel="alternate" type="application/rss+xml" title="Fire Portfolio 업데이트 소식" href="{SITE}rss.xml">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fire Portfolio">
 <meta property="og:title" content="{esc(title)}">
@@ -132,7 +133,7 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noin
 '''
 
 
-FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="updates">업데이트 소식</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
+FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="dividend">배당금 계산기</a><a href="portfolio">배당 포트폴리오 계산기</a><a href="bonus">성과급 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="updates">업데이트 소식</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
   <p>투자 조언이 아닌 개인 모니터링 도구예요. 데이터는 공개 출처(Nasdaq·SEC·Yahoo Finance·Binance·FINRA·CBOE 등)에서 가져오며 지연·오류가 있을 수 있어요.</p>'''
 FOOT_EN = '''<nav aria-label="Pages"><a href="about" hreflang="ko">한국어</a><a href="en">About</a><a href="./?lang=en&ref=page-en#dividend">Dividend tracker</a><a href="./?lang=en&ref=page-en#quit">FIRE calculator</a><a href="feedback?lang=en">💬 Feedback</a></nav>
   <p>A personal monitoring tool, not investment advice. Data comes from public sources (Nasdaq, SEC, Yahoo Finance, Binance, FINRA, CBOE and others) and may be delayed or wrong.</p>'''
@@ -213,7 +214,7 @@ FIRE_FAQ = [
     ('퇴사(FIRE) 계산기는 무엇을 계산하나요?', '보유 종목의 수량·평균 단가를 넣으면 실시간 주가와 원·달러 환율로 지금 평가액을 원화로 계산하고, 내가 정한 목표 금액까지 몇 % 왔는지 보여 줘요.'),
     ('주가가 바뀌면 바로 반영되나요?', '네. 실시간 주가로 계속 다시 계산하고, 주가가 몇 % 오르면 목표에 닿는지도 시뮬레이션해 볼 수 있어요.'),
     ('세금도 고려하나요?', '선택하면 해외주식 양도소득세(연 250만원 공제 후 22%)를 뺀 금액으로 계산해요.'),
-    ('어떤 종목을 넣을 수 있나요?', '서클·조비·스페이스X·템퍼스 기본 종목과, 관심 종목에 추가한 미국 주식 모두 넣을 수 있어요.'),
+    ('어떤 종목을 넣을 수 있나요?', '서클·조비·스페이스X·템퍼스 기본 종목과, 관심 종목에 추가한 미국 주식, 삼성전자·국내 ETF 같은 한국 주식(원화로 환산)까지 모두 넣을 수 있어요.'),
 ]
 
 
@@ -244,7 +245,7 @@ def dividend_page():
         ('📷 거래 내역 사진으로 넣기', '증권 앱 거래 화면을 캡처해 고르면 매수·매도 기록을 자동으로 읽어요. 여러 장을 한 번에, 겹친 부분은 한 번만.'),
         ('세후 · 세전', '미국 원천징수 15%를 뺀 실제 입금액 기준이 기본.'),
     ])}</section>
-<section class="lp-sec"><h2>이런 종목에 잘 맞아요</h2><p>매주 배당하는 <b>MSTY</b> 같은 커버드콜 ETF, 월배당 <b>JEPI·JEPQ·O(리얼티인컴)</b>, 분기 배당 <b>SCHD·KO·AAPL</b> 등 미국 상장 주식·ETF라면 모두 계산할 수 있어요.</p></section>
+<section class="lp-sec"><h2>이런 종목에 잘 맞아요</h2><p>매주 배당하는 <b>MSTY</b> 같은 커버드콜 ETF, 월배당 <b>JEPI·JEPQ·O(리얼티인컴)</b>, 분기 배당 <b>SCHD·KO·AAPL</b> 등 미국 상장 주식·ETF는 물론, <b>삼성전자</b>·<b>TIGER 미국배당다우존스</b>·<b>국내 커버드콜 ETF</b> 같은 한국 종목도 계산할 수 있어요(국내 배당소득세 15.4%). 앞으로 살 종목은 <a href="portfolio">배당 포트폴리오 계산기</a>로 미리 계산해 보세요.</p></section>
 <section class="lp-sec"><h2>쓰는 방법</h2><ol class="lp-steps">
   <li>대시보드에서 🔥 <b>Fire → 💰 배당금</b>을 열어요.</li>
   <li>종목마다 티커·수량·평단을 넣고, 여러 번 나눠 샀다면 <b>📅 거래 내역</b>에서 사진이나 캘린더로 넣어요.</li>
@@ -429,7 +430,7 @@ def updates_page():
             html_lines.append(f'<h3>{_md_inline(s.strip("*"))}</h3>' if s.startswith('**') and s.endswith('**') else f'<p>{_md_inline(s)}</p>')
         if in_ul:
             html_lines.append('</ul>')
-        out.append(f'<section class="lp-sec upd"><h2>{head}</h2>{"".join(html_lines)}</section>')
+        out.append(f'<section class="lp-sec upd" id="{m.group(1)}"><h2>{head}</h2>{"".join(html_lines)}</section>')
     body = f'''<section class="lp-hero">
   <h1>업데이트 소식</h1>
   <p class="lp-lead">쓰면서 불편했던 점과 보내 주신 의견으로 계속 고치고 있어요. 새로 생긴 기능과 바뀐 점을 날짜별로 모았어요.</p>
@@ -440,9 +441,114 @@ def updates_page():
     ld = {'@context': 'https://schema.org', '@type': 'WebPage', 'name': title, 'description': desc, 'url': SITE + 'updates', 'inLanguage': 'ko'}
     return page('updates', title, desc, body, ld)
 
+BONUS_FAQ = [
+    ('삼성전자 성과급(OPI·TAI)은 어떻게 계산하나요?', 'OPI(초과이익성과급)는 연봉 × 지급률(최대 50%), TAI(목표달성장려금)는 상·하반기 월 기본급 × 지급률(최대 100%)로 계산해요. DS 부문 특별 성과급처럼 금액으로 공지되는 것은 금액을 그대로 넣으면 돼요.'),
+    ('SK하이닉스 성과급(PS·PI)은요?', 'PS(초과이익분배금)는 월 기본급 × 지급률, PI(생산성 격려금)는 상·하반기 월 기본급 × 지급률로 계산해요. 월 기본급을 모르면 연봉 ÷ 20으로 어림하고, 급여명세서의 기본급을 넣으면 더 정확해요. 일부를 자사주로 받는 비율도 넣을 수 있어요.'),
+    ('세금은 얼마나 떼나요?', '성과급 때문에 늘어나는 1년 소득세(근로소득공제·세액공제 반영)에 지방소득세 10%를 더하고, 건강보험·장기요양보험·고용보험을 빼서 실수령액을 추정해요. 국민연금은 보통 상한에 걸려 추가로 빠지지 않아 제외했어요.'),
+    ('계산 결과가 실제와 같나요?', '공개된 계산 방식으로 추정한 값이에요. 회사 세부 규정, 비과세 항목, 부양가족·공제 상황에 따라 실제 입금액은 달라질 수 있어요.'),
+    ('성과급으로 배당주를 사면 얼마나 받을 수 있나요?', '계산 결과 아래 "이 돈으로 배당 포트폴리오 짜보기"를 누르면 실수령액이 투자금으로 들어가, SCHD·JEPI·국내 커버드콜 ETF 등을 몇 주 살 수 있고 매달 배당이 얼마인지 바로 계산해요.'),
+]
+SIM_FAQ = [
+    ('배당 포트폴리오 계산기는 무엇을 계산하나요?', '투자금과 종목·비중을 넣으면 지금 주가로 종목마다 몇 주를 살 수 있는지, 최근 1년 배당 기준으로 1년·한 달에 배당을 얼마 받는지(세후), 포트폴리오 배당률과 남는 돈을 계산해요.'),
+    ('어떤 종목을 넣을 수 있나요?', 'SCHD·JEPI·JEPQ·O 같은 미국 배당주·ETF와 삼성전자, TIGER 미국배당다우존스, KODEX 커버드콜 같은 국내 주식·ETF를 모두 섞어 넣을 수 있어요. 티커나 종목명으로 검색해 고르면 돼요.'),
+    ('종목을 잘 몰라도 쓸 수 있나요?', '월배당·고배당 ETF·커버드콜·국내 배당 ETF·국내 커버드콜·국내 배당주 분류마다 대표 종목을 무엇을 따라가는지 설명과 최근 1년 배당률을 붙여 보여줘요. 눌러서 바로 넣으면 돼요.'),
+    ('세금은 어떻게 반영하나요?', '미국 종목은 원천징수 15%, 국내 종목은 배당소득세 15.4%를 뺀 금액으로 보여줘요. 연 배당이 2,000만원을 넘으면 금융소득종합과세 대상이 될 수 있다는 안내도 해요.'),
+    ('비중 합계가 100%가 아니면요?', '입력할 때마다 합계를 바로 알려 주고, 계산할 때는 넣은 비율대로 100%에 맞춰서(1% 단위) 계산해요.'),
+]
+
+
+def bonus_page():
+    title = '성과급 계산기 — 삼성전자 OPI·TAI · SK하이닉스 PS·PI 세후 실수령액'
+    desc = '연봉과 지급률만 넣으면 삼성전자 OPI·TAI·DS 특별 성과급, SK하이닉스 PS·PI 성과급의 세금·4대보험을 뗀 실수령액을 계산해요. 그 돈으로 배당주를 사면 매달 배당이 얼마인지까지. 무료·가입 없음.'
+    go = './?ref=page-bonus#bonus'
+    body = f"""<section class="lp-hero">
+  <h1>성과급 계산기<br>통장에 실제로 얼마 들어올까?</h1>
+  <p class="lp-lead">성과급 공지가 뜨면 기준 금액이 연봉인지 월 기본급인지, 세금은 얼마나 떼는지 헷갈리죠. 삼성전자·SK하이닉스 방식대로 세전 금액부터 세금·4대보험, 실수령액까지 한 번에 계산해요.</p>
+  <a class="lp-cta" href="{go}">💼 성과급 계산하기 →</a>
+  <p class="lp-sub">무료 · 회원가입 없음 · 입력값은 내 기기에만 저장</p>
+</section>
+<section class="lp-sec"><h2>계산해 주는 것</h2>{feat_list([
+        ('삼성전자 OPI', '연봉 × OPI 지급률(최대 50%). 사업부별로 공지된 지급률을 넣으면 돼요.'),
+        ('삼성전자 TAI · DS 특별', '상·하반기 월 기본급 × TAI 지급률, 금액으로 공지되는 특별 성과급까지.'),
+        ('SK하이닉스 PS · PI', 'PS는 월 기본급 × 지급률, PI는 상·하반기 월 기본급 × 지급률. 자사주로 받는 비율도.'),
+        ('세금 · 4대보험', '성과급으로 늘어나는 연간 소득세 + 지방소득세, 건강·장기요양·고용보험을 뺀 실수령액.'),
+        ('🧮 배당 포트폴리오로 연결', '실수령액으로 SCHD·JEPI·국내 커버드콜 ETF를 사면 몇 주, 매달 배당 얼마인지.'),
+    ])}</section>
+<section class="lp-sec"><h2>쓰는 방법</h2><ol class="lp-steps">
+  <li>대시보드에서 <b>🔥 Fire → 💼 성과급</b>을 열어요(홈 맨 위 '성과급' 칸을 눌러도 돼요).</li>
+  <li>회사(삼성전자·SK하이닉스·직접 입력)를 고르고 연봉과 지급률을 넣어요.</li>
+  <li>세전 금액 → 세금·4대보험 → 예상 실수령액이 바로 나와요.</li>
+</ol></section>
+{faq_html(BONUS_FAQ)}
+<section class="lp-sec lp-end"><a class="lp-cta" href="{go}">💼 성과급 계산기 열기 →</a><p class="lp-note"><a href="portfolio">배당 포트폴리오 계산기 →</a></p></section>"""
+    return page('bonus', title, desc, body, [app_ld('Fire Portfolio 성과급 계산기', 'bonus', desc), faq_ld(BONUS_FAQ)])
+
+
+def portfolio_page():
+    title = '배당 포트폴리오 계산기 — SCHD·JEPI·월배당·커버드콜 ETF, 이 돈이면 한 달 배당 얼마?'
+    desc = '투자금(예: 1억·4억)과 종목·비중을 넣으면 지금 주가로 몇 주를 살 수 있는지, 1년·한 달 배당금(세후)과 배당률을 계산해요. SCHD·JEPI·O 같은 미국 배당주와 국내 커버드콜·배당 ETF, 삼성전자까지. 무료·가입 없음.'
+    go = './?ref=page-portfolio#portfolio'
+    body = f"""<section class="lp-hero">
+  <h1>배당 포트폴리오 계산기<br>이 돈이면 한 달 배당 얼마?</h1>
+  <p class="lp-lead">"4억을 SCHD·JEPI·리얼티인컴에 나눠 넣으면 매달 얼마 받을까?" 투자금과 종목·비중만 넣으면 지금 주가로 몇 주를 살 수 있고, 1년·한 달에 배당을 얼마 받는지 계산해요.</p>
+  <a class="lp-cta" href="{go}">🧮 배당 포트폴리오 짜보기 →</a>
+  <p class="lp-sub">무료 · 회원가입 없음 · 입력값은 내 기기에만 저장</p>
+</section>
+<section class="lp-sec"><h2>계산해 주는 것</h2>{feat_list([
+        ('살 수 있는 주식 수', '투자금 × 비중을 지금 주가로 나눠 종목마다 최대 몇 주인지, 다 사고 남는 돈까지.'),
+        ('1년 · 한 달 배당(세후)', '최근 1년 실제 배당 기준. 미국 15%, 국내 15.4% 세금을 뺀 금액.'),
+        ('포트폴리오 배당률 · 월별 막대', '전체 배당률과 어느 달에 배당이 들어오는지.'),
+        ('🔍 종목 검색', '티커(SCHD)나 종목명(삼성전자·커버드콜)으로 찾아 바로 추가.'),
+        ('대표 배당 종목 목록', '월배당·고배당 ETF·커버드콜·국내 배당 ETF 등 분류별 대표 종목에 설명과 최근 1년 배당률.'),
+        ('비중 자동 맞춤', '비중 합계가 100%가 아니면 바로 알려 주고, 계산할 때 비율대로 맞춰요.'),
+    ])}</section>
+<section class="lp-sec"><h2>이런 조합을 계산해 보세요</h2><p>미국 배당 성장 <b>SCHD</b> + 월배당 커버드콜 <b>JEPI·JEPQ</b> + 월배당 리츠 <b>O(리얼티인컴)</b>, 국내 상장 <b>TIGER·SOL 미국배당다우존스</b>, <b>KODEX 200타겟위클리커버드콜</b>, <b>TIGER 미국나스닥100타겟데일리커버드콜</b>, 은행 지주 배당주까지 섞어서 넣을 수 있어요.</p></section>
+{faq_html(SIM_FAQ)}
+<section class="lp-sec lp-end"><a class="lp-cta" href="{go}">🧮 배당 포트폴리오 짜보기 →</a><p class="lp-note"><a href="dividend">지금 받는 배당금 계산기 →</a> · <a href="bonus">성과급 계산기 →</a></p></section>"""
+    return page('portfolio', title, desc, body, [app_ld('Fire Portfolio 배당 포트폴리오 계산기', 'portfolio', desc), faq_ld(SIM_FAQ)], og='og-dividend.png?v=1')
+
+
+def rss():
+    """업데이트 소식 RSS(네이버 서치어드바이저 RSS 제출용)"""
+    import email.utils, datetime as _dt
+    items = []
+    for t, body in changelog_sections():
+        m = _re.match(r'(v(\d{4})\.(\d{2})\.(\d{2})-\d+)', t)
+        if not m or m.group(1) < PUBLIC_FROM:
+            continue
+        body = '\n'.join(l for l in _re.sub(r'<!--.*?-->', '', body, flags=_re.S).splitlines() if '<!-- internal -->' not in l)
+        lis = [l.strip()[2:] for l in body.splitlines() if l.strip().startswith('- ')]
+        if not lis:
+            continue
+        plain = [_re.sub(r'\*\*(.+?)\*\*', r'\1', x) for x in lis]
+        first = _re.sub(r'^[^\w가-힣]+', '', plain[0].split(':')[0]).strip()
+        d = _dt.datetime(int(m.group(2)), int(m.group(3)), int(m.group(4)), 9, 0, tzinfo=_dt.timezone(_dt.timedelta(hours=9)))
+        html = '<ul>' + ''.join(f'<li>{_md_inline(x)}</li>' for x in lis) + '</ul>'
+        items.append(f"""  <item>
+    <title>{esc(f'{m.group(2)}.{m.group(3)}.{m.group(4)} 업데이트 — {first} 외 {len(lis) - 1}건' if len(lis) > 1 else f'{m.group(2)}.{m.group(3)}.{m.group(4)} 업데이트 — {first}')}</title>
+    <link>{SITE}updates#{m.group(1)}</link>
+    <guid isPermaLink="false">{m.group(1)}</guid>
+    <pubDate>{email.utils.format_datetime(d)}</pubDate>
+    <description><![CDATA[{html}]]></description>
+  </item>""")
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+  <title>Fire Portfolio 업데이트 소식</title>
+  <link>{SITE}updates</link>
+  <description>퇴사를 위한 주식 대시보드 Fire Portfolio에 새로 생긴 기능과 바뀐 점</description>
+  <language>ko</language>
+{chr(10).join(items)}
+</channel>
+</rss>
+"""
+
+
 def build(dist):
-    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
+    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'bonus': bonus_page(), 'portfolio': portfolio_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
     for slug, text in out.items():
         with open(os.path.join(dist, slug + '.html'), 'w', encoding='utf-8') as f:
             f.write(text)
+    with open(os.path.join(dist, 'rss.xml'), 'w', encoding='utf-8') as f:
+        f.write(rss())
     return list(out)
