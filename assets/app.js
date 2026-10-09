@@ -2291,7 +2291,7 @@
     const p = fireSim ?? m.px;
     const chips = [['현재가', m.px], ['+50%', m.px * 1.5], ['2배', m.px * 2], ['평균 단가', m.avg], ['목표가', Math.ceil(c.needPx * 100) / 100]];
     card('fire-sim', {
-      title: '가격 시뮬레이터', sub: `${m.ticker} 가격이 이렇게 되면${c.rows.length > 1 ? ' (다른 종목은 현재가)' : ''} · 현재 환율 기준`, info: INFO.fireSim,
+      title: '가격 시뮬레이터', sub: `${esc(fireName(m.ticker))} 가격이 이렇게 되면${c.rows.length > 1 ? ' (다른 종목은 현재가)' : ''} · 현재 환율 기준`, info: INFO.fireSim,
       body: `<div class="sim-top" id="sim-top">${simTopHtml(p)}</div>
         <input type="range" id="sim-range" min="1" max="${max}" step="${m.kr ? 10 : 0.5}" value="${p.toFixed(1)}" aria-label="${m.ticker} 가격">
         <div class="sim-scale"><span>${pxS(m.ticker, 1)}</span><span>${pxS(m.ticker, max)}</span></div>
@@ -4000,7 +4000,11 @@
     const M = state.market, S = marketSession(), by = Object.fromEntries((M?.items || []).map((x) => [x.sym, x]));
     const tiles = MK_MAIN.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<div class="mk-t" title="${esc(x.name)}"><span>${esc(MK_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</div>`).join('');
     const fut = ['ES=F', 'NQ=F'].map((s) => by[s]).filter((x) => x && !x.error && x.pct != null);
-    const K = krSession(), krTiles = MK_KR.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<div class="mk-t" title="${esc(x.name)}"><span>${esc(MK_KR_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</div>`).join('');
+    let K = krSession();
+    const kst = by['^KS11']?.status; // 네이버 장 상태 — 시각상 정규장인데 닫혀 있으면 휴장일(공휴일)
+    const kday = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10), kt = by['^KS11']?.time;
+    if ((K.k === 'open' && kst && kst !== 'OPEN') || (K.k === 'post' && kt && kday(kt) !== kday(Date.now()))) K = { k: 'closed', label: '오늘 휴장' };
+    const krTiles = MK_KR.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<div class="mk-t" title="${esc(x.name)}"><span>${esc(MK_KR_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</div>`).join('');
     const ewy = by.EWY;
     card('market', {
       title: '시장 개요', sub: `<span class="mk-st ${S.k}">${S.label}</span> ${S.next}`, info: INFO.market,

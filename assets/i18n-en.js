@@ -1995,7 +1995,8 @@ window.__I18N_EN = {
 "하락에 거는 옵션(풋) ÷ 상승에 거는 옵션(콜), 5일 평균 — 높을수록 하락에 대비하는 사람이 많다는 뜻(공포)": "Bearish options (puts) ÷ bullish options (calls), 5-day average — higher means more people hedging against a drop (fear)",
 "VIX가 50일 평균보다 높을수록 시장이 불안해하는 상태(공포)": "The further VIX is above its 50-day average, the more nervous the market (fear)",
 "최근 20일 주식 수익률 − 국채 수익률 — 낮을수록 주식을 팔고 국채로 피신하는 중(공포)": "20-day stock return − Treasury return — lower means money fleeing stocks for bonds (fear)",
-"위험 회사채와 우량 회사채의 금리 차 — 차이가 벌어질수록 위험을 피하는 분위기(공포)": "Yield gap between junk and investment-grade bonds — a wider gap means investors are avoiding risk (fear)"
+"위험 회사채와 우량 회사채의 금리 차 — 차이가 벌어질수록 위험을 피하는 분위기(공포)": "Yield gap between junk and investment-grade bonds — a wider gap means investors are avoiding risk (fear)",
+"오늘 휴장": "Closed today"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
