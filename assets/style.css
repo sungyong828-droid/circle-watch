@@ -1292,3 +1292,79 @@ td.name span { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2;
 .kr-earn td small { display: block; font-size: 10px; }
 .kr-earn tr.kr-cns td { color: var(--ink-2); font-style: italic; }
 .ns-grid.kr3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* 한국 종목 투자자별 매매: 외국인·기관·개인 한 줄 */
+
+/* ---- 2026-10-09: 한국 종목 긴 이름 · 당겨서 새로고침 · 속보 알림 · 포트폴리오 종목 줄 · 한국 시장 */
+html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새로고침 대신 앱의 당겨서 새로고침 */
+.brand > div, .brand-txt { min-width: 0; }
+.brand h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-tk { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tabbar button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }
+
+/* 퇴사까지 보유 종목: 위 줄 이름·평가금액, 아래 줄 수량·가격 */
+.fire-pos { grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 10px 12px; }
+.fp-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; }
+.fp-h b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--sans); font-size: 13.5px; }
+.fp-v { flex: none; font-family: var(--mono); font-weight: 700; }
+.fp-d { font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+
+/* 배당 종목별 표: 긴 한국 이름은 두 줄까지 */
+.div-tbl td:first-child b { display: inline-block; max-width: 150px; white-space: normal; vertical-align: top; overflow-wrap: anywhere; }
+
+/* 시장 개요 — 한국 줄 */
+.mk-sec { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; }
+.mk-sec b { font-size: 13.5px; }
+.mk-sec .mk-st { font-size: 11.5px; padding: 2px 7px; }
+.mk-sec + .mk-grid { margin-top: 8px; }
+
+/* 배당 포트폴리오 짜보기: 고른 종목 줄 · 검색 · 대표 종목 배당률 */
+.sim-row { align-items: center; }
+.sim-tw { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px; border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.sim-logo { width: 26px; height: 26px; border-radius: 7px; flex: none; object-fit: contain; background: #fff; }
+.sim-logo.ws-letter { display: grid; place-items: center; background: var(--surface); color: var(--ink-2); font: 800 12px var(--sans); }
+.sim-nm { display: grid; min-width: 0; line-height: 1.25; }
+.sim-nm b { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-nm small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 1px 0 0; }
+.sim-row .bn-in input { height: 52px; }
+.sim-search { margin-top: 10px; padding: 10px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.sim-q { position: relative; }
+.sim-q input { padding-right: 40px; background: var(--surface) !important; }
+.sim-qx { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); font-size: 16px; cursor: pointer; }
+.sim-res { max-height: 340px; overflow-y: auto; margin-top: 4px; }
+.sim-res .ws-name { flex: 1; min-width: 0; display: grid; }
+.sim-res .ws-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-res .ws-name small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-act [data-simadd][aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.sim-yld { display: block; font-style: normal; font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.sim-yld b { color: var(--good); font-family: var(--mono); }
+.sim-yld small { color: var(--faint); font-size: 11px; }
+
+/* 당겨서 새로고침 표시 */
+.ptr { position: fixed; left: 50%; z-index: 26; display: flex; align-items: center; gap: 8px; padding: 7px 14px 7px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45); font-size: 12.5px; font-weight: 700; color: var(--ink-2); pointer-events: none; opacity: 0; transform: translate(-50%, calc(var(--ptr-y, 0px) - 46px)); transition: opacity 0.15s; }
+.ptr.on { opacity: 1; }
+.ptr-ic { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--accent); transform: rotate(calc(var(--ptr-p, 0) * 270deg)); }
+.ptr-ic svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.ptr.armed .ptr-ic { background: var(--accent); color: #14100a; }
+.ptr.armed { color: var(--ink); }
+.ptr.spin .ptr-ic { animation: ptr-spin 0.7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+/* 키워드 속보 알림 카드 */
+.news-alert { position: fixed; z-index: 40; left: 50%; top: calc(var(--na-top, 64px) + 8px); width: min(460px, calc(100% - 24px)); padding: 12px 14px 14px; border-radius: 18px; overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--up) 16%, var(--surface)) 0%, var(--surface) 70%); border: 1px solid color-mix(in srgb, var(--up) 50%, var(--line));
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.2); opacity: 0; transform: translate(-50%, -14px) scale(0.98); transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15), opacity 0.2s; }
+.news-alert.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.na-top { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; color: var(--muted); }
+.na-badge { flex: none; padding: 3px 9px; border-radius: 999px; background: var(--up); color: #fff; font-weight: 800; letter-spacing: -0.01em; animation: na-pulse 1.6s ease-in-out 2; }
+@keyframes na-pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--up) 0%, transparent), 0 0 0 3px color-mix(in srgb, var(--up) 35%, transparent); } }
+.na-kw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); font-weight: 800; }
+.na-tag { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); font-weight: 700; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.na-time { margin-left: auto; flex: none; }
+.na-x { flex: none; width: 30px; height: 30px; margin: -4px -4px -4px 2px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); font-size: 17px; line-height: 1; cursor: pointer; }
+.na-body { display: grid; gap: 5px; margin-top: 10px; color: var(--ink); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.na-title { font-size: 16px; line-height: 1.42; font-weight: 800; letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.na-sum { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.na-src { font-size: 12px; font-weight: 700; color: var(--accent); }
+.na-more { width: 100%; height: 38px; margin-top: 10px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.na-bar { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; background: var(--up); transform-origin: left; animation: na-bar 10s linear forwards; }
+@keyframes na-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .news-alert, .ptr { transition: none; } .na-badge, .na-bar { animation: none; } }

@@ -11,6 +11,30 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+**새 기능**
+- 🔄 **당겨서 새로고침**: 화면 맨 위에서 아래로 쭉 당기면 모든 데이터를 새로 받아요. 홈 화면에 추가한 앱에서도 돼요.
+- 🇰🇷 **시장 개요에 한국 시장**: 코스피·코스닥(실시간), 원·달러 환율, 그리고 밤사이 한국 증시 분위기를 보여주는 EWY(미국 상장 한국 ETF)와 한국 장 상태.
+- 🔍 **배당 포트폴리오 종목 검색**: '종목 찾아 추가'에서 티커나 종목명을 치면 바로 목록이 떠서 골라 넣어요. 한국 종목은 코드 대신 종목명으로 보여요.
+- 📈 **대표 배당 종목 배당률**: 월배당·고배당·커버드콜·국내 배당 목록에 종목마다 최근 1년 배당률을 함께 보여줘요.
+- 🔔 **속보 알림 새 디자인**: 키워드 속보가 화면 위에 큼직한 카드로 떠요. 누르면 기사, 여러 건이면 '더 보기'로 모아 봐요.
+
+**개선**
+- 📱 한국 종목(특히 이름이 긴 ETF)을 추가했을 때 제목·퇴사까지 보유 종목·배당 표가 깨지던 화면을 정리했어요.
+- 📄 한국 종목 애널리스트 리포트를 휴대폰에서 누르면 리서치 목록이 아니라 그 리포트 원문으로 바로 열려요.
+- 🔢 숫자 칸에 0이 있을 때 숫자를 치면 앞의 0이 자동으로 지워져요. 포트폴리오 비중은 1% 단위(정수)로 넣어요.
+- 😱 공포·탐욕 세부 지표 설명 문장을 끝까지 알기 쉽게 다듬었어요.
+- 💱 펀딩비가 8시간마다 정산되는 비율이라는 걸 함께 표시해요.
+- 📰 뉴스가 거의 없는 한국 ETF 때문에 위에 '일부 항목 실패'가 뜨던 문제를 고쳤어요.
+
+<!-- EN
+- 🔄 **Pull to refresh** from the top of any screen (works in the home-screen app too).
+- 🇰🇷 **Korea in Market overview**: KOSPI/KOSDAQ (live), USD/KRW and EWY for an overnight read.
+- 🔍 **Dividend planner search**: type a ticker or name and pick from the list; Korean stocks show by name.
+- 📈 Past-year yield shown for each suggested dividend stock.
+- 🔔 Redesigned breaking-news alert card.
+- 📱 Fixed broken layouts with long Korean ETF names; research reports open directly on mobile; leading zeros removed in number fields.
+-->
+
 ## v2026.10.08-1 — 2026-10-08
 
 [이 버전 보기](https://5589f85c.my-fire-portfolio.pages.dev) · 커밋 `8b4aa3a`

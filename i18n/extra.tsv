@@ -485,3 +485,28 @@ SCHD와 같은 지수를 원화로, 매달 분배	Same index as SCHD in KRW, mon
 통신사, 분기 배당	Telecom, quarterly
 담배·인삼, 반기·연 배당	Tobacco and ginseng, semiannual/annual
 ✓ 추가됨	✓ Added
+# 2026-10-09: 당겨서 새로고침 · 속보 알림 · 포트폴리오 검색 · 한국 시장 · 펀딩비 · 공포탐욕 설명
+당겨서 새로고침	Pull to refresh
+놓으면 새로고침	Release to refresh
+새로고침 중…	Refreshing…
+🔍 종목 찾아 추가	🔍 Find & add
+티커나 종목명 (예: SCHD, 삼성전자)	Ticker or name (e.g. SCHD, 005930)
+미국은 티커나 영문 회사명, 한국은 종목명이나 종목코드로 찾아요	Search US stocks by ticker or company name, Korean stocks by name or 6-digit code
+검색 중…	Searching…
+찾는 종목이 없어요	No matches
+배당률 불러오는 중…	Loading yield…
+최근 1년 배당률	Past-year yield
+8시간마다 정산	Settles every 8h
+다음	next
+🇰🇷 한국	🇰🇷 Korea
+장전 거래	Pre-market
+정규장 거래 중	Market open
+시간외 거래	After-hours
+장 마감	Closed
+주말 휴장	Weekend — closed
+원·달러	USD/KRW
+미국장에서 거래되는 한국 ETF — 밤사이 한국 증시 분위기(야간선물 대신 참고)	Korea ETF traded in the US — a read on Korean stocks overnight
+하락에 거는 옵션(풋) ÷ 상승에 거는 옵션(콜), 5일 평균 — 높을수록 하락에 대비하는 사람이 많다는 뜻(공포)	Bearish options (puts) ÷ bullish options (calls), 5-day average — higher means more people hedging against a drop (fear)
+VIX가 50일 평균보다 높을수록 시장이 불안해하는 상태(공포)	The further VIX is above its 50-day average, the more nervous the market (fear)
+최근 20일 주식 수익률 − 국채 수익률 — 낮을수록 주식을 팔고 국채로 피신하는 중(공포)	20-day stock return − Treasury return — lower means money fleeing stocks for bonds (fear)
+위험 회사채와 우량 회사채의 금리 차 — 차이가 벌어질수록 위험을 피하는 분위기(공포)	Yield gap between junk and investment-grade bonds — a wider gap means investors are avoiding risk (fear)

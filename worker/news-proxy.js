@@ -261,10 +261,13 @@ async function companyOf(sym) {
 async function genericNewsCfg(sym) {
   const { full, core } = await companyOf(sym);
   if (KR_RE.test(sym)) { // 한국 종목: 국내 기사 위주(해외는 영문 기사가 있으면)
+    // ETF는 운용사 이름을 뺀 이름으로도 찾는다(예: TIGER 미국나스닥100타겟데일리커버드콜 → 미국나스닥100타겟데일리커버드콜)
+    const alt = core.replace(/^(TIGER|KODEX|SOL|ACE|RISE|PLUS|KBSTAR|HANARO|ARIRANG|KOSEF|TIMEFOLIO|KIWOOM|WON|BNK|1Q|TRUSTON|마이다스|에셋플러스|UNICORN|파워|히어로즈|VITA|DAISHIN343|FOCUS|TREX|KoAct|HK|IBK)\s+/i, '').trim();
+    const names = alt && alt !== core ? [core, alt] : [core];
     return {
-      korea: true, kr: `"${core}" when:14d`, krBing: [core, `${core} 주가`], en: `"${core}" OR "${sym.slice(0, 6)}.${sym.endsWith('KQ') ? 'KQ' : 'KS'}" when:30d`, enBing: [core],
+      korea: true, kr: `${names.map((n) => `"${n}"`).join(' OR ')} when:14d`, krBing: [core, `${core} 주가`], en: `"${core}" OR "${sym.slice(0, 6)}.${sym.endsWith('KQ') ? 'KQ' : 'KS'}" when:30d`, enBing: [core],
       bw: '', bwBing: [], site: null, officialSource: /^$/, officialTitle: /^$/, officialExclude: /^$/, officialStrip: /^$/, industry: null,
-      relevant: new RegExp(reEsc(core), 'i'), company: `${core}(${sym.slice(0, 6)})`,
+      relevant: new RegExp(names.map(reEsc).join('|'), 'i'), company: `${core}(${sym.slice(0, 6)})`,
     };
   }
   const word = core.split(/\s+/)[0];
@@ -1326,7 +1329,19 @@ const MARKET = [
   ['^GSPC', 'S&P500'], ['^IXIC', '나스닥'], ['^DJI', '다우'], ['^RUT', '러셀2000'],
   ['^VIX', 'VIX(공포지수)'], ['^TNX', '미 10년물 금리'], ['DX-Y.NYB', '달러지수'], ['BTC-USD', '비트코인'],
   ['ES=F', 'S&P500 선물'], ['NQ=F', '나스닥 선물'],
+  ['^KS11', '코스피'], ['^KQ11', '코스닥'], ['KRW=X', '원·달러 환율'], ['EWY', 'EWY(미국 상장 한국 ETF)'],
 ];
+// 코스피·코스닥 현재값은 네이버(실시간)로 덮어쓴다 — Yahoo는 늦을 때가 있음, 작은 차트는 Yahoo 것을 그대로 씀
+async function naverIndex() {
+  const r = await fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI,KOSDAQ', { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(6000) });
+  if (!r.ok) throw new Error('naver ' + r.status);
+  const out = {};
+  for (const d of (await r.json()).datas || []) {
+    const px = krNum(d.closePrice), ch = krNum(d.compareToPreviousClosePrice), sign = d.compareToPreviousPrice?.name === 'FALLING' ? -1 : 1;
+    if (px != null && ch != null) out[d.itemCode === 'KOSPI' ? '^KS11' : '^KQ11'] = { price: px, prev: px - sign * Math.abs(ch), status: d.marketStatus || null, time: d.localTradedAt ? Date.parse(d.localTradedAt) : null };
+  }
+  return out;
+}
 async function yahooMeta(sym) {
   const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=15m&includePrePost=false`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(7000) });
   if (!r.ok) throw new Error('yahoo ' + r.status);
@@ -1335,11 +1350,14 @@ async function yahooMeta(sym) {
   return { price: m.regularMarketPrice, prev: m.chartPreviousClose ?? m.previousClose ?? null, time: m.regularMarketTime ? m.regularMarketTime * 1000 : null, spark: cl.filter((v) => v != null).map((v) => Math.round(v * 100) / 100) };
 }
 export async function handleMarket(url, cache, cors, ctx) {
-  return swr(cache, ctx, `${url.origin}/market?v=1`, {
+  return swr(cache, ctx, `${url.origin}/market?v=2`, {
     freshSec: 30, keepSec: 3600, cors,
     build: async () => {
-      const res = await Promise.allSettled(MARKET.map(([s]) => yahooMeta(s)));
-      const items = MARKET.map(([sym, name], i) => (res[i].status === 'fulfilled' ? { sym, name, ...res[i].value, pct: res[i].value.prev ? res[i].value.price / res[i].value.prev - 1 : null } : { sym, name, error: true }));
+      const [res, nv] = await Promise.all([Promise.allSettled(MARKET.map(([s]) => yahooMeta(s))), naverIndex().catch(() => ({}))]);
+      const items = MARKET.map(([sym, name], i) => {
+        const y = res[i].status === 'fulfilled' ? res[i].value : null, v = { ...(y || {}), ...(nv[sym] || {}) };
+        return v.price != null ? { sym, name, ...v, pct: v.prev ? v.price / v.prev - 1 : null } : { sym, name, error: true };
+      });
       if (!items.some((x) => !x.error)) throw new Error('시장 지표를 받지 못했습니다');
       return JSON.stringify({ at: new Date().toISOString(), items });
     },
@@ -1501,7 +1519,8 @@ export async function handleNews(url, cache, cors, ctx, env) {
       let last = null;
       try { last = prevRes ? await prevRes.json() : env?.SUMS ? await env.SUMS.get('news:' + sym, 'json') : null; } catch {}
       data = mergeLastGood(data, last);
-      if (!data.kr.length && !data.en.length && !data.official.length) throw new Error('뉴스 출처를 모두 받지 못했습니다');
+      // 한국 종목(특히 ETF)은 기사가 아예 없을 수 있다 — 출처가 응답했으면 '기사 없음'으로 정상 처리
+      if (!data.kr.length && !data.en.length && !data.official.length && !(KR_RE.test(sym) && !(data.failed || []).some((f) => f === 'all' || f === 'kr'))) throw new Error('뉴스 출처를 모두 받지 못했습니다');
       attachSums(data, await readSums(env, sym));
       // 요약이 빠진 새 기사는 이어서 요약해 둔다(다음 갱신 때 보임)
       const lock = new Request(`${url.origin}/sumlock?s=${sym}`);
