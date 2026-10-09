@@ -350,6 +350,7 @@ def feedback_page():
 # ---------------------------------------------------------------- 업데이트 소식(CHANGELOG.md)
 import hashlib
 import re as _re
+import re
 
 CHANGELOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'CHANGELOG.md')
 NEXT_H = '## 다음 배포'
@@ -373,88 +374,103 @@ def changelog_sections():
     return [(p.split('\n', 1)[0].strip(), p.split('\n', 1)[1] if '\n' in p else '') for p in parts]
 
 
-def whatsnew():
-    """앱의 '새로 업데이트됐어요' 카드 내용: 다음 배포 칸(있으면) 아니면 가장 최근 버전"""
-    secs = changelog_sections()
-    pick = None
-    for title, body in secs:
-        if title == NEXT_H[3:]:
-            if _re.search(r'(?m)^- ', _re.sub(r'<!--.*?-->', '', body, flags=_re.S)):
-                pick = ('', body)
-                break
-            continue
-        if title.startswith('v20'):
-            pick = (title, body)
-            break
-    if not pick:
-        return None
-    title, body = pick
+def _ver(t):
+    return re.match(r'(v(\d{4})\.(\d{2})\.(\d{2})-\d+)', t)
+
+
+def _parse_body(body):
+    """버전 본문 → ([(소제목, [항목...])...], EN 항목들) — 내부용 줄·주석은 뺀다"""
     en_m = _re.search(r'<!--\s*EN\s*(.*?)-->', body, _re.S)
+    en = [l.strip()[2:].strip() for l in (en_m.group(1).splitlines() if en_m else []) if l.strip().startswith('- ')]
     body = '\n'.join(l for l in body.splitlines() if '<!-- internal -->' not in l)
-    ko = _re.sub(r'<!--.*?-->', '', body, flags=_re.S)
-    items = [_md_inline(l[2:].strip()) for l in ko.splitlines() if l.startswith('- ')]
-    en = [_md_inline(l[2:].strip()) for l in (en_m.group(1).splitlines() if en_m else []) if l.strip().startswith('- ')]
-    en = [e[2:] if e.startswith('- ') else e for e in en]
-    ver = title.split(' — ')[0] if title else ''
+    groups, head = [], ''
+    for line in _re.sub(r'<!--.*?-->', '', body, flags=_re.S).splitlines():
+        t = line.strip()
+        if not t or t.startswith('[이 버전 보기]') or t.startswith('커밋 ') or t == '---':
+            continue
+        if t.startswith('**') and t.endswith('**') and not t.startswith('- '):
+            head = t.strip('*').strip()
+            continue
+        if t.startswith('- '):
+            if not groups or groups[-1][0] != head:
+                groups.append((head, []))
+            groups[-1][1].append(t[2:].strip())
+    return groups, en
+
+
+def _merge(parsed):
+    """여러 버전의 [(소제목, 항목)]을 소제목별로 합친다(최신 버전 항목이 먼저)"""
+    out = {}
+    for groups in parsed:
+        for head, items in groups:
+            out.setdefault(head, []).extend(items)
+    return list(out.items())
+
+
+def day_groups():
+    """공개 업데이트를 날짜별로 묶는다: [(YYYY-MM-DD, [버전...], [(소제목, 항목)], EN 항목)] — 최신 날짜 먼저"""
+    days = {}
+    for t, body in changelog_sections():
+        m = _ver(t)
+        if not m or m.group(1) < PUBLIC_FROM:
+            continue
+        groups, en = _parse_body(body)
+        if not any(items for _, items in groups):
+            continue
+        d = f'{m.group(2)}-{m.group(3)}-{m.group(4)}'
+        g = days.setdefault(d, {'vers': [], 'parsed': [], 'en': []})
+        g['vers'].append(m.group(1)); g['parsed'].append(groups); g['en'] += en
+    return [(d, g['vers'], _merge(g['parsed']), g['en']) for d, g in sorted(days.items(), reverse=True)]
+
+
+def whatsnew():
+    """앱의 '새로 업데이트됐어요' 카드: 다음 배포 칸(있으면) + 가장 최근 날짜의 버전들을 합쳐서"""
+    secs = changelog_sections()
+    pend = next((b for t, b in secs if t == NEXT_H[3:]), '')
+    pgroups, pen = _parse_body(pend) if pend else ([], [])
+    days = day_groups()
+    import datetime as _dt
+    today = (_dt.datetime.utcnow() + _dt.timedelta(hours=9)).date().isoformat()
+    if any(items for _, items in pgroups):
+        # 테스트 환경(배포 전): 다음 배포 칸 + 오늘 이미 나간 버전
+        same = [g for g in days if g[0] == today]
+        groups = _merge([pgroups] + [[(h, it) for h, it in same[0][2]]] if same else [pgroups])
+        en = pen + (same[0][3] if same else [])
+        ver = ''
+    elif days:
+        d, vers, groups, en = days[0]
+        ver = vers[-1] if len(vers) == 1 else f'{d[:4]}.{d[5:7]}.{d[8:]} 업데이트'
+    else:
+        return None
+    items = [_md_inline(x) for _, its in groups for x in its]
+    en = [_md_inline(x) for x in en]
     nid = hashlib.md5('\n'.join(items).encode('utf-8')).hexdigest()[:10]
     return {'id': nid, 'ver': ver, 'items': items, 'en': en}
 
 
 def updates_page():
     title = '업데이트 소식 — 새로 생긴 기능과 바뀐 점'
-    desc = 'Fire Portfolio(퇴사를 위한 미국 주식 대시보드)에 새로 생긴 기능과 바뀐 점을 날짜별로 모았어요.'
+    desc = 'Fire Portfolio(퇴사를 위한 주식 대시보드)에 새로 생긴 기능과 바뀐 점을 날짜별로 모았어요.'
     out = []
-    for t, body in changelog_sections():
-        if t.startswith(NEXT_H[3:]):
-            continue
-        m = _re.match(r'(v(\d{4})\.(\d{2})\.(\d{2})-\d+)', t)
-        # 공개 페이지: 이름을 Fire Portfolio로 바꾼 뒤 사용자에게 보이는 변화만(그 전 기록·내부 작업 제외)
-        if not m or m.group(1) < PUBLIC_FROM:
-            continue
-        body = '\n'.join(l for l in body.splitlines() if '<!-- internal -->' not in l)
-        if not _re.search(r'(?m)^- ', _re.sub(r'<!--.*?-->', '', body, flags=_re.S)):
-            continue
-        head = f'{m.group(2)}.{m.group(3)}.{m.group(4)} 업데이트 <small>{m.group(1)}</small>' if m else esc(t)
-        html_lines, in_ul = [], False
-        for line in _re.sub(r'<!--.*?-->', '', body, flags=_re.S).splitlines():
-            s = line.strip()
-            if not s or s.startswith('[이 버전 보기]') or s.startswith('커밋 ') or s == '---':
-                continue
-            if s.startswith('- '):
-                if not in_ul:
-                    html_lines.append('<ul class="lp-upd">'); in_ul = True
-                html_lines.append(f'<li>{_md_inline(s[2:])}</li>')
-                continue
-            if in_ul:
-                html_lines.append('</ul>'); in_ul = False
-            html_lines.append(f'<h3>{_md_inline(s.strip("*"))}</h3>' if s.startswith('**') and s.endswith('**') else f'<p>{_md_inline(s)}</p>')
-        if in_ul:
-            html_lines.append('</ul>')
-        out.append(f'<section class="lp-sec upd" id="{m.group(1)}"><h2>{head}</h2>{"".join(html_lines)}</section>')
-    body = f'''<section class="lp-hero">
+    # 공개 페이지: 이름을 Fire Portfolio로 바꾼 뒤 사용자에게 보이는 변화만, 같은 날 여러 번 배포한 것은 하루로 합쳐서
+    for d, vers, groups, _ in day_groups():
+        head = f'{d[:4]}.{d[5:7]}.{d[8:]} 업데이트 <small>{" · ".join(reversed(vers))}</small>'
+        html_lines = []
+        for h, items in groups:
+            if h:
+                html_lines.append(f'<h3>{_md_inline(h)}</h3>')
+            html_lines.append('<ul class="lp-upd">' + ''.join(f'<li>{_md_inline(x)}</li>' for x in items) + '</ul>')
+        anchors = ''.join(f'<span id="{v}"></span>' for v in vers)
+        out.append(f'<section class="lp-sec upd" id="u{d}">{anchors}<h2>{head}</h2>{"".join(html_lines)}</section>')
+    body = f"""<section class="lp-hero">
   <h1>업데이트 소식</h1>
   <p class="lp-lead">쓰면서 불편했던 점과 보내 주신 의견으로 계속 고치고 있어요. 새로 생긴 기능과 바뀐 점을 날짜별로 모았어요.</p>
   <a class="lp-cta" href="./?ref=page-updates">대시보드 열기 →</a>
 </section>
 {''.join(out)}
-<section class="lp-sec lp-end"><a class="lp-cta" href="feedback?from=updates">💬 의견 보내기</a></section>'''
+<section class="lp-sec lp-end"><a class="lp-cta" href="feedback?from=updates">💬 의견 보내기</a></section>"""
     ld = {'@context': 'https://schema.org', '@type': 'WebPage', 'name': title, 'description': desc, 'url': SITE + 'updates', 'inLanguage': 'ko'}
     return page('updates', title, desc, body, ld)
-
-BONUS_FAQ = [
-    ('삼성전자 성과급(OPI·TAI)은 어떻게 계산하나요?', 'OPI(초과이익성과급)는 연봉 × 지급률(최대 50%), TAI(목표달성장려금)는 상·하반기 월 기본급 × 지급률(최대 100%)로 계산해요. DS 부문 특별 성과급처럼 금액으로 공지되는 것은 금액을 그대로 넣으면 돼요.'),
-    ('SK하이닉스 성과급(PS·PI)은요?', 'PS(초과이익분배금)는 월 기본급 × 지급률, PI(생산성 격려금)는 상·하반기 월 기본급 × 지급률로 계산해요. 월 기본급을 모르면 연봉 ÷ 20으로 어림하고, 급여명세서의 기본급을 넣으면 더 정확해요. 일부를 자사주로 받는 비율도 넣을 수 있어요.'),
-    ('세금은 얼마나 떼나요?', '성과급 때문에 늘어나는 1년 소득세(근로소득공제·세액공제 반영)에 지방소득세 10%를 더하고, 건강보험·장기요양보험·고용보험을 빼서 실수령액을 추정해요. 국민연금은 보통 상한에 걸려 추가로 빠지지 않아 제외했어요.'),
-    ('계산 결과가 실제와 같나요?', '공개된 계산 방식으로 추정한 값이에요. 회사 세부 규정, 비과세 항목, 부양가족·공제 상황에 따라 실제 입금액은 달라질 수 있어요.'),
-    ('성과급으로 배당주를 사면 얼마나 받을 수 있나요?', '계산 결과 아래 "이 돈으로 배당 포트폴리오 짜보기"를 누르면 실수령액이 투자금으로 들어가, SCHD·JEPI·국내 커버드콜 ETF 등을 몇 주 살 수 있고 매달 배당이 얼마인지 바로 계산해요.'),
-]
-SIM_FAQ = [
-    ('배당 포트폴리오 계산기는 무엇을 계산하나요?', '투자금과 종목·비중을 넣으면 지금 주가로 종목마다 몇 주를 살 수 있는지, 최근 1년 배당 기준으로 1년·한 달에 배당을 얼마 받는지(세후), 포트폴리오 배당률과 남는 돈을 계산해요.'),
-    ('어떤 종목을 넣을 수 있나요?', 'SCHD·JEPI·JEPQ·O 같은 미국 배당주·ETF와 삼성전자, TIGER 미국배당다우존스, KODEX 커버드콜 같은 국내 주식·ETF를 모두 섞어 넣을 수 있어요. 티커나 종목명으로 검색해 고르면 돼요.'),
-    ('종목을 잘 몰라도 쓸 수 있나요?', '월배당·고배당 ETF·커버드콜·국내 배당 ETF·국내 커버드콜·국내 배당주 분류마다 대표 종목을 무엇을 따라가는지 설명과 최근 1년 배당률을 붙여 보여줘요. 눌러서 바로 넣으면 돼요.'),
-    ('세금은 어떻게 반영하나요?', '미국 종목은 원천징수 15%, 국내 종목은 배당소득세 15.4%를 뺀 금액으로 보여줘요. 연 배당이 2,000만원을 넘으면 금융소득종합과세 대상이 될 수 있다는 안내도 해요.'),
-    ('비중 합계가 100%가 아니면요?', '입력할 때마다 합계를 바로 알려 주고, 계산할 때는 넣은 비율대로 100%에 맞춰서(1% 단위) 계산해요.'),
-]
 
 
 def bonus_page():
@@ -509,35 +525,35 @@ def portfolio_page():
 
 
 def rss():
-    """업데이트 소식 RSS(네이버 서치어드바이저 RSS 제출용)"""
+    """업데이트 소식 RSS 2.0(네이버 서치어드바이저 RSS 제출용) — 날짜별 한 항목"""
     import email.utils, datetime as _dt
-    items = []
-    for t, body in changelog_sections():
-        m = _re.match(r'(v(\d{4})\.(\d{2})\.(\d{2})-\d+)', t)
-        if not m or m.group(1) < PUBLIC_FROM:
-            continue
-        body = '\n'.join(l for l in _re.sub(r'<!--.*?-->', '', body, flags=_re.S).splitlines() if '<!-- internal -->' not in l)
-        lis = [l.strip()[2:] for l in body.splitlines() if l.strip().startswith('- ')]
-        if not lis:
-            continue
+    kst = _dt.timezone(_dt.timedelta(hours=9))
+    items, newest = [], None
+    for d, vers, groups, _ in day_groups():
+        lis = [x for _, its in groups for x in its]
         plain = [_re.sub(r'\*\*(.+?)\*\*', r'\1', x) for x in lis]
         first = _re.sub(r'^[^\w가-힣]+', '', plain[0].split(':')[0]).strip()
-        d = _dt.datetime(int(m.group(2)), int(m.group(3)), int(m.group(4)), 9, 0, tzinfo=_dt.timezone(_dt.timedelta(hours=9)))
-        html = '<ul>' + ''.join(f'<li>{_md_inline(x)}</li>' for x in lis) + '</ul>'
+        when = _dt.datetime(int(d[:4]), int(d[5:7]), int(d[8:]), 9, 0, tzinfo=kst)
+        newest = newest or when
+        title = f'{d[:4]}.{d[5:7]}.{d[8:]} 업데이트 — {first}' + (f' 외 {len(lis) - 1}건' if len(lis) > 1 else '')
+        html_body = ''.join((f'<h3>{_md_inline(h)}</h3>' if h else '') + '<ul>' + ''.join(f'<li>{_md_inline(x)}</li>' for x in its) + '</ul>' for h, its in groups)
         items.append(f"""  <item>
-    <title>{esc(f'{m.group(2)}.{m.group(3)}.{m.group(4)} 업데이트 — {first} 외 {len(lis) - 1}건' if len(lis) > 1 else f'{m.group(2)}.{m.group(3)}.{m.group(4)} 업데이트 — {first}')}</title>
-    <link>{SITE}updates#{m.group(1)}</link>
-    <guid isPermaLink="false">{m.group(1)}</guid>
-    <pubDate>{email.utils.format_datetime(d)}</pubDate>
-    <description><![CDATA[{html}]]></description>
+    <title>{esc(title)}</title>
+    <link>{SITE}updates#u{d}</link>
+    <guid isPermaLink="false">fire-portfolio-update-{d}</guid>
+    <pubDate>{email.utils.format_datetime(when)}</pubDate>
+    <description><![CDATA[{html_body}]]></description>
   </item>""")
+    built = email.utils.format_datetime(newest or _dt.datetime.now(kst))
     return f"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
   <title>Fire Portfolio 업데이트 소식</title>
   <link>{SITE}updates</link>
+  <atom:link href="{SITE}rss.xml" rel="self" type="application/rss+xml"/>
   <description>퇴사를 위한 주식 대시보드 Fire Portfolio에 새로 생긴 기능과 바뀐 점</description>
   <language>ko</language>
+  <lastBuildDate>{built}</lastBuildDate>
 {chr(10).join(items)}
 </channel>
 </rss>
