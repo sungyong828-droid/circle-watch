@@ -3,9 +3,6 @@
 // ?vid=… 를 주면 그 기기의 기록·제외 여부도 함께 돌려준다(관리자 화면의 '이 기기' 설명용).
 import { denyUnlessAdmin, json, kstDay, VID_RE, LOCK_FAILS, LOCK_MS } from '../../../worker/admin-auth.js';
 
-// 화면·기능 비트(assets/app.js USE_BITS 와 같은 순서)
-const USE_BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr'];
-
 export async function onRequestGet({ request, env }) {
   const deny = await denyUnlessAdmin(request, env);
   if (deny) return deny;
@@ -13,8 +10,7 @@ export async function onRequestGet({ request, env }) {
   const today = kstDay(now), from30 = kstDay(now - 29 * DAY), from7 = kstDay(now - 6 * DAY), from14 = kstDay(now - 13 * DAY);
   const q = (sql, ...args) => env.STATS.prepare(sql).bind(...args).all().then((r) => r.results || []);
   const EX = 'vid NOT IN (SELECT vid FROM excluded)';
-  const useCols = USE_BITS.map((k, i) => `SUM((used & ${1 << i}) != 0) AS ${k}`).join(', ');
-  const [days, total, refs7, refsToday, countries, devices, live, back, week, prevWeek, exN, usage, langs, hours, errs, fails] = await Promise.all([
+  const [days, total, refs7, refsToday, countries, devices, live, back, week, prevWeek, exN, refs30, langs, hours, errs, fails] = await Promise.all([
     q(`SELECT day, COUNT(*) AS visitors, SUM(views) AS views, SUM(is_new) AS newbies, COUNT(DISTINCT iph) AS ips
        FROM visits WHERE day >= ?1 AND ${EX} GROUP BY day ORDER BY day`, from30),
     q(`SELECT COUNT(DISTINCT vid) AS visitors, SUM(views) AS views, MIN(day) AS since FROM visits WHERE ${EX}`),
@@ -27,8 +23,8 @@ export async function onRequestGet({ request, env }) {
     q(`SELECT COUNT(DISTINCT vid) AS n, COALESCE(SUM(is_new), 0) AS newbies FROM visits WHERE day >= ?1 AND ${EX}`, from7),
     q(`SELECT COUNT(DISTINCT vid) AS n, COALESCE(SUM(is_new), 0) AS newbies FROM visits WHERE day >= ?1 AND day < ?2 AND ${EX}`, from14, from7),
     q(`SELECT COUNT(*) AS n FROM excluded`),
-    // 최근 7일 동안 각 화면을 연(기능을 쓴) 기기 수 — 기기는 7일 중 한 번이라도 쓰면 1
-    q(`SELECT COUNT(*) AS devices, ${useCols} FROM (SELECT vid, MAX(used) AS used FROM (SELECT vid, used FROM visits WHERE day >= ?1 AND ${EX}) GROUP BY vid)`, from7),
+    // 최근 30일 유입 경로별 방문(그날 처음 들어온 경로) · 신규 — 관리자 화면에서 검색·블로그·SNS 등으로 묶어 보여 준다
+    q(`SELECT COALESCE(ref, '직접 방문') AS ref, COUNT(*) AS n, SUM(is_new) AS newbies FROM visits WHERE day >= ?1 AND ${EX} GROUP BY 1 ORDER BY n DESC LIMIT 300`, from30),
     q(`SELECT COALESCE(lang, '?') AS lang, COUNT(*) AS n FROM visits WHERE day >= ?1 AND ${EX} GROUP BY 1`, from7),
     // 처음 연 시각(한국 시간)별 — 최근 7일
     q(`SELECT CAST(((first_at / 1000 + 32400) % 86400) / 3600 AS INTEGER) AS h, COUNT(*) AS n FROM visits WHERE day >= ?1 AND ${EX} GROUP BY 1`, from7),
@@ -63,7 +59,7 @@ export async function onRequestGet({ request, env }) {
     returning: back[0]?.n || 0, excludedDevices: exN[0]?.n || 0,
     picks, pickDevices: pickDev[0]?.n || 0,
     feedback: fb, feedbackCount: Object.fromEntries(fbN.map((r) => [r.status, r.n])),
-    usage: usage[0] || {}, useBits: USE_BITS, langs, hours, errors: errs, authFails: fails, lockRule: { fails: LOCK_FAILS, minutes: LOCK_MS / 60000 },
+    refs30, langs, hours, errors: errs, authFails: fails, lockRule: { fails: LOCK_FAILS, minutes: LOCK_MS / 60000 },
     me,
   });
 }

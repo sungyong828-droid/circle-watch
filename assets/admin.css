@@ -106,3 +106,25 @@ em.up { color: var(--up); } em.down { color: var(--down); }
 .fb-act { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 .fb-act .fb-hide { color: var(--muted); }
 .fb-tabs button[aria-pressed="true"] { background: var(--accent, var(--c-orange)); border-color: transparent; color: #fff; font-weight: 700; }
+
+/* 2026-10-09: 인기 종목 이름 · 유입 채널 · 검색 노출 */
+em.nb { color: var(--muted); font-weight: 600; cursor: help; border-bottom: 1px dotted var(--faint); }
+.adm-picks li { grid-template-columns: 22px minmax(0, 1.4fr) minmax(0, 1fr) 70px; }
+.adm-picks .pk-n { display: grid; min-width: 0; text-align: left; font: inherit; }
+.adm-picks .pk-n b { font: 700 13.5px var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-picks .pk-n small { font: 500 11px var(--sans); color: var(--muted); }
+.adm-picks span:last-child { display: grid; justify-items: end; line-height: 1.25; }
+.adm-chan li { grid-template-columns: minmax(0, 1fr) 80px 44px 56px; }
+.adm-chan li small { color: var(--faint); font-size: 11px; text-align: right; white-space: nowrap; }
+.adm-h3 { margin: 14px 0 8px; font-size: 13.5px; }
+.adm-h3 small { color: var(--faint); font-weight: 500; font-size: 11.5px; }
+.adm-links { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 6px; }
+.adm-links a { text-decoration: none; }
+.adm-picks .pk-n b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+.adm-chan li { grid-template-columns: minmax(0, 1fr) 64px 34px 50px; }
+#adm-seo-chk li { flex-wrap: wrap; }
+#adm-seo-chk em { white-space: normal; text-align: right; }
+@media (max-width: 640px) {
+  .adm-picks li { grid-template-columns: 20px minmax(0, 1fr) 54px 62px; }
+  .adm-chan li { grid-template-columns: minmax(0, 1fr) 48px 32px 48px; }
+}

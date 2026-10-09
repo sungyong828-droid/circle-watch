@@ -88,16 +88,8 @@
     return `<svg class="adm-chart" viewBox="0 -4 ${W} ${H + 22}" preserveAspectRatio="none" role="img" aria-label="최근 30일 방문자">${rect}${ticks}</svg>`;
   }
 
-  // 화면·기능 이름(functions/api/admin/stats.js USE_BITS 와 같은 키)
-  const USE_LABEL = {
-    home: ['🏠 홈', 'screen'], crcl: ['서클 주가·수급', 'screen'], earn: ['서클 실적', 'screen'], usdc: ['USDC', 'screen'], arc: ['Arc 체인', 'screen'], news: ['서클 뉴스', 'screen'],
-    fire: ['🔥 퇴사까지', 'screen'], div: ['💰 배당금', 'screen'], sprice: ['다른 종목 주가', 'screen'], searn: ['다른 종목 실적', 'screen'], snews: ['다른 종목 뉴스', 'screen'],
-    fireSet: ['퇴사 계산 입력해 둔 기기', 'feat'], divSet: ['배당 종목 입력해 둔 기기', 'feat'], watch: ['관심 종목을 추가한 기기', 'feat'],
-    ocr: ['📷 사진으로 거래 넣기', 'feat'], share: ['공유 버튼', 'feat'], blog: ['📝 블로그 링크 누름', 'feat'],
-    bonus: ['💼 성과급 계산기', 'screen'], divsim: ['🧮 배당 포트폴리오 짜보기', 'feat'], kr: ['한국 종목을 추가한 기기', 'feat'],
-  };
   const delta = (a, b) => {
-    if (!b) return a ? '<em class="up">새로 시작</em>' : '';
+    if (!b) return a ? '<em class="nb" title="비교할 그 전 7일 기록이 없어서 증감률(▲▼%)을 계산할 수 없어요. 기록이 쌓이면 자동으로 바뀌어요.">비교 기록 없음</em>' : '';
     const p = Math.round(((a - b) / b) * 100);
     return `<em class="${p >= 0 ? 'up' : 'down'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}%</em>`;
   };
@@ -111,20 +103,12 @@
       ${[0, 6, 12, 18, 23].map((h) => `<text x="${h * bw + bw / 2}" y="${H + 14}" text-anchor="middle">${h}시</text>`).join('')}</svg>
       <p class="adm-dim">처음 연 시각(한국 시간) 기준 · 가장 많은 때 <b>${list[peak] ? `${peak}시` : '–'}</b> — 블로그·SNS 글은 이 시간 조금 전에 올리면 좋아요.</p>`;
   }
-  function usageHtml(u, bits) {
-    const dev = u?.devices || 0;
-    if (!dev) return '<p class="adm-dim">아직 기록이 없어요. (오늘부터 모으기 시작했어요)</p>';
-    const row = (k) => { const n = u[k] || 0; return `<li><span>${esc(USE_LABEL[k]?.[0] || k)}</span><i style="width:${Math.max(2, (n / dev) * 100)}%"></i><b>${Math.round((n / dev) * 100)}%</b></li>`; };
-    const sc = bits.filter((k) => USE_LABEL[k]?.[1] === 'screen').sort((a, b) => (u[b] || 0) - (u[a] || 0));
-    const ft = bits.filter((k) => USE_LABEL[k]?.[1] === 'feat');
-    return `<div class="adm-2 adm-in"><div><h3>화면 <small>연 기기 비율</small></h3><ul class="adm-list adm-pct">${sc.map(row).join('')}</ul></div>
-      <div><h3>기능 <small>쓴 기기 비율</small></h3><ul class="adm-list adm-pct">${ft.map(row).join('')}</ul></div></div>
-      <p class="adm-dim">최근 7일 방문 기기 ${nf(dev)}대 중. 어떤 종목·금액인지는 보내지 않고 '열었다/썼다'만 기록해요. (10/4부터 집계 — 그 전 방문은 0으로 보여요)</p>`;
-  }
   // 서비스 상태: 사이트가 쓰는 데이터 API를 이 화면에서 직접 불러 본다
   const HEALTH = [
     ['/api/data', '대시보드 기본 데이터'], ['/api/quote', '실시간 시세'], ['/api/market', '시장 개요'], ['/api/news?s=CRCL', '뉴스·AI 요약'],
     ['/api/earnings?s=CRCL', '실적'], ['/api/dividends?s=SCHD', '배당 기록'], ['/api/chart?s=CRCL&r=1d', '차트'],
+    ['/api/krquote?s=005930.KS', '한국 시세(네이버)'], ['/api/krinfo?s=005930.KS', '한국 종목 정보'], ['/api/feargreed', '공포·탐욕 지수'],
+    ['/api/lookup?q=SCHD', '종목 검색'], ['/api/popular', '인기 종목(공개)'],
   ];
   let healthHtml = '';
   async function runHealth() {
@@ -186,11 +170,72 @@
       }).join('')}</ul>` : `<p class="adm-dim">${fbFilter === 'new' ? '✅ 새로 들어온 문의가 없어요.' : '아직 문의가 없어요.'}</p>`}
       <p class="adm-dim">방문자는 대시보드 맨 아래 <b>💬 문의·개선 제안</b>에서 글을 남겨요. 도배를 막으려고 한 사람(IP·기기)당 10분에 3건·하루 8건, 사이트 전체 하루 150건까지만 받고, 같은 내용은 7일 동안 다시 받지 않아요. '숨기기'는 목록에서만 빼고 지우지는 않아요.</p>`;
   }
+  // 종목 이름: 한국은 assets/krx.json, 미국은 /api/lookup — 한 번 찾은 이름은 이 기기에 저장
+  const KR_SYM = /^[0-9A-Z]{6}\.(KS|KQ)$/;
+  let symNames = {};
+  try { symNames = JSON.parse(store.get('cw.admNames') || '{}') || {}; } catch {}
+  let krxP = null;
+  const cleanName = (n) => String(n || '').replace(/\s+(Common Stock|Ordinary Shares|Class [A-Z]\b.*|American Depositary.*)$/i, '').replace(/,?\s+(Inc|Corp|Corporation|Ltd|Limited|Holdings?|plc|Co|N\.V|S\.A)\.?$/i, '').trim();
+  async function resolveNames(syms) {
+    const miss = syms.filter((s) => !symNames[s]);
+    if (!miss.length) return false;
+    const kr = miss.filter((s) => KR_SYM.test(s)), us = miss.filter((s) => !KR_SYM.test(s));
+    if (kr.length) {
+      krxP ||= fetch('assets/krx.json?v=2').then((r) => r.json()).catch(() => []);
+      const L = await krxP;
+      for (const s of kr) { const r = L.find((x) => `${x[0]}.${x[2]}` === s); if (r) symNames[s] = r[1]; }
+    }
+    await Promise.all(us.slice(0, 30).map(async (s) => {
+      try { const j = await (await fetch(`/api/lookup?q=${encodeURIComponent(s)}`)).json(); const m = (j.results || []).find((x) => x.symbol === s); if (m?.name) symNames[s] = cleanName(m.name); } catch {}
+    }));
+    store.set('cw.admNames', JSON.stringify(symNames));
+    return true;
+  }
   function picksHtml(rows, dev) {
     if (!rows?.length) return '<p class="adm-dim">아직 기록이 없어요. 방문자가 관심 종목을 추가하면 여기에 쌓여요.</p>';
-    const max = rows[0].n || 1;
-    return `<ol class="adm-picks">${rows.map((r, i) => `<li><em>${i + 1}</em><b>${esc(r.sym)}</b><i style="width:${Math.max(4, (r.n / max) * 100)}%"></i><span>${nf(r.n)}대${r.n >= 3 ? '' : ' <small>비공개</small>'}</span></li>`).join('')}</ol>
-      <p class="adm-dim">종목을 추가한 기기 ${nf(dev)}대 기준. 3대 이상인 종목만 방문자 화면(종목 추가 창)의 '많이 추가한 종목'에 보여요 — 블로그 글감으로 써 보세요.</p>`;
+    const max = rows[0].n || 1, krN = rows.filter((r) => KR_SYM.test(r.sym)).length;
+    return `<ol class="adm-picks">${rows.map((r, i) => { const kr = KR_SYM.test(r.sym), nm = symNames[r.sym]; return `<li><em>${i + 1}</em><span class="pk-n"><b>${esc(nm || (kr ? r.sym.slice(0, 6) : r.sym))}</b><small>${kr ? '🇰🇷 ' + r.sym.slice(0, 6) + (r.sym.endsWith('.KQ') ? ' 코스닥' : ' 코스피') : '🇺🇸 ' + esc(r.sym)}</small></span><i style="width:${Math.max(4, (r.n / max) * 100)}%"></i><span>${nf(r.n)}대${r.week ? `<small>이번 주 ${nf(r.week)}</small>` : ''}${r.n >= 3 ? '' : '<small>비공개</small>'}</span></li>`; }).join('')}</ol>
+      <p class="adm-dim">종목을 추가한 기기 ${nf(dev)}대 기준 · 미국 ${nf(rows.length - krN)}종목 · 한국 ${nf(krN)}종목. 3대 이상인 종목만 방문자 화면(종목 추가 창)의 '많이 추가한 종목'에 보여요 — 블로그 글감으로 써 보세요.</p>`;
+  }
+  // 유입 채널: 유입 경로(다른 사이트 주소나 ?ref= 이름)를 검색·블로그·SNS 등으로 묶는다
+  const CHANNELS = [
+    ['search-g', '🔎 구글 검색', (s) => /(^|\.)google\./.test(s)],
+    ['search-n', '🔎 네이버 검색', (s) => /(^|\.)search\.naver\.com$/.test(s)],
+    ['search-o', '🔎 기타 검색(Bing·다음)', (s) => /bing\.|duckduckgo|daum\.net|yahoo\.|ecosia|zum\.com/.test(s)],
+    ['blog', '📝 블로그', (s) => /^blog|blog\.naver\.com$|tistory|brunch|velog|medium/.test(s)],
+    ['social', '💬 SNS·커뮤니티', (s) => /^(share|insta|sns|kakao|x-|tw|thread|cafe|comm)|kakao|instagram|facebook|threads|t\.co$|twitter|x\.com|band\.us|cafe\.naver|dcinside|clien|ppomppu|fmkorea|ruliweb|theqoo|reddit|youtube/.test(s)],
+    ['page', '📄 소개 페이지 → 앱', (s) => /^page-/.test(s)],
+    ['direct', '🔗 직접 방문', (s) => s === '직접 방문'],
+    ['etc', '🌐 기타 사이트·링크', () => true],
+  ];
+  const chanOf = (ref) => { const s = String(ref || '').toLowerCase(); return CHANNELS.find(([, , f]) => f(s)); };
+  function channelsHtml(rows) {
+    if (!rows?.length) return '<p class="adm-dim">아직 기록이 없어요.</p>';
+    const by = {};
+    for (const r of rows) { const c = chanOf(r.ref); const g = (by[c[0]] ||= { label: c[1], n: 0, newbies: 0, refs: [] }); g.n += r.n; g.newbies += r.newbies || 0; g.refs.push(r); }
+    const list = CHANNELS.map(([k]) => [k, by[k]]).filter(([, g]) => g).sort((a, b) => b[1].n - a[1].n);
+    const tot = list.reduce((a, [, g]) => a + g.n, 0) || 1;
+    const blog = (by.blog?.refs || []).slice(0, 8), search = ['search-g', 'search-n', 'search-o'].reduce((a, k) => a + (by[k]?.n || 0), 0);
+    return `<ul class="adm-list adm-chan">${list.map(([, g]) => `<li><span>${esc(g.label)}</span><i style="width:${Math.max(3, (g.n / tot) * 100)}%"></i><b>${nf(g.n)}</b><small>신규 ${nf(g.newbies)}</small></li>`).join('')}</ul>
+      <p class="adm-dim">직접 방문 = 주소 입력·즐겨찾기·홈 화면 앱. 최근 30일 방문(하루 한 기기 1회) 중 검색으로 들어온 방문 <b>${nf(search)}</b> · ${Math.round((search / tot) * 100)}%. 검색 등록·새 소개 페이지 효과는 여기 '검색' 줄이 늘어나는지로 확인해요.</p>
+      ${blog.length ? `<h3 class="adm-h3">블로그 글별 <small>?ref= 이름 · 블로그 주소</small></h3><ul class="adm-list adm-chan">${blog.map((r) => `<li><span>${esc(r.ref)}</span><i style="width:${Math.max(3, (r.n / (blog[0].n || 1)) * 100)}%"></i><b>${nf(r.n)}</b><small>신규 ${nf(r.newbies)}</small></li>`).join('')}</ul>` : ''}`;
+  }
+  // 검색 노출 점검: 사이트맵·RSS를 이 화면에서 직접 읽어 본다
+  async function runSeo() {
+    const box = document.getElementById('adm-seo-chk');
+    if (!box) return;
+    const chk = async (u, fn) => { try { const r = await fetch(u, { cache: 'no-store' }); const t = await r.text(); const d = new DOMParser().parseFromString(t, 'application/xml'); if (d.querySelector('parsererror')) return ['bad', 'XML 형식 오류']; return fn(d); } catch { return ['bad', '불러오지 못함']; } };
+    const [sm, rss] = await Promise.all([
+      chk('sitemap.xml', (d) => { const n = d.getElementsByTagName('url').length; return n ? ['ok', `주소 ${n}개`] : ['bad', '주소 없음']; }),
+      chk('rss.xml', (d) => { const it = d.getElementsByTagName('item'); return it.length ? ['ok', `${it.length}건 · 최신 "${(it[0].getElementsByTagName('title')[0]?.textContent || '').slice(0, 36)}"`] : ['bad', '항목 없음']; }),
+    ]);
+    box.innerHTML = [['사이트맵(sitemap.xml)', sm], ['RSS(rss.xml)', rss]].map(([n, [k, t]]) => `<li><span>${n}</span><em class="${k === 'ok' ? 'hl-ok' : 'hl-bad'}">${k === 'ok' ? '정상' : '문제'} · ${esc(t)}</em></li>`).join('');
+  }
+  function seoHtml() {
+    const L = (href, t) => `<a class="btn-ghost sm" href="${href}" target="_blank" rel="noopener">${t}</a>`;
+    return `<ul class="adm-health" id="adm-seo-chk"><li><span>사이트맵·RSS</span><em class="hl-wait">확인 중…</em></li></ul>
+      <div class="adm-links">${L('https://search.google.com/search-console', '구글 Search Console')}${L('https://searchadvisor.naver.com/console/board', '네이버 서치어드바이저')}${L('https://www.bing.com/webmasters', 'Bing 웹마스터')}${L(SITE + 'sitemap.xml', '사이트맵')}${L(SITE + 'rss.xml', 'RSS')}</div>
+      <p class="adm-dim">새 소개 페이지를 만들면: 구글은 'URL 검사 → 색인 생성 요청'(하루 요청 수 제한 있음), 네이버는 '요청 → 웹 페이지 수집'. 업데이트 소식 RSS는 네이버 '요청 → RSS 제출'에 한 번만 등록하면 이후 자동으로 가져가요. 배포할 때마다 IndexNow(네이버·Bing)로 새 주소를 자동 알려요.</p>`;
   }
 
   const listHtml = (rows, label, fmt = (x) => x) => {
@@ -231,8 +276,11 @@
         <div class="adm-row"><span class="adm-dim">최근 7일 신규 ${nf(j.weekNew)} ${delta(j.weekNew, j.prevWeekNew)} · 지난 7일 신규 ${nf(j.prevWeekNew)}</span><button type="button" class="btn-ghost sm" id="adm-csv">CSV 내려받기</button></div>
       </section>
       <section class="card" id="adm-fb"><h2>💬 고객 문의 · 개선 제안 ${j.feedbackCount?.new ? `<em class="fb-badge">새 글 ${nf(j.feedbackCount.new)}</em>` : ''}</h2><div id="adm-fb-body">${feedbackHtml(j.feedback, j.feedbackCount)}</div></section>
-      <section class="card"><h2>인기 종목 <small>관심 종목에 새로 추가한 티커 · 최근 30일</small></h2>${picksHtml(j.picks, j.pickDevices)}</section>
-      <section class="card"><h2>많이 쓰는 화면 · 기능 <small>최근 7일</small></h2>${usageHtml(j.usage, j.useBits || [])}</section>
+      <section class="card"><h2>인기 종목 <small>관심 종목에 새로 추가한 종목 · 최근 30일</small></h2><div id="adm-picks">${picksHtml(j.picks, j.pickDevices)}</div></section>
+      <div class="adm-2">
+        <section class="card"><h2>유입 채널 <small>최근 30일 · 어디서 들어왔나</small></h2>${channelsHtml(j.refs30)}</section>
+        <section class="card"><h2>검색 노출 <small>구글·네이버 등록 점검</small></h2>${seoHtml()}</section>
+      </div>
       <div class="adm-2">
         <section class="card"><h2>시간대별 방문 <small>최근 7일</small></h2>${hourBars(j.hours)}</section>
         <section class="card"><h2>서비스 상태 <small>지금 이 화면에서 확인</small></h2><ul class="adm-health" id="adm-health"></ul>
@@ -241,7 +289,7 @@
       <section class="card"><h2>유입 추적 링크 만들기</h2>
         <p class="adm-dim">블로그 글·SNS마다 다른 이름을 붙인 링크를 쓰면 아래 '유입 경로'에서 어디서 몇 명이 왔는지 따로 보여요.</p>
         <div class="adm-ref"><input id="adm-ref" placeholder="예: blog-msty, insta-1004" maxlength="40" autocomplete="off" aria-label="유입 이름">
-          <select id="adm-ref-page" aria-label="열 페이지"><option value="">대시보드</option><option value="dividend">배당금 계산기 소개</option><option value="fire">퇴사 계산기 소개</option><option value="about">사이트 소개</option><option value="en">영어 소개</option><option value="crcl">서클 소개</option></select></div>
+          <select id="adm-ref-page" aria-label="열 페이지"><option value="">대시보드</option><option value="dividend">배당금 계산기 소개</option><option value="portfolio">배당 포트폴리오 계산기 소개</option><option value="bonus">성과급 계산기 소개</option><option value="fire">퇴사 계산기 소개</option><option value="updates">업데이트 소식</option><option value="about">사이트 소개</option><option value="en">영어 소개</option><option value="crcl">서클 소개</option></select></div>
         <div class="adm-ref-out" id="adm-ref-out"></div>
       </section>
       <div class="adm-2">
@@ -282,6 +330,8 @@
     if (refDraft) { document.getElementById('adm-ref').value = refDraft.name; document.getElementById('adm-ref-page').value = refDraft.page; }
     refLink();
     if (quiet && healthHtml) document.getElementById('adm-health').innerHTML = healthHtml; else runHealth(); // 자동 새로고침 때는 지난 확인 결과 유지
+    runSeo();
+    resolveNames((j.picks || []).map((r) => r.sym)).then((changed) => { const el = document.getElementById('adm-picks'); if (changed && el) el.innerHTML = picksHtml(j.picks, j.pickDevices); });
     document.getElementById('adm-nocount').addEventListener('change', async (ev) => {
       const on = ev.target.checked;
       ev.target.disabled = true;
