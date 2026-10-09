@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=21';
+    sc.src = 'assets/i18n-en.js?v=22';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -1839,6 +1839,14 @@
         x.earn = j; x.earnErr = false;
       } catch (e) { x.earnErr = true; if (!x.earn) throw e; }
     },
+    async etfdiv(d, L, sym = state.stock) { // ETF: 분배금(배당) 기록 — 서버 캐시
+      if (!isOther(sym) || isKR(sym) || !isEtf(sym)) return;
+      const x = st(sym);
+      if (x.etfDiv && Date.now() - x.etfDivAt < 3 * 3600000) return;
+      const j = await getJ(`${NEWS_API}/dividends?s=${sym}`, 20000);
+      if (j.error) throw new Error(j.error);
+      x.etfDiv = j; x.etfDivAt = Date.now();
+    },
     async krinfo(d, L, sym = state.stock) { // 한국 종목: 투자 지표·투자자별 매매·애널리스트·분기 실적(서버 30분 캐시)
       if (!isKR(sym)) return;
       const j = await getJ(`${NEWS_API}/krinfo?s=${sym}`, 20000);
@@ -3428,6 +3436,8 @@
   // 로고: 기본 4종목은 assets/logos, 그 밖의 S&P 500·자주 찾는 종목은 assets/logos/t (tools/fetch_logos.py가 받아 둠)
   const LOGOS = new Set(String(window.__LOGOS || '').split(' ').filter(Boolean));
   const logoPath = (sym) => (LOGOS.has(sym) ? `assets/logos/t/${sym}.png` : null);
+  const ETF_NAME = /\b(ETF|ETN|Fund|Trust|Shares)\b|iShares|SPDR|ProShares|Direxion|YieldMax|Invesco QQQ/i;
+  const isEtf = (sym) => !isKR(sym) && !!(STOCK_INFO[sym]?.etf || state.quote?.[sym]?.asset === 'etf' || st(sym).etfDiv?.type === 'ETF');
   function customInfo(sym, meta = {}) {
     if (isKR(sym)) {
       const name = String(meta.name || sym.slice(0, 6)), hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
@@ -3445,6 +3455,7 @@
     const short = name.length > 9 ? sym : name;
     return {
       name, short, mark: sym[0], color: `hsl(${hue} 62% 60%)`, logo: logoPath(sym), cik: null, peer: null, peerNote: '', mode: 'growth', custom: true, exchange: meta.exchange || '',
+      etf: /ETF|ETN/i.test(meta.asset || '') || ETF_NAME.test(String(meta.name || '')),
       earnTitle: `${short} 실적`, industry: null, industryBadge: '', relBadge: sym.length > 4 ? sym.slice(0, 4) : sym,
       relRe: new RegExp(`${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') || sym}|\\b${sym.replace('.', '\\.')}\\b`, 'i'), earnNote: '',
     };
@@ -3648,7 +3659,7 @@
   const TAB_SETS = {
     CRCL: [['home', 'Home', 'home'], ['crcl', 'CRCL', 'chart'], ['usdc', 'USDC', 'usdc'], ['arc', 'Arc', 'arc'], ['earn', 'Earnings', 'earn'], ['news', 'News', 'news']],
   };
-  const tabsFor = (s) => (isKR(s) ? [['home', 'Home', 'home'], ['sprice', symLabel(s).replace('…', ''), 'chart'], ['searn', '실적', 'earn'], ['snews', 'News', 'news']] : [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', 'Earnings', 'earn'], ['snews', 'News', 'news']]);
+  const tabsFor = (s) => (isKR(s) ? [['home', 'Home', 'home'], ['sprice', symLabel(s).replace('…', ''), 'chart'], ['searn', '실적', 'earn'], ['snews', 'News', 'news']] : [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', STOCK_INFO[s]?.etf ? '분배금' : 'Earnings', 'earn'], ['snews', 'News', 'news']]);
   for (const s of OTHER) TAB_SETS[s] = tabsFor(s);
   const OLD_VIEWS = { jprice: 'sprice', jearn: 'searn', jnews: 'snews' }; // 예전 주소(#jprice 등) 호환
   // 종목 바로가기 링크(?s=JOBY)로 들어오면 그 종목부터 보여준다
@@ -3661,7 +3672,7 @@
   state.holdTab = loadPref('holdTab', 'top');
   const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null) || st(sym).short || null;
   const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst', 'options'] : isKR(sym) ? ['schart', 'snews', 'krinfo'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', 'options',
-    ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : []), ...(STOCK_INFO[sym]?.custom ? ['sshort'] : [])]);
+    ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : []), ...(STOCK_INFO[sym]?.custom ? ['sshort'] : []), 'etfdiv']);
   const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
   const sp = (v) => (v == null || !isFinite(v) ? '–' : `<span class="${cls(v)}">${pct(v)}</span>`);
@@ -4385,7 +4396,7 @@
         <button type="button" class="ws-btn del" data-wdel="${sym}" aria-label="${sym} 삭제" ${WATCH.length < 2 ? 'disabled' : ''}>삭제</button></li>`;
     }).join('');
     const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((r.code ? r.name : r.symbol) || '?')[0])}</span>`}<div class="ws-name">${r.code ? `<b>${esc(r.name)}</b><small>${r.etf ? 'ETF' : r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${esc(r.code)}</small>` : `<b>${esc(r.symbol)}</b><small>${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small>`}</div>
-      ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}">+ 추가</button>`}</li>`).join('');
+      ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}" data-wasset="${esc(r.asset || '')}">+ 추가</button>`}</li>`).join('');
     const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
     el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
       <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
@@ -4810,6 +4821,45 @@
       peer: !S.peer ? tile('오늘 등락', q ? `<span class="${cls(q.pct)}">${pct(q.pct, 1)}</span>` : '–', `<span class="flat">${price(q?.price)}</span>`, 'sprice:c-spricechart') : tile(`경쟁사 ${S.peer[1]}`, pr?.price != null ? price(pr.price) : '–', pr ? `<span class="${cls(pr.pct)}">${arrow(pr.pct)} ${pct(pr.pct, 1)}</span> <span class="flat">vs ${sym} ${q ? pct(q.pct, 1) : '–'}</span>` : '', 'sprice:c-spricechart'),
     };
   }
+  // ---- ETF: 분배금(배당) 요약 — 최근 1년 분배율·주기·최근 분배금·다음 배당락
+  function etfStats(sym) {
+    const D = st(sym).etfDiv;
+    if (!D?.events) return null;
+    const ev = D.events, cut = addDays(isoToday(), -365), yr = ev.filter((e) => e.ex > cut);
+    const ttm = yr.reduce((a, e) => a + e.amt, 0), px = pq(sym)?.price || D.price;
+    const n = yr.length, freq = n >= 40 ? '매주' : n >= 10 ? '매달' : n >= 3 ? '분기' : n ? '연·반기' : '분배 없음';
+    const last = ev.at(-1), prev = ev.at(-2);
+    return { ttm, yld: px && ttm ? ttm / px : null, n, freq, last, prev, next: D.next || null, px };
+  }
+  function etfTiles(sym) {
+    const E = etfStats(sym);
+    const nx = E?.next, dn = nx?.ex ? dday(nx.ex) : null;
+    return [
+      tile('분배율(최근 1년)', E?.yld != null ? pctPlain(E.yld, 1) : '–', E ? `<span class="flat">1년 ${usd2(E.ttm)} · ${E.freq}</span>` : '<span class="flat">분배 기록 불러오는 중</span>', 'searn:c-searnings'),
+      tile('최근 분배금', E?.last ? `$${E.last.amt.toFixed(E.last.amt < 1 ? 4 : 2)}` : '–', E?.last ? `<span class="flat">${md(isoToTs(E.last.ex))} 배당락</span>${E.prev ? ` <span class="${cls(E.last.amt - E.prev.amt)}">${pct(E.last.amt / E.prev.amt - 1, 0)}</span>` : ''}` : '', 'searn:c-searnings'),
+      tile('다음 배당락', dn != null && dn >= 0 ? (dn === 0 ? '오늘' : `D-${dn}`) : '–', nx?.ex ? `<span class="flat">${md(isoToTs(nx.ex))}${nx.est ? ' (예상)' : ''}${nx.amt ? ` · $${(+nx.amt).toFixed(nx.amt < 1 ? 4 : 2)}` : ''}</span>` : '<span class="flat">발표 전</span>', 'searn:c-searnings'),
+      tile('1년 분배 횟수', E ? `${E.n}회` : '–', E ? `<span class="flat">${E.freq} 분배</span>` : '', 'searn:c-searnings'),
+    ];
+  }
+  function renderEtfDist(sym) {
+    const S = STOCK_INFO[sym], E = etfStats(sym), D = st(sym).etfDiv;
+    if (!E) { card('searnings', { title: `${S.short} 분배금`, body: '<p class="skeleton">분배금 기록 불러오는 중…</p>' }); return; }
+    const rows = D.events.slice(-12).reverse();
+    card('searnings', {
+      title: `${S.short} 분배금 기록`, sub: `${esc(S.name)} · 배당락일 기준 · Yahoo Finance`,
+      easy: 'ETF는 회사가 아니라서 매출·이익 같은 실적이 없어요. 대신 갖고 있는 주식·옵션에서 나온 수익을 주기적으로 나눠 주는데(분배금), 그 기록이에요. 분배율은 최근 1년 동안 받은 분배금 ÷ 지금 가격이에요.',
+      body: `<div class="ns-grid h-grid">
+          <div><span>분배율(최근 1년)</span><b>${E.yld != null ? pctPlain(E.yld, 1) : '–'}</b><small>세전 · 1년 ${usd2(E.ttm)}</small></div>
+          <div><span>분배 주기</span><b>${E.freq}</b><small>최근 1년 ${E.n}회</small></div>
+          <div><span>최근 분배금</span><b>${E.last ? `$${E.last.amt.toFixed(E.last.amt < 1 ? 4 : 2)}` : '–'}</b><small>${E.last ? `${md(isoToTs(E.last.ex))} 배당락` : ''}</small></div>
+          <div><span>다음 배당락</span><b>${E.next?.ex ? md(isoToTs(E.next.ex)) : '–'}</b><small>${E.next?.ex ? (E.next.est ? '예상' : '확정') : '발표 전'}</small></div>
+        </div>
+        <div class="div-scroll"><table class="div-tbl"><thead><tr><th>배당락일</th><th>주당 분배금</th><th>직전 대비</th></tr></thead><tbody>
+          ${rows.map((e, i) => { const p = rows[i + 1]; return `<tr><td>${e.ex.slice(2).replace(/-/g, '.')}</td><td>$${e.amt.toFixed(e.amt < 1 ? 4 : 2)}</td><td>${p ? `<span class="${cls(e.amt - p.amt)}">${pct(e.amt / p.amt - 1, 0)}</span>` : '–'}</td></tr>`; }).join('')}
+        </tbody></table></div>
+        <p class="note">분배금은 운용 성과에 따라 달라지고, 분배율이 높아도 주가가 떨어지면 원금이 줄 수 있어요. 실제로 받은 금액(세후)은 🔥 Fire → 💰 배당금에 종목을 넣으면 계산해 줘요.</p>`,
+    });
+  }
   // 애널리스트 평균 목표가 · 내부자 3개월 순매매 칸(모든 종목 공통)
   function analystTiles(sym) {
     const V = analystView(sym), I = state.analyst?.[sym]?.insider, go = sym === 'CRCL' ? 'crcl:c-analyst' : 'sprice:c-sanalyst';
@@ -4867,6 +4917,7 @@
         tile('현금·단기투자', last ? usd(last.liquidity ?? last.cash) : '–', `<span class="flat">분기 현금흐름 ${usdS2(last?.burn)}</span>`, 'searn:c-searnings'),
       ];
     }
+    if (isEtf(sym)) { el.innerHTML = [...etfTiles(sym), T.short, T.peer].join(''); return; }
     el.innerHTML = [...own, T.inst, T.short, T.next, T.peer, ...analystTiles(sym)].join('');
   }
 
@@ -5023,6 +5074,7 @@
     if (!isOther(sym)) return;
     if (sym === 'JOBY') renderFaa();
     if (sym === 'SPCX') renderLockup();
+    if (isEtf(sym)) { renderEtfDist(sym); return; }
     STOCK_INFO[sym].mode === 'burn' ? renderBurnEarnings(sym) : renderGrowthEarnings(sym);
   }
   function renderStock() {
@@ -5034,6 +5086,8 @@
     const S = STOCK_INFO[sym], kr = isKR(sym);
     for (const id of ['c-sshort', 'c-sinsider', 'c-soptions', 'c-ssummary']) { const el = document.getElementById(id); if (el) el.hidden = kr; }
     for (const id of ['c-sanalyst', 'c-sholders', 'skpis']) { const el = document.getElementById(id); if (el) el.hidden = false; }
+    const etf = !kr && isEtf(sym);
+    for (const id of ['c-sanalyst', 'c-sholders', 'c-sinsider']) { const el = document.getElementById(id); if (el && etf) el.hidden = true; }
     const kh = document.querySelector('#home-stock .group-h'); if (kh) kh.hidden = false;
     if (kr) {
       document.getElementById('c-searnday').hidden = true;
@@ -5349,7 +5403,7 @@
     const S = STOCK_INFO[state.stock];
     const nm = isKR(state.stock) ? S.name : S.short; // 한국 종목은 전체 이름(길면 화면에서 … 처리)
     if (v === 'sprice') return `${nm} 주가 · 수급`;
-    if (v === 'searn') return isKR(state.stock) ? `${nm} 실적` : S.earnTitle;
+    if (v === 'searn') return isKR(state.stock) ? `${nm} 실적` : isEtf(state.stock) ? `${S.short} 분배금` : S.earnTitle;
     if (v === 'snews') return `${nm} 뉴스 · 공시`;
     if (v === 'fire' && state.fireTab === 'div') return 'Fire · 배당금';
     if (v === 'fire' && state.fireTab === 'bonus') return 'Fire · 성과급 계산기';
@@ -5522,7 +5576,7 @@
     const wp = ev.target.closest('[data-wpop]');
     if (wp) { addPopular(wp.dataset.wpop, wp); return; }
     const wa = ev.target.closest('[data-wadd]');
-    if (wa) { addWatch(wa.dataset.wadd, { name: wa.dataset.wname, exchange: wa.dataset.wex }); return; }
+    if (wa) { addWatch(wa.dataset.wadd, { name: wa.dataset.wname, exchange: wa.dataset.wex, asset: wa.dataset.wasset }); return; }
     const wd = ev.target.closest('[data-wdel]');
     if (wd) { removeWatch(wd.dataset.wdel); return; }
     const wm = ev.target.closest('[data-wmove]');

@@ -11,6 +11,15 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+**개선**
+- 📊 **ETF 정보 정상화**: MSTY·SPY·SCHD·JEPI 같은 ETF를 내 종목에 추가하면 현재가가 비어 있던 문제를 고쳤어요. ETF는 실적 대신 **분배금 기록**(분배율·분배 주기·최근 분배금·다음 배당락)을 보여주고, ETF에 없는 기관 보유·애널리스트·내부자 카드는 숨겨요.
+- 🩳 BRK.B처럼 점(.)이 들어간 종목의 공매도 비율도 나오게 했어요.
+
+<!-- EN
+- 📊 ETFs (MSTY, SPY, SCHD, JEPI…) now show live prices and a payout history (yield, frequency, latest payout, next ex-date) instead of company earnings.
+- 🩳 Short-volume data now works for class shares like BRK.B.
+-->
+
 ## v2026.10.09-4 — 2026-10-09
 
 [이 버전 보기](https://65c756b5.my-fire-portfolio.pages.dev) · 커밋 `13430b6`

@@ -1199,7 +1199,7 @@ window.__I18N_EN = {
 "직전 13F 대비": "vs prior 13F",
 "직전 13F 대비 늘린 곳": "Increased vs prior 13F",
 "직전 7일": "Prior 7 days",
-"직전 대비": "vs prior",
+"직전 대비": "vs. previous",
 "진행 중": "In progress",
 "진행률 기록": "Progress history",
 "진행률은 무료 대시보드의 🔥Fire에서 자동 계산 👉 yongs-portfolio.pages.dev": "Progress auto-calculated in the free dashboard's 🔥Fire 👉 my-fire-portfolio.pages.dev",
@@ -1998,7 +1998,19 @@ window.__I18N_EN = {
 "위험 회사채와 우량 회사채의 금리 차 — 차이가 벌어질수록 위험을 피하는 분위기(공포)": "Yield gap between junk and investment-grade bonds — a wider gap means investors are avoiding risk (fear)",
 "오늘 휴장": "Closed today",
 "↺ 초기화": "↺ Reset",
-"회사 발표로 확정": "confirmed by the company"
+"회사 발표로 확정": "confirmed by the company",
+"분배금": "Payouts",
+"분배율(최근 1년)": "Yield (past year)",
+"최근 분배금": "Latest payout",
+"1년 분배 횟수": "Payouts per year",
+"분배 주기": "Frequency",
+"매주": "weekly",
+"매달": "monthly",
+"분배금 기록": "payout history",
+"배당락일 기준 · Yahoo Finance": "by ex-dividend date · Yahoo Finance",
+"주당 분배금": "Per share",
+"분배 기록 불러오는 중": "Loading payouts",
+"분배금 기록 불러오는 중…": "Loading payout history…"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

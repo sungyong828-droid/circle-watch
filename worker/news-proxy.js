@@ -762,6 +762,7 @@ const num = (s) => { const n = parseFloat(String(s ?? '').replace(/[^0-9.\-]/g, 
 
 async function nasdaqQuote(sym, cls) {
   const d = await nasdaqJson(`quote/${sym}/info?assetclass=${cls}`);
+  if (!d?.primaryData || num(d.primaryData.lastSalePrice) == null) throw new Error(`nasdaq quote ${sym}/${cls} 없음`);
   const p = d?.primaryData || {}, s = d?.secondaryData || {};
   const price = num(p.lastSalePrice);
   const change = num(p.netChange);
@@ -770,7 +771,7 @@ async function nasdaqQuote(sym, cls) {
   const regularClose = /pre|after|closed/i.test(status) ? num(s.lastSalePrice) ?? (price != null && change != null ? price - change : null) : null;
   const prevClose = price != null && change != null ? price - change : null;
   return {
-    symbol: sym, name: d?.companyName || sym, price, change, pct: num(p.percentageChange) / 100,
+    symbol: sym, name: d?.companyName || sym, asset: cls, price, change, pct: num(p.percentageChange) / 100,
     prevClose, regularClose, status, time: p.lastTradeTimestamp || '', realtime: !!p.isRealTime,
   };
 }
@@ -802,7 +803,7 @@ export async function buildQuote(extra = []) {
 export async function handleQuote(url, cache, cors, ctx) {
   // 8초 안이면 그대로, 10분 안이면 저장값을 즉시 주고 뒤에서 갱신(Nasdaq 8종목 조회는 3~4초 걸림)
   const extra = [...new Set(String(url.searchParams.get('x') || '').toUpperCase().split(',').filter((x) => SYM_RE.test(x)))].sort().slice(0, 12);
-  return swr(cache, ctx, `${url.origin}/quote?v=swr&x=${extra.join(',')}`, { freshSec: 8, keepSec: 600, cors, build: async () => JSON.stringify(await buildQuote(extra)) });
+  return swr(cache, ctx, `${url.origin}/quote?v=swr2&x=${extra.join(',')}`, { freshSec: 8, keepSec: 600, cors, build: async () => JSON.stringify(await buildQuote(extra)) });
 }
 
 // ---------------------------------------------------------------- 가격 차트 (Yahoo, 바이낸스에 없는 종목용)
@@ -879,7 +880,11 @@ export async function buildHolders(sym) {
     nasdaqJson(`${base}?limit=8&type=INCREASED&sortColumn=sharesChange&sortOrder=DESC`),
     nasdaqJson(`${base}?limit=8&type=DECREASED&sortColumn=sharesChange&sortOrder=ASC`),
   ]);
-  if (tot.status !== 'fulfilled' || !tot.value) throw new Error('기관 보유 데이터를 받지 못했습니다');
+  if (tot.status !== 'fulfilled' || !tot.value) {
+    const etf = await nasdaqJson(`quote/${sym}/info?assetclass=etf`).catch(() => null);
+    if (etf?.primaryData) return { at: new Date().toISOString(), symbol: sym, etf: true, top: [], ownershipPct: null, holders: null, increased: null, decreased: null };
+    throw new Error('기관 보유 데이터를 받지 못했습니다');
+  }
   const d = tot.value, os = d.ownershipSummary || {};
   const act = Object.fromEntries((d.activePositions?.rows || []).concat(d.newSoldOutPositions?.rows || []).map((r) => [r.positions, { holders: num(r.holders), shares: num(r.shares) }]));
   const bars = await barsP;
@@ -1046,12 +1051,12 @@ async function finraPost(name, body) {
 export async function handleShort(url, cache, cors, ctx) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/short?s=${sym}&v=2`, {
+  return swr(cache, ctx, `${url.origin}/short?s=${sym}&v=3`, {
     freshSec: 3 * 3600, keepSec: 3 * 86400, cors,
     build: async () => {
       const day = (ms) => new Date(ms).toISOString().slice(0, 10), now = Date.now();
       const [daily, si] = await Promise.allSettled([
-        finraPost('regShoDaily', { limit: 400, compareFilters: [{ compareType: 'EQUAL', fieldName: 'securitiesInformationProcessorSymbolIdentifier', fieldValue: sym }], dateRangeFilters: [{ fieldName: 'tradeReportDate', startDate: day(now - 31 * 86400000), endDate: day(now) }] }),
+        finraPost('regShoDaily', { limit: 400, compareFilters: [{ compareType: 'EQUAL', fieldName: 'securitiesInformationProcessorSymbolIdentifier', fieldValue: sym.replace('.', '/') }], dateRangeFilters: [{ fieldName: 'tradeReportDate', startDate: day(now - 31 * 86400000), endDate: day(now) }] }),
         finraPost('consolidatedShortInterest', { limit: 50, compareFilters: [{ compareType: 'EQUAL', fieldName: 'symbolCode', fieldValue: sym }], dateRangeFilters: [{ fieldName: 'settlementDate', startDate: day(now - 120 * 86400000), endDate: day(now) }] }),
       ]);
       const by = {};
