@@ -647,13 +647,30 @@ async function secQuarterly(sym = 'CRCL') {
   return { q: out, ytd: ytdLatest, cik: E.cik };
 }
 
+// 회사가 보도자료로 실적 발표일을 확정하면(예: "Circle to Announce Q3 2026 Financial Results on November 4, 2026") 그 날짜
+const MONTHS = { january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12 };
+export function announcedEarningsDate(prs, today = new Date().toISOString().slice(0, 10)) {
+  for (const n of [...(prs || [])].sort((a, b) => String(b.t).localeCompare(String(a.t)))) {
+    const t = String(n.title || '');
+    if (!/\b(results|earnings)\b/i.test(t) || !/\b(announce|report|release|host|conference call|webcast|share)\w*\b/i.test(t)) continue;
+    const m = t.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b/i);
+    if (!m) continue;
+    const iso = `${m[3]}-${String(MONTHS[m[1].toLowerCase()]).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+    const on = String(n.t || '').slice(0, 10);
+    if (iso < on || iso < today) continue; // 지난 발표 안내는 건너뜀
+    return { date: iso, title: t, on, url: n.url || null };
+  }
+  return null;
+}
+
 export async function buildEarnings(sym = 'CRCL') {
-  const [fin, sur, dt, fc, sec] = await Promise.allSettled([
+  const [fin, sur, dt, fc, sec, pr] = await Promise.allSettled([
     nasdaqJson(`company/${sym}/financials?frequency=2`),
     nasdaqJson(`company/${sym}/earnings-surprise`),
     nasdaqJson(`analyst/${sym}/earnings-date`),
     nasdaqJson(`analyst/${sym}/earnings-forecast`),
     secQuarterly(sym),
+    nasdaqPressReleases(sym),
   ]);
   const Q = {}; // 분기 말일 → 값
   const put = (end, k, v) => { if (end && v != null && isFinite(v)) (Q[end] ||= { end })[k] = v; };
@@ -698,6 +715,12 @@ export async function buildEarnings(sym = 'CRCL') {
       analysts: n ? +n[1] : null,
     };
   }
+  // 예상일(알고리즘)보다 회사 보도자료의 확정일을 우선
+  const ann = pr.status === 'fulfilled' ? announcedEarningsDate(pr.value) : null;
+  if (ann) {
+    next ||= { consensus: null, lastYearEps: null, analysts: null };
+    Object.assign(next, { date: ann.date, estimated: false, confirmedBy: { title: ann.title, on: ann.on, url: ann.url } });
+  }
   if (fc.status === 'fulfilled' && next) {
     const r0 = fc.value?.quarterlyForecast?.rows?.[0];
     if (r0) Object.assign(next, { quarter: qtrEnd(r0.fiscalEnd), high: +r0.highEPSForecast, low: +r0.lowEPSForecast, analysts: next.analysts ?? +r0.noOfEstimates });
@@ -726,7 +749,7 @@ export async function handleEarnings(url, cache, cors, ctx) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   // 1시간마다 새로(새로고침 버튼은 10분), 그 사이엔 즉시 응답
-  return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr2`, {
+  return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr3`, {
     freshSec: url.searchParams.has('live') ? 120 : url.searchParams.has('fresh') ? 600 : 3600, keepSec: 7 * 86400, cors,
     build: async () => JSON.stringify(await buildEarnings(sym)),
   });

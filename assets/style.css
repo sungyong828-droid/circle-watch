@@ -1371,3 +1371,17 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .sim-row { grid-template-columns: minmax(0, 1fr) 84px 36px; }
 .sim-tw { height: auto; min-height: 52px; padding: 7px 12px; }
 .sim-nm b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
+
+/* 2026-10-09 b: 대표 종목 목록 정리 · 초기화 · 실적 확정 출처 */
+.sim-pick li { grid-template-columns: 26px minmax(0, 1fr) 72px; align-items: center; }
+.sp-main { display: grid; gap: 2px; min-width: 0; }
+.sp-h { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.sim-pick .sp-h b { display: block; flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-pick .sp-h small { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-pick .sim-yld b { display: inline; font-size: 12px; }
+.sp-act { display: flex; justify-content: flex-end; }
+.sp-add { width: 64px; height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.sp-add:active { transform: scale(0.96); }
+.sim-pick .sim-added { width: 64px; text-align: center; font-size: 12px; font-style: normal; color: var(--good); font-weight: 700; white-space: nowrap; }
+.sim-reset:disabled { opacity: 0.4; }
+.er-src { display: block; margin-top: 6px; font-size: 11.5px; color: var(--good); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

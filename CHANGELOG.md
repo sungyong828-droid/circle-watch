@@ -11,6 +11,16 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+**개선**
+- 📅 **실적 발표일 자동 확정**: 회사가 보도자료로 실적 발표일을 알리면(예: 서클 11월 4일) 예상일 대신 그 날짜를 '확정'으로 바로 보여줘요.
+- 🧮 배당 포트폴리오: 대표 종목 목록을 정리했어요(추가 전후로 줄이 흔들리지 않게). '계산하기'를 누르면 결과가 있는 곳으로 내려가고, **↺ 초기화**로 넣은 종목을 한 번에 지울 수 있어요.
+- 🔍 종목 관리 창을 닫으면 검색칸이 비워져요.
+
+<!-- EN
+- 📅 Earnings dates switch to the confirmed date as soon as the company announces it.
+- 🧮 Dividend planner: tidier suggestion list, scrolls to results after Calculate, and a Reset button.
+-->
+
 ## v2026.10.09-3 — 2026-10-09
 
 [이 버전 보기](https://a4827565.my-fire-portfolio.pages.dev) · 커밋 `de51b53`

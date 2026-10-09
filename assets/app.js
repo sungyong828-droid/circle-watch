@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=20';
+    sc.src = 'assets/i18n-en.js?v=21';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -3124,12 +3124,12 @@
         </div>
         <div class="sim-cats" role="group" aria-label="많이 찾는 배당 종목">${SIM_CATALOG.map(([k, l]) => `<button type="button" class="chip-btn sm" data-simcat="${k}" aria-pressed="${simCat === k}">${l}</button>`).join('')}</div>
         ${simCat ? (() => { const C = SIM_CATALOG.find((c) => c[0] === simCat); const have = new Set(simCfg.rows.map((r) => r.t)); return `<ul class="sim-pick">${C[2].map(([t, n, d]) => `<li>${logoPath(t) ? `<img src="${logoPath(t)}" alt="" width="24" height="24" loading="lazy">` : `<span class="ws-letter">${esc((krTk(t) ? n : t)[0])}</span>`}
-            <div><b>${esc(krTk(t) ? n : t)}<small>${esc(krTk(t) ? t.slice(0, 6) : n)}</small></b><span>${esc(d)}</span><em class="sim-yld" data-yld="${esc(t)}">${catYldTxt(t)}</em></div>
-            ${have.has(t) ? '<em class="sim-added">✓ 추가됨</em>' : `<button type="button" class="btn-ghost sm" data-simpick="${esc(t)}">+ 추가</button>`}</li>`).join('')}</ul>`; })() : ''}
+            <div class="sp-main"><div class="sp-h"><b>${esc(krTk(t) ? n : t)}</b><small>${esc(krTk(t) ? t.slice(0, 6) : n)}</small></div><span>${esc(d)}</span><em class="sim-yld" data-yld="${esc(t)}">${catYldTxt(t)}</em></div>
+            <div class="sp-act">${have.has(t) ? '<em class="sim-added">✓ 추가됨</em>' : `<button type="button" class="sp-add" data-simpick="${esc(t)}" aria-label="${esc(krTk(t) ? n : t)} 추가">+ 추가</button>`}</div></li>`).join('')}</ul>`; })() : ''}
         <div class="sim-rows">${simCfg.rows.map((r, i) => { const nm = simRowName(r), kr = krTk(r.t); return `<div class="sim-row" data-simrow="${i}" data-t="${esc(r.t)}"><div class="sim-tw">${logoPath(r.t) ? `<img class="sim-logo" src="${logoPath(r.t)}" alt="" width="26" height="26" loading="lazy">` : `<span class="sim-logo ws-letter">${esc(String((kr ? nm : r.t) || '?')[0])}</span>`}<div class="sim-nm"><b>${esc(kr ? nm || r.t.slice(0, 6) : r.t)}</b><small>${esc(kr ? `${r.t.slice(0, 6)} · ${r.t.endsWith('.KQ') ? '코스닥' : '코스피'}` : nm)}</small></div></div><div class="bn-in"><input class="sim-w" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="${esc(String(r.w ?? ''))}" aria-label="${esc(kr ? nm : r.t)} 비중"><em>%</em></div><button type="button" class="f-rm" data-simrm="${i}" aria-label="이 종목 빼기">×</button></div>`; }).join('')}</div>
         ${simSearchOpen ? `<div class="sim-search"><div class="ws-search sim-q"><input id="sim-q" type="search" placeholder="티커나 종목명 (예: SCHD, 삼성전자)" aria-label="종목 검색" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button type="button" class="sim-qx" data-simclose="1" aria-label="검색 닫기">×</button></div><ul class="ws-list sim-res" id="sim-res">${simResHtml()}</ul></div>` : ''}
         <p class="sim-wsum" id="sim-wsum">${simWeightHtml()}</p>
-        <div class="sim-act"><button type="button" class="btn-ghost sm" data-simadd="1" aria-pressed="${simSearchOpen}">🔍 종목 찾아 추가</button><button type="button" class="btn-ghost sm" data-simeq="1">비중 똑같이</button><button type="button" class="btn-primary sim-run" data-simrun="1">계산하기</button></div>
+        <div class="sim-act"><button type="button" class="btn-ghost sm" data-simadd="1" aria-pressed="${simSearchOpen}">🔍 종목 찾아 추가</button><button type="button" class="btn-ghost sm" data-simeq="1">비중 똑같이</button><button type="button" class="btn-ghost sm sim-reset" data-simreset="1"${simCfg.rows.length ? '' : ' disabled'}>↺ 초기화</button><button type="button" class="btn-primary sim-run" data-simrun="1">계산하기</button></div>
         ${S.rows.some((r) => r.px != null || r.err) ? `<div class="div-scroll"><table class="div-tbl sim-tbl"><thead><tr><th>종목</th><th>현재가</th><th>살 수 있는 주식</th><th>투자액</th><th>연 배당(세후)</th><th>배당률</th></tr></thead><tbody>
           ${S.rows.map((r) => `<tr><td><b>${esc(r.kr ? (r.name || r.t) : r.t)}</b>${r.err ? `<small class="warn">찾지 못했어요</small>` : r.name ? `<small>${esc(r.kr ? r.t.slice(0, 6) : r.name).slice(0, 26)}</small>` : ''}</td><td>${r.px != null ? pxS(r.t, r.px) : '–'}</td><td>${r.qty != null ? nf(0).format(r.qty) + '주' : '–'}</td><td>${r.cost != null ? usd2(r.cost) : '–'}<small>${pctPlain(r.share, 0)}</small></td><td>${r.yearNet != null ? usd2(r.yearNet) : '–'}<small>${r.n ? `${r.n}회 · 주당 ${pxS(r.t, r.dps)}` : '배당 없음'}</small></td><td>${r.yld != null ? pctPlain(r.yld, 1) : '–'}</td></tr>`).join('')}
           </tbody></table></div>` : ''}
@@ -3184,7 +3184,9 @@
     if (!state.quote?.fx || simCfg.rows.some((r) => krTk(r.t))) await loadQuote().catch(() => {});
     await loadSimData();
     renderDivSim();
-    document.getElementById('c-divsim')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    // 계산 결과(표·합계)가 보이도록 아래로 이동 — 헤더 높이만큼 띄운다
+    const res = document.querySelector('#c-divsim .sim-tbl')?.closest('.div-scroll') || document.querySelector('#c-divsim .sim-sum');
+    if (res) window.scrollTo({ top: Math.max(0, res.getBoundingClientRect().top + window.scrollY - (document.querySelector('.top')?.offsetHeight || 60) - 12), behavior: 'smooth' });
   }
   // 성과급 → 배당 포트폴리오: 실수령액을 투자금으로 넣고 배당금 탭으로
   function bonusToSim() {
@@ -3283,7 +3285,7 @@
 
     const nextHtml = N?.date ? `
       <div class="er-next">
-        <div class="er-next-h"><span>다음 실적 발표</span>${N.estimated ? '<span class="tone neu">예상일</span>' : '<span class="tone pos">확정</span>'}</div>
+        <div class="er-next-h"><span>다음 실적 발표</span>${N.estimated ? '<span class="tone neu">예상일</span>' : '<span class="tone pos">확정</span>'}</div>${N.confirmedBy ? `<a class="er-src" href="${safeUrl(N.confirmedBy.url)}" target="_blank" rel="noopener">📢 ${+N.confirmedBy.on.slice(5, 7)}/${+N.confirmedBy.on.slice(8)} 회사 발표로 확정 · ${esc(N.confirmedBy.title.slice(0, 80))}</a>` : ''}
         <div class="er-next-d"><b>${krDate(N.date)}</b><span class="er-dday">${dd > 0 ? `D-${dd}` : dd === 0 ? 'D-DAY' : '발표 완료'}</span></div>
         <div class="er-next-m">${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}예상 EPS <b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b>${N.low != null ? ` (범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}${N.analysts ? `, ${N.analysts}명` : ''})` : ''}${N.lastYearEps != null ? ` · 작년 같은 분기 $${N.lastYearEps.toFixed(2)}` : ''}</div>
         ${N.estimated ? '<p class="note">서클이 날짜를 공식 발표하기 전까지는 과거 발표 패턴으로 추정한 날짜입니다(Zacks).</p>' : ''}
@@ -4362,7 +4364,13 @@
     renderWatchSheet();
     setTimeout(() => document.getElementById('watch-q')?.focus(), 50);
   }
-  function closeWatchSheet() { const el = document.getElementById('watch-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+  function closeWatchSheet() {
+    const el = document.getElementById('watch-sheet');
+    if (el) el.hidden = true;
+    document.body.classList.remove('sheet-open');
+    clearTimeout(watchSearchTimer); watchResults = []; // 다음에 열 때는 빈 검색칸으로
+    const q = document.getElementById('watch-q'); if (q) q.value = '';
+  }
   function renderWatchSheet() {
     const el = document.getElementById('watch-sheet');
     if (!el || el.hidden) return;
@@ -4686,7 +4694,7 @@
     const dd = dday(N.date);
     return `
       <div class="er-next">
-        <div class="er-next-h"><span>다음 실적 발표</span>${N.estimated ? '<span class="tone neu">예상일</span>' : '<span class="tone pos">확정</span>'}</div>
+        <div class="er-next-h"><span>다음 실적 발표</span>${N.estimated ? '<span class="tone neu">예상일</span>' : '<span class="tone pos">확정</span>'}</div>${N.confirmedBy ? `<a class="er-src" href="${safeUrl(N.confirmedBy.url)}" target="_blank" rel="noopener">📢 ${+N.confirmedBy.on.slice(5, 7)}/${+N.confirmedBy.on.slice(8)} 회사 발표로 확정 · ${esc(N.confirmedBy.title.slice(0, 80))}</a>` : ''}
         <div class="er-next-d"><b>${krDate(N.date)}</b><span class="er-dday">${dd > 0 ? `D-${dd}` : dd === 0 ? 'D-DAY' : '발표 완료'}</span></div>
         <div class="er-next-m">${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}예상 EPS <b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b>${N.low != null ? ` (범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}${N.analysts ? `, ${N.analysts}명` : ''})` : ''}${N.lastYearEps != null ? ` · 작년 같은 분기 $${N.lastYearEps.toFixed(2)}` : ''}</div>
         ${extra}
@@ -5565,6 +5573,13 @@
     if (ev.target.closest('[data-simeq]')) { readSimForm(); const rows = simCfg.rows.filter((r) => r.t); rows.forEach((r) => { r.w = 0; }); simCfg.rows = rows; normalizeSimWeights(); writeJSON(SIM_KEY, simCfg); renderDivSim(); return; }
     if (ev.target.closest('[data-simadd]')) { readSimForm(); simSearchOpen = !simSearchOpen; simResults = []; renderDivSim(); document.getElementById('sim-q')?.focus(); return; }
     if (ev.target.closest('[data-simclose]')) { readSimForm(); simSearchOpen = false; renderDivSim(); return; }
+    if (ev.target.closest('[data-simreset]')) {
+      if (!simCfg.rows.length || !confirm(EN ? 'Remove all tickers from the planner?' : '추가한 종목을 모두 지울까요? (투자금은 그대로 둬요)')) return;
+      simCfg.rows = []; simCat = null; simSearchOpen = true; simResults = []; writeJSON(SIM_KEY, simCfg); renderDivSim();
+      document.getElementById('c-divsim')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      toast(EN ? 'Cleared — add tickers again' : '종목을 모두 지웠어요. 분류에서 고르거나 검색해 다시 넣어 주세요');
+      return;
+    }
     const sres = ev.target.closest('[data-simres]');
     if (sres) {
       readSimForm();
