@@ -1368,3 +1368,6 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .na-bar { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; background: var(--up); transform-origin: left; animation: na-bar 10s linear forwards; }
 @keyframes na-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .news-alert, .ptr { transition: none; } .na-badge, .na-bar { animation: none; } }
+.sim-row { grid-template-columns: minmax(0, 1fr) 84px 36px; }
+.sim-tw { height: auto; min-height: 52px; padding: 7px 12px; }
+.sim-nm b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
