@@ -91,3 +91,16 @@ body.lp { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
 .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
 .dl-hero-num .dl-when { white-space: nowrap; }
 .dl-hero-num > div { min-width: 0; }
+/* /stablecoin */
+.dl-tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.dl-tbl th { text-align: right; color: var(--muted); font-weight: 600; font-size: 12px; padding: 6px 6px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+.dl-tbl td { text-align: right; padding: 9px 6px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+.dl-tbl th:nth-child(-n+2), .dl-tbl td:nth-child(-n+2) { text-align: left; }
+.dl-tbl td small { display: block; color: var(--muted); font-size: 11px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.dl-tbl tr.hl td { background: rgba(91, 155, 255, 0.08); }
+.dl-chart { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 12px 12px 6px; }
+.dl-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dl-bars li { display: grid; grid-template-columns: 128px minmax(0, 1fr) 52px; align-items: center; gap: 10px; font-size: 13.5px; }
+.dl-bars span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-bars i { height: 8px; border-radius: 4px; background: #5b9bff; }
+.dl-bars b { text-align: right; font-variant-numeric: tabular-nums; }

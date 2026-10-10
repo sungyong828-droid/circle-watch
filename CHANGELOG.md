@@ -13,9 +13,11 @@
 
 **새 기능**
 - 💵 **오늘의 스테이블코인 기록**(/daily): 매일 아침 USDC 유통량·점유율, 서클(CRCL) 주가·공매도, 그날의 주요 뉴스를 날짜별 페이지로 쌓아요. 인스타그램·X(@myfireportfolio)에 올리는 카드와 같은 내용이에요.
+- 🪙 **스테이블코인 한눈에**(/stablecoin): 달러 스테이블코인 전체 시가총액, USDT·USDC 점유율과 발행사 순위, USDC 1년 추이, 체인별 분포, 서클이 USDC로 돈을 버는 구조를 한 페이지에 정리했어요.
 
 <!-- EN
 - 💵 **Stablecoin Daily archive** (/daily): USDC supply & share, $CRCL price & short volume and the day's news, one page per day.
+- 🪙 **Stablecoins at a glance** (/stablecoin): total supply, issuer ranking, USDC trend and chain split.
 -->
 
 ## v2026.10.09-5 — 2026-10-09

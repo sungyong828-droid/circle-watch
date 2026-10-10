@@ -1,20 +1,7 @@
 // Cloudflare Pages: /daily — '오늘의 스테이블코인' 기록 (SNS 일간 카드와 같은 숫자·글을 날짜별 페이지로)
 // 내용은 KV(SUMS)의 daily:YYYY-MM-DD · daily:index 에 있다(promo/sns/publish-daily.mjs 가 매일 올림). 배포 없이 매일 쌓인다.
 // 머리·바닥글은 소개 페이지와 같은 틀(worker/daily-tpl.js, build.py 가 만듦)을 쓴다.
-import { SITE_HEADERS, PROD_HOST } from '../../worker/site-headers.js';
-import { DAILY_TPL } from '../../worker/daily-tpl.js';
-
-const SITE = 'https://my-fire-portfolio.pages.dev/';
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const nf = (v, d = 0) => (v == null || !isFinite(v) ? '–' : Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
-const usdKo = (v) => (v == null ? '–' : v >= 1e12 ? `${nf(v / 1e12, 2)}조 달러` : v >= 1e10 ? `${nf(v / 1e8)}억 달러` : v >= 1e8 ? `${nf(v / 1e8, 1)}억 달러` : `${nf(v / 1e4)}만 달러`);
-const pctS = (v, d = 1) => (v == null ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v * 100).toFixed(d)}%`);
-const ppS = (v, d = 2) => (v == null ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v * 100).toFixed(d)}%p`);
-const pctP = (v, d = 1) => (v == null ? '–' : `${(v * 100).toFixed(d)}%`);
-const tone = (v) => (v == null || Math.abs(v) < 1e-9 ? 'flat' : v > 0 ? 'up' : 'down');
-const WD = '일월화수목금토';
-const krDay = (d) => { const t = new Date(d + 'T12:00:00Z'); return `${t.getUTCFullYear()}년 ${t.getUTCMonth() + 1}월 ${t.getUTCDate()}일 (${WD[t.getUTCDay()]})`; };
-const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
+import { SITE, esc, nf, usdKo, pctS, ppS, pctP, tone, krDay, md, fill, respond } from '../../worker/ssr.js';
 
 function spark(series, w = 120, h = 44) {
   const v = (series || []).map((p) => p[1]).filter((x) => x != null);
@@ -22,11 +9,6 @@ function spark(series, w = 120, h = 44) {
   const lo = Math.min(...v), hi = Math.max(...v), r = hi - lo || 1, up = v.at(-1) >= v[0];
   const pts = v.map((y, i) => `${((i / (v.length - 1)) * w).toFixed(1)},${(h - ((y - lo) / r) * (h - 6) - 3).toFixed(1)}`).join(' ');
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="USDC 유통량 최근 30일"><polyline points="${pts}" fill="none" stroke="${up ? '#f0616d' : '#5b9bff'}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
-}
-
-function fill({ title, desc, body, canon, ld }) {
-  return DAILY_TPL.replaceAll('%%TITLE%%', esc(title)).replaceAll('%%DESC%%', esc(desc)).replace('%%BODY%%', body)
-    .replaceAll('%%CANON%%', canon).replace('%%LD%%', `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`);
 }
 
 function dayPage(D, index) {
@@ -71,13 +53,6 @@ function indexPage(index) {
   const desc = '매일 아침 USDC 유통량과 스테이블코인 점유율, 서클(CRCL) 주가·공매도, 주요 뉴스를 날짜별로 정리한 기록이에요.';
   return fill({ title, desc, body, canon: `${SITE}daily`, ld: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: title, description: desc, url: `${SITE}daily`, inLanguage: 'ko' } });
 }
-
-const respond = (html, status, host) => {
-  const r = new Response(html, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': status === 200 ? 'public, max-age=300' : 'no-store' } });
-  for (const [k, v] of Object.entries(SITE_HEADERS)) r.headers.set(k, v);
-  if (host !== PROD_HOST) r.headers.set('x-robots-tag', 'noindex, nofollow');
-  return r;
-};
 
 export async function onRequestGet({ request, env, params }) {
   const host = new URL(request.url).hostname;
