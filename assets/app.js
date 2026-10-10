@@ -4486,8 +4486,8 @@
         <button type="button" class="ws-btn" data-wmove="${i}:1" aria-label="${sym} 아래로" ${i === WATCH.length - 1 ? 'disabled' : ''}>▼</button>
         <button type="button" class="ws-btn del" data-wdel="${sym}" aria-label="${sym} 삭제" ${WATCH.length < 2 ? 'disabled' : ''}>삭제</button></li>`;
     }).join('');
-    const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((r.code ? r.name : r.symbol) || '?')[0])}</span>`}<div class="ws-name">${r.code ? `<b>${esc(r.name)}</b><small>${r.etf ? 'ETF' : r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${esc(r.code)}</small>` : `<b>${esc(r.symbol)}</b><small>${r.kr && !EN ? `${esc(r.kr)} · ` : ''}${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small>`}</div>
-      ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}" data-wasset="${esc(r.asset || '')}">+ 추가</button>`}</li>`).join('');
+    const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((r.code ? r.name : r.symbol) || '?')[0])}</span>`}<div class="ws-name">${r.code ? `<b>${esc(r.name)}</b><small>${r.etf ? 'ETF' : r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${esc(r.code)}</small>` : `<b>${esc(r.symbol)}</b><small>${r.kr && r.kr !== r.name && !EN ? `${esc(r.kr)} · ` : ''}${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small>`}</div>
+      ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}" data-wasset="${esc(r.asset || '')}"${r.kr ? ' data-wkr="1"' : ''}>+ 추가</button>`}</li>`).join('');
     const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
     el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
       <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
@@ -5830,7 +5830,7 @@
     const wp = ev.target.closest('[data-wpop]');
     if (wp) { addPopular(wp.dataset.wpop, wp); return; }
     const wa = ev.target.closest('[data-wadd]');
-    if (wa) { addWatch(wa.dataset.wadd, { name: wa.dataset.wname, exchange: wa.dataset.wex, asset: wa.dataset.wasset }); return; }
+    if (wa) { if (wa.dataset.wkr) addPopular(wa.dataset.wadd, wa); else addWatch(wa.dataset.wadd, { name: wa.dataset.wname, exchange: wa.dataset.wex, asset: wa.dataset.wasset }); return; } // 한글로 찾은 미국 종목은 영문 회사명을 찾아서 넣는다
     const wd = ev.target.closest('[data-wdel]');
     if (wd) { removeWatch(wd.dataset.wdel); return; }
     const wm = ev.target.closest('[data-wmove]');
