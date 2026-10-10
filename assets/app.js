@@ -4666,13 +4666,13 @@
           <div><span>종양 검사 건수 증가율</span><b>${L.oncologyGrowth != null ? `+${Math.round(L.oncologyGrowth * 100)}%` : '–'}</b><small>${pv?.oncologyGrowth != null ? `직전 분기 +${Math.round(pv.oncologyGrowth * 100)}%` : '전년 같은 분기 대비'}</small></div>
           <div><span>MRD(재발 감시) 검사</span><b>${L.mrdTests != null ? nf(0).format(L.mrdTests) + '건' : '–'}</b><small>${pv?.mrdTests != null ? `직전 분기 ${nf(0).format(pv.mrdTests)}건` : '분기 검사 건수'}</small></div>
           <div><span>조정 EBITDA</span><b class="${cls(L.adjEbitda)}">${L.adjEbitda != null ? (L.adjEbitda < 0 ? '-' : '+') + usdM(Math.abs(L.adjEbitda)) : '–'}</b><small>${pv?.adjEbitda != null ? `직전 분기 ${pv.adjEbitda < 0 ? '-' : '+'}${usdM(Math.abs(pv.adjEbitda))}` : ''}</small></div>
-          <div><span>올해 회사 전망</span><b>${G ? `$${(G.revenueLow / 1000).toFixed(2)}~${(G.revenueHigh / 1000).toFixed(2)}B` : '–'}</b><small>${G ? `매출 · 조정 EBITDA 약 $${G.adjEbitda}M` : ''}</small></div>
+          <div><span>올해 회사 전망</span><b>${G ? `$${(G.revenueLow / 1000).toFixed(3)}~${(G.revenueHigh / 1000).toFixed(3)}B` : '–'}</b><small>${G ? `매출 · 조정 EBITDA 약 $${G.adjEbitda}M` : ''}</small></div>
         </div>
         <div class="mini-h er-h">분기별 매출과 수익성</div>
-        <div class="tem-chart">${bars.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col" title="${temQ(x.q)} 매출 ${usdM(x.revenue)}"><b>${usdM(x.revenue)}</b><div class="tem-stack"><em style="height:${h(x.dataApps)}"></em><i style="height:${h(x.diagnostics)}"></i></div><span>${temQ(x.q).replace('분기', 'Q')}</span><small class="${cls(x.adjEbitda)}">${x.adjEbitda != null ? (x.adjEbitda < 0 ? '−' : '+') + Math.abs(x.adjEbitda).toFixed(1) : '–'}</small></div>`; }).join('')}</div>
+        <div class="tem-chart">${bars.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col" title="${temQ(x.q)} 매출 ${usdM(x.revenue)}"><b>${usdM(x.revenue)}</b><div class="tem-stack"><i style="height:${h(x.diagnostics)}"></i><em style="height:${h(x.dataApps)}"></em></div><span>${temQ(x.q).replace('분기', 'Q')}</span><small class="${cls(x.adjEbitda)}">${x.adjEbitda != null ? (x.adjEbitda < 0 ? '−' : '+') + Math.abs(x.adjEbitda).toFixed(1) : '–'}</small></div>`; }).join('')}</div>
         <p class="note">막대: 진단(파랑) + 데이터·앱(주황) 매출 · 아래 숫자: 조정 EBITDA(백만 달러)</p>
         <div class="mini-h er-h">분기별 진척</div>
-        <ul class="faa-ms tem-ms">${Q.slice(0, 4).map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${temQ(x.q)}</b> ${x.highlights?.length ? x.highlights.map(esc).join(' · ') : '세부 진척은 정리 중이에요'} <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">원문</a></div></li>`).join('')}</ul>
+        <ul class="faa-ms tem-ms">${Q.slice(0, 4).map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${temQ(x.q)}</b> <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">원문</a>${x.highlights?.length ? `<ul class="tem-hl">${x.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>` : '<p class="note">세부 진척은 정리 중이에요</p>'}</div></li>`).join('')}</ul>
         <p class="note">숫자는 회사가 분기마다 SEC에 내는 실적 발표문 기준이에요. 새 발표가 나오면 매출·사업별 매출·조정 EBITDA·검사 지표는 자동으로 반영되고, 진척 소식은 확인 후 더해요. 투자 조언이 아니에요.</p>`,
     });
   }
