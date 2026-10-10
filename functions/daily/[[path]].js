@@ -16,7 +16,7 @@ const WD = '일월화수목금토';
 const krDay = (d) => { const t = new Date(d + 'T12:00:00Z'); return `${t.getUTCFullYear()}년 ${t.getUTCMonth() + 1}월 ${t.getUTCDate()}일 (${WD[t.getUTCDay()]})`; };
 const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
 
-function spark(series, w = 150, h = 48) {
+function spark(series, w = 120, h = 44) {
   const v = (series || []).map((p) => p[1]).filter((x) => x != null);
   if (v.length < 2) return '';
   const lo = Math.min(...v), hi = Math.max(...v), r = hi - lo || 1, up = v.at(-1) >= v[0];

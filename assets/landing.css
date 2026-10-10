@@ -89,3 +89,5 @@ body.lp { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
 .dl-nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .dl-nav a { color: var(--ink-2); font-size: 14px; text-decoration: none; }
 .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
+.dl-hero-num .dl-when { white-space: nowrap; }
+.dl-hero-num > div { min-width: 0; }
