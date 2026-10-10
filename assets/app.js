@@ -3108,16 +3108,16 @@
   // 미국은 영문 티커·회사명(서버 검색), 한국은 한글 이름·종목코드(휴대폰 안 목록)
   async function findSyms(q) {
     const korean = /[가-힣ㄱ-ㅎ]/.test(q) || /^\s*\d/.test(q);
-    if (korean) return krSearch(await loadKrx(), q);
+    if (korean) return krUsSearch(q);
     try { return (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(q.trim())}`, 10000)).results || []; } catch { return []; }
   }
   function simResHtml() {
     const q = document.getElementById('sim-q')?.value.trim() || '';
-    if (!q) return '<li class="empty">미국은 티커나 영문 회사명, 한국은 종목명이나 종목코드로 찾아요</li>';
+    if (!q) return '<li class="empty">미국은 티커나 영문·한글 회사명(테슬라), 한국은 종목명이나 종목코드로 찾아요</li>';
     if (simResults === null) return '<li class="empty">검색 중…</li>';
     const have = new Set(simCfg.rows.map((r) => r.t));
     const res = simResults.filter((r) => TICKER_RE.test(r.symbol)).slice(0, 12);
-    return res.map((r) => { const kr = krTk(r.symbol), nm = r.name || r.symbol; return `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((kr ? nm : r.symbol) || '?')[0])}</span>`}<div class="ws-name"><b>${esc(kr ? nm : r.symbol)}</b><small>${esc(kr ? `${r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${r.symbol.slice(0, 6)}${r.etf ? ' · ETF' : ''}` : nm)}</small></div>${have.has(r.symbol) ? '<em class="sim-added">✓ 추가됨</em>' : `<button type="button" class="ws-btn add" data-simres="${esc(r.symbol)}" data-n="${esc(nm)}">+ 추가</button>`}</li>`; }).join('') || '<li class="empty">찾는 종목이 없어요</li>';
+    return res.map((r) => { const kr = krTk(r.symbol), nm = r.name || r.symbol; return `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((kr ? nm : r.symbol) || '?')[0])}</span>`}<div class="ws-name"><b>${esc(kr ? nm : r.symbol)}</b><small>${esc(kr ? `${r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${r.symbol.slice(0, 6)}${r.etf ? ' · ETF' : ''}` : r.kr && !EN && r.kr !== nm ? `${r.kr} · ${nm}` : nm)}</small></div>${have.has(r.symbol) ? '<em class="sim-added">✓ 추가됨</em>' : `<button type="button" class="ws-btn add" data-simres="${esc(r.symbol)}" data-n="${esc(nm)}">+ 추가</button>`}</li>`; }).join('') || '<li class="empty">찾는 종목이 없어요</li>';
   }
   function simSearch(q) {
     clearTimeout(simSearchTimer);
@@ -4486,13 +4486,13 @@
         <button type="button" class="ws-btn" data-wmove="${i}:1" aria-label="${sym} 아래로" ${i === WATCH.length - 1 ? 'disabled' : ''}>▼</button>
         <button type="button" class="ws-btn del" data-wdel="${sym}" aria-label="${sym} 삭제" ${WATCH.length < 2 ? 'disabled' : ''}>삭제</button></li>`;
     }).join('');
-    const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((r.code ? r.name : r.symbol) || '?')[0])}</span>`}<div class="ws-name">${r.code ? `<b>${esc(r.name)}</b><small>${r.etf ? 'ETF' : r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${esc(r.code)}</small>` : `<b>${esc(r.symbol)}</b><small>${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small>`}</div>
+    const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((r.code ? r.name : r.symbol) || '?')[0])}</span>`}<div class="ws-name">${r.code ? `<b>${esc(r.name)}</b><small>${r.etf ? 'ETF' : r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${esc(r.code)}</small>` : `<b>${esc(r.symbol)}</b><small>${r.kr && !EN ? `${esc(r.kr)} · ` : ''}${esc(r.name)} · ${esc(r.exchange)}${r.asset === 'ETF' ? ' · ETF' : ''}</small>`}</div>
       ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}" data-wasset="${esc(r.asset || '')}">+ 추가</button>`}</li>`).join('');
     const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
     el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
       <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
       <label class="ws-search"><input id="watch-q" type="search" placeholder="티커·회사명·종목코드 (예: AAPL, Tesla, 삼성, 005930)" autocomplete="off" value="${esc(q)}"></label>
-      ${q ? `<ul class="ws-list">${res || `<li class="empty">${watchResults === null ? '검색 중…' : '검색 결과가 없어요. 미국 종목은 영문 티커·회사명, 한국 종목은 회사명·종목코드로 찾아 보세요.'}</li>`}</ul>` : ''}
+      ${q ? `<ul class="ws-list">${res || `<li class="empty">${watchResults === null ? '검색 중…' : '검색 결과가 없어요. 미국 종목은 티커·영문·한글 회사명(테슬라), 한국 종목은 회사명·종목코드로 찾아 보세요.'}</li>`}</ul>` : ''}
       ${!q ? popularHtml() : ''}
       ${removedBuiltin.length && !q ? `<div class="ws-sub">다시 추가하기</div><ul class="ws-list">${removedBuiltin.map((s) => `<li><div class="ws-name"><b>${s}</b><small>${esc(STOCK_INFO[s].name)} · 기본</small></div><button type="button" class="ws-btn add" data-wadd="${s}">+ 추가</button></li>`).join('')}</ul>` : ''}
       <div class="ws-sub">내 종목 <small>위에서부터 홈 상단에 보여요</small></div>
@@ -4555,8 +4555,19 @@
       const L = await loadKrx(), q = t.replace(/\s+/g, '');
       const hit = L.find((r) => r[0] === t) || L.find((r) => r[1].toUpperCase().replace(/\s+/g, '') === q) || krSearch(L, t).find((r) => r.score <= 1);
       if (hit) return Array.isArray(hit) ? `${hit[0]}.${hit[2]}` : hit.symbol;
+      if (/[가-힣]/.test(t)) { const U = await usKrSearch(t), u = U.find((r) => r.kr.replace(/\s+/g, '') === q) || (U.length === 1 ? U[0] : null); if (u) return u.symbol; }
     }
     return t;
+  }
+  // 한글로 찾기: 한국 종목(휴대폰 안 목록)과 미국 종목(테슬라→TSLA, 서버가 네이버 증권에서 찾음)을 함께 보여준다
+  const usKrSearch = async (q) => (/[가-힣ㄱ-ㅎ]/.test(q) ? (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(q.trim())}`, 10000).catch(() => null))?.results || [] : []);
+  async function krUsSearch(q) {
+    const t = q.trim().replace(/\s+/g, '');
+    const [kr, us] = await Promise.all([loadKrx().then((L) => krSearch(L, q)), usKrSearch(q)]);
+    const sc = (n) => { n = String(n || '').replace(/\s+/g, ''); return n === t ? 0 : n.startsWith(t) ? 1 : 2; };
+    const U = us.map((r) => ({ ...r, score: sc(r.kr), us: true }));
+    // 같은 점수면 미국 종목을 먼저(마이크로 → 마이크로소프트가 소형 코스닥 종목보다 위)
+    return [...U, ...kr].sort((a, b) => a.score - b.score || (b.us ? 1 : 0) - (a.us ? 1 : 0)).slice(0, 25);
   }
   function krSearch(list, q) {
     const t = q.trim().toUpperCase().replace(/\s+/g, ''), out = [];
@@ -4573,7 +4584,7 @@
     watchSearchTimer = setTimeout(async () => {
       watchResults = null; renderWatchSheet();
       const korean = /[가-힣ㄱ-ㅎ]/.test(q) || /^\s*\d/.test(q);
-      if (korean) { watchResults = krSearch(await loadKrx(), q); if ((document.getElementById('watch-q')?.value || '') === q) renderWatchSheet(); return; }
+      if (korean) { watchResults = await krUsSearch(q); if ((document.getElementById('watch-q')?.value || '') === q) renderWatchSheet(); return; }
       try { watchResults = (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(q.trim())}`, 10000)).results || []; } catch { watchResults = []; }
       if ((document.getElementById('watch-q')?.value || '') === q) renderWatchSheet();
     }, 300);
