@@ -2,6 +2,10 @@
 
   python deploy.py test   → https://test.my-fire-portfolio.pages.dev  (테스트 환경)
   python deploy.py prod   → https://my-fire-portfolio.pages.dev       (실제 사이트, 확인 질문 있음)
+  python deploy.py notify-test → 디스코드 알림이 오는지 시험 메시지 한 통
+
+디스코드 알림: .env.local 의 DISCORD_WEBHOOK_URL(GitHub에 안 올라감)이 있으면 테스트 준비·실제 배포 완료·배포 실패 때 메시지를 보낸다.
+주소가 없거나 보내기에 실패해도 배포는 그대로 진행한다(주소는 화면에 찍지 않는다).
 
 - 두 곳 모두 같은 코드(dist)·같은 서버 기능(/api)을 쓰고, 데이터 출처도 같다.
 - 테스트 환경은 방문 집계를 하지 않고, 검색에 노출되지 않으며(noindex), 화면 위에 '🧪 TEST'가 보인다.
@@ -15,11 +19,13 @@
 - GitHub CLI(gh)가 설치·로그인돼 있으면 GitHub Releases 에도 같은 내용으로 만든다.
 """
 import datetime
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PROJECT = 'my-fire-portfolio'
@@ -55,6 +61,41 @@ def head():
 
 def kst_today():
     return (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date()
+
+
+def webhook_url():
+    p = os.path.join(ROOT, '.env.local')
+    if os.path.exists(p):
+        for line in open(p, encoding='utf-8-sig'):
+            k, _, v = line.strip().partition('=')
+            if k.strip() == 'DISCORD_WEBHOOK_URL' and v.strip():
+                return v.strip().strip('"\'')
+    return os.environ.get('DISCORD_WEBHOOK_URL', '').strip()
+
+
+def notify(title, desc='', link='', color=0x3FBF7F):
+    """디스코드로 알림 한 통(웹후크). 실패해도 배포는 멈추지 않는다."""
+    url = webhook_url()
+    if not url:
+        return
+    embed = {'title': title[:250], 'description': desc[:3500], 'color': color, 'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    if link:
+        embed['url'] = link
+    body = json.dumps({'username': 'Fire Portfolio', 'embeds': [embed]}).encode('utf-8')
+    req = urllib.request.Request(url, data=body, method='POST', headers={'content-type': 'application/json', 'user-agent': 'FirePortfolio-deploy/1.0'})
+    try:
+        urllib.request.urlopen(req, timeout=10).read()
+        print('🔔 디스코드 알림 보냄')
+    except Exception as e:
+        print(f'⚠ 디스코드 알림을 보내지 못했어요({type(e).__name__}) — 배포는 정상이에요.')
+
+
+def public_notes(notes):
+    """알림에 넣을 바뀐 점(내부 메모·영어 칸 빼고 짧게)"""
+    notes = re.sub(r'<!--\s*EN.*?-->', '', notes, flags=re.S)
+    lines = [l for l in notes.splitlines() if l.strip() and '<!-- internal -->' not in l]
+    out = '\n'.join(lines)
+    return out if len(out) <= 1500 else out[:1500].rsplit('\n', 1)[0] + '\n…'
 
 
 def next_version():
@@ -115,8 +156,23 @@ def main():
     try: sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # 윈도우 터미널에서도 한글·이모지 출력
     except Exception: pass
     target = (sys.argv[1] if len(sys.argv) > 1 else '').lower()
+    if target == 'notify-test':
+        if not webhook_url():
+            sys.exit('.env.local 에 DISCORD_WEBHOOK_URL 이 없어요.')
+        notify('🔔 Fire Portfolio 알림 연결됨', '배포가 끝나면 여기로 알려 드릴게요.', f'https://{PROJECT}.pages.dev')
+        return
     if target not in ('test', 'prod'):
         sys.exit(__doc__)
+    try:
+        deploy(target)
+    except SystemExit:
+        raise
+    except BaseException as e:
+        notify(f'❌ Fire Portfolio {"실제" if target == "prod" else "테스트"} 배포 실패', f'{type(e).__name__}: {str(e)[:300]}\nPC 터미널에서 내용을 확인해 주세요.', color=0xE5484D)
+        raise
+
+
+def deploy(target):
     run([sys.executable, 'build.py'])
     ver = head()
     if target == 'prod':
@@ -132,6 +188,7 @@ def main():
         os.makedirs(os.path.dirname(MARK), exist_ok=True)
         open(MARK, 'w', encoding='utf-8').write(ver)
         print(f'\n✅ 테스트 환경: https://test.{PROJECT}.pages.dev  (버전 {ver})')
+        notify('🧪 테스트 사이트 준비됨', f'버전 `{ver}` — 확인해 보시고 괜찮으면 "배포해줘"라고 말씀해 주세요.', f'https://test.{PROJECT}.pages.dev', 0xF2994A)
         return
     rel = next_version()
     sha = ver.replace('+변경', '')
@@ -144,6 +201,7 @@ def main():
     run(cmd + ['--commit-message', f'{rel} ({sha})'], capture=True)
     publish_release(rel, sha, url, notes)
     print(f'\n✅ 실제 사이트: https://{PROJECT}.pages.dev  (버전 {rel} · 커밋 {ver}{" · 이 버전 보기 " + url if url else ""})')
+    notify(f'✅ Fire Portfolio 배포 완료 · {rel}', f'{public_notes(notes)}\n\n🔗 https://{PROJECT}.pages.dev', f'https://{PROJECT}.pages.dev')
 
 
 if __name__ == '__main__':
