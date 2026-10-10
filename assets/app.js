@@ -4801,7 +4801,7 @@
     const sg = v < 0 ? '-' : '', a = Math.abs(v);
     const money = () => (B.cur === 'KRW'
       ? (a < 1 ? (EN ? `${sg}₩${nf(0).format(a * 1000)}B` : `${sg}${nf(0).format(a * 1e4)}억원`) : (EN ? `${sg}₩${a.toFixed(a >= 100 ? 0 : 1)}T` : `${sg}${a.toFixed(a >= 100 ? 0 : 1)}조원`))
-      : a >= 1000 ? `${sg}$${(a / 1000).toFixed(a >= 1e4 ? 1 : 2)}B` : `${sg}$${a >= 100 ? a.toFixed(0) : a >= 10 ? a.toFixed(1) : a.toFixed(2)}M`);
+      : a >= 1000 ? `${sg}$${(a / 1000).toFixed(a >= 1e4 ? 1 : 2)}B` : `${sg}$${a >= 100 ? a.toFixed(0) : a >= 1 ? a.toFixed(1) : a.toFixed(2)}M`);
     const num = f === 'n' ? nf(0).format(v) : f === 'd1' ? v.toFixed(1) : f === 'd2' ? v.toFixed(2) : f === 'pctN' ? `${nf(0).format(v)}%` : f === 'pct1' ? `${v.toFixed(1)}%` : money();
     const unit = tx(u);
     return unit ? `${num}${/^[A-Za-z]/.test(unit) ? ' ' : ''}${unit}` : num;
@@ -4823,13 +4823,13 @@
     const nx = !isKR(sym) ? earnOf(sym)?.next?.date : null, today = isoToday();
     const stale = L.filed && daysBetween(L.filed, today) > 98;
     // 최근 발표(분기 실적 뒤에 나온 인도량·잠정 실적 등)
-    const flash = (B.flash || []).filter((f) => !L.filed || f.d > L.filed).map((f) => `<div class="biz-flash"><b>🆕 ${md(isoToTs(f.d))}</b> ${esc(tx(f))}${f.url ? ` <a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}</div>`).join('');
+    const flash = (B.flash || []).filter((f) => !L.filed || f.d > L.filed).map((f) => `<div class="biz-flash"><em class="biz-new">${EN ? 'Latest' : '최근'}</em><b>${md(isoToTs(f.d))}</b> ${esc(tx(f))}${f.url ? ` <a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}</div>`).join('');
     // 사업별 매출 비중(최근 분기)
     const segs = (B.seg || []).filter((s) => L.seg?.[s.k] != null), segSum = segs.reduce((a, s) => a + L.seg[s.k], 0);
     const mix = segs.length > 1 && segSum > 0 ? `<div class="tem-mix biz-mix"><div class="biz-bar">${segs.map((s, i) => `<i style="width:${((L.seg[s.k] / segSum) * 100).toFixed(1)}%;background:${BIZ_COLORS[i % 4]}"></i>`).join('')}</div>
         <div class="tem-leg biz-leg">${segs.map((s, i) => `<span><i style="background:${BIZ_COLORS[i % 4]}"></i>${esc(tx(s))} ${bizFmt(B, L.seg[s.k])} · ${Math.round((L.seg[s.k] / segSum) * 100)}%</span>`).join('')}</div></div>` : '';
     // 숫자 칸: 매출 · 이익 · 회사별 핵심 지표
-    const vsTxt = (cur, base, isYa, pp) => { if (cur == null || base == null) return ''; const d = pp ? cur - base : chg(cur, base); if (d == null) return ''; const t = pp ? `${d >= 0 ? '+' : ''}${d.toFixed(1)}%p` : pct(d, 0); return `${isYa ? (EN ? 'YoY ' : '전년 대비 ') : (EN ? 'QoQ ' : '직전 분기 대비 ')}<span class="${cls(d)}">${t}</span>`; };
+    const vsTxt = (cur, base, isYa, pp) => { if (cur == null || base == null) return ''; const d = pp ? cur - base : chg(cur, base); if (d == null) return ''; const t = pp ? `${d >= 0 ? '+' : ''}${d.toFixed(1)}%p` : d >= 9 ? `${nf(0).format(1 + d)}${EN ? 'x' : '배'}` : pct(d, 0); return `${isYa ? (EN ? 'YoY ' : '전년 대비 ') : (EN ? 'QoQ ' : '직전 분기 대비 ')}<span class="${cls(d)}">${t}</span>`; };
     const tiles = [];
     if (hasRev) tiles.push([EN ? 'Quarterly revenue' : '분기 매출', bizFmt(B, L.rev), ya ? vsTxt(L.rev, ya.rev, true) : vsTxt(L.rev, pv?.rev, false), '']);
     if (L.op != null) {
