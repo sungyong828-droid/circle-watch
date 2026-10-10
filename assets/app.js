@@ -2576,7 +2576,7 @@
           <ul class="dc-list">${ys.map((x) => `<li><time>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}<small>${new Date(x.pay + 'T12:00:00').toLocaleDateString(LOC, { weekday: 'short' })}</small></time><div><b>${esc(fireName(x.sym))}</b><small>${EN ? 'ex-div' : '배당락'} ${+x.ex.slice(5, 7)}/${+x.ex.slice(8)}</small></div><span class="dc-amt">${usd2(x.net)}<em class="${x.declared ? 'ok' : 'est'}">${x.declared ? '확정' : '예상'}</em></span></li>`).join('')}</ul></div>`).join(''); };
     const FIRST = 4, head = L.slice(0, FIRST), rest = L.slice(FIRST);
     card('divcal', {
-      title: '📅 배당 캘린더', sub: EN ? `Coming in the next 3 months · by pay date · after tax · ${cntL(L.length)}` : `앞으로 3개월 입금 예정 · 지급일 기준 · 세후 · ${L.length}건`,
+      title: '📅 배당 캘린더', sub: EN ? `Next 3 months · by pay date · after tax · ${cntL(L.length)}` : `앞으로 3개월 입금 예정 · 지급일 기준 · 세후 · ${L.length}건`,
       easy: '지금 가진 수량으로 언제 배당이 들어올지 미리 보는 달력이에요. "확정"은 회사가 발표한 배당이고, "예상"은 작년 같은 때 준 배당이 올해도 비슷하게 나온다고 보고 계산한 거예요.',
       body: `<div class="dc-sum"><span>3개월 합계(예상 포함)</span><b>${usd2(total)}</b>${fx ? `<small>${manwon(total * fx)}</small>` : ''}</div>
         ${groups(head, false)}
