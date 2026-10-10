@@ -1,0 +1,49 @@
+{
+  "sym": "000660",
+  "cur": "KRW",
+  "src": { "ko": "SK하이닉스 뉴스룸 경영실적 발표", "en": "SK hynix Newsroom earnings release" },
+  "easy": {
+    "ko": "SK하이닉스는 메모리 반도체만 만드는 회사예요. 컴퓨터가 잠깐 기억하는 D램, 오래 저장하는 낸드(SSD), 그리고 AI 서버의 GPU 옆에 붙는 초고속 메모리 HBM이 주력이에요. 엔비디아 등에 HBM을 가장 많이 공급하는 회사라 AI 투자가 늘수록 실적이 크게 좋아지는 구조예요.",
+    "en": "SK hynix makes only memory chips: DRAM (short-term memory), NAND (SSD storage), and HBM — ultra-fast memory stacked next to GPUs in AI servers. As a leading HBM supplier to Nvidia and others, its earnings rise sharply as AI spending grows."
+  },
+  "seg": [],
+  "profit": { "ko": "영업이익", "en": "Operating profit" },
+  "kpi": [
+    { "k": "cash", "ko": "현금성 자산", "en": "Cash & equivalents", "f": "krwJo" }
+  ],
+  "q": [
+    {
+      "q": "2026Q2", "filed": "2026-07-29", "url": "https://news.skhynix.co.kr/q2-2026-business-results/",
+      "rev": 79.32, "op": 60.54, "k": { "cash": 88.0 },
+      "hl": [
+        { "ko": "매출·영업이익 분기 사상 최대 · 영업이익률 76% · 상반기 매출 첫 100조원 돌파", "en": "Record quarter · 76% operating margin · first-half revenue topped ₩100T" },
+        { "ko": "핵심 고객 포함 10여 곳과 장기공급계약(LTA) 협상 마무리", "en": "Long-term supply agreements wrapped up with about 10 customers incl. key ones" },
+        { "ko": "HBM4 양산 출하 시작, 하반기 생산 본격 확대 · 순현금 69.4조원", "en": "HBM4 mass shipments began, ramping in 2H · net cash ₩69.4T" }
+      ]
+    },
+    {
+      "q": "2026Q1", "filed": "2026-04-23", "url": "https://news.skhynix.co.kr/q1-2026-business-results/",
+      "rev": 52.58, "op": 37.61, "k": { "cash": 54.3 },
+      "hl": [
+        { "ko": "비수기에도 HBM·서버용 D램·eSSD 판매 확대로 사상 최대 분기 실적", "en": "Record quarter despite seasonality on HBM, server DRAM and eSSD" },
+        { "ko": "세계 최초 1c 공정 LPDDR6 · 순현금 35조원 달성", "en": "World-first LPDDR6 on 1c process · net cash reached ₩35T" }
+      ]
+    },
+    {
+      "q": "2025Q4", "filed": "2026-01-28", "url": "https://news.skhynix.co.kr/?p=58337",
+      "rev": 32.83, "op": 19.17, "k": { "cash": 34.9 },
+      "hl": [
+        { "ko": "2025년 연간 영업이익 47.2조원 — 처음으로 삼성전자 전사 영업이익 추월", "en": "2025 operating profit ₩47.2T — beat Samsung Electronics' company-wide total for the first time" },
+        { "ko": "주당 1,500원 추가 배당·자사주 소각 · 순현금 체제 전환", "en": "Extra ₩1,500/share dividend and share cancellation · turned net cash" }
+      ]
+    },
+    {
+      "q": "2025Q3", "filed": "2025-10-29", "url": "https://news.mtn.co.kr/news-detail/2025102916421027288",
+      "rev": 24.45, "op": 11.38,
+      "hl": [
+        { "ko": "HBM4 고객 공급 협의 마무리 — 4분기 출하 시작, 2026년 본격 판매", "en": "HBM4 supply talks done — shipments from Q4, full sales in 2026" }
+      ]
+    },
+    { "q": "2025Q2", "filed": "2025-07-24", "rev": 22.23, "op": 9.21 }
+  ]
+}

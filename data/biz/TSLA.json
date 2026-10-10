@@ -1,0 +1,75 @@
+{
+  "sym": "TSLA",
+  "cur": "USD",
+  "src": { "ko": "SEC 8-K 분기 업데이트", "en": "SEC 8-K quarterly update" },
+  "easy": {
+    "ko": "테슬라는 전기차를 팔아 대부분의 돈을 벌고(자동차), 가정·발전소용 대형 배터리(메가팩·파워월)를 팔고(에너지), 충전·보험·중고차·FSD 같은 서비스로도 벌어요(서비스). 요즘 주가는 지금 실적보다 로보택시·자율주행(FSD)·로봇(옵티머스) 같은 미래 사업 기대가 크게 움직여요.",
+    "en": "Tesla makes most of its money selling EVs (automotive), also sells large batteries for homes and utilities (Megapack, Powerwall — energy), and earns from charging, insurance, used cars and FSD (services). Today the stock moves more on hopes for robotaxis, self-driving (FSD) and robots (Optimus) than on current results."
+  },
+  "seg": [
+    { "k": "auto", "ko": "자동차", "en": "Automotive" },
+    { "k": "energy", "ko": "에너지 저장", "en": "Energy storage" },
+    { "k": "svc", "ko": "서비스·기타", "en": "Services & other" }
+  ],
+  "profit": { "ko": "영업이익", "en": "Operating income" },
+  "kpi": [
+    { "k": "deliv", "ko": "차량 인도", "en": "Vehicle deliveries", "f": "n", "u": { "ko": "대", "en": "" } },
+    { "k": "storage", "ko": "에너지 저장 설치", "en": "Storage deployed", "f": "d1", "u": { "ko": "GWh", "en": "GWh" } },
+    { "k": "fsd", "ko": "FSD 이용자", "en": "Active FSD subscriptions", "f": "d2", "u": { "ko": "백만 명", "en": "M" } },
+    { "k": "fcf", "ko": "잉여현금흐름", "en": "Free cash flow", "f": "usdM" }
+  ],
+  "flash": [
+    {
+      "d": "2026-10-02",
+      "ko": "3분기 인도 48만 6,532대(전년 49만 7,099대) · 에너지 저장 13.7GWh — 실적은 10/21 발표",
+      "en": "Q3 deliveries 486,532 (vs 497,099 a year ago) · 13.7 GWh storage deployed — results on 10/21",
+      "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026064366/exhibit991111111.htm"
+    }
+  ],
+  "q": [
+    {
+      "q": "2026Q2", "filed": "2026-07-22", "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026049213/exhibit991.htm",
+      "rev": 28236, "seg": { "auto": 20516, "energy": 3139, "svc": 4581 }, "op": 398,
+      "k": { "deliv": 480126, "storage": 13.5, "fsd": 1.48, "fcf": -1092 },
+      "hl": [
+        { "ko": "최근 12개월 매출 처음으로 1,000억 달러 돌파", "en": "Trailing-12-month revenue topped $100B for the first time" },
+        { "ko": "2분기 기준 역대 최대 인도 · 서비스 부문 역대 최대 이익", "en": "Record Q2 deliveries · record Services profitability" },
+        { "ko": "사이버캡 텍사스 공장에서 생산 시작 · 로보택시 미국 7개 대도시로 확대", "en": "Cybercab production began in Texas · Robotaxi live in seven U.S. metros" },
+        { "ko": "설비투자 58억 달러로 급증 → 잉여현금흐름 -11억 달러", "en": "Capex jumped to $5.8B → free cash flow of -$1.1B" }
+      ]
+    },
+    {
+      "q": "2026Q1", "filed": "2026-04-22", "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026026551/exhibit991.htm",
+      "rev": 22387, "seg": { "auto": 16234, "energy": 2408, "svc": 3745 }, "op": 941,
+      "k": { "deliv": 358023, "storage": 8.8, "fsd": 1.28, "fcf": 1444 },
+      "hl": [
+        { "ko": "네덜란드에서 FSD(감독형) 승인", "en": "FSD (Supervised) approved in the Netherlands" },
+        { "ko": "댈러스·휴스턴에서 안전요원 없는 로보택시 운행 시작", "en": "Unsupervised Robotaxi rides launched in Dallas and Houston" },
+        { "ko": "SpaceX 지분에 20억 달러 투자 · 리튬·양극재·LFP 자체 생산 시작", "en": "$2.0B invested in SpaceX equity · began ramping in-house lithium, cathode and LFP" }
+      ]
+    },
+    {
+      "q": "2025Q4", "filed": "2026-01-28", "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003837/exhibit991.htm",
+      "rev": 24901, "seg": { "auto": 17693, "energy": 3837, "svc": 3371 }, "op": 1409,
+      "k": { "deliv": 418227, "storage": 14.2, "fsd": 1.10, "fcf": 1420 },
+      "hl": [
+        { "ko": "오스틴 로보택시에서 안전요원 빼기 시작(1월)", "en": "Began removing safety monitors from Austin Robotaxis (January)" },
+        { "ko": "4분기·2025년 연간 에너지 저장 설치 역대 최대", "en": "Record Q4 and full-year 2025 energy storage deployments" }
+      ]
+    },
+    {
+      "q": "2025Q3", "filed": "2025-10-22", "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828025045861/exhibit991.htm",
+      "rev": 28095, "seg": { "auto": 21205, "energy": 3415, "svc": 3475 }, "op": 1624,
+      "k": { "deliv": 497099, "storage": 12.5, "fsd": 1.04, "fcf": 3990 },
+      "hl": [
+        { "ko": "인도·에너지 저장·매출·잉여현금흐름 모두 역대 최대", "en": "Record deliveries, storage deployments, revenue and free cash flow" },
+        { "ko": "가장 싼 모델 3·Y 스탠다드 출시 · 베이 지역 차량 호출 서비스 시작", "en": "Launched the most affordable Model 3/Y Standard · ride-hailing started in the Bay Area" }
+      ]
+    },
+    {
+      "q": "2025Q2", "filed": "2025-07-23", "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828025035738/exhibit991.htm",
+      "rev": 22496, "seg": { "auto": 16661, "energy": 2789, "svc": 3046 }, "op": 923,
+      "k": { "deliv": 384122, "storage": 9.6, "fsd": 0.95, "fcf": 146 }
+    }
+  ]
+}

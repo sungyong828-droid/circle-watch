@@ -1,0 +1,143 @@
+{
+  "sym": "005380",
+  "cur": "KRW",
+  "src": {
+    "ko": "현대자동차그룹 뉴스룸 경영실적 발표",
+    "en": "Hyundai Motor Group newsroom earnings release"
+  },
+  "easy": {
+    "ko": "현대차는 자동차를 만들어 팔고(자동차 부문), 현대캐피탈 같은 할부·리스 금융으로도 돈을 벌어요(금융·기타, 매출의 약 4분의 1). 요즘은 미국 관세, 원자재 값, 하이브리드·전기차 판매 비중이 이익을 좌우해요. 분기마다 주당 2,500원 배당을 줘요.",
+    "en": "Hyundai Motor builds and sells cars (automotive) and also earns from auto loans and leases like Hyundai Capital (finance & other, about a quarter of revenue). U.S. tariffs, raw-material costs and the hybrid/EV mix now drive profits. It pays a ₩2,500 quarterly dividend."
+  },
+  "seg": [
+    {
+      "k": "auto",
+      "ko": "자동차",
+      "en": "Automotive"
+    },
+    {
+      "k": "fin",
+      "ko": "금융·기타",
+      "en": "Finance & other"
+    }
+  ],
+  "profit": {
+    "ko": "영업이익",
+    "en": "Operating profit"
+  },
+  "kpi": [
+    {
+      "k": "wh",
+      "ko": "글로벌 도매 판매",
+      "en": "Global wholesale",
+      "f": "n",
+      "u": {
+        "ko": "대",
+        "en": ""
+      }
+    },
+    {
+      "k": "xev",
+      "ko": "친환경차 판매",
+      "en": "Eco-friendly vehicle sales",
+      "f": "n",
+      "u": {
+        "ko": "대",
+        "en": ""
+      }
+    },
+    {
+      "k": "xevShare",
+      "ko": "친환경차 비중",
+      "en": "Eco-friendly share",
+      "f": "pct1",
+      "pp": true
+    }
+  ],
+  "guide": {
+    "ko": "2026년 매출 +1~2% · 영업이익률 6.3~7.3% · 도매 판매 415만 8,300대 목표",
+    "en": "2026 targets: revenue +1–2% · operating margin 6.3–7.3% · 4,158,300 wholesale units"
+  },
+  "q": [
+    {
+      "q": "2026Q2",
+      "filed": "2026-07-23",
+      "url": "https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-2026-q2-earnings",
+      "rev": 49.22,
+      "op": 2.85,
+      "k": {
+        "wh": 991885,
+        "xev": 266627,
+        "xevShare": 26.9
+      },
+      "ky": {
+        "wh": -0.069,
+        "xev": 0.017
+      },
+      "hl": [
+        {
+          "ko": "매출 49.2조원 분기 최대(자동차 36.8조 · 금융·기타 12.4조) — 하이브리드 판매 역대 최대",
+          "en": "Record ₩49.2T revenue (auto ₩36.8T · finance & other ₩12.4T) — record hybrid sales"
+        },
+        {
+          "ko": "부품사 화재로 국내 판매 -16.4% → 전체 판매 -6.9%, 영업이익 -20.8%",
+          "en": "Supplier fire cut domestic sales 16.4% → total sales -6.9%, operating profit -20.8%"
+        },
+        {
+          "ko": "미국 판매 +0.9%, 5개 분기 연속 점유율 6%대 · 분기 배당 2,500원",
+          "en": "U.S. sales +0.9%, 6%+ share for five straight quarters · ₩2,500 quarterly dividend"
+        }
+      ],
+      "seg": {
+        "auto": 36.83,
+        "fin": 12.38
+      }
+    },
+    {
+      "q": "2026Q1",
+      "filed": "2026-04-23",
+      "url": "https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-2026-first-quarter-earnings",
+      "rev": 45.94,
+      "op": 2.51,
+      "k": {
+        "wh": 976219,
+        "xev": 242612,
+        "xevShare": 24.9
+      },
+      "ky": {
+        "wh": -0.025,
+        "xev": 0.142
+      },
+      "hl": [
+        {
+          "ko": "1분기 기준 최대 매출 · 하이브리드 판매 역대 최대",
+          "en": "Record Q1 revenue · record hybrid sales"
+        },
+        {
+          "ko": "중동 전쟁 등으로 산업 수요 -7.2% · 관세·원자재 부담에 영업이익 -30.8%",
+          "en": "Industry demand -7.2% amid the Middle East war · tariffs and materials cut operating profit 30.8%"
+        },
+        {
+          "ko": "글로벌 점유율 4.6% → 4.9%, 미국 5.6% → 6.0%",
+          "en": "Global share 4.6% → 4.9%, U.S. 5.6% → 6.0%"
+        }
+      ]
+    },
+    {
+      "q": "2025Q4",
+      "rev": 46.84,
+      "op": 1.7
+    },
+    {
+      "q": "2025Q3",
+      "rev": 46.72,
+      "op": 2.54
+    },
+    {
+      "q": "2025Q2",
+      "rev": 48.29,
+      "op": 3.6
+    }
+  ],
+  "segLatestOnly": true
+}

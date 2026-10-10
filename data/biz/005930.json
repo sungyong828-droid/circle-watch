@@ -1,0 +1,71 @@
+{
+  "sym": "005930",
+  "cur": "KRW",
+  "src": { "ko": "삼성전자 뉴스룸 분기 실적 발표", "en": "Samsung Newsroom quarterly earnings release" },
+  "easy": {
+    "ko": "삼성전자는 크게 두 사업이에요. 반도체(DS) — D램·낸드·HBM 같은 메모리와 파운드리(위탁 생산), 완제품(DX) — 갤럭시 스마트폰·TV·가전이에요. 여기에 디스플레이(삼성디스플레이)와 하만(전장·오디오)이 붙어요. 요즘은 AI 서버용 메모리 값이 크게 오르면서 이익 거의 전부를 반도체가 벌고 있어요.",
+    "en": "Samsung Electronics has two main businesses: semiconductors (DS) — memory like DRAM, NAND and HBM plus foundry — and devices (DX) — Galaxy phones, TVs and appliances. Display (Samsung Display) and Harman (auto electronics, audio) sit alongside. Lately, soaring prices for AI-server memory mean chips earn almost all of the profit."
+  },
+  "seg": [
+    { "k": "ds", "ko": "반도체(DS)", "en": "Semiconductors (DS)" },
+    { "k": "dx", "ko": "완제품(DX: 폰·TV·가전)", "en": "Devices (DX: phones, TVs, appliances)" },
+    { "k": "disp", "ko": "디스플레이", "en": "Display" },
+    { "k": "harman", "ko": "하만", "en": "Harman" }
+  ],
+  "profit": { "ko": "영업이익", "en": "Operating profit" },
+  "kpi": [
+    { "k": "dsOp", "ko": "반도체(DS) 영업이익", "en": "DS operating profit", "f": "krwJo" },
+    { "k": "dxOp", "ko": "완제품(DX) 영업이익", "en": "DX operating profit", "f": "krwJo" }
+  ],
+  "flash": [
+    {
+      "d": "2026-10-08",
+      "ko": "3분기 잠정 실적: 매출 195조원 · 영업이익 107.4조원 — 국내 기업 처음 분기 영업이익 100조원 돌파(부문별 수치는 확정 발표 때)",
+      "en": "Q3 preliminary: revenue ₩195T · operating profit ₩107.4T — first Korean company over ₩100T in a quarter (segment detail at final results)",
+      "url": "https://www.ytn.co.kr/_ln/0102_202610080945200200"
+    }
+  ],
+  "q": [
+    {
+      "q": "2026Q2", "filed": "2026-07-30", "url": "https://news.samsung.com/kr/%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90-2026%EB%85%84-2%EB%B6%84%EA%B8%B0-%EC%8B%A4%EC%A0%81-%EB%B0%9C%ED%91%9C",
+      "rev": 171.5, "seg": { "ds": 127.5, "dx": 48.0, "disp": 7.5, "harman": 4.6 }, "op": 89.5,
+      "k": { "dsOp": 89.2, "dxOp": -0.8 },
+      "hl": [
+        { "ko": "매출·영업이익 역대 최대 — D램·낸드 판매 최대", "en": "Record revenue and operating profit — record DRAM and NAND sales" },
+        { "ko": "HBM4 공급 확대 · 업계 최초 HBM4E 샘플 출하", "en": "Expanded HBM4 supply · industry-first HBM4E samples shipped" },
+        { "ko": "완제품(DX) 부품 원가 상승으로 출범 후 첫 분기 적자(-0.8조원)", "en": "Devices (DX) posted its first-ever quarterly loss (-₩0.8T) on rising component costs" }
+      ]
+    },
+    {
+      "q": "2026Q1", "filed": "2026-04-29", "url": "https://news.samsung.com/kr/%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90-2026%EB%85%84-1%EB%B6%84%EA%B8%B0-%EC%8B%A4%EC%A0%81-%EB%B0%9C%ED%91%9C",
+      "rev": 133.9, "seg": { "ds": 81.7, "dx": 52.7, "disp": 6.7, "harman": 3.8 }, "op": 57.2,
+      "k": { "dsOp": 53.7, "dxOp": 3.0 },
+      "hl": [
+        { "ko": "메모리 가격 상승으로 영업이익 전분기 대비 +185%", "en": "Operating profit +185% quarter over quarter on higher memory prices" },
+        { "ko": "업계 최초 HBM4·SOCAMM2 동시 양산·판매", "en": "Industry-first simultaneous mass production of HBM4 and SOCAMM2" }
+      ]
+    },
+    {
+      "q": "2025Q4", "filed": "2026-01-28", "url": "https://news.samsung.com/kr/%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90-2025%EB%85%84-4%EB%B6%84%EA%B8%B0-%EC%8B%A4%EC%A0%81-%EB%B0%9C%ED%91%9C",
+      "rev": 93.8, "seg": { "ds": 44.0, "dx": 44.3, "disp": 9.5, "harman": 4.6 }, "op": 20.1,
+      "k": { "dsOp": 16.4, "dxOp": 1.3 },
+      "hl": [
+        { "ko": "HBM 판매 확대·메모리 가격 상승으로 당시 역대 최대 분기 실적", "en": "Record quarter at the time on more HBM sales and higher memory prices" },
+        { "ko": "2025년 연구개발비 역대 최대 37.7조원", "en": "Record ₩37.7T R&D spending in 2025" }
+      ]
+    },
+    {
+      "q": "2025Q3", "filed": "2025-10-29", "url": "https://news.samsung.com/kr/%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90-2025%EB%85%84-3%EB%B6%84%EA%B8%B0-%EC%8B%A4%EC%A0%81-%EB%B0%9C%ED%91%9C",
+      "rev": 86.1, "seg": { "ds": 33.1, "dx": 48.4, "disp": 8.1, "harman": 4.0 }, "op": 12.2,
+      "k": { "dsOp": 7.0, "dxOp": 3.5 },
+      "hl": [
+        { "ko": "HBM3E·서버 SSD로 분기 최대 메모리 매출 · 반도체 매출 전분기 대비 +19%", "en": "Record memory revenue on HBM3E and server SSDs · DS revenue +19% QoQ" }
+      ]
+    },
+    {
+      "q": "2025Q2", "filed": "2025-07-31", "url": "https://news.samsung.com/kr/%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90-2025%EB%85%84-2%EB%B6%84%EA%B8%B0-%EC%8B%A4%EC%A0%81-%EB%B0%9C%ED%91%9C",
+      "rev": 74.6, "seg": { "ds": 27.9, "dx": 43.6, "disp": 6.4, "harman": 3.8 }, "op": 4.7,
+      "k": { "dsOp": 0.4, "dxOp": 3.3 }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "sym": "086280",
+  "cur": "KRW",
+  "src": {
+    "ko": "실적 보도·증권사 리포트(연결 기준)",
+    "en": "Earnings coverage and broker reports (consolidated)"
+  },
+  "easy": {
+    "ko": "현대글로비스는 현대차그룹의 물류 회사예요. 완성차·부품을 나르고(물류), 자동차 운반선·벌크선으로 바다 운송을 하고(해운), 해외 조립공장에 부품 세트(CKD)를 보내거나 비철금속을 사고파는(유통) 세 사업으로 벌어요. 현대차·기아 판매량과 해상 운임·유가가 실적을 움직여요.",
+    "en": "Hyundai Glovis is Hyundai Motor Group's logistics arm. It earns from moving cars and parts (logistics), ocean shipping with car carriers and bulk ships (shipping), and distribution — sending knock-down kits (CKD) to overseas assembly plants and trading non-ferrous metals. Hyundai/Kia volumes, freight rates and oil prices drive results."
+  },
+  "seg": [
+    {
+      "k": "dist",
+      "ko": "유통(CKD·트레이딩)",
+      "en": "Distribution (CKD, trading)"
+    },
+    {
+      "k": "logi",
+      "ko": "물류",
+      "en": "Logistics"
+    },
+    {
+      "k": "ship",
+      "ko": "해운",
+      "en": "Shipping"
+    }
+  ],
+  "segLatestOnly": true,
+  "profit": {
+    "ko": "영업이익",
+    "en": "Operating profit"
+  },
+  "kpi": [],
+  "guide": {
+    "ko": "2026년 목표: 매출 31조원 이상 · 영업이익 2.1조원 이상",
+    "en": "2026 targets: revenue ₩31T+ · operating profit ₩2.1T+"
+  },
+  "q": [
+    {
+      "q": "2026Q2",
+      "filed": "2026-07-23",
+      "url": "https://biz.sbs.co.kr/amp/article/20000324267",
+      "rev": 8.71,
+      "op": 0.5,
+      "seg": {
+        "dist": 4.21,
+        "logi": 2.86,
+        "ship": 1.64
+      },
+      "hl": [
+        {
+          "ko": "매출 8.7조원(+15.8%) 분기 최대 · 영업이익 -8.1%",
+          "en": "Record ₩8.7T revenue (+15.8%) · operating profit -8.1%"
+        },
+        {
+          "ko": "해운: 매출 +20.9%에도 유가 상승 반영 지연으로 영업이익 -34.6%",
+          "en": "Shipping: revenue +20.9% but operating profit -34.6% as oil-cost pass-through lagged"
+        },
+        {
+          "ko": "유통: CKD 수출·비철금속 트레이딩 증가로 영업이익 +27.8%",
+          "en": "Distribution: CKD exports and metals trading lifted operating profit 27.8%"
+        }
+      ]
+    },
+    {
+      "q": "2026Q1",
+      "rev": 7.81,
+      "op": 0.52
+    },
+    {
+      "q": "2025Q4",
+      "rev": 7.47,
+      "op": 0.51
+    },
+    {
+      "q": "2025Q3",
+      "rev": 7.36,
+      "op": 0.52
+    },
+    {
+      "q": "2025Q2",
+      "rev": 7.52,
+      "op": 0.54
+    }
+  ]
+}

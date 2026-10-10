@@ -1823,6 +1823,7 @@
     // ---- 선택한 종목만 받는다 (sym을 먼저 잡아 두어 도중에 종목을 바꿔도 섞이지 않게)
     async faa() { state.faa = await getJ(`data/faa-joby.json?t=${Math.floor(Date.now() / 600000)}`); },
     async temk() { state.temk = await getJ(`data/tem-kpis.json?t=${Math.floor(Date.now() / 600000)}`); },
+    async biz(d, L, sym = state.stock) { const k = bizKey(sym); if (BIZ_KEYS.has(k)) (state.biz ||= {})[k] = await getJ(`data/biz/${k}.json?t=${Math.floor(Date.now() / 600000)}`); },
     async sfacts() { state.spcx = await getJ(`data/spcx-facts.json?t=${Math.floor(Date.now() / 600000)}`); },
     async schart(d, L, sym = state.stock) {
       const s = sym, x = st(s);
@@ -3761,7 +3762,7 @@
   state.analyst = {};
   state.holdTab = loadPref('holdTab', 'top');
   const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null) || st(sym).short || null;
-  const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst', 'options'] : isKR(sym) ? ['schart', 'snews', 'krinfo'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', 'options',
+  const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst', 'options'] : isKR(sym) ? ['schart', 'snews', 'krinfo', ...(BIZ_KEYS.has(bizKey(sym)) ? ['biz'] : [])] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', 'options', ...(BIZ_KEYS.has(sym) ? ['biz'] : []),
     ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : []), ...(sym === 'TEM' ? ['temk', 'facts'] : []), ...(STOCK_INFO[sym]?.custom ? ['sshort'] : []), 'etfdiv']);
   const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
@@ -4789,6 +4790,81 @@
     });
   }
 
+  // ---------------------------------------------------------------- 종목별 사업 현황(data/biz/<종목>.json — 회사 실적 발표문에서 확인해 넣은 값)
+  // 관리자 '인기 종목' 가운데 ETF를 뺀 종목. 파일을 더하면 여기에도 이름을 더한다(build.py가 목록이 맞는지 검사)
+  const BIZ_KEYS = new Set(['000270', '000660', '005380', '005930', '086280', 'FRVO', 'GOOGL', 'PANW', 'PLTR', 'PLUG', 'RXRX', 'SHFS', 'TSLA']);
+  const bizKey = (sym) => (isKR(sym) ? String(sym).slice(0, 6) : sym);
+  const BIZ_COLORS = ['#5b9bff', 'var(--accent, #f2994a)', '#3fbf7f', '#b48cff'];
+  const tx = (o) => (o ? (EN ? o.en : o.ko) ?? '' : '');
+  function bizFmt(B, v, f, u) {
+    if (v == null) return '–';
+    const sg = v < 0 ? '-' : '', a = Math.abs(v);
+    const money = () => (B.cur === 'KRW'
+      ? (a < 1 ? (EN ? `${sg}₩${nf(0).format(a * 1000)}B` : `${sg}${nf(0).format(a * 1e4)}억원`) : (EN ? `${sg}₩${a.toFixed(a >= 100 ? 0 : 1)}T` : `${sg}${a.toFixed(a >= 100 ? 0 : 1)}조원`))
+      : a >= 1000 ? `${sg}$${(a / 1000).toFixed(a >= 1e4 ? 1 : 2)}B` : `${sg}$${a >= 100 ? a.toFixed(0) : a >= 10 ? a.toFixed(1) : a.toFixed(2)}M`);
+    const num = f === 'n' ? nf(0).format(v) : f === 'd1' ? v.toFixed(1) : f === 'd2' ? v.toFixed(2) : f === 'pctN' ? `${nf(0).format(v)}%` : f === 'pct1' ? `${v.toFixed(1)}%` : money();
+    const unit = tx(u);
+    return unit ? `${num}${/^[A-Za-z]/.test(unit) ? ' ' : ''}${unit}` : num;
+  }
+  const bizQ = (B, x) => (x.lb ? tx(x.lb) : EN ? `Q${x.q.slice(5)} '${x.q.slice(2, 4)}` : `'${x.q.slice(2, 4)} ${x.q.slice(5)}분기`);
+  const bizQs = (B, x) => (x.lb ? tx(x.lb).replace(/분기$/, 'Q').replace(/^FY(\d\d) (\d)Q$/, '$2Q FY$1') : EN ? `Q${x.q.slice(5)} '${x.q.slice(2, 4)}` : `'${x.q.slice(2, 4)} ${x.q.slice(5)}Q`);
+  function renderBiz(sym = state.stock) {
+    const el = document.getElementById('c-biz'), k = bizKey(sym);
+    if (!el) return;
+    el.hidden = !BIZ_KEYS.has(k);
+    if (el.hidden) return;
+    const B = state.biz?.[k], name = STOCK_INFO[sym]?.short || STOCK_INFO[sym]?.name || symLabel(sym);
+    const title = EN ? `${esc(name)} business snapshot` : `${esc(name)} 사업 현황`;
+    if (!B?.q?.length) { card('biz', { title, body: '<p class="skeleton">불러오는 중…</p>' }); return; }
+    const Q = B.q, L = Q[0], pv = Q[1], ya = Q.find((x) => x.q === `${+L.q.slice(0, 4) - 1}${L.q.slice(4)}`);
+    const g = (a, b) => (a != null && b ? a / Math.abs(b) - (b < 0 ? -1 : 1) : null);
+    const chg = (a, b) => (a != null && b != null && b > 0 && a > 0 ? a / b - 1 : null);
+    const hasRev = L.rev != null, bar = B.bar || null;
+    const nx = !isKR(sym) ? earnOf(sym)?.next?.date : null, today = isoToday();
+    const stale = L.filed && daysBetween(L.filed, today) > 98;
+    // 최근 발표(분기 실적 뒤에 나온 인도량·잠정 실적 등)
+    const flash = (B.flash || []).filter((f) => !L.filed || f.d > L.filed).map((f) => `<div class="biz-flash"><b>🆕 ${md(isoToTs(f.d))}</b> ${esc(tx(f))}${f.url ? ` <a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}</div>`).join('');
+    // 사업별 매출 비중(최근 분기)
+    const segs = (B.seg || []).filter((s) => L.seg?.[s.k] != null), segSum = segs.reduce((a, s) => a + L.seg[s.k], 0);
+    const mix = segs.length > 1 && segSum > 0 ? `<div class="tem-mix biz-mix"><div class="biz-bar">${segs.map((s, i) => `<i style="width:${((L.seg[s.k] / segSum) * 100).toFixed(1)}%;background:${BIZ_COLORS[i % 4]}"></i>`).join('')}</div>
+        <div class="tem-leg biz-leg">${segs.map((s, i) => `<span><i style="background:${BIZ_COLORS[i % 4]}"></i>${esc(tx(s))} ${bizFmt(B, L.seg[s.k])} · ${Math.round((L.seg[s.k] / segSum) * 100)}%</span>`).join('')}</div></div>` : '';
+    // 숫자 칸: 매출 · 이익 · 회사별 핵심 지표
+    const vsTxt = (cur, base, isYa, pp) => { if (cur == null || base == null) return ''; const d = pp ? cur - base : chg(cur, base); if (d == null) return ''; const t = pp ? `${d >= 0 ? '+' : ''}${d.toFixed(1)}%p` : pct(d, 0); return `${isYa ? (EN ? 'YoY ' : '전년 대비 ') : (EN ? 'QoQ ' : '직전 분기 대비 ')}<span class="${cls(d)}">${t}</span>`; };
+    const tiles = [];
+    if (hasRev) tiles.push([EN ? 'Quarterly revenue' : '분기 매출', bizFmt(B, L.rev), ya ? vsTxt(L.rev, ya.rev, true) : vsTxt(L.rev, pv?.rev, false), '']);
+    if (L.op != null) {
+      const mg = hasRev && L.rev ? L.op / L.rev : null;
+      const prevOp = ya?.op ?? pv?.op, prevLbl = ya ? (EN ? 'a year ago' : '1년 전') : (EN ? 'prior quarter' : '직전 분기');
+      tiles.push([tx(B.profit), bizFmt(B, L.op), [mg != null ? `${EN ? 'margin' : '이익률'} ${(mg * 100).toFixed(mg > -1 && mg < 1 && Math.abs(mg) < 0.1 ? 1 : 0)}%` : '', prevOp != null ? `${prevLbl} ${bizFmt(B, prevOp)}` : ''].filter(Boolean).join(' · '), cls(L.op)]);
+    }
+    for (const K of B.kpi || []) {
+      const v = L.k?.[K.k]; if (v == null) continue;
+      const kyv = L.ky?.[K.k], yv = ya?.k?.[K.k], pvv = pv?.k?.[K.k];
+      const sm = kyv != null ? `${EN ? 'YoY ' : '전년 대비 '}<span class="${cls(kyv)}">${K.pp ? `${kyv >= 0 ? '+' : ''}${kyv.toFixed(1)}%p` : pct(kyv, 1)}</span>`
+        : yv != null && (K.pp || (yv > 0 && v > 0)) ? vsTxt(v, yv, true, K.pp) : pvv != null ? (K.pp || (pvv > 0 && v > 0) ? vsTxt(v, pvv, false, K.pp) : `${EN ? 'prior quarter' : '직전 분기'} ${bizFmt(B, pvv, K.f, K.u)}`) : '';
+      tiles.push([tx(K), bizFmt(B, v, K.f, K.u), sm, '']);
+    }
+    // 분기별 막대(사업별로 쌓기) + 아래 이익
+    const CQ = [...Q].reverse().filter((x) => (bar ? x.k?.[bar.k] : x.rev) != null);
+    const valOf = (x) => (bar ? x.k[bar.k] : x.rev), mx = Math.max(...CQ.map(valOf)) || 1;
+    const stack = !bar && !B.segLatestOnly && segs.length > 1;
+    const chart = CQ.length > 1 ? `<div class="mini-h er-h">${bar ? `${EN ? 'Quarterly' : '분기별'} ${esc(tx(bar))}${EN ? ' & ' : '과 '}${esc(tx(B.profit))}` : EN ? 'Quarterly revenue & profit' : '분기별 매출과 이익'}</div>
+        <div class="tem-chart biz-chart">${CQ.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col"><b>${bizFmt(B, valOf(x)).replace(/억원$|조원$/, (m) => m[0])}</b><div class="tem-stack biz-stack">${stack && x.seg ? (B.seg || []).map((s, i) => { const sx = (B.seg || []).reduce((a, t) => a + (x.seg[t.k] || 0), 0) || 1; return `<i style="height:${(((x.seg[s.k] || 0) / sx) * (valOf(x) / mx) * 100).toFixed(2)}%;background:${BIZ_COLORS[i % 4]}"></i>`; }).join('') : `<i style="height:${h(valOf(x))};background:${BIZ_COLORS[0]}"></i>`}</div><span>${bizQs(B, x)}</span><small class="${cls(x.op)}">${x.op != null ? bizFmt(B, x.op).replace(/억원$|조원$/, (m) => m[0]) : '–'}</small></div>`; }).join('')}</div>
+        <p class="note">${stack ? `${EN ? 'Bars' : '막대'}: ${(B.seg || []).map((s, i) => `<span class="biz-dot" style="background:${BIZ_COLORS[i % 4]}"></span>${esc(tx(s))}`).join(' + ')} · ` : ''}${EN ? 'number below' : '아래 숫자'}: ${esc(tx(B.profit))}</p>` : '';
+    const hlQ = Q.filter((x) => x.hl?.length).slice(0, 4);
+    const sub = `${bizQ(B, L)} ${EN ? 'results' : '실적'}${L.filed ? ` (${md(isoToTs(L.filed))})` : ''} · ${esc(tx(B.src))}${nx && nx >= today ? ` · ${EN ? 'next' : '다음 실적'} ${md(isoToTs(nx))}` : ''}`;
+    card('biz', {
+      title, sub, easy: esc(tx(B.easy)),
+      body: `${flash}${mix}
+        <div class="ns-grid h-grid">${tiles.map(([l, v, s, c]) => `<div><span>${esc(l)}</span><b class="${c}">${v}</b><small>${s || '&nbsp;'}</small></div>`).join('')}</div>
+        ${B.guide ? `<p class="biz-guide">🎯 <b>${EN ? 'Company outlook' : '회사 전망'}</b> ${esc(tx(B.guide))}</p>` : ''}
+        ${chart}
+        ${hlQ.length ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>
+        <ul class="faa-ms tem-ms">${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}</ul>` : ''}
+        <p class="note">${stale ? `${EN ? 'A newer quarter may already be out — it will be added after review. ' : '새 분기 실적이 나왔을 수 있어요 — 확인 후 더할게요. '}` : ''}${B.fy ? esc(tx(B.fy)) + '. ' : ''}${EN ? 'Figures are from the company’s own earnings releases (see Source); new quarters are added after review. Not investment advice.' : '숫자는 회사가 낸 실적 발표 기준이에요(원문 링크). 새 분기는 확인 후 더해요. 투자 조언이 아니에요.'}</p>`,
+    });
+  }
+
   // ---------------------------------------------------------------- SPCX: 보호예수(락업) 해제 일정
   const addTradingDays = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); let k = 0; while (k < n) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) k++; } return d.toISOString().slice(0, 10); };
   // 실적 발표에 연동된 해제일은 다음 실적 발표 예정일 + 2거래일로 추정
@@ -5231,6 +5307,7 @@
   }
 
   function renderSEarnings(sym = state.stock) {
+    try { renderBiz(sym); } catch (e) { console.error(e); }
     if (isKR(sym)) { renderKrEarn(sym); return; }
     if (!isOther(sym)) return;
     if (sym === 'JOBY') { renderFaa(); renderJobyTimeline(); }

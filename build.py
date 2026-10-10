@@ -24,6 +24,11 @@ for f in ['index.html', 'admin.html', '_headers', 'robots.txt']:
 shutil.copytree(os.path.join(ROOT, 'assets'), os.path.join(DIST, 'assets'))
 for f in ['faa-joby.json', 'spcx-facts.json', 'tem-kpis.json']:
     shutil.copy(os.path.join(ROOT, 'data', f), os.path.join(DIST, 'data', f))
+# 종목별 사업 현황(data/biz/*.json) — app.js의 BIZ_KEYS와 파일 목록이 같아야 화면에 나온다
+shutil.copytree(os.path.join(ROOT, 'data', 'biz'), os.path.join(DIST, 'data', 'biz'))
+_biz = sorted(f[:-5] for f in os.listdir(os.path.join(ROOT, 'data', 'biz')) if f.endswith('.json'))
+_keys = re.search(r"const BIZ_KEYS = new Set\(\[([^\]]*)\]\)", open(os.path.join(ROOT, 'assets', 'app.js'), encoding='utf-8').read())
+assert _keys and sorted(re.findall(r"'([^']+)'", _keys.group(1))) == _biz, ('BIZ_KEYS가 data/biz 파일 목록과 다릅니다', _biz)
 
 app = os.path.join(DIST, 'assets', 'app.js')
 s = open(app, encoding='utf-8').read()

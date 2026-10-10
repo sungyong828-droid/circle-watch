@@ -1,0 +1,113 @@
+{
+  "sym": "000270",
+  "cur": "KRW",
+  "src": {
+    "ko": "현대자동차그룹 뉴스룸 경영실적 발표",
+    "en": "Hyundai Motor Group newsroom earnings release"
+  },
+  "easy": {
+    "ko": "기아는 현대차그룹의 또 다른 완성차 회사로, 쏘렌토·스포티지·텔루라이드 같은 SUV와 EV3·EV5 등 전기차가 주력이에요. 현대차보다 금융 사업이 작아 거의 자동차 판매로만 벌어요. 2025년 미국 관세로 이익률이 크게 떨어졌다가 회복 중인지가 관심 포인트예요.",
+    "en": "Kia is Hyundai Motor Group's other carmaker, led by SUVs like Sorento, Sportage and Telluride and EVs like the EV3 and EV5. With a much smaller finance arm than Hyundai, it earns almost entirely from car sales. The key question is how fast margins recover after U.S. tariffs hit them in 2025."
+  },
+  "seg": [],
+  "profit": {
+    "ko": "영업이익",
+    "en": "Operating profit"
+  },
+  "kpi": [
+    {
+      "k": "wh",
+      "ko": "글로벌 도매 판매",
+      "en": "Global wholesale",
+      "f": "n",
+      "u": {
+        "ko": "대",
+        "en": ""
+      }
+    },
+    {
+      "k": "xevShare",
+      "ko": "친환경차 비중",
+      "en": "Eco-friendly share",
+      "f": "pct1",
+      "pp": true
+    }
+  ],
+  "q": [
+    {
+      "q": "2026Q2",
+      "filed": "2026-07-24",
+      "url": "https://www.hyundaimotorgroup.com/ko/news/kia-2026-q2-earnings",
+      "rev": 33.04,
+      "op": 2.63,
+      "k": {
+        "wh": 851639,
+        "xevShare": 35.3
+      },
+      "ky": {
+        "wh": 0.045,
+        "xevShare": 11.9
+      },
+      "hl": [
+        {
+          "ko": "분기 최다 판매·최대 매출 동시 달성 — 산업 수요 -3.8% 속에서",
+          "en": "Record quarterly sales and revenue — while industry demand fell 3.8%"
+        },
+        {
+          "ko": "친환경차 판매 29.6만 대(+60%) · 전기차 11만 대(+88%)",
+          "en": "Eco-friendly sales 296K (+60%) · EVs 110K (+88%)"
+        },
+        {
+          "ko": "영업이익률 8% — 관세 충격 저점(5.1%) 이후 3분기 연속 상승",
+          "en": "8% operating margin — up three quarters straight from the tariff-hit low of 5.1%"
+        }
+      ]
+    },
+    {
+      "q": "2026Q1",
+      "filed": "2026-04-24",
+      "url": "https://www.hyundaimotorgroup.com/ko/news/kia-2026-first-quarter-earnings",
+      "rev": 29.5,
+      "op": 2.21,
+      "k": {
+        "wh": 779741,
+        "xevShare": 29.7
+      },
+      "ky": {
+        "wh": 0.009,
+        "xevShare": 6.6
+      },
+      "hl": [
+        {
+          "ko": "1분기 최대 판매 · 글로벌 점유율 처음 4% 돌파(4.1%)",
+          "en": "Record Q1 sales · global share above 4% for the first time (4.1%)"
+        },
+        {
+          "ko": "미국 관세 비용 7,550억원 반영 → 영업이익 -26.7%",
+          "en": "₩755B of U.S. tariff costs → operating profit -26.7%"
+        }
+      ]
+    },
+    {
+      "q": "2025Q4",
+      "rev": 28.09,
+      "op": 1.84
+    },
+    {
+      "q": "2025Q3",
+      "rev": 28.69,
+      "op": 1.46,
+      "hl": [
+        {
+          "ko": "미국 관세 본격 반영으로 영업이익률 5.1%까지 하락(저점)",
+          "en": "U.S. tariffs pushed operating margin down to 5.1% (the low)"
+        }
+      ]
+    },
+    {
+      "q": "2025Q2",
+      "rev": 29.35,
+      "op": 2.76
+    }
+  ]
+}
