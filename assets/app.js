@@ -339,7 +339,7 @@
       <p>각 줄을 누르면 해당 카드로 이동합니다.</p>`,
     pricechart: `
       <p><b>캔들/라인</b>: 캔들은 시가·고가·저가·종가를 한 막대로(빨강 상승·파랑 하락), 라인은 종가만 이어요. <b>이동평균</b>: 최근 5·20·60·120개 캔들 종가 평균(노랑·분홍·초록·보라) — 주가가 이평선 위에 있으면 상승 추세로 봐요. <b>거래량</b>: 아래쪽 막대. 차트를 누르면 그 캔들의 값이 나와요.</p>
-      <p>바이낸스 CRCLUSDT 선물의 가격 추이입니다. 기간을 바꾸면 봉 간격이 달라집니다(1일=15분, 1주=1시간, 1개월=4시간, 3개월=1일). 마지막 점은 실시간 가격입니다.</p>
+      <p>바이낸스 CRCLUSDT 선물의 가격 추이입니다. 기간을 바꾸면 봉 간격이 달라집니다(1일=15분, 1주=1시간, 1개월=4시간, 3개월=1일). <b>1년</b>은 바이낸스 선물이 상장한 지 1년이 안 돼 실제 주가(정규장, Yahoo) 주봉으로 그립니다. 마지막 점은 실시간 가격입니다.</p>
       <p>선이 <span class="up">빨강</span>이면 기간 시작보다 오른 상태, <span class="down">파랑</span>이면 내린 상태입니다.</p>`,
     short: `
       ${EN ? `<p><b>Short volume ratio</b> = the share of that day’s <b>off-exchange (FINRA-reported) volume</b> that was short sales. Source: FINRA daily Reg SHO short volume (CNMS file), posted the evening after each US session. Figures match FINRA’s raw file to the share.</p>
@@ -1232,7 +1232,9 @@
     '1w': { label: '1주', interval: '2h', limit: 84 },
     '1m': { label: '1개월', interval: '8h', limit: 90 },
     '3m': { label: '3개월', interval: '1d', limit: 90 },
+    '1y': { label: '1년', interval: '1w', limit: 53, yahoo: true }, // 바이낸스 선물은 1년이 안 돼 실제 주가(Yahoo 주봉)로
   };
+  const yahooYear = async (sym) => { const j = await getJ(`${NEWS_API}/chart?s=${sym}&r=1y`, 15000); if (j.error) throw new Error(j.error); return yahooView(j.points, '1y'); };
   const px = state.px;
   const price = (v) => (v == null || !isFinite(v) ? '–' : '$' + nf(2).format(v));
   const HM_FMT = new Intl.DateTimeFormat(LOC, { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -1259,6 +1261,7 @@
   }
   async function loadKlines(range) {
     const r = RANGES[range];
+    if (r.yahoo) { px.klines[range] = await yahooYear('CRCL'); return; }
     const k = await bnGet(`klines?symbol=${BN.sym}&interval=${r.interval}&limit=${r.limit + 120}`);
     px.klines[range] = splitView(k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3], +x[5]]), r.limit); // [시작 시각(ms), 종가, 시가, 고가, 저가, 거래량]
   }
@@ -1364,7 +1367,7 @@
     if (!k?.length) return;
     const tip = (it) => {
       const d = new Date(k[it.dataIndex][0]);
-      return RANGES[range].interval === '1d' ? d.toLocaleDateString(LOC) : d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+      return /^1[dw]$/.test(RANGES[range].interval) ? d.toLocaleDateString(LOC) : d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
     };
     drawCandles(id, k, { compact, xf: range === '1d' ? hm : mdLocal, tip, last: px.t?.last, ind: !compact });
   }
@@ -1396,7 +1399,7 @@
     let note = '';
     if (k?.length) {
       const vals = k.map((p) => p[1]);
-      note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? vals[0])} · ${RANGES[r].interval} 캔들`;
+      note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? vals[0])} · ${RANGES[r].yahoo ? '주봉 · 실제 주가(정규장, Yahoo)' : RANGES[r].interval + ' 캔들'}`;
     }
     card('pricechart', {
       title: 'CRCL 가격 추이',
@@ -1407,8 +1410,10 @@
         ${chartTools('pricechart')}
         <div class="px-main sm"><span class="px-last" id="pc-last">${price(px.t?.last)}</span><span class="px-chg" id="pc-chg"></span></div>
         <div class="chart tall"><canvas id="cv-pricechart" role="img" aria-label="CRCL 가격 추이"></canvas></div>
-        <p class="note">${note || '불러오는 중…'}</p>`,
+        <p class="note">${note || '불러오는 중…'}</p>
+        <div id="osc-pricechart"></div>`,
     });
+    paintOsc('CRCL', 'osc-pricechart');
     if (!k) {
       loadKlines(r).then(() => { if (state.range === r) renderPriceChart(); }).catch(() => {});
       return;
@@ -1431,6 +1436,63 @@
     if (state.data) renderSummary();
     connectWs();
     if (px.err) startPoll();
+  }
+
+  // ---------------------------------------------------------------- 과매수·과매도(RSI 14일) — 일봉(Yahoo, 정규장) 1년치로 계산
+  const dailyLoad = {};
+  function ensureDaily(sym) {
+    const x = st(sym);
+    if (x.daily && Date.now() - x.dailyAt < 1800000) return Promise.resolve(x.daily);
+    return (dailyLoad[sym] ||= getJ(`${NEWS_API}/chart?s=${sym}&r=3m`, 15000)
+      .then((j) => { if (j.error) throw new Error(j.error); x.daily = j.points || []; x.dailyAt = Date.now(); return x.daily; })
+      .finally(() => { delete dailyLoad[sym]; }));
+  }
+  function rsiOf(c, n = 14) {
+    if (c.length < n + 1) return null;
+    let g = 0, l = 0;
+    for (let i = 1; i <= n; i++) { const d = c[i] - c[i - 1]; if (d > 0) g += d; else l -= d; }
+    g /= n; l /= n;
+    for (let i = n + 1; i < c.length; i++) { const d = c[i] - c[i - 1]; g = (g * (n - 1) + Math.max(d, 0)) / n; l = (l * (n - 1) + Math.max(-d, 0)) / n; }
+    return l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  }
+  function oscHtml(sym) {
+    const P = st(sym).daily;
+    if (!P?.length) return `<p class="note">${EN ? 'Loading overbought/oversold…' : '과매수·과매도 계산 중…'}</p>`;
+    const pts = P.filter((p) => p[1] != null), closes = pts.map((p) => p[1]);
+    const live = sym === 'CRCL' ? px.t?.last : pq(sym)?.price;
+    // 오늘 캔들이 있으면 마지막 종가를 실시간 가격으로(장중 상태 반영)
+    if (live && pts.length && etDate(pts.at(-1)[0]) === etDate()) closes[closes.length - 1] = live;
+    const rsi = rsiOf(closes);
+    if (rsi == null) return `<p class="note">${EN ? 'Not enough price history yet for RSI (needs 15 trading days).' : '상장한 지 얼마 안 돼 RSI를 계산할 거래일이 아직 부족해요(15일 필요).'}</p>`;
+    const last = closes.at(-1), m20 = closes.length >= 20 ? closes.slice(-20).reduce((a, b) => a + b, 0) / 20 : null;
+    const yr = pts.filter((p) => p[0] >= pts.at(-1)[0] - 365 * 86400000);
+    const hi = Math.max(...yr.map((p) => p[3] ?? p[1]), last), lo = Math.min(...yr.map((p) => p[4] ?? p[1]), last);
+    const pos = hi > lo ? (last - lo) / (hi - lo) : null;
+    const up14 = closes.slice(-15).reduce((n, v, i, a) => n + (i && v > a[i - 1] ? 1 : 0), 0);
+    const [lab, tone, tip] = rsi >= 70 ? [EN ? 'Overbought' : '과매수', 'hot', EN ? 'Rose a lot in a short time — pullbacks or pauses are common from here.' : '짧은 기간에 많이 올랐어요. 숨 고르기(조정)가 나오기 쉬운 구간이에요.']
+      : rsi >= 60 ? [EN ? 'Warming up' : '다소 과열', 'warm', EN ? 'Buyers in control lately; not extreme yet.' : '최근 사는 힘이 더 강해요. 아직 극단은 아니에요.']
+        : rsi <= 30 ? [EN ? 'Oversold' : '과매도', 'cold', EN ? 'Fell a lot in a short time — rebounds are common from here.' : '짧은 기간에 많이 내렸어요. 반등이 나오기 쉬운 구간이에요.']
+          : rsi <= 40 ? [EN ? 'Cooling' : '다소 침체', 'cool', EN ? 'Sellers in control lately; not extreme yet.' : '최근 파는 힘이 더 강해요. 아직 극단은 아니에요.']
+            : [EN ? 'Neutral' : '중립', 'mid', EN ? 'Neither overheated nor oversold.' : '과열도 침체도 아닌 보통 상태예요.'];
+    return `<div class="osc">
+        <div class="osc-h"><b>${EN ? 'Overbought / oversold' : '과매수 · 과매도'}</b><small>RSI 14${EN ? '-day' : '일'} · ${EN ? 'daily, regular session' : '일봉(정규장) 기준'}</small></div>
+        <div class="osc-row"><span class="osc-v ${tone}">${Math.round(rsi)}</span><span class="osc-l ${tone}">${lab}</span></div>
+        <div class="osc-bar" role="img" aria-label="RSI ${Math.round(rsi)}"><i class="z1"></i><i class="z2"></i><i class="z3"></i><em style="left:${Math.min(100, Math.max(0, rsi)).toFixed(1)}%"></em></div>
+        <div class="osc-scale"><span>0</span><span>30 ${EN ? 'oversold' : '과매도'}</span><span>70 ${EN ? 'overbought' : '과매수'}</span><span>100</span></div>
+        <p class="osc-tip">${tip}</p>
+        <div class="osc-facts">
+          ${m20 ? `<span>${EN ? 'vs 20-day avg' : '20일 평균보다'} <b class="${cls(last / m20 - 1)}">${pct(last / m20 - 1, 1)}</b></span>` : ''}
+          ${pos != null ? `<span>${EN ? '52-week range' : '52주 범위 중'} <b>${Math.round(pos * 100)}%</b> ${EN ? 'position' : '위치'}</span>` : ''}
+          <span>${EN ? 'Up days (last 14)' : '최근 14일 중 오른 날'} <b>${up14}${EN ? '' : '일'}</b></span>
+        </div>
+        <p class="note">${EN ? 'RSI compares recent gains with recent losses on a 0–100 scale. It shows how stretched the move is, not where the price goes next.' : 'RSI는 최근 14일 동안 오른 폭과 내린 폭을 비교한 0~100 점수예요. 70 이상은 과매수, 30 이하는 과매도로 봐요. 얼마나 쏠렸는지를 보여줄 뿐 앞으로의 방향을 알려주진 않아요.'}</p>
+      </div>`;
+  }
+  function paintOsc(sym, elId) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.innerHTML = oscHtml(sym);
+    if (!st(sym).daily || Date.now() - st(sym).dailyAt > 1800000) ensureDaily(sym).then(() => { const e = document.getElementById(elId); if (e && (sym === 'CRCL' || state.stock === sym)) e.innerHTML = oscHtml(sym); }).catch(() => { const e = document.getElementById(elId); if (e) e.innerHTML = ''; });
   }
 
   // ---------------------------------------------------------------- 현재 상황 요약 (규칙 기반)
@@ -3430,7 +3492,7 @@
 
     card('earnings', {
       title: '서클 실적',
-      sub: last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq',
+      sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc('CRCL'),
       info: INFO.earnings,
       body: `${nextHtml}${tiles}
         <div class="mini-h er-h">분기 매출 구성</div>
@@ -3714,27 +3776,36 @@
 
   function renderNewsSummary(sym = state.stock) {
     const U = NEWS_UI[sym], N = U.getN();
-    const id = U.sum.slice(2);
-    if (!N) { if (document.getElementById(U.sum)) card(id, { title: '공시 · 발표 한눈에', body: '<p class="skeleton">불러오는 중…</p>' }); return; }
+    const id = U.sum.slice(2), title = '새 소식 · 공시 요약';
+    if (!N) { if (document.getElementById(U.sum)) card(id, { title, body: '<p class="skeleton">불러오는 중…</p>' }); return; }
     const F = N.filings || [];
     const since = Date.now() - 30 * 86400000;
     const recent = F.filter((f) => Date.parse(f.d) >= since);
     const cnt = (re) => recent.filter((f) => re.test(f.form)).length;
-    const last = (re) => F.find((f) => re.test(f.form));
-    const k8 = last(/^8-K/), q = last(/^10-[QK]/);
+    const k8 = F.find((f) => /^8-K/.test(f.form)), rep = F.find((f) => /^10-[QK]/.test(f.form));
     const off = (N.official || [])[0];
     const unseen = newsItems(sym).filter((i) => i.t > seen[sym].prev && i.level !== 'low').length;
+    const ins = cnt(/^4$|^4\/A$/) + cnt(/^144/);
     const upd = (t) => (EN ? `Updated ${ago(t || state.data?.updatedAt)}` : t ? `${ago(t)} 업데이트` : `${ago(state.data?.updatedAt)} 업데이트`);
+    const goEarn = sym === 'CRCL' ? 'earn:c-earnings' : 'searn:c-searnings', goIns = sym === 'CRCL' ? 'crcl:c-insider' : 'sprice:c-sinsider';
     card(id, {
-      title: '공시 · 발표 한눈에', sub: `공시 ${upd(N.filingsAt)} · 뉴스 ${upd(N.newsAt)}`, info: INFO.news,
-      body: `<div class="ns-grid">
-          <div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>
-          <div><span>최근 실적 보고서</span><b>${q ? md(isoToTs(q.d)) : '–'}</b><small>${q ? esc(formInfo(q.form).label) : ''}</small></div>
-          <div><span>내부자 거래 공시</span><b>${cnt(/^4$|^4\/A$/) + cnt(/^144/)}건</b><small>30일 · Form 4 ${cnt(/^4$|^4\/A$/)} · 144 ${cnt(/^144/)}</small></div>
+      title, sub: `${F.length ? `공시 ${upd(N.filingsAt)} · ` : ''}뉴스 ${upd(N.newsAt)}`, info: INFO.news,
+      body: `<div class="ns-grid n2">
           <div><span>새 소식</span><b>${unseen}건</b><small>지난 방문 이후</small></div>
+          ${F.length ? `<div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>` : `<div><span>회사 발표</span><b>${(N.official || []).length}건</b><small>최근 모은 것</small></div>`}
         </div>
-        ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}`,
+        ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}
+        ${F.length ? `<div class="ns-go">
+          <button type="button" class="link-btn" data-go="${goEarn}">📊 실적 보고서${rep ? ` · ${esc(formInfo(rep.form).label)} ${md(isoToTs(rep.d))}` : ''}<small>Earnings에서 보기</small></button>
+          <button type="button" class="link-btn" data-go="${goIns}">👤 내부자 거래 공시 ${ins}건<small>30일 · 종목 탭에서 자세히</small></button>
+        </div>` : ''}`,
     });
+  }
+
+  // 실적 카드 부제에 붙일 최근 분기·연간 보고서(10-Q·10-K) 원문 링크
+  function repDoc(sym) {
+    const F = NEWS_UI[sym]?.getN()?.filings || [], r = F.find((f) => /^10-[QK]/.test(f.form));
+    return r ? ` · <a href="${safeUrl(r.url)}" target="_blank" rel="noopener">${esc(r.form.replace('/A', ''))} 원문(${md(isoToTs(r.d))})</a>` : '';
   }
 
   function renderNews(sym = state.stock) {
@@ -3979,7 +4050,7 @@
     if (BN24[sym]) {
       const X = bxOf(sym), r = bxRange(), k = X.klines[r];
       let note = '';
-      if (k?.length) note = `${RANGES[r].label} 최고 ${pxS(sym, Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${pxS(sym, Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${pxS(sym, k[0][2] ?? k[0][1])} · ${RANGES[r].interval} 캔들`;
+      if (k?.length) note = `${RANGES[r].label} 최고 ${pxS(sym, Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${pxS(sym, Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${pxS(sym, k[0][2] ?? k[0][1])} · ${RANGES[r].yahoo ? '주봉 · 실제 주가(정규장, Yahoo)' : RANGES[r].interval + ' 캔들'}`;
       card('spricechart', {
         title: `${sym} 가격 추이`, sub: `Binance ${BN24[sym]} 무기한 선물`, info: INFO.pricechart,
         body: `
@@ -3987,8 +4058,10 @@
           ${chartTools('spricechart')}
           <div class="px-main sm"><span class="px-last" id="spc-last">${pxS(sym, X.t?.last)}</span><span class="px-chg" id="spc-chg"></span></div>
           <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
-          <p class="note">${note || '불러오는 중…'}</p>`,
+          <p class="note">${note || '불러오는 중…'}</p>
+          <div id="osc-spricechart"></div>`,
       });
+      paintOsc(sym, 'osc-spricechart');
       if (!k) { bxKlines(sym, r).then(() => { if (bxRange() === r && state.stock === sym) renderSPriceChart(sym); }).catch(() => {}); return; }
       sLine('spricechart', k, { range: r === '1d' ? 'bn' : r, sym });
       paintStock();
@@ -4010,8 +4083,10 @@
         ${chartTools('spricechart')}
         <div class="px-main sm"><span class="px-last" id="spc-last">${pxS(sym, q?.price)}</span><span class="px-chg">${chg == null ? '' : `<span class="${cls(chg)}">${arrow(chg)} ${pct(chg, 2)}</span> <span class="lbl">${SRANGES[r]} 동안</span>`}</span></div>
         <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
-        <p class="note">${note || '불러오는 중…'}</p>`,
+        <p class="note">${note || '불러오는 중…'}</p>
+        <div id="osc-spricechart"></div>`,
     });
+    paintOsc(sym, 'osc-spricechart');
     if (!ch) { loadSChart(sym, r).then(() => { if (state.srange === r && state.stock === sym) renderSPriceChart(sym); }).catch(() => {}); return; }
     sLine('spricechart', pts, { range: r, sym });
   }
@@ -4410,9 +4485,18 @@
   const etDate = (ms = Date.now()) => ET_FMT.format(ms);
   const etOffset = (iso) => { try { const v = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'shortOffset' }).formatToParts(new Date(iso + 'T12:00:00Z')).find((p) => p.type === 'timeZoneName').value; const m = v.match(/GMT([+-]\d+)/); return m ? `${m[1].startsWith('-') ? '-' : '+'}${String(Math.abs(+m[1])).padStart(2, '0')}:00` : '-05:00'; } catch { return '-05:00'; } };
   const earnOf = (sym) => (sym === 'CRCL' ? state.earnings : st(sym).earn);
+  // 같은 자료로 짧은 시간에 여러 번 부르면(종목 칩·카드마다) 앞 결과를 쓴다
+  const EARN_DAY_MEMO = new Map();
   function earnDay(sym) {
     const E = earnOf(sym), A = state.analyst?.[sym]?.street;
     if (!E) return null;
+    const m = EARN_DAY_MEMO.get(sym), now = Date.now();
+    if (m && m.E === E && m.A === A && now - m.t < 5000) return m.v;
+    const v = earnDayNow(sym, E, A);
+    EARN_DAY_MEMO.set(sym, { E, A, t: now, v });
+    return v;
+  }
+  function earnDayNow(sym, E, A) {
     const force = location.search.match(/earnday=([A-Z.]+):(pre|post)/);
     const N = E.next, Q = E.quarters || [], lastQ = Q.at(-1), fq = A?.quarters?.at(-1);
     const repMs = Math.max(fq?.at || 0, lastQ?.reportedOn ? Date.parse(lastQ.reportedOn + 'T21:00:00Z') : 0);
@@ -4993,7 +5077,7 @@
     const sur = (E.surprises || []).find((s) => s.end === last?.end);
     const rw = sRunway(E);
     card('searnings', {
-      title: '조비 실적', sub: last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq', info: INFO.jearnings,
+      title: '조비 실적', sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc(sym), info: INFO.jearnings,
       body: `${nextEarnHtml(E.next, '<p class="note">실적 발표 때 주주서한에 <b>FAA 인증 단계별 진행률</b>도 함께 공개돼요.</p>')}
         ${last ? `<div class="ns-grid er-grid">
           <div><span>현금·단기투자</span><b>${usdS2(last.liquidity)}</b><small>${rw ? `최근 2분기 평균 소진 ${usd(rw.burn)} → 약 <b>${(rw.quarters / 4).toFixed(1)}년</b> 버틸 수 있음` : '–'}</small></div>
@@ -5055,7 +5139,7 @@
     const cashSmall = sym === 'SPCX' && Y ? `올해 ${ytdLbl} 영업현금흐름 ${usdS2(Y.ocf)} · 설비투자 ${usd(Y.capex)}` : last?.burn != null ? `분기 잉여현금흐름 ${usdS2(last.burn)}` : '';
     const lk = sym === 'SPCX' ? lockupEvents().find((e) => e.quarter && e.quarter === E.next?.quarter) : null;
     card('searnings', {
-      title: `${S.short} 실적`, sub: last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq', info: INFO.searnings,
+      title: `${S.short} 실적`, sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc(sym), info: INFO.searnings,
       body: `${nextEarnHtml(E.next, lk ? `<p class="note">⚠️ 실적 발표 2거래일 뒤 <b>보호예수 최대 ${unit(lk.shares)}주</b>가 풀려요(${esc(lk.label)}).</p>` : '')}
         ${last ? `<div class="ns-grid er-grid">
           <div><span>매출</span><b>${usdS2(last.revenue)}</b><small>전년 같은 분기 대비 ${sp(yoy)} · 전분기 ${sp(qoq)}</small></div>
@@ -5454,6 +5538,7 @@
   }
   async function bxKlines(sym, range) {
     const r = RANGES[range];
+    if (r.yahoo) { bxOf(sym).klines[range] = await yahooYear(sym); return; }
     const k = await bnGet(`klines?symbol=${BN24[sym]}&interval=${r.interval}&limit=${r.limit + 120}`);
     bxOf(sym).klines[range] = splitView(k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3], +x[5]]), r.limit);
   }
@@ -5644,8 +5729,9 @@
     busy = true;
     try {
       if (kind !== 'light' || !state.data) {
+        const had = !!state.data;
         await loadData().catch((e) => { if (!state.data) throw e; });
-        renderAll(); // 먼저 서버 데이터로 그리고, 아래 동기화가 끝나면 다시 그린다
+        if (!had || kind === 'boot') renderAll(); // 처음엔 서버 데이터로 먼저 그린다(이미 화면이 있으면 동기화가 끝난 뒤 한 번만 그린다)
         Promise.all([loadKlines('1d'), state.range !== '1d' ? loadKlines(state.range) : null])
           .then(() => { renderPriceCard(); renderPriceChart(); }).catch(() => {});
         if (kind === 'manual') loadPxSnapshot().then(schedulePaint).catch(() => {});

@@ -1460,3 +1460,29 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .biz-flash b { margin-right: 4px; }
 @media (max-width: 719px) { #c-biz .ns-grid > div:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 @media (min-width: 720px) { #c-biz .ns-grid.biz-n1 { grid-template-columns: 1fr; } #c-biz .ns-grid.biz-n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } #c-biz .ns-grid.biz-n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* 새 소식 · 공시 요약: 2칸 + 다른 탭 바로가기 */
+.ns-grid.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ns-go { display: grid; gap: 6px; margin-top: 10px; }
+.ns-go .link-btn { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%; text-align: left; }
+.ns-go .link-btn small { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+
+/* 과매수·과매도(RSI) */
+.osc { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.osc-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.osc-h small { color: var(--muted); font-size: 11.5px; }
+.osc-row { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.osc-v { font: 800 26px var(--mono); letter-spacing: -0.03em; }
+.osc-l { font-weight: 700; font-size: 14px; }
+.osc .hot { color: var(--up, #f04452); } .osc .warm { color: #f2994a; } .osc .mid { color: var(--ink); } .osc .cool { color: #6ea8ff; } .osc .cold { color: var(--down, #3182f6); }
+.osc-bar { position: relative; display: flex; height: 10px; border-radius: 5px; overflow: visible; margin: 8px 0 4px; }
+.osc-bar i { display: block; height: 100%; }
+.osc-bar .z1 { width: 30%; background: color-mix(in srgb, var(--down, #3182f6) 35%, transparent); border-radius: 5px 0 0 5px; }
+.osc-bar .z2 { width: 40%; background: var(--surface-2); }
+.osc-bar .z3 { width: 30%; background: color-mix(in srgb, var(--up, #f04452) 35%, transparent); border-radius: 0 5px 5px 0; }
+.osc-bar em { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+.osc-scale { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+.osc-scale span:nth-child(2) { margin-left: 18%; } .osc-scale span:nth-child(3) { margin-right: 18%; }
+.osc-tip { margin: 8px 0 0; font-size: 13px; line-height: 1.5; text-wrap: pretty; }
+.osc-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.osc-facts b { color: var(--ink); font-family: var(--mono); }
