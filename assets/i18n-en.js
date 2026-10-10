@@ -2089,7 +2089,7 @@ window.__I18N_EN = {
 "Ambry Genetics(유전성 검사) 인수 완료": "Completed acquisition of Ambry Genetics (hereditary testing)",
 "xT CDx 전국 출시(ADLT 검사당 4,500달러)": "xT CDx launched nationwide (ADLT, $4,500 per test)",
 "매일 아침 스테이블코인 카드": "Daily stablecoin cards every morning",
-"USDC·서클 소식을 인스타그램·X로 받아보세요 · @myfireportfolio": "Get USDC & Circle updates on Instagram and X · @myfireportfolio",
+"USDC·서클 소식을 인스타그램·X로 받아보세요": "Get USDC & Circle updates on Instagram and X",
 "인스타그램": "Instagram",
 "📷 인스타그램": "📷 Instagram"
 };

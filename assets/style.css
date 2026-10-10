@@ -1499,3 +1499,4 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .sns-btn.ig { color: #e1306c; border-color: color-mix(in srgb, #e1306c 45%, var(--line)); }
 .sns-btn.xx b { font-size: 16px; line-height: 1; }
 .sns-btn:active { background: var(--surface-2); }
+.sns-t small span { display: block; }
