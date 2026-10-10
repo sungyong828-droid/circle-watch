@@ -278,7 +278,7 @@ button.kpi:active { background: var(--surface-2); }
 }
 .link-btn svg, .sum-list svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .link-btn:active { background: var(--surface-2); }
-.seg.range { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; margin-top: 12px; }
+.seg.range { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; margin-top: 12px; }
 .seg.range button { padding: 8px 0; font-size: 13px; }
 
 /* ---------- 요약 ---------- */
