@@ -1116,15 +1116,15 @@ export async function handleFearGreed(url, cache, cors, ctx) {
 // ---------------------------------------------------------------- 종목 검색 (종목 추가 화면)
 // 영문: Nasdaq 자동완성. 한글(테슬라·엔비디아…): 네이버 증권 자동완성에서 미국 종목만 골라 영문 이름을 붙인다
 // 네이버에 한글 이름이 없는 미국 ETF는 흔히 부르는 별명으로 찾는다
-const KR_US_ALIAS = [['슈드', 'SCHD'], ['제피', 'JEPI'], ['제피큐', 'JEPQ'], ['큐큐큐', 'QQQ'], ['티큐큐큐', 'TQQQ'], ['스파이', 'SPY'], ['브이오오', 'VOO'], ['속슬', 'SOXL'], ['일드맥스', 'MSTY'], ['디아', 'DIA']];
+const KR_US_ALIAS = [['슈드', 'SCHD'], ['제피', 'JEPI'], ['제피큐', 'JEPQ'], ['큐큐큐', 'QQQ'], ['티큐큐큐', 'TQQQ'], ['스파이', 'SPY'], ['브이오오', 'VOO'], ['속슬', 'SOXL'], ['일드맥스', 'MSTY'], ['디아', 'DIA'], ['리커전', 'RXRX'], ['세이프하버', 'SHFS'], ['조비', 'JOBY'], ['템퍼스', 'TEM'], ['스페이스X', 'SPCX'], ['스페이스엑스', 'SPCX']];
 const cleanCo = (s) => String(s || '').replace(/\s+(Class [A-Z] )?(Common Stock|Ordinary Shares|Common Shares|American Depositary Shares.*)$/i, '').trim();
 const nasdaqLookup = async (q) => ((await nasdaqJson(`autocomplete/slookup/10?search=${encodeURIComponent(q)}`)) || []).filter((x) => /STOCKS|ETF/i.test(x.asset || '') && SYM_RE.test(x.symbol || ''))
   .map((x) => ({ symbol: x.symbol, name: cleanCo(x.name), exchange: x.exchange || '', asset: x.asset, industry: x.industry || '' }));
 async function krUsLookup(q) {
   const t = q.replace(/\s+/g, '');
   const r = await fetch(`https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock`, { headers: { 'user-agent': BROWSER_UA, accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
-  const items = r.ok ? ((await r.json())?.items || []).filter((x) => x.nationCode === 'USA' && SYM_RE.test(x.code || '')).map((x) => ({ code: x.code, kr: x.name, ex: x.typeCode })) : [];
-  for (const [a, sym] of KR_US_ALIAS) if (a.startsWith(t) && !items.some((x) => x.code === sym)) items.push({ code: sym, kr: a, ex: '' });
+  const items = r.ok ? ((await r.json())?.items || []).filter((x) => x.nationCode === 'USA' && SYM_RE.test(x.code || '') && (/우선/.test(q) || !/우선주|Series [A-Z]/.test(x.name || ''))).map((x) => ({ code: x.code, kr: x.name, ex: x.typeCode })) : [];
+  for (const [a, sym] of KR_US_ALIAS) if (a.toUpperCase().startsWith(t.toUpperCase()) && !items.some((x) => x.code === sym)) items.push({ code: sym, kr: a, ex: '' });
   const top = items.slice(0, 8);
   const en = await Promise.all(top.map((x) => nasdaqLookup(x.code).then((L) => L.find((y) => y.symbol === x.code) || null).catch(() => null)));
   return top.map((x, i) => ({ symbol: x.code, name: en[i]?.name || x.kr, kr: x.kr, exchange: en[i]?.exchange || x.ex, asset: en[i]?.asset || 'STOCKS', industry: en[i]?.industry || '' }));
@@ -1132,7 +1132,7 @@ async function krUsLookup(q) {
 export async function handleLookup(url, cache, cors, ctx) {
   const q = String(url.searchParams.get('q') || '').trim().slice(0, 40);
   if (!q) return json({ results: [] }, cors);
-  return swr(cache, ctx, `${url.origin}/lookup?q=${encodeURIComponent(q.toLowerCase())}&v=2`, {
+  return swr(cache, ctx, `${url.origin}/lookup?q=${encodeURIComponent(q.toLowerCase())}&v=3`, {
     freshSec: 86400, keepSec: 7 * 86400, cors,
     build: async () => JSON.stringify({ results: /[가-힣ㄱ-ㅎ]/.test(q) ? await krUsLookup(q) : await nasdaqLookup(q) }),
   });
