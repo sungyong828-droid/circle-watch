@@ -11,6 +11,13 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.10.10-2 — 2026-10-10
+
+[이 버전 보기](https://5552188a.my-fire-portfolio.pages.dev) · 커밋 `51c72ce`
+
+- English view: translate new cards (calendar, life costs, goal calc, Joby timeline, Tempus)
+- English: shorter dividend-calendar subtitle
+
 ## v2026.10.10-1 — 2026-10-10
 
 [이 버전 보기](https://a19e7e6c.my-fire-portfolio.pages.dev) · 커밋 `ea2ff73`
