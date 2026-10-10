@@ -367,8 +367,8 @@ async function cryptoNews() {
 }
 
 // Nasdaq 종목별 보도자료(Business Wire 등 통신사로 낸 회사 발표). 날짜만 있어 그날 정오(미국 동부)로 둔다.
-async function nasdaqPressReleases(sym) {
-  const r = await fetch(`https://www.nasdaq.com/api/news/topic/press_release?q=symbol:${sym.toLowerCase()}|assetclass:stocks&limit=20&offset=0`, {
+async function nasdaqPressReleases(sym, limit = 20) {
+  const r = await fetch(`https://www.nasdaq.com/api/news/topic/press_release?q=symbol:${sym.toLowerCase()}|assetclass:stocks&limit=${limit}&offset=0`, {
     headers: { 'user-agent': BROWSER_UA, accept: 'application/json, text/plain, */*', referer: 'https://www.nasdaq.com/' }, signal: AbortSignal.timeout(8000),
   });
   if (!r.ok) throw new Error('nasdaq pr ' + r.status);
@@ -1327,6 +1327,16 @@ export async function checkFacts(env, force = false) {
     out.spcxChecked = [...checked].slice(-300);
     delete out.spcxErr;
   } catch (e) { out.spcxErr = String(e.message || e); }
+  // 조비 진척 타임라인: 회사 보도자료(최근 60건)를 분야별로 나눠 둔다(실적·주주총회 같은 일반 공지는 뺀다)
+  try {
+    const prs = await nasdaqPressReleases('JOBY', 60);
+    const CAT = [['cert', /FAA|certif|TIA|conforming|for-credit|regulat|GCAA/i], ['prod', /production|manufactur|factory|facility|Dayton|propeller|capacity/i],
+      ['flight', /flight|flies|flew|autonomous|demonstrat|takes off|airshow/i], ['ops', /Dubai|commercial|passenger|launch|route|vertiport|service|operations|deploy|pilot training/i],
+      ['partner', /Toyota|Delta|Uber|NVIDIA|partner|agreement|collaborat|acqui|alliance/i]];
+    const SKIP = /financial results|conference call|annual meeting|to report|to participate|investor|offering|pric(e|es|ing) |underwrit|convertible|senior notes|common stock/i;
+    out.jobyPR = prs.filter((n) => /Joby/i.test(n.title) && !SKIP.test(n.title)).map((n) => ({ d: n.t.slice(0, 10), title: n.title, url: n.url, cat: (CAT.find(([, re]) => re.test(n.title)) || ['etc'])[0] })).slice(0, 60);
+    delete out.jobyPRErr;
+  } catch (e) { out.jobyPRErr = String(e.message || e); }
   try {
     const r = (await secGet('https://data.sec.gov/submissions/CIK0001717115.json')).filings.recent;
     const i = r.form.findIndex((f, k) => f === '8-K' && /2\.02/.test(r.items[k] || ''));

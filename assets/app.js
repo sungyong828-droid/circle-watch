@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=23';
+    sc.src = 'assets/i18n-en.js?v=24';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2226,7 +2226,38 @@
     }));
   }
 
+  // ---- 퇴사 후 생활비: 배당이 생활비를 얼마나 덮는지 · 4% 법칙 기준 필요 자산 · 배당만으로 생활하려면
+  const LIFE_KEY = 'cw.life';
+  let lifeCfg = Object.assign({ monthly: 300 }, readJSON(LIFE_KEY, {}) || {});
+  function lifeHtml() {
+    const m = +lifeCfg.monthly || 0, fx = state.quote?.fx?.rate;
+    const c = fireCfg && state.quote ? (() => { try { return fireCalc(); } catch { return null; } })() : null;
+    const d = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
+    if (m <= 0) return '<p class="note">한 달 생활비를 넣어 주세요.</p>';
+    const yearNeed = m * 1e4 * 12, rule4 = yearNeed / 0.04;
+    const divMonthKrw = d && fx ? d.monthly * fx : null, cover = divMonthKrw != null ? divMonthKrw / (m * 1e4) : null;
+    const netYld = d && d.value ? d.annualNet / d.value : null, needDiv = netYld ? yearNeed / netYld : null;
+    const have = c?.basis ?? null;
+    return `<div class="ns-grid h-grid">
+        <div><span>배당이 생활비를 덮는 비율</span><b class="${cover >= 1 ? 'up' : ''}">${cover != null ? pctPlain(Math.min(cover, 9.99), 0) : '–'}</b><small>${divMonthKrw != null ? `월 배당 ${manwon(divMonthKrw)} / 생활비 ${manwon(m * 1e4)}` : '배당금 탭에 종목을 넣으면 계산돼요'}</small></div>
+        <div><span>4% 법칙 기준 필요 자산</span><b>${manwon(rule4)}</b><small>${have != null ? `지금 평가액의 ${(rule4 / have).toFixed(1)}배 · 목표 ${manwon(fireCfg?.goal || 0)}` : '연 생활비 × 25'}</small></div>
+        <div><span>배당만으로 생활하려면</span><b>${needDiv ? manwon(needDiv) : '–'}</b><small>${netYld ? `지금 배당 종목의 세후 배당률 ${pctPlain(netYld, 2)} 기준` : '배당 종목을 넣으면 계산돼요'}</small></div>
+        <div><span>목표 금액으로 버틸 수 있는 생활비</span><b>${fireCfg?.goal ? manwon((fireCfg.goal * 0.04) / 12) : '–'}</b><small>목표의 4%를 매년 쓴다고 보면 · 월 기준</small></div>
+      </div>
+      <div class="life-acts"><button type="button" class="btn-ghost sm" data-ftabgo="div">💰 배당금 탭 열기</button><button type="button" class="btn-ghost sm" data-lifesim="${Math.round(m)}">🎯 월 ${m >= 1 ? nf(0).format(m) + '만원' : ''} 배당 포트폴리오 짜보기</button></div>
+      <p class="note">4% 법칙: 모은 돈의 4%씩 매년 꺼내 쓰면 오래 버틸 수 있다는 미국 연구에서 나온 어림 기준이에요(물가·세금·수익률에 따라 달라요). 배당 비율은 최근 1년 배당이 이어진다고 본 값이에요.</p>`;
+  }
+  function renderFireLife() {
+    if (!document.getElementById('c-firelife')) return;
+    card('firelife', {
+      title: '🏝️ 퇴사 후 생활비, 배당으로 될까?', sub: '한 달 생활비를 넣으면 배당·4% 법칙과 비교해요',
+      easy: '퇴사 후 매달 필요한 생활비를 기준으로, 지금 받는 배당이 그 중 얼마를 덮는지, 모은 돈으로 몇 년을 버틸 수 있는지(4% 법칙), 배당만으로 생활하려면 얼마가 필요한지 보여줘요.',
+      body: `<label class="bn-f"><span>한 달 생활비</span><div class="bn-in"><input inputmode="numeric" id="life-monthly" value="${esc(String(lifeCfg.monthly ?? ''))}" aria-label="한 달 생활비"><em>만원</em></div></label>
+        <div id="life-out">${lifeHtml()}</div>`,
+    });
+  }
   function renderFire() {
+    try { renderFireLife(); } catch (e) { console.error(e); }
     updateFireChip();
     renderHomeFire();
     const el = document.getElementById('c-fire');
@@ -2512,8 +2543,42 @@
     if (state.fireTab === 'div') for (const id of ['div-month']) charts[id]?.resize();
     if (state.view === 'fire') { document.getElementById('view-title').textContent = viewTitle('fire'); markUse(state.fireTab); }
   }
+  // ---- 배당 캘린더: 앞으로 3개월 입금 예정(발표된 배당 + 최근 1년 일정이 반복된다고 본 예상) — 지급일 기준, 세후
+  function divCalendar(c) {
+    const today = isoToday(), end = addDays(today, 92), out = [];
+    for (const r of c.pending) if (r.pay >= today && r.pay <= end) out.push({ sym: r.sym, ex: r.ex, pay: r.pay, est: r.est, declared: !r.est, net: r.gross * (1 - c.tax) });
+    for (const P of Object.values(c.per)) {
+      const D = P.D; if (!D || !(P.sh > 0)) continue;
+      for (const e of D.events.filter((x) => x.ex > addDays(today, -365) && x.ex <= today)) {
+        const ex1 = addDays(e.ex, 364), pay1 = addDays(payDateOf(D, e.ex).pay, 364);
+        if (pay1 < today || pay1 > end) continue;
+        if (c.pending.some((r) => r.sym === P.sym && Math.abs(daysBetween(r.ex, ex1)) < 20)) continue;
+        out.push({ sym: P.sym, ex: ex1, pay: pay1, est: true, declared: false, net: e.amt * P.sh * (1 - c.tax) });
+      }
+    }
+    return out.sort((a, b) => (a.pay < b.pay ? -1 : a.pay > b.pay ? 1 : 0));
+  }
+  function renderDivCal(c) {
+    const el = document.getElementById('c-divcal');
+    if (!el) return;
+    const L = c ? divCalendar(c) : [];
+    el.hidden = !L.length;
+    if (!L.length) return;
+    const fx = state.quote?.fx?.rate, by = {};
+    for (const x of L) (by[x.pay.slice(0, 7)] ||= []).push(x);
+    const total = L.reduce((a, x) => a + x.net, 0);
+    card('divcal', {
+      title: '📅 배당 캘린더', sub: `앞으로 3개월 입금 예정 · 지급일 기준 · 세후 · ${L.length}건`,
+      easy: '지금 가진 수량으로 언제 배당이 들어올지 미리 보는 달력이에요. "확정"은 회사가 발표한 배당이고, "예상"은 작년 같은 때 준 배당이 올해도 비슷하게 나온다고 보고 계산한 거예요.',
+      body: `<div class="dc-sum"><span>3개월 합계(예상 포함)</span><b>${usd2(total)}</b>${fx ? `<small>${manwon(total * fx)}</small>` : ''}</div>
+        ${Object.entries(by).map(([m, xs]) => `<div class="dc-month"><div class="dc-mh"><b>${+m.slice(5)}월</b><span>${xs.length}건 · ${usd2(xs.reduce((a, x) => a + x.net, 0))}</span></div>
+          <ul class="dc-list">${xs.slice(0, 14).map((x) => `<li><time>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}<small>${'일월화수목금토'[new Date(x.pay + 'T12:00:00').getDay()]}</small></time><div><b>${esc(fireName(x.sym))}</b><small>배당락 ${+x.ex.slice(5, 7)}/${+x.ex.slice(8)}</small></div><span class="dc-amt">${usd2(x.net)}<em class="${x.declared ? 'ok' : 'est'}">${x.declared ? '확정' : '예상'}</em></span></li>`).join('')}${xs.length > 14 ? `<li class="dc-more">외 ${xs.length - 14}건</li>` : ''}</ul></div>`).join('')}
+        <p class="note">배당락일 전날까지 그 수량을 들고 있어야 받아요. 지급일을 발표하지 않은 배당은 그 종목의 보통 지급 간격으로 추정했어요.</p>`,
+    });
+  }
   function renderDiv() {
     renderHomeFire();
+    try { renderDivCal(divCfg ? divCalc() : null); } catch (e) { console.error(e); }
     const el = document.getElementById('c-div');
     if (!el) return;
     const mEl = document.getElementById('c-div-month');
@@ -3148,9 +3213,25 @@
             <div><span>포트폴리오 배당률</span><b>${pctPlain(S.yld, 2)}</b><small>세전 · 최근 1년 배당 기준</small></div>
             <div><span>실제 투자액 · 남는 돈</span><b>${usd2(S.cost)}</b><small>남는 돈 ${usd2(S.left)}</small></div>
           </div>
+          <div class="sim-goal">
+            <div class="sim-goal-h"><b>🎯 목표 월배당으로 거꾸로 계산</b><small>지금 고른 종목·비중 그대로</small></div>
+            <label class="bn-f"><span>한 달에 받고 싶은 배당(세후)</span><div class="bn-in"><input inputmode="numeric" id="sim-goal" value="${esc(String(simCfg.goal ?? 200))}" aria-label="목표 월배당"><em>만원</em></div></label>
+            <div id="sim-goal-out">${simGoalHtml(S)}</div>
+          </div>
           <div class="sim-months" aria-label="월별 예상 배당">${S.months.map((m, i) => `<div title="${i + 1}월 ${usd2(m)}"><i style="height:${Math.max(2, (m / mMax) * 100)}%"></i><span>${MON[i]}</span></div>`).join('')}</div>
           <p class="note">월별 막대는 최근 1년 배당락일이 있던 달 기준(세후)이에요. 배당은 바뀔 수 있고 과거 배당이 미래를 보장하지 않아요. 세후는 미국 원천징수 15%, 국내 배당소득세 15.4%를 뺀 금액이에요.${warn ? ' <b class="warn">⚠ 연 배당이 2,000만원을 넘으면 금융소득종합과세 대상이 될 수 있어요.</b>' : ''}</p>` : `<p class="note">${S.rows.length ? '계산하기를 누르면 현재가와 최근 1년 배당을 받아 와요.' : '종목을 추가해 주세요.'}</p>`}`,
     });
+  }
+  // 목표 월배당 → 필요한 투자금(지금 포트폴리오의 세후 배당률로 나눔)
+  function simGoalHtml(S = simCalc()) {
+    const g = +simCfg.goal || 0, fx = S.fx;
+    if (!S.ready || !S.cost || !S.yearNet || !fx) return '<p class="note">계산하기를 먼저 누르면 바로 보여요.</p>';
+    if (g <= 0) return '<p class="note">받고 싶은 금액을 넣어 주세요.</p>';
+    const netYld = S.yearNet / S.cost, needUsd = (g * 1e4 * 12) / fx / netYld, needKrw = needUsd * fx;
+    const now = simCfg.unit === 'usd' ? (+simCfg.amount || 0) * fx : (+simCfg.amount || 0) * 1e4;
+    return `<div class="sim-goal-r"><span>필요한 투자금</span><b>${manwon(needKrw)}</b><small>≈ ${usd(needUsd)} · 세후 배당률 ${pctPlain(netYld, 2)} 기준${now ? ` · 지금 투자금의 ${(needKrw / now).toFixed(1)}배` : ''}</small></div>
+      <button type="button" class="btn-ghost sm" data-simgoal="${Math.ceil(needKrw / 1e4)}">이 금액으로 다시 계산하기</button>
+      <p class="note">최근 1년 배당이 그대로 이어진다고 보고 계산했어요. 배당은 줄거나 늘 수 있고, 주가가 바뀌면 필요한 금액도 달라져요.</p>`;
   }
   function simWeightHtml() {
     const tot = simCfg.rows.filter((r) => r.t).reduce((a, r) => a + (+r.w || 0), 0), t = Math.round(tot);
@@ -4637,6 +4718,29 @@
     });
   }
 
+  // ---------------------------------------------------------------- JOBY: 진척 타임라인(확인해 넣은 주요 이정표 + 회사 보도자료 자동 분류)
+  const JT_CAT = { all: ['전체', ''], cert: ['인증', '🛂'], flight: ['비행', '✈️'], ops: ['상업 운항', '🏙️'], prod: ['생산', '🏭'], partner: ['협력', '🤝'], etc: ['기타', '📰'] };
+  let jtCat = 'all';
+  function renderJobyTimeline() {
+    const F = faaData(), P = state.facts?.jobyPR || [];
+    if (!F && !P.length) { card('jobytl', { title: '조비 진척 타임라인', body: '<p class="skeleton">불러오는 중…</p>' }); return; }
+    const key = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40);
+    const curated = (F?.milestones || []).filter((m) => m.done && /^\d{4}-/.test(m.date)).map((m) => ({ d: m.date, title: m.title, url: m.url, cat: /인증|TIA|FAA/.test(m.title) ? 'cert' : /비행/.test(m.title) ? 'flight' : /운항|사업/.test(m.title) ? 'ops' : 'etc', star: true }));
+    const items = [...curated, ...P.filter((p) => !curated.some((c) => c.d === p.d || key(c.title) === key(p.title)))].sort((a, b) => (a.d < b.d ? 1 : -1));
+    const shown = items.filter((x) => jtCat === 'all' || x.cat === jtCat).slice(0, 24);
+    const upcoming = (F?.milestones || []).filter((m) => !m.done);
+    const cnt = (k) => (k === 'all' ? items.length : items.filter((x) => x.cat === k).length);
+    let lastY = '';
+    card('jobytl', {
+      title: '조비 진척 타임라인', sub: `확인한 주요 이정표 ⭐ + 회사 보도자료 ${P.length}건 자동 분류`,
+      easy: '조비가 실제로 어디까지 왔는지 시간순으로 모았어요. ⭐는 직접 확인해 넣은 핵심 이정표, 나머지는 회사 공식 보도자료 제목을 분야별로 자동 분류한 거예요.',
+      body: `${upcoming.length ? `<div class="mini-h er-h">앞으로 남은 큰 단계</div><ul class="faa-ms">${upcoming.map((m) => `<li class="todo"><span class="faa-dot"></span><div><b>${esc(m.title)}</b>${m.note ? ` <small class="dim">${esc(m.note)}</small>` : ''}</div></li>`).join('')}</ul>` : ''}
+        <div class="jt-cats" role="group" aria-label="분야">${Object.entries(JT_CAT).filter(([k]) => cnt(k)).map(([k, [l, i]]) => `<button type="button" class="chip-btn sm" data-jtcat="${k}" aria-pressed="${jtCat === k}">${i} ${l} ${cnt(k)}</button>`).join('')}</div>
+        <ul class="faa-ms jt-list">${shown.map((x) => { const y = x.d.slice(0, 4), yh = y !== lastY ? `<li class="jt-y">${y}</li>` : ''; lastY = y; return `${yh}<li class="done"><span class="faa-dot"></span><div><b>${+x.d.slice(5, 7)}/${+x.d.slice(8, 10)}</b> <span class="jt-c">${JT_CAT[x.cat]?.[1] || ''} ${JT_CAT[x.cat]?.[0] || ''}</span>${x.star ? ' ⭐' : ''}<br>${x.url ? `<a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>` : esc(x.title)}</div></li>`; }).join('') || '<li class="empty">이 분야 소식이 아직 없어요.</li>'}</ul>
+        <p class="note">보도자료 제목은 회사가 낸 원문(영어) 그대로예요. 분야는 제목의 단어로 자동 분류해서 가끔 어긋날 수 있어요.</p>`,
+    });
+  }
+
   // ---------------------------------------------------------------- TEM: 템퍼스 사업 현황(분기 실적 발표 기준)
   // 기본값은 data/tem-kpis.json(확인해 넣은 값), 서버가 새 실적 발표에서 자동으로 읽은 분기가 더 새로우면 맨 앞에 더한다
   const temQ = (q) => `'${q.slice(2, 4)} ${q.slice(5)}분기`;
@@ -5121,7 +5225,7 @@
   function renderSEarnings(sym = state.stock) {
     if (isKR(sym)) { renderKrEarn(sym); return; }
     if (!isOther(sym)) return;
-    if (sym === 'JOBY') renderFaa();
+    if (sym === 'JOBY') { renderFaa(); renderJobyTimeline(); }
     if (sym === 'SPCX') renderLockup();
     if (sym === 'TEM') renderTempus();
     if (isEtf(sym)) { renderEtfDist(sym); return; }
@@ -5134,6 +5238,7 @@
     document.getElementById('c-faa').hidden = sym !== 'JOBY';
     document.getElementById('c-lockup').hidden = sym !== 'SPCX';
     const ct = document.getElementById('c-tempus'); if (ct) ct.hidden = sym !== 'TEM';
+    const cj = document.getElementById('c-jobytl'); if (cj) cj.hidden = sym !== 'JOBY';
     const S = STOCK_INFO[sym], kr = isKR(sym);
     for (const id of ['c-sshort', 'c-sinsider', 'c-soptions', 'c-ssummary']) { const el = document.getElementById(id); if (el) el.hidden = kr; }
     for (const id of ['c-sanalyst', 'c-sholders', 'skpis']) { const el = document.getElementById(id); if (el) el.hidden = false; }
@@ -5563,7 +5668,9 @@
   document.addEventListener('input', (ev) => {
     if (ev.target.id === 'watch-q') { watchSearch(ev.target.value); return; }
     if (ev.target.closest?.('#c-bonus')) { bonusInput(); return; }
+    if (ev.target.id === 'life-monthly') { lifeCfg.monthly = parseInt(ev.target.value.replace(/\D/g, ''), 10) || 0; writeJSON(LIFE_KEY, lifeCfg); const o = document.getElementById('life-out'); if (o) o.innerHTML = lifeHtml(); return; }
     if (ev.target.id === 'sim-q') { simSearch(ev.target.value); return; }
+    if (ev.target.id === 'sim-goal') { simCfg.goal = parseInt(ev.target.value.replace(/\D/g, ''), 10) || 0; writeJSON(SIM_KEY, simCfg); const o = document.getElementById('sim-goal-out'); if (o) o.innerHTML = simGoalHtml(); return; }
     if (ev.target.classList?.contains('sim-w')) { // 비중은 0~100 정수만
       let v = ev.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
       if (+v > 100) v = '100';
@@ -5677,6 +5784,12 @@
     }
     if (ev.target.closest('[data-simeq]')) { readSimForm(); const rows = simCfg.rows.filter((r) => r.t); rows.forEach((r) => { r.w = 0; }); simCfg.rows = rows; normalizeSimWeights(); writeJSON(SIM_KEY, simCfg); renderDivSim(); return; }
     if (ev.target.closest('[data-simadd]')) { readSimForm(); simSearchOpen = !simSearchOpen; simResults = []; renderDivSim(); document.getElementById('sim-q')?.focus(); return; }
+    const ls = ev.target.closest('[data-lifesim]');
+    if (ls) { simCfg.goal = +ls.dataset.lifesim; writeJSON(SIM_KEY, simCfg); state.fireTab = 'div'; savePref('fireTab', 'div'); applyFireTab(); renderDiv(); renderDivSim(); setTimeout(() => document.getElementById('sim-goal')?.closest('.sim-goal')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) || document.getElementById('c-divsim')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 150); return; }
+    const jc = ev.target.closest('[data-jtcat]');
+    if (jc) { jtCat = jc.dataset.jtcat; renderJobyTimeline(); return; }
+    const sg = ev.target.closest('[data-simgoal]');
+    if (sg) { readSimForm(); simCfg.unit = 'manwon'; simCfg.amount = +sg.dataset.simgoal; writeJSON(SIM_KEY, simCfg); runSim(); return; }
     if (ev.target.closest('[data-simclose]')) { readSimForm(); simSearchOpen = false; renderDivSim(); return; }
     if (ev.target.closest('[data-simreset]')) {
       if (!simCfg.rows.length || !confirm(EN ? 'Remove all tickers from the planner?' : '추가한 종목을 모두 지울까요? (투자금은 그대로 둬요)')) return;

@@ -1404,3 +1404,43 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .tem-ms li div { line-height: 1.5; }
 .faa-ms .tem-hl li { display: list-item; grid-template-columns: none; padding: 0; font-size: 12.5px; }
 .faa-ms .tem-hl li::before, .faa-ms .tem-hl li::after { content: none; display: none; }
+
+/* 목표 월배당 역산 */
+.sim-goal { margin-top: 14px; padding: 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid color-mix(in srgb, var(--accent, #f2994a) 35%, var(--line)); }
+.sim-goal-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.sim-goal-h small { color: var(--muted); font-size: 12px; }
+.sim-goal-r { display: grid; gap: 2px; margin: 10px 0 8px; }
+.sim-goal-r span { color: var(--muted); font-size: 12.5px; }
+.sim-goal-r b { font-size: 24px; color: var(--accent, #f2994a); font-variant-numeric: tabular-nums; }
+.sim-goal-r small { color: var(--ink-2); font-size: 12.5px; text-wrap: pretty; }
+
+/* 배당 캘린더 */
+.dc-sum { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.dc-sum span { color: var(--muted); font-size: 12.5px; }
+.dc-sum b { font-size: 22px; color: var(--good); font-variant-numeric: tabular-nums; }
+.dc-sum small { color: var(--muted); }
+.dc-month { margin-top: 14px; }
+.dc-mh { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; border-bottom: 1px solid var(--line-soft); }
+.dc-mh b { font-size: 15px; } .dc-mh span { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.dc-list { list-style: none; margin: 0; padding: 0; }
+.dc-list li { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
+.dc-list time { font: 700 14px var(--mono); display: grid; line-height: 1.2; }
+.dc-list time small { font: 500 11px var(--sans); color: var(--muted); }
+.dc-list div { min-width: 0; display: grid; }
+.dc-list div b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-list div small { font-size: 11.5px; color: var(--muted); }
+.dc-amt { font: 700 13.5px var(--mono); display: grid; justify-items: end; gap: 2px; white-space: nowrap; }
+.dc-amt em { font: 600 10.5px var(--sans); font-style: normal; padding: 1px 6px; border-radius: 6px; }
+.dc-amt em.ok { color: var(--good); background: rgba(63, 191, 127, 0.12); } .dc-amt em.est { color: var(--muted); background: var(--surface-2); }
+.dc-list li.dc-more { display: block; color: var(--muted); font-size: 12.5px; text-align: center; }
+
+/* 퇴사 후 생활비 */
+.life-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#c-firelife .bn-f { margin-top: 10px; }
+
+/* 조비 진척 타임라인 */
+.jt-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+.jt-list li.jt-y { display: block; padding: 10px 0 2px; font: 800 13px var(--mono); color: var(--muted); }
+.jt-list li.jt-y::before { content: none; }
+.jt-c { font-size: 11.5px; color: var(--muted); }
+.jt-list a { color: var(--ink); text-decoration: none; text-wrap: pretty; }

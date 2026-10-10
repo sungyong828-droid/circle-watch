@@ -544,3 +544,30 @@ MRD(재발 감시) 검사	MRD (recurrence monitoring) tests
 막대: 진단(파랑) + 데이터·앱(주황) 매출 · 아래 숫자: 조정 EBITDA(백만 달러)	Bars: diagnostics (blue) + data & apps (orange) revenue · numbers below: adjusted EBITDA ($M)
 템퍼스는 신약을 직접 만들지 않아요. 병원에서 암 환자의 유전자 검사를 해 주고(진단), 그 과정에서 쌓인 개인 정보를 지운 의료 데이터를 제약사에 팔거나 AI 모델을 만들어 제공해요(데이터·앱). 검사가 늘수록 데이터가 쌓이고, 데이터가 쌓일수록 제약사에 팔 것이 많아지는 구조예요.	Tempus doesn't develop drugs itself. It runs genetic tests for cancer patients (diagnostics), then licenses the de-identified data to pharma companies and builds AI models (data & apps). More tests mean more data, and more data means more to sell to pharma.
 숫자는 회사가 분기마다 SEC에 내는 실적 발표문 기준이에요. 새 발표가 나오면 매출·사업별 매출·조정 EBITDA·검사 지표는 자동으로 반영되고, 진척 소식은 확인 후 더해요. 투자 조언이 아니에요.	Figures come from the quarterly earnings releases filed with the SEC. Revenue, segment revenue, adjusted EBITDA and test metrics update automatically on a new release; milestones are added after review. Not investment advice.
+🎯 목표 월배당으로 거꾸로 계산	🎯 Work back from a monthly dividend goal
+지금 고른 종목·비중 그대로	using the same tickers and weights
+한 달에 받고 싶은 배당(세후)	Monthly dividend you want (after tax)
+필요한 투자금	Investment needed
+이 금액으로 다시 계산하기	Recalculate with this amount
+계산하기를 먼저 누르면 바로 보여요.	Press Calculate first to see this.
+받고 싶은 금액을 넣어 주세요.	Enter the amount you want.
+📅 배당 캘린더	📅 Dividend calendar
+3개월 합계(예상 포함)	3-month total (incl. estimates)
+확정	confirmed
+예상	estimated
+배당락	ex-date
+🏝️ 퇴사 후 생활비, 배당으로 될까?	🏝️ Can dividends cover living costs after you quit?
+한 달 생활비를 넣으면 배당·4% 법칙과 비교해요	Enter monthly living costs to compare with dividends and the 4% rule
+한 달 생활비	Monthly living costs
+배당이 생활비를 덮는 비율	Share of living costs covered by dividends
+4% 법칙 기준 필요 자산	Assets needed (4% rule)
+배당만으로 생활하려면	To live on dividends alone
+목표 금액으로 버틸 수 있는 생활비	Monthly spending your goal can support
+💰 배당금 탭 열기	💰 Open Dividends
+조비 진척 타임라인	Joby progress timeline
+앞으로 남은 큰 단계	Big steps ahead
+상업 운항	Commercial ops
+생산	Production
+협력	Partnerships
+인증	Certification
+비행	Flights
