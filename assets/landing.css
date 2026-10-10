@@ -67,3 +67,25 @@ body.lp { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
 .lp-upd { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); font-size: 14.5px; }
 .lp-upd b { color: var(--ink); }
 .upd p { color: var(--ink-2); font-size: 14px; }
+
+/* /daily 오늘의 스테이블코인 */
+.dl-when { color: var(--muted); font-size: 13px; font-weight: 600; }
+.dl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.dl-grid > div { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.dl-grid span { display: block; color: var(--muted); font-size: 12.5px; }
+.dl-grid b { display: block; font-size: 19px; margin-top: 2px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dl-grid small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.dl-hero-num { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px 16px; margin: 14px 0 8px; }
+.dl-hero-num b { display: block; font-size: 28px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dl-hero-num svg { flex: none; }
+.dl-news { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dl-news a { display: block; background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 11px 14px; color: var(--ink); text-decoration: none; font-size: 14.5px; line-height: 1.45; text-wrap: pretty; }
+.dl-news small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+.dl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dl-list a { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; align-items: baseline; background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 12px 14px; color: var(--ink); text-decoration: none; }
+.dl-list time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.dl-list b { font-size: 14.5px; line-height: 1.4; text-wrap: balance; }
+.dl-list small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; margin-top: 2px; }
+.dl-nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.dl-nav a { color: var(--ink-2); font-size: 14px; text-decoration: none; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }

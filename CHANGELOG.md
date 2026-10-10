@@ -11,6 +11,13 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+**새 기능**
+- 💵 **오늘의 스테이블코인 기록**(/daily): 매일 아침 USDC 유통량·점유율, 서클(CRCL) 주가·공매도, 그날의 주요 뉴스를 날짜별 페이지로 쌓아요. 인스타그램·X(@myfireportfolio)에 올리는 카드와 같은 내용이에요.
+
+<!-- EN
+- 💵 **Stablecoin Daily archive** (/daily): USDC supply & share, $CRCL price & short volume and the day's news, one page per day.
+-->
+
 ## v2026.10.09-5 — 2026-10-09
 
 [이 버전 보기](https://c3739d8f.my-fire-portfolio.pages.dev) · 커밋 `ffc1889`
