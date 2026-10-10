@@ -1124,14 +1124,14 @@ async function krUsLookup(q) {
   const t = q.replace(/\s+/g, '');
   const r = await fetch(`https://ac.stock.naver.com/ac?q=${encodeURIComponent(q)}&target=stock`, { headers: { 'user-agent': BROWSER_UA, accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
   const items = r.ok ? ((await r.json())?.items || []).filter((x) => x.nationCode === 'USA' && SYM_RE.test(x.code || '') && (/우선/.test(q) || !/우선주|Series [A-Z]/.test(x.name || ''))).map((x) => ({ code: x.code, kr: x.name, ex: x.typeCode, etf: /\/etf\//.test(x.url || '') })) : [];
-  for (const [a, sym] of KR_US_ALIAS) if (a.toUpperCase().startsWith(t.toUpperCase()) && !items.some((x) => x.code === sym)) items.push({ code: sym, kr: a, ex: '' });
+  for (const [a, sym] of KR_US_ALIAS) if (a.toUpperCase().startsWith(t.toUpperCase()) && !items.some((x) => x.code === sym)) items.push({ code: sym, kr: a, ex: '', etf: !['RXRX', 'SHFS', 'JOBY', 'TEM', 'SPCX'].includes(sym) });
   // 영문 회사명은 '추가'를 누를 때 티커로 다시 찾는다(검색을 빠르게)
   return items.slice(0, 10).map((x) => ({ symbol: x.code, name: x.kr, kr: x.kr, exchange: x.ex, asset: x.etf ? 'ETF' : 'STOCKS', industry: '' }));
 }
 export async function handleLookup(url, cache, cors, ctx) {
   const q = String(url.searchParams.get('q') || '').trim().slice(0, 40);
   if (!q) return json({ results: [] }, cors);
-  return swr(cache, ctx, `${url.origin}/lookup?q=${encodeURIComponent(q.toLowerCase())}&v=4`, {
+  return swr(cache, ctx, `${url.origin}/lookup?q=${encodeURIComponent(q.toLowerCase())}&v=5`, {
     freshSec: 86400, keepSec: 7 * 86400, cors,
     build: async () => JSON.stringify({ results: /[가-힣ㄱ-ㅎ]/.test(q) ? await krUsLookup(q) : await nasdaqLookup(q) }),
   });
