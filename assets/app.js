@@ -1399,7 +1399,7 @@
     let note = '';
     if (k?.length) {
       const vals = k.map((p) => p[1]);
-      note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? vals[0])} · ${RANGES[r].yahoo ? '주봉 · 실제 주가(정규장, Yahoo)' : RANGES[r].interval + ' 캔들'}`;
+      note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? vals[0])} · ${RANGES[r].yahoo ? (EN ? 'weekly · actual stock price (regular session, Yahoo)' : '주봉 · 실제 주가(정규장, Yahoo)') : RANGES[r].interval + ' 캔들'}`;
     }
     card('pricechart', {
       title: 'CRCL 가격 추이',
@@ -3776,7 +3776,7 @@
 
   function renderNewsSummary(sym = state.stock) {
     const U = NEWS_UI[sym], N = U.getN();
-    const id = U.sum.slice(2), title = '새 소식 · 공시 요약';
+    const id = U.sum.slice(2), title = EN ? 'New items · filings summary' : '새 소식 · 공시 요약';
     if (!N) { if (document.getElementById(U.sum)) card(id, { title, body: '<p class="skeleton">불러오는 중…</p>' }); return; }
     const F = N.filings || [];
     const since = Date.now() - 30 * 86400000;
@@ -3796,8 +3796,8 @@
         </div>
         ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}
         ${F.length ? `<div class="ns-go">
-          <button type="button" class="link-btn" data-go="${goEarn}">📊 실적 보고서${rep ? ` · ${esc(formInfo(rep.form).label)} ${md(isoToTs(rep.d))}` : ''}<small>Earnings에서 보기</small></button>
-          <button type="button" class="link-btn" data-go="${goIns}">👤 내부자 거래 공시 ${ins}건<small>30일 · 종목 탭에서 자세히</small></button>
+          <button type="button" class="link-btn" data-go="${goEarn}">📊 ${EN ? 'Earnings reports' : '실적 보고서'}${rep ? ` · ${esc(formInfo(rep.form).label)} ${md(isoToTs(rep.d))}` : ''}<small>${EN ? 'See in Earnings' : 'Earnings에서 보기'}</small></button>
+          <button type="button" class="link-btn" data-go="${goIns}">👤 ${EN ? `Insider filings: ${ins}` : `내부자 거래 공시 ${ins}건`}<small>${EN ? '30 days · details in the stock tab' : '30일 · 종목 탭에서 자세히'}</small></button>
         </div>` : ''}`,
     });
   }
@@ -4050,7 +4050,7 @@
     if (BN24[sym]) {
       const X = bxOf(sym), r = bxRange(), k = X.klines[r];
       let note = '';
-      if (k?.length) note = `${RANGES[r].label} 최고 ${pxS(sym, Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${pxS(sym, Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${pxS(sym, k[0][2] ?? k[0][1])} · ${RANGES[r].yahoo ? '주봉 · 실제 주가(정규장, Yahoo)' : RANGES[r].interval + ' 캔들'}`;
+      if (k?.length) note = `${RANGES[r].label} 최고 ${pxS(sym, Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${pxS(sym, Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${pxS(sym, k[0][2] ?? k[0][1])} · ${RANGES[r].yahoo ? (EN ? 'weekly · actual stock price (regular session, Yahoo)' : '주봉 · 실제 주가(정규장, Yahoo)') : RANGES[r].interval + ' 캔들'}`;
       card('spricechart', {
         title: `${sym} 가격 추이`, sub: `Binance ${BN24[sym]} 무기한 선물`, info: INFO.pricechart,
         body: `
@@ -4062,7 +4062,7 @@
           <div id="osc-spricechart"></div>`,
       });
       paintOsc(sym, 'osc-spricechart');
-      if (!k) { bxKlines(sym, r).then(() => { if (bxRange() === r && state.stock === sym) renderSPriceChart(sym); }).catch(() => {}); return; }
+      if (!k) { bxKlines(sym, r).then(() => { if (bxRange() === r && state.stock === sym) renderSPriceChart(sym); }).catch(() => { const n = document.querySelector('#c-spricechart .note'); if (n && bxRange() === r) n.textContent = EN ? 'Could not load this range — tap refresh to try again.' : '이 기간 자료를 받지 못했어요 · 새로고침을 눌러 다시 시도해 주세요.'; }); return; }
       sLine('spricechart', k, { range: r === '1d' ? 'bn' : r, sym });
       paintStock();
       return;
