@@ -1402,3 +1402,5 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .tem-col span { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .tem-col small { font: 600 10.5px var(--mono); }
 .tem-ms li div { line-height: 1.5; }
+.faa-ms .tem-hl li { display: list-item; grid-template-columns: none; padding: 0; font-size: 12.5px; }
+.faa-ms .tem-hl li::before, .faa-ms .tem-hl li::after { content: none; display: none; }
