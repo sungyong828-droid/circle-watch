@@ -12,8 +12,11 @@
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
 - 인기 종목 13개에 '사업 현황' 카드가 생겼어요(실적 탭 맨 위): 테슬라·알파벳·팔란티어·팔로알토·플러그파워·리커전·퍼보 에너지·세이프 하버, 삼성전자·SK하이닉스·현대차·기아·현대글로비스. 회사가 직접 낸 실적 발표문에서 확인한 사업별 매출 비중, 핵심 지표(테슬라 인도량, 팔란티어 미국 기업 매출, 삼성 반도체 영업이익 등), 최근 5개 분기 막대, 분기별 주요 소식과 회사 전망을 한 화면에 모았어요. 실적 뒤에 나온 소식(테슬라 3분기 인도량, 삼성전자 3분기 잠정 실적 등)도 '최근'으로 함께 보여줘요.
+- 미국 종목도 한글 이름으로 찾을 수 있어요: 종목 추가·포트폴리오 짜보기 검색창에 '테슬라', '엔비디아', '팔란티어'처럼 쳐도 나오고, '슈드(SCHD)'·'제피(JEPI)' 같은 ETF 별명도 알아들어요. 배당·Fire 입력칸에 '테슬라'라고 써도 TSLA로 바뀌어요.
+<!-- internal --> 한글 검색 = /api/lookup이 네이버 증권 자동완성(ac.stock.naver.com)에서 미국 종목만 골라 반환, 영문 회사명은 '추가' 때 티커로 다시 찾음. 별명 목록 KR_US_ALIAS.
 <!-- internal --> data/biz/<종목>.json + app.js BIZ_KEYS(build.py가 목록 일치 검사). 새 분기는 확인 후 손으로 추가.
 <!-- EN
+- Search US stocks by their Korean names too (e.g. 테슬라 → TSLA), including common ETF nicknames.
 - 13 popular stocks now have a 'business snapshot' card at the top of the Earnings tab: revenue mix by business, key metrics, five quarters of bars, quarterly highlights and company outlook — all checked against the companies' own earnings releases.
 -->
 
