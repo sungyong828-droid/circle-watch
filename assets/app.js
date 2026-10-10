@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=24';
+    sc.src = 'assets/i18n-en.js?v=25';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2567,15 +2567,19 @@
     const L = c ? divCalendar(c) : [];
     el.hidden = !L.length;
     if (!L.length) return;
-    const fx = state.quote?.fx?.rate, by = {};
-    for (const x of L) (by[x.pay.slice(0, 7)] ||= []).push(x);
+    const fx = state.quote?.fx?.rate, mTot = {};
+    for (const x of L) { const m = x.pay.slice(0, 7); (mTot[m] ||= { n: 0, v: 0 }); mTot[m].n++; mTot[m].v += x.net; }
     const total = L.reduce((a, x) => a + x.net, 0);
+    // 월별로 묶어 그린다(앞의 몇 건만 바로 보이고 나머지는 접어 둔다)
+    const groups = (xs, cont) => { const by = {}; for (const x of xs) (by[x.pay.slice(0, 7)] ||= []).push(x); return Object.entries(by).map(([m, ys], i) => `<div class="dc-month"><div class="dc-mh"><b>${+m.slice(5)}월${cont && i === 0 && ys.length < mTot[m].n ? ' <small>(이어서)</small>' : ''}</b><span>${mTot[m].n}건 · ${usd2(mTot[m].v)}</span></div>
+          <ul class="dc-list">${ys.map((x) => `<li><time>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}<small>${'일월화수목금토'[new Date(x.pay + 'T12:00:00').getDay()]}</small></time><div><b>${esc(fireName(x.sym))}</b><small>배당락 ${+x.ex.slice(5, 7)}/${+x.ex.slice(8)}</small></div><span class="dc-amt">${usd2(x.net)}<em class="${x.declared ? 'ok' : 'est'}">${x.declared ? '확정' : '예상'}</em></span></li>`).join('')}</ul></div>`).join(''); };
+    const FIRST = 4, head = L.slice(0, FIRST), rest = L.slice(FIRST);
     card('divcal', {
       title: '📅 배당 캘린더', sub: `앞으로 3개월 입금 예정 · 지급일 기준 · 세후 · ${L.length}건`,
       easy: '지금 가진 수량으로 언제 배당이 들어올지 미리 보는 달력이에요. "확정"은 회사가 발표한 배당이고, "예상"은 작년 같은 때 준 배당이 올해도 비슷하게 나온다고 보고 계산한 거예요.',
       body: `<div class="dc-sum"><span>3개월 합계(예상 포함)</span><b>${usd2(total)}</b>${fx ? `<small>${manwon(total * fx)}</small>` : ''}</div>
-        ${Object.entries(by).map(([m, xs]) => `<div class="dc-month"><div class="dc-mh"><b>${+m.slice(5)}월</b><span>${xs.length}건 · ${usd2(xs.reduce((a, x) => a + x.net, 0))}</span></div>
-          <ul class="dc-list">${xs.slice(0, 14).map((x) => `<li><time>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}<small>${'일월화수목금토'[new Date(x.pay + 'T12:00:00').getDay()]}</small></time><div><b>${esc(fireName(x.sym))}</b><small>배당락 ${+x.ex.slice(5, 7)}/${+x.ex.slice(8)}</small></div><span class="dc-amt">${usd2(x.net)}<em class="${x.declared ? 'ok' : 'est'}">${x.declared ? '확정' : '예상'}</em></span></li>`).join('')}${xs.length > 14 ? `<li class="dc-more">외 ${xs.length - 14}건</li>` : ''}</ul></div>`).join('')}
+        ${groups(head, false)}
+        ${rest.length ? `${more('divcal', `나머지 ${rest.length}건 더 보기 · ${[...new Set(rest.map((x) => +x.pay.slice(5, 7) + '월'))].join('·')}`)}${groups(rest, true)}</details>` : ''}
         <p class="note">배당락일 전날까지 그 수량을 들고 있어야 받아요. 지급일을 발표하지 않은 배당은 그 종목의 보통 지급 간격으로 추정했어요.</p>`,
     });
   }

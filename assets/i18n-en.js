@@ -2051,7 +2051,9 @@ window.__I18N_EN = {
 "생산": "Production",
 "협력": "Partnerships",
 "인증": "Certification",
-"비행": "Flights"
+"비행": "Flights",
+"나머지": "Remaining",
+"(이어서)": "(cont.)"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
