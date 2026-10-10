@@ -8,7 +8,7 @@ import json
 import os
 
 SITE = 'https://my-fire-portfolio.pages.dev/'
-VER = '7'
+VER = '8'
 
 COMMON_FEATURES = [
     ('실시간 주가 · 캔들 차트', '1일·1주·1개월·3개월·1년 캔들 차트에 이동평균선(5·20·60·120일)과 거래량. 캔들/라인 전환.'),

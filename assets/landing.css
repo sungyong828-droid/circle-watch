@@ -72,7 +72,7 @@ body.lp { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
 .dl-when { color: var(--muted); font-size: 13px; font-weight: 600; }
 .dl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .dl-grid > div { background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
-.dl-grid span { display: block; color: var(--muted); font-size: 12.5px; }
+.dl-grid > div > span { display: block; color: var(--muted); font-size: 12.5px; }
 .dl-grid b { display: block; font-size: 19px; margin-top: 2px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .dl-grid small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .dl-hero-num { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px 16px; margin: 14px 0 8px; }

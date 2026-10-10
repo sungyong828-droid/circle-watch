@@ -45,7 +45,7 @@ function page(D, dailyLatest) {
   const go = '/?ref=page-stablecoin';
   const body = `<section class="lp-hero">
   <p class="dl-when">${krDay(today)} 기준 · 매일 갱신</p>
-  <h1>스테이블코인 시가총액 · USDC 유통량 한눈에</h1>
+  <h1>스테이블코인 시가총액과 USDC 유통량 한눈에</h1>
   <p class="lp-lead">USDT·USDC 등 달러 스테이블코인이 지금 얼마나 발행됐는지, 누가 얼마나 차지하는지, 서클(CRCL)의 USDC는 어디서 얼마나 쓰이는지 매일 숫자로 정리해요.</p>
   <div class="dl-grid">
     <div><span>달러 스테이블코인 전체</span><b>${usdKo(total)}</b><small><span class="${tone(tot1)}">1일 ${pctS(tot1, 2)}</span><br><span class="${tone(tot7)}">7일 ${pctS(tot7, 2)}</span></small></div>
@@ -95,7 +95,7 @@ ${news.length ? `<section class="lp-sec"><h2>최근 스테이블코인 뉴스</h
 
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url), host = url.hostname;
-  const cache = caches.default, key = new Request(`${url.origin}/stablecoin?v=2`);
+  const cache = caches.default, key = new Request(`${url.origin}/stablecoin?v=3`);
   const hit = await cache.match(key);
   if (hit) return respond(await hit.text(), 200, host, 600);
   const r = await fetch(`${url.origin}/api/data`, { headers: { accept: 'application/json' } }).catch(() => null);
