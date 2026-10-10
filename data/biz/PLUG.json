@@ -1,21 +1,58 @@
 {
   "sym": "PLUG",
+  "name": {
+    "ko": "플러그파워",
+    "en": "Plug Power"
+  },
   "cur": "USD",
-  "src": { "ko": "SEC 8-K 실적 발표문", "en": "SEC 8-K earnings release" },
+  "src": {
+    "ko": "SEC 8-K 실적 발표문",
+    "en": "SEC 8-K earnings release"
+  },
   "easy": {
     "ko": "플러그파워는 수소 회사예요. 물류창고 지게차용 수소 연료전지(장비)를 팔고 정비해 주며(서비스), 수소 연료를 공급하고(연료), 물에서 수소를 뽑는 전해조도 팔아요. 매출은 꾸준하지만 오랫동안 팔수록 손해(매출총이익 마이너스)를 봐 왔기 때문에, 언제 흑자로 돌아서고 현금이 버티는지가 주가의 핵심이에요.",
     "en": "Plug Power is a hydrogen company. It sells hydrogen fuel cells for warehouse forklifts (equipment), services them, supplies hydrogen fuel, and sells electrolyzers that make hydrogen from water. Revenue is steady, but it has long sold at a loss (negative gross margin), so the key questions for the stock are when it turns profitable and whether its cash holds out."
   },
   "seg": [
-    { "k": "equip", "ko": "장비(연료전지·전해조)", "en": "Equipment (fuel cells, electrolyzers)" },
-    { "k": "fuel", "ko": "수소 연료 공급", "en": "Hydrogen fuel delivered" },
-    { "k": "ppa", "ko": "장기 임대(PPA)", "en": "Power purchase agreements" },
-    { "k": "svc", "ko": "정비 서비스", "en": "Service" }
+    {
+      "k": "equip",
+      "ko": "장비(연료전지·전해조)",
+      "en": "Equipment (fuel cells, electrolyzers)"
+    },
+    {
+      "k": "fuel",
+      "ko": "수소 연료 공급",
+      "en": "Hydrogen fuel delivered"
+    },
+    {
+      "k": "ppa",
+      "ko": "장기 임대(PPA)",
+      "en": "Power purchase agreements"
+    },
+    {
+      "k": "svc",
+      "ko": "정비 서비스",
+      "en": "Service"
+    }
   ],
-  "profit": { "ko": "영업이익(손실)", "en": "Operating income (loss)" },
+  "profit": {
+    "ko": "영업이익(손실)",
+    "en": "Operating income (loss)"
+  },
   "kpi": [
-    { "k": "gm", "ko": "매출총이익률", "en": "Gross margin", "f": "pct1", "pp": true },
-    { "k": "cash", "ko": "보유 현금", "en": "Unrestricted cash", "f": "usdM" }
+    {
+      "k": "gm",
+      "ko": "매출총이익률",
+      "en": "Gross margin",
+      "f": "pct1",
+      "pp": true
+    },
+    {
+      "k": "cash",
+      "ko": "보유 현금",
+      "en": "Unrestricted cash",
+      "f": "usdM"
+    }
   ],
   "guide": {
     "ko": "2026년 매출 +15~16% 전망(상향) · 4분기 EBITDAS 흑자 목표 · 2027년 말 영업이익 흑자 목표",
@@ -23,46 +60,133 @@
   },
   "q": [
     {
-      "q": "2026Q2", "filed": "2026-08-10", "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465926093339/tm2622713d1_ex99-1.htm",
-      "rev": 178.3, "seg": { "equip": 81.9, "fuel": 39.5, "ppa": 26.9, "svc": 29.8 }, "op": -64.1,
-      "k": { "gm": -0.9, "cash": 161.9 },
+      "q": "2026Q2",
+      "filed": "2026-08-10",
+      "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465926093339/tm2622713d1_ex99-1.htm",
+      "rev": 178.3,
+      "seg": {
+        "equip": 81.9,
+        "fuel": 39.5,
+        "ppa": 26.9,
+        "svc": 29.8
+      },
+      "op": -64.1,
+      "k": {
+        "gm": -0.9,
+        "cash": 161.9
+      },
       "hl": [
-        { "ko": "매출총이익 거의 0(-170만 달러)까지 개선 — 1년 전 -5,350만 달러", "en": "Gross margin near break-even (-$1.7M) vs -$53.5M a year earlier" },
-        { "ko": "현금 사용 약 6,100만 달러로 감소 · 2026년 매출 전망 상향", "en": "Net cash usage down to ~$61M · 2026 revenue guidance raised" },
-        { "ko": "7월 텍사스 그레이엄 프로젝트 매각 등 데이터센터 업체와 거래(단기 현금 8,000만 달러 예상)", "en": "July deals with a data-center developer incl. sale of the Graham, Texas project (~$80M near-term liquidity)" }
+        {
+          "ko": "매출총이익 거의 0(-170만 달러)까지 개선 — 1년 전 -5,350만 달러",
+          "en": "Gross margin near break-even (-$1.7M) vs -$53.5M a year earlier"
+        },
+        {
+          "ko": "현금 사용 약 6,100만 달러로 감소 · 2026년 매출 전망 상향",
+          "en": "Net cash usage down to ~$61M · 2026 revenue guidance raised"
+        },
+        {
+          "ko": "7월 텍사스 그레이엄 프로젝트 매각 등 데이터센터 업체와 거래(단기 현금 8,000만 달러 예상)",
+          "en": "July deals with a data-center developer incl. sale of the Graham, Texas project (~$80M near-term liquidity)"
+        }
       ]
     },
     {
-      "q": "2026Q1", "filed": "2026-05-11", "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465926058615/tm2614034d1_ex99-1.htm",
-      "rev": 163.5, "seg": { "equip": 79.0, "fuel": 35.8, "ppa": 26.3, "svc": 22.0 }, "op": -109.5,
-      "k": { "gm": -13.2, "cash": 223.2 },
+      "q": "2026Q1",
+      "filed": "2026-05-11",
+      "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465926058615/tm2614034d1_ex99-1.htm",
+      "rev": 163.5,
+      "seg": {
+        "equip": 79.0,
+        "fuel": 35.8,
+        "ppa": 26.3,
+        "svc": 22.0
+      },
+      "op": -109.5,
+      "k": {
+        "gm": -13.2,
+        "cash": 223.2
+      },
       "hl": [
-        { "ko": "매출 +22% · 매출총이익률 -55% → -13%로 개선", "en": "Revenue +22% · gross margin improved from -55% to -13%" },
-        { "ko": "주가 상승에 따른 전환사채·워런트 평가손실 약 1.4억 달러(현금 아님)", "en": "~$140M non-cash charges on convertible debt and warrants as the stock rose" }
+        {
+          "ko": "매출 +22% · 매출총이익률 -55% → -13%로 개선",
+          "en": "Revenue +22% · gross margin improved from -55% to -13%"
+        },
+        {
+          "ko": "주가 상승에 따른 전환사채·워런트 평가손실 약 1.4억 달러(현금 아님)",
+          "en": "~$140M non-cash charges on convertible debt and warrants as the stock rose"
+        }
       ]
     },
     {
-      "q": "2025Q4", "filed": "2026-03-02", "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465926022247/tm267677d1_ex99-1.htm",
-      "rev": 225.2, "seg": { "equip": 111.6, "fuel": 33.6, "ppa": 36.1, "svc": 41.5 }, "op": -763.2,
-      "k": { "gm": 2.4, "cash": 368.5 },
+      "q": "2025Q4",
+      "filed": "2026-03-02",
+      "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465926022247/tm267677d1_ex99-1.htm",
+      "rev": 225.2,
+      "seg": {
+        "equip": 111.6,
+        "fuel": 33.6,
+        "ppa": 36.1,
+        "svc": 41.5
+      },
+      "op": -763.2,
+      "k": {
+        "gm": 2.4,
+        "cash": 368.5
+      },
       "hl": [
-        { "ko": "분기 매출총이익 처음 플러스 전환 · 2025년 매출 약 7.1억 달러(+12.9%)", "en": "First positive quarterly gross margin · 2025 revenue ~$710M (+12.9%)" },
-        { "ko": "구조조정(프로젝트 퀀텀 리프)·자산 손상으로 큰 영업손실", "en": "Large operating loss from restructuring (Project Quantum Leap) and asset impairments" }
+        {
+          "ko": "분기 매출총이익 처음 플러스 전환 · 2025년 매출 약 7.1억 달러(+12.9%)",
+          "en": "First positive quarterly gross margin · 2025 revenue ~$710M (+12.9%)"
+        },
+        {
+          "ko": "구조조정(프로젝트 퀀텀 리프)·자산 손상으로 큰 영업손실",
+          "en": "Large operating loss from restructuring (Project Quantum Leap) and asset impairments"
+        }
       ]
     },
     {
-      "q": "2025Q3", "filed": "2025-11-10", "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465925109120/tm2530762d1_ex99-1.htm",
-      "rev": 177.1, "seg": { "equip": 96.8, "fuel": 35.9, "ppa": 24.6, "svc": 19.7 }, "op": -348.8,
-      "k": { "gm": -67.9, "cash": 165.9 },
+      "q": "2025Q3",
+      "filed": "2025-11-10",
+      "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465925109120/tm2530762d1_ex99-1.htm",
+      "rev": 177.1,
+      "seg": {
+        "equip": 96.8,
+        "fuel": 35.9,
+        "ppa": 24.6,
+        "svc": 19.7
+      },
+      "op": -348.8,
+      "k": {
+        "gm": -67.9,
+        "cash": 165.9
+      },
       "hl": [
-        { "ko": "전해조 매출 약 6,500만 달러(전 분기 대비 +46%)", "en": "Electrolyzer revenue ~$65M (+46% quarter over quarter)" },
-        { "ko": "분기 후 워런트 행사로 약 3.7억 달러 조달", "en": "Raised ~$370M from warrant exercises after quarter-end" }
+        {
+          "ko": "전해조 매출 약 6,500만 달러(전 분기 대비 +46%)",
+          "en": "Electrolyzer revenue ~$65M (+46% quarter over quarter)"
+        },
+        {
+          "ko": "분기 후 워런트 행사로 약 3.7억 달러 조달",
+          "en": "Raised ~$370M from warrant exercises after quarter-end"
+        }
       ]
     },
     {
-      "q": "2025Q2", "filed": "2025-08-11", "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465925076198/tm2523117d1_ex99-1.htm",
-      "rev": 174.0, "seg": { "equip": 99.2, "fuel": 34.4, "ppa": 23.6, "svc": 16.4 }, "op": -176.9,
-      "k": { "gm": -30.7, "cash": 140.7 }
+      "q": "2025Q2",
+      "filed": "2025-08-11",
+      "url": "https://www.sec.gov/Archives/edgar/data/1093691/000110465925076198/tm2523117d1_ex99-1.htm",
+      "rev": 174.0,
+      "seg": {
+        "equip": 99.2,
+        "fuel": 34.4,
+        "ppa": 23.6,
+        "svc": 16.4
+      },
+      "op": -176.9,
+      "k": {
+        "gm": -30.7,
+        "cash": 140.7
+      }
     }
   ]
 }

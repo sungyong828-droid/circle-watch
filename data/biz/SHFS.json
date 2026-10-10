@@ -1,17 +1,42 @@
 {
   "sym": "SHFS",
+  "name": {
+    "ko": "세이프 하버",
+    "en": "Safe Harbor"
+  },
   "cur": "USD",
-  "src": { "ko": "SEC 8-K 실적 발표문", "en": "SEC 8-K earnings release" },
+  "src": {
+    "ko": "SEC 8-K 실적 발표문",
+    "en": "SEC 8-K earnings release"
+  },
   "easy": {
     "ko": "세이프 하버(SHF 홀딩스)는 미국에서 합법 대마초·헴프 사업자에게 은행 계좌·대출 같은 금융 서비스를 연결해 주는 핀테크예요. 대마초는 미국 연방법상 아직 불법이라 큰 은행들이 거래를 꺼리는 틈을 노린 회사예요. 협력 신용조합(PCCU)의 예금 규모와 대출 수익이 핵심이고, 분기 매출이 200만 달러 안팎인 아주 작은 회사예요.",
     "en": "Safe Harbor (SHF Holdings) is a fintech that connects licensed U.S. cannabis and hemp businesses with banking and lending. Because cannabis is still illegal under federal law, big banks avoid the sector — that's the gap it fills. Deposit balances at its partner credit union (PCCU) and loan income are the key drivers; it's a very small company with about $2M of quarterly revenue."
   },
   "seg": [],
-  "profit": { "ko": "영업손실", "en": "Operating loss" },
+  "profit": {
+    "ko": "영업손실",
+    "en": "Operating loss"
+  },
   "kpi": [
-    { "k": "dep", "ko": "평균 예금 잔액", "en": "Average deposits", "f": "usdM" },
-    { "k": "loan", "ko": "대출 프로그램 수익", "en": "Loan program income", "f": "usdM" },
-    { "k": "cash", "ko": "보유 현금", "en": "Cash & equivalents", "f": "usdM" }
+    {
+      "k": "dep",
+      "ko": "평균 예금 잔액",
+      "en": "Average deposits",
+      "f": "usdM"
+    },
+    {
+      "k": "loan",
+      "ko": "대출 프로그램 수익",
+      "en": "Loan program income",
+      "f": "usdM"
+    },
+    {
+      "k": "cash",
+      "ko": "보유 현금",
+      "en": "Cash & equivalents",
+      "f": "usdM"
+    }
   ],
   "flash": [
     {
@@ -23,30 +48,85 @@
   ],
   "q": [
     {
-      "q": "2026Q2", "filed": "2026-08-10", "url": "https://www.sec.gov/Archives/edgar/data/1854963/000149315226036747/ex99-1.htm",
-      "rev": 1.93, "op": -1.03, "k": { "dep": 108.4, "loan": 0.8, "cash": 5.7 },
+      "q": "2026Q2",
+      "filed": "2026-08-10",
+      "url": "https://www.sec.gov/Archives/edgar/data/1854963/000149315226036747/ex99-1.htm",
+      "rev": 1.93,
+      "op": -1.03,
+      "k": {
+        "dep": 108.4,
+        "loan": 0.8,
+        "cash": 5.7
+      },
       "hl": [
-        { "ko": "매출 +4.8% · 대출 수익 +50.7%(2분기 연속 50% 이상)", "en": "Revenue +4.8% · loan program income +50.7% (second straight quarter above 50%)" },
-        { "ko": "평균 예금 1.08억 달러(+6.8%) — 마케팅 강화 효과", "en": "Average deposits $108.4M (+6.8%) on stronger marketing" }
+        {
+          "ko": "매출 +4.8% · 대출 수익 +50.7%(2분기 연속 50% 이상)",
+          "en": "Revenue +4.8% · loan program income +50.7% (second straight quarter above 50%)"
+        },
+        {
+          "ko": "평균 예금 1.08억 달러(+6.8%) — 마케팅 강화 효과",
+          "en": "Average deposits $108.4M (+6.8%) on stronger marketing"
+        }
       ]
     },
     {
-      "q": "2026Q1", "filed": "2026-05-18", "url": "https://www.sec.gov/Archives/edgar/data/1854963/000149315226024066/ex99-1.htm",
-      "rev": 1.98, "op": -1.76, "k": { "loan": 0.8, "cash": 5.9 },
+      "q": "2026Q1",
+      "filed": "2026-05-18",
+      "url": "https://www.sec.gov/Archives/edgar/data/1854963/000149315226024066/ex99-1.htm",
+      "rev": 1.98,
+      "op": -1.76,
+      "k": {
+        "loan": 0.8,
+        "cash": 5.9
+      },
       "hl": [
-        { "ko": "대출 수익 +55.6% · 영업비용 -4.7%", "en": "Loan program income +55.6% · operating expenses -4.7%" },
-        { "ko": "자본 -1,690만 달러(1년 전) → +670만 달러로 재무구조 정상화", "en": "Equity swung from -$16.9M a year earlier to +$6.7M" }
+        {
+          "ko": "대출 수익 +55.6% · 영업비용 -4.7%",
+          "en": "Loan program income +55.6% · operating expenses -4.7%"
+        },
+        {
+          "ko": "자본 -1,690만 달러(1년 전) → +670만 달러로 재무구조 정상화",
+          "en": "Equity swung from -$16.9M a year earlier to +$6.7M"
+        }
       ]
     },
     {
-      "q": "2025Q4", "filed": "2026-04-16", "url": "https://www.sec.gov/Archives/edgar/data/1854963/000149315226016961/ex99-1.htm",
-      "rev": 2.1, "op": -1.2, "k": { "loan": 0.9, "cash": 6.8 },
+      "q": "2025Q4",
+      "filed": "2026-04-16",
+      "url": "https://www.sec.gov/Archives/edgar/data/1854963/000149315226016961/ex99-1.htm",
+      "rev": 2.1,
+      "op": -1.2,
+      "k": {
+        "loan": 0.9,
+        "cash": 6.8
+      },
       "hl": [
-        { "ko": "부채 대부분 상환 · 협력 신용조합(PCCU) 계약 2031년까지 연장", "en": "Paid off nearly all debt · PCCU agreement extended through 2031" },
-        { "ko": "새 계약으로 대출 수익 전 분기 대비 +70%", "en": "New agreement lifted loan program income 70% quarter over quarter" }
+        {
+          "ko": "부채 대부분 상환 · 협력 신용조합(PCCU) 계약 2031년까지 연장",
+          "en": "Paid off nearly all debt · PCCU agreement extended through 2031"
+        },
+        {
+          "ko": "새 계약으로 대출 수익 전 분기 대비 +70%",
+          "en": "New agreement lifted loan program income 70% quarter over quarter"
+        }
       ]
     },
-    { "q": "2025Q3", "rev": 1.8, "op": -1.2, "k": { "loan": 0.5 } },
-    { "q": "2025Q2", "rev": 1.85, "op": -0.97, "k": { "dep": 101.5, "loan": 0.53 } }
+    {
+      "q": "2025Q3",
+      "rev": 1.8,
+      "op": -1.2,
+      "k": {
+        "loan": 0.5
+      }
+    },
+    {
+      "q": "2025Q2",
+      "rev": 1.85,
+      "op": -0.97,
+      "k": {
+        "dep": 101.5,
+        "loan": 0.53
+      }
+    }
   ]
 }

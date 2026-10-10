@@ -1,20 +1,51 @@
 {
   "sym": "PANW",
+  "name": {
+    "ko": "팔로알토 네트웍스",
+    "en": "Palo Alto Networks"
+  },
   "cur": "USD",
-  "fy": { "ko": "회계연도가 8월에 시작해요(FY26 = 2025년 8월~2026년 7월)", "en": "Fiscal year starts in August (FY26 = Aug 2025–Jul 2026)" },
-  "src": { "ko": "SEC 8-K 실적 발표문", "en": "SEC 8-K earnings release" },
+  "fy": {
+    "ko": "회계연도가 8월에 시작해요(FY26 = 2025년 8월~2026년 7월)",
+    "en": "Fiscal year starts in August (FY26 = Aug 2025–Jul 2026)"
+  },
+  "src": {
+    "ko": "SEC 8-K 실적 발표문",
+    "en": "SEC 8-K earnings release"
+  },
   "easy": {
     "ko": "팔로알토 네트웍스는 세계 최대급 사이버보안 회사예요. 예전엔 방화벽 장비(제품)를 주로 팔았지만, 지금은 클라우드·AI 보안을 구독형으로 파는 비중이 훨씬 커요(구독·지원). 그래서 '차세대 보안 연간 반복 매출(NGS ARR)'이 가장 중요한 성장 지표예요. 2026년 초 사이버아크(신원 보안)·크로노스피어를 인수해 덩치가 커졌어요.",
     "en": "Palo Alto Networks is one of the world's largest cybersecurity companies. It used to mainly sell firewall hardware (product), but now subscription-based cloud and AI security is far bigger (subscription & support). That makes Next-Generation Security ARR its key growth metric. It grew larger in early 2026 by buying CyberArk (identity security) and Chronosphere."
   },
   "seg": [
-    { "k": "sub", "ko": "구독·지원", "en": "Subscription & support" },
-    { "k": "prod", "ko": "제품(방화벽 장비 등)", "en": "Product (firewalls…)" }
+    {
+      "k": "sub",
+      "ko": "구독·지원",
+      "en": "Subscription & support"
+    },
+    {
+      "k": "prod",
+      "ko": "제품(방화벽 장비 등)",
+      "en": "Product (firewalls…)"
+    }
   ],
-  "profit": { "ko": "영업이익(GAAP)", "en": "Operating income (GAAP)" },
+  "profit": {
+    "ko": "영업이익(GAAP)",
+    "en": "Operating income (GAAP)"
+  },
   "kpi": [
-    { "k": "ngs", "ko": "차세대 보안 ARR", "en": "Next-Gen Security ARR", "f": "usdM" },
-    { "k": "rpo", "ko": "남은 계약 매출(RPO)", "en": "Remaining performance obligations", "f": "usdM" }
+    {
+      "k": "ngs",
+      "ko": "차세대 보안 ARR",
+      "en": "Next-Gen Security ARR",
+      "f": "usdM"
+    },
+    {
+      "k": "rpo",
+      "ko": "남은 계약 매출(RPO)",
+      "en": "Remaining performance obligations",
+      "f": "usdM"
+    }
   ],
   "guide": {
     "ko": "FY27 1분기 매출 33.0~33.1억 달러(+33~34%) · FY27 차세대 보안 ARR 110.75~111.75억 달러 · FY30 ARR 200억 달러 목표",
@@ -22,42 +53,133 @@
   },
   "q": [
     {
-      "q": "2026Q4", "lb": { "ko": "FY26 4분기", "en": "Q4 FY26" }, "filed": "2026-09-01", "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756726000019/ex991q426earningsrelease.htm",
-      "rev": 3410, "seg": { "sub": 2672, "prod": 738 }, "op": 172,
-      "k": { "ngs": 9100, "rpo": 21200 },
+      "q": "2026Q4",
+      "lb": {
+        "ko": "FY26 4분기",
+        "en": "Q4 FY26"
+      },
+      "filed": "2026-09-01",
+      "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756726000019/ex991q426earningsrelease.htm",
+      "rev": 3410,
+      "seg": {
+        "sub": 2672,
+        "prod": 738
+      },
+      "op": 172,
+      "k": {
+        "ngs": 9100,
+        "rpo": 21200
+      },
       "hl": [
-        { "ko": "매출 +34%(34.1억 달러) · 차세대 보안 ARR +63%(91억 달러)", "en": "Revenue +34% to $3.41B · NGS ARR +63% to $9.10B" },
-        { "ko": "인수 관련 비용으로 GAAP 순손실 2.82억 달러(조정 영업이익은 10억 달러)", "en": "GAAP net loss of $282M on acquisition costs (non-GAAP operating income $1.0B)" },
-        { "ko": "FY30 차세대 보안 ARR 200억 달러 목표 재확인", "en": "Reaffirmed $20B FY30 NGS ARR target" }
+        {
+          "ko": "매출 +34%(34.1억 달러) · 차세대 보안 ARR +63%(91억 달러)",
+          "en": "Revenue +34% to $3.41B · NGS ARR +63% to $9.10B"
+        },
+        {
+          "ko": "인수 관련 비용으로 GAAP 순손실 2.82억 달러(조정 영업이익은 10억 달러)",
+          "en": "GAAP net loss of $282M on acquisition costs (non-GAAP operating income $1.0B)"
+        },
+        {
+          "ko": "FY30 차세대 보안 ARR 200억 달러 목표 재확인",
+          "en": "Reaffirmed $20B FY30 NGS ARR target"
+        }
       ]
     },
     {
-      "q": "2026Q3", "lb": { "ko": "FY26 3분기", "en": "Q3 FY26" }, "filed": "2026-06-02", "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756726000012/ex991q326earningsrelease.htm",
-      "rev": 3002, "seg": { "sub": 2408, "prod": 594 }, "op": -183,
-      "k": { "ngs": 8100, "rpo": 18400 },
+      "q": "2026Q3",
+      "lb": {
+        "ko": "FY26 3분기",
+        "en": "Q3 FY26"
+      },
+      "filed": "2026-06-02",
+      "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756726000012/ex991q326earningsrelease.htm",
+      "rev": 3002,
+      "seg": {
+        "sub": 2408,
+        "prod": 594
+      },
+      "op": -183,
+      "k": {
+        "ngs": 8100,
+        "rpo": 18400
+      },
       "hl": [
-        { "ko": "사이버아크·크로노스피어 첫 반영: 매출 3.88억 달러 · ARR 16억 달러", "en": "First quarter with CyberArk & Chronosphere: $388M revenue · $1.6B ARR" },
-        { "ko": "인수 비용으로 GAAP 영업손실 1.83억 달러", "en": "GAAP operating loss of $183M on acquisition costs" }
+        {
+          "ko": "사이버아크·크로노스피어 첫 반영: 매출 3.88억 달러 · ARR 16억 달러",
+          "en": "First quarter with CyberArk & Chronosphere: $388M revenue · $1.6B ARR"
+        },
+        {
+          "ko": "인수 비용으로 GAAP 영업손실 1.83억 달러",
+          "en": "GAAP operating loss of $183M on acquisition costs"
+        }
       ]
     },
     {
-      "q": "2026Q2", "lb": { "ko": "FY26 2분기", "en": "Q2 FY26" }, "filed": "2026-02-17", "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756726000003/ex991q226earningsrelease.htm",
-      "rev": 2594, "seg": { "sub": 2080, "prod": 514 }, "op": 397,
-      "k": { "ngs": 6300, "rpo": 16000 },
+      "q": "2026Q2",
+      "lb": {
+        "ko": "FY26 2분기",
+        "en": "Q2 FY26"
+      },
+      "filed": "2026-02-17",
+      "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756726000003/ex991q226earningsrelease.htm",
+      "rev": 2594,
+      "seg": {
+        "sub": 2080,
+        "prod": 514
+      },
+      "op": 397,
+      "k": {
+        "ngs": 6300,
+        "rpo": 16000
+      },
       "hl": [
-        { "ko": "매출 +15% · 3분기 연속 조정 영업이익률 30% 이상", "en": "Revenue +15% · third straight quarter of 30%+ non-GAAP operating margin" },
-        { "ko": "사이버아크·크로노스피어 인수 직후 — 통합 시작", "en": "Right after the CyberArk & Chronosphere acquisitions — integration under way" }
+        {
+          "ko": "매출 +15% · 3분기 연속 조정 영업이익률 30% 이상",
+          "en": "Revenue +15% · third straight quarter of 30%+ non-GAAP operating margin"
+        },
+        {
+          "ko": "사이버아크·크로노스피어 인수 직후 — 통합 시작",
+          "en": "Right after the CyberArk & Chronosphere acquisitions — integration under way"
+        }
       ]
     },
     {
-      "q": "2026Q1", "lb": { "ko": "FY26 1분기", "en": "Q1 FY26" }, "filed": "2025-11-19", "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756725000032/ex991q126earningsrelease.htm",
-      "rev": 2474, "seg": { "sub": 2040, "prod": 434 }, "op": 309,
-      "k": { "ngs": 5900, "rpo": 15500 }
+      "q": "2026Q1",
+      "lb": {
+        "ko": "FY26 1분기",
+        "en": "Q1 FY26"
+      },
+      "filed": "2025-11-19",
+      "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756725000032/ex991q126earningsrelease.htm",
+      "rev": 2474,
+      "seg": {
+        "sub": 2040,
+        "prod": 434
+      },
+      "op": 309,
+      "k": {
+        "ngs": 5900,
+        "rpo": 15500
+      }
     },
     {
-      "q": "2025Q4", "lb": { "ko": "FY25 4분기", "en": "Q4 FY25" }, "filed": "2025-08-18", "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756725000024/ex991q425earningsrelease.htm",
-      "rev": 2536, "seg": { "sub": 1962, "prod": 574 }, "op": 497,
-      "k": { "ngs": 5600, "rpo": 15800 }
+      "q": "2025Q4",
+      "lb": {
+        "ko": "FY25 4분기",
+        "en": "Q4 FY25"
+      },
+      "filed": "2025-08-18",
+      "url": "https://www.sec.gov/Archives/edgar/data/1327567/000132756725000024/ex991q425earningsrelease.htm",
+      "rev": 2536,
+      "seg": {
+        "sub": 1962,
+        "prod": 574
+      },
+      "op": 497,
+      "k": {
+        "ngs": 5600,
+        "rpo": 15800
+      }
     }
   ]
 }

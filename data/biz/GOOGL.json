@@ -1,68 +1,211 @@
 {
   "sym": "GOOGL",
+  "name": {
+    "ko": "알파벳(구글)",
+    "en": "Alphabet (Google)"
+  },
   "cur": "USD",
-  "src": { "ko": "SEC 8-K 실적 발표문", "en": "SEC 8-K earnings release" },
+  "src": {
+    "ko": "SEC 8-K 실적 발표문",
+    "en": "SEC 8-K earnings release"
+  },
   "easy": {
     "ko": "알파벳은 구글의 모회사예요. 돈은 대부분 검색·유튜브 광고에서 벌고(구글 서비스), 기업에 서버·AI를 빌려주는 구글 클라우드가 빠르게 크고 있어요. 웨이모(자율주행 택시) 같은 신사업은 '기타 사업'으로 아직 적자예요. 요즘은 AI 데이터센터에 쓰는 설비투자 규모가 주가에 큰 영향을 줘요.",
     "en": "Alphabet is Google's parent. Most of its money comes from Search and YouTube ads (Google Services), while Google Cloud — renting servers and AI to businesses — is growing fast. New ventures like Waymo (robotaxis) sit in 'Other Bets' and still lose money. Lately, spending on AI data centers (capex) moves the stock a lot."
   },
   "seg": [
-    { "k": "svc", "ko": "구글 서비스(검색·유튜브 등)", "en": "Google Services (Search, YouTube…)" },
-    { "k": "cloud", "ko": "구글 클라우드", "en": "Google Cloud" },
-    { "k": "bets", "ko": "기타 사업(웨이모 등)", "en": "Other Bets (Waymo…)" }
+    {
+      "k": "svc",
+      "ko": "구글 서비스(검색·유튜브 등)",
+      "en": "Google Services (Search, YouTube…)"
+    },
+    {
+      "k": "cloud",
+      "ko": "구글 클라우드",
+      "en": "Google Cloud"
+    },
+    {
+      "k": "bets",
+      "ko": "기타 사업(웨이모 등)",
+      "en": "Other Bets (Waymo…)"
+    }
   ],
-  "profit": { "ko": "영업이익", "en": "Operating income" },
+  "profit": {
+    "ko": "영업이익",
+    "en": "Operating income"
+  },
   "kpi": [
-    { "k": "search", "ko": "검색 매출", "en": "Search & other revenue", "f": "usdM" },
-    { "k": "yt", "ko": "유튜브 광고 매출", "en": "YouTube ads revenue", "f": "usdM" },
-    { "k": "cloudOp", "ko": "클라우드 영업이익", "en": "Cloud operating income", "f": "usdM" },
-    { "k": "capex", "ko": "설비투자(AI 데이터센터 등)", "en": "Capex (AI data centers…)", "f": "usdM" }
+    {
+      "k": "search",
+      "ko": "검색 매출",
+      "en": "Search & other revenue",
+      "f": "usdM"
+    },
+    {
+      "k": "yt",
+      "ko": "유튜브 광고 매출",
+      "en": "YouTube ads revenue",
+      "f": "usdM"
+    },
+    {
+      "k": "cloudOp",
+      "ko": "클라우드 영업이익",
+      "en": "Cloud operating income",
+      "f": "usdM"
+    },
+    {
+      "k": "capex",
+      "ko": "설비투자(AI 데이터센터 등)",
+      "en": "Capex (AI data centers…)",
+      "f": "usdM"
+    }
   ],
   "q": [
     {
-      "q": "2026Q2", "filed": "2026-07-22", "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000066/googexhibit991q22026.htm",
-      "rev": 119796, "seg": { "svc": 94540, "cloud": 24768, "bets": 382 }, "op": 40770,
-      "k": { "search": 63271, "yt": 11055, "cloudOp": 8814, "capex": 44924 },
+      "q": "2026Q2",
+      "filed": "2026-07-22",
+      "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000066/googexhibit991q22026.htm",
+      "rev": 119796,
+      "seg": {
+        "svc": 94540,
+        "cloud": 24768,
+        "bets": 382
+      },
+      "op": 40770,
+      "k": {
+        "search": 63271,
+        "yt": 11055,
+        "cloudOp": 8814,
+        "capex": 44924
+      },
       "hl": [
-        { "ko": "구글 클라우드 매출 +82%(248억 달러) — AI 인프라 수요로 성장 가속", "en": "Google Cloud revenue +82% to $24.8B, accelerating on AI infrastructure demand" },
-        { "ko": "제미나이 앱 월 사용자 9.5억 명 · 포춘 100대 기업의 약 90%가 제미나이 엔터프라이즈 사용", "en": "Gemini App at 950M monthly users · nearly 90% of the Fortune 100 use Gemini Enterprise" },
-        { "ko": "6월 주식·전환우선주 발행으로 496억 달러 조달(AI 설비투자용)", "en": "Raised $49.6B in June via stock and mandatory convertible preferred (for AI capex)" },
-        { "ko": "보유 지분 평가이익 980억 달러로 순이익 +298%(영업과 무관한 일회성)", "en": "$98.0B unrealized gain on equity holdings lifted net income +298% (one-off, non-operating)" }
+        {
+          "ko": "구글 클라우드 매출 +82%(248억 달러) — AI 인프라 수요로 성장 가속",
+          "en": "Google Cloud revenue +82% to $24.8B, accelerating on AI infrastructure demand"
+        },
+        {
+          "ko": "제미나이 앱 월 사용자 9.5억 명 · 포춘 100대 기업의 약 90%가 제미나이 엔터프라이즈 사용",
+          "en": "Gemini App at 950M monthly users · nearly 90% of the Fortune 100 use Gemini Enterprise"
+        },
+        {
+          "ko": "6월 주식·전환우선주 발행으로 496억 달러 조달(AI 설비투자용)",
+          "en": "Raised $49.6B in June via stock and mandatory convertible preferred (for AI capex)"
+        },
+        {
+          "ko": "보유 지분 평가이익 980억 달러로 순이익 +298%(영업과 무관한 일회성)",
+          "en": "$98.0B unrealized gain on equity holdings lifted net income +298% (one-off, non-operating)"
+        }
       ]
     },
     {
-      "q": "2026Q1", "filed": "2026-04-29", "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000043/googexhibit991q12026.htm",
-      "rev": 109896, "seg": { "svc": 89637, "cloud": 20028, "bets": 411 }, "op": 39696,
-      "k": { "search": 60399, "yt": 9883, "cloudOp": 6598, "capex": 35674 },
+      "q": "2026Q1",
+      "filed": "2026-04-29",
+      "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000043/googexhibit991q12026.htm",
+      "rev": 109896,
+      "seg": {
+        "svc": 89637,
+        "cloud": 20028,
+        "bets": 411
+      },
+      "op": 39696,
+      "k": {
+        "search": 60399,
+        "yt": 9883,
+        "cloudOp": 6598,
+        "capex": 35674
+      },
       "hl": [
-        { "ko": "클라우드 매출 +63% · 수주잔고가 한 분기 만에 거의 두 배인 4,600억 달러 이상", "en": "Cloud revenue +63% · backlog nearly doubled in a quarter to over $460B" },
-        { "ko": "검색 매출 +19%, 검색량 역대 최대 · 유료 구독 3.5억 건", "en": "Search revenue +19% with record queries · 350M paid subscriptions" },
-        { "ko": "웨이모 완전 자율주행 주당 50만 회 돌파", "en": "Waymo passed 500,000 fully autonomous rides a week" }
+        {
+          "ko": "클라우드 매출 +63% · 수주잔고가 한 분기 만에 거의 두 배인 4,600억 달러 이상",
+          "en": "Cloud revenue +63% · backlog nearly doubled in a quarter to over $460B"
+        },
+        {
+          "ko": "검색 매출 +19%, 검색량 역대 최대 · 유료 구독 3.5억 건",
+          "en": "Search revenue +19% with record queries · 350M paid subscriptions"
+        },
+        {
+          "ko": "웨이모 완전 자율주행 주당 50만 회 돌파",
+          "en": "Waymo passed 500,000 fully autonomous rides a week"
+        }
       ]
     },
     {
-      "q": "2025Q4", "filed": "2026-02-04", "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000012/googexhibit991q42025.htm",
-      "rev": 113828, "seg": { "svc": 95862, "cloud": 17664, "bets": 370 }, "op": 35934,
-      "k": { "search": 63073, "yt": 11383, "cloudOp": 5313, "capex": 27851 },
+      "q": "2025Q4",
+      "filed": "2026-02-04",
+      "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000012/googexhibit991q42025.htm",
+      "rev": 113828,
+      "seg": {
+        "svc": 95862,
+        "cloud": 17664,
+        "bets": 370
+      },
+      "op": 35934,
+      "k": {
+        "search": 63073,
+        "yt": 11383,
+        "cloudOp": 5313,
+        "capex": 27851
+      },
       "hl": [
-        { "ko": "연간 매출 처음 4,000억 달러 돌파 · 제미나이 3 출시", "en": "Annual revenue topped $400B for the first time · Gemini 3 launched" },
-        { "ko": "제미나이 앱 월 사용자 7.5억 명 · 유튜브 연 매출(광고+구독) 600억 달러 돌파", "en": "Gemini App at 750M monthly users · YouTube ads + subscriptions topped $60B for the year" },
-        { "ko": "웨이모 직원 보상 관련 21억 달러 일회성 비용 반영", "en": "Included a one-time $2.1B Waymo employee compensation charge" }
+        {
+          "ko": "연간 매출 처음 4,000억 달러 돌파 · 제미나이 3 출시",
+          "en": "Annual revenue topped $400B for the first time · Gemini 3 launched"
+        },
+        {
+          "ko": "제미나이 앱 월 사용자 7.5억 명 · 유튜브 연 매출(광고+구독) 600억 달러 돌파",
+          "en": "Gemini App at 750M monthly users · YouTube ads + subscriptions topped $60B for the year"
+        },
+        {
+          "ko": "웨이모 직원 보상 관련 21억 달러 일회성 비용 반영",
+          "en": "Included a one-time $2.1B Waymo employee compensation charge"
+        }
       ]
     },
     {
-      "q": "2025Q3", "filed": "2025-10-29", "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000087/googexhibit991q32025.htm",
-      "rev": 102346, "seg": { "svc": 87052, "cloud": 15157, "bets": 344 }, "op": 31228,
-      "k": { "search": 56567, "yt": 10261, "cloudOp": 3594, "capex": 23953 },
+      "q": "2025Q3",
+      "filed": "2025-10-29",
+      "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000087/googexhibit991q32025.htm",
+      "rev": 102346,
+      "seg": {
+        "svc": 87052,
+        "cloud": 15157,
+        "bets": 344
+      },
+      "op": 31228,
+      "k": {
+        "search": 56567,
+        "yt": 10261,
+        "cloudOp": 3594,
+        "capex": 23953
+      },
       "hl": [
-        { "ko": "처음으로 분기 매출 1,000억 달러 돌파 · 클라우드 수주잔고 1,550억 달러", "en": "First-ever $100B quarter · Cloud backlog $155B" },
-        { "ko": "EU 집행위 과징금 35억 달러 반영(빼면 영업이익 +22%)", "en": "Included a $3.5B European Commission fine (operating income +22% excluding it)" }
+        {
+          "ko": "처음으로 분기 매출 1,000억 달러 돌파 · 클라우드 수주잔고 1,550억 달러",
+          "en": "First-ever $100B quarter · Cloud backlog $155B"
+        },
+        {
+          "ko": "EU 집행위 과징금 35억 달러 반영(빼면 영업이익 +22%)",
+          "en": "Included a $3.5B European Commission fine (operating income +22% excluding it)"
+        }
       ]
     },
     {
-      "q": "2025Q2", "filed": "2025-07-23", "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000056/googexhibit991q22025.htm",
-      "rev": 96428, "seg": { "svc": 82543, "cloud": 13624, "bets": 373 }, "op": 31271,
-      "k": { "search": 54190, "yt": 9796, "cloudOp": 2826, "capex": 22446 }
+      "q": "2025Q2",
+      "filed": "2025-07-23",
+      "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000056/googexhibit991q22025.htm",
+      "rev": 96428,
+      "seg": {
+        "svc": 82543,
+        "cloud": 13624,
+        "bets": 373
+      },
+      "op": 31271,
+      "k": {
+        "search": 54190,
+        "yt": 9796,
+        "cloudOp": 2826,
+        "capex": 22446
+      }
     }
   ]
 }

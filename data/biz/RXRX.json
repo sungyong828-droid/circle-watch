@@ -1,15 +1,36 @@
 {
   "sym": "RXRX",
+  "name": {
+    "ko": "리커전",
+    "en": "Recursion"
+  },
   "cur": "USD",
-  "src": { "ko": "SEC 8-K 실적 발표문", "en": "SEC 8-K earnings release" },
+  "src": {
+    "ko": "SEC 8-K 실적 발표문",
+    "en": "SEC 8-K earnings release"
+  },
   "easy": {
     "ko": "리커전은 AI와 자동화 실험실로 신약 후보를 찾는 바이오 회사예요. 아직 판매 중인 약이 없어서 매출은 로슈·제넨텍·사노피 같은 제약사와의 공동 연구 대금(마일스톤)뿐이고 매 분기 큰 적자를 내요. 그래서 '현금이 언제까지 버티는지(런웨이)'와 임상 결과가 주가를 움직여요.",
     "en": "Recursion is a biotech that hunts for drug candidates with AI and automated labs. It has no approved drugs yet, so revenue is only collaboration payments (milestones) from partners like Roche/Genentech and Sanofi, and it posts big quarterly losses. That's why its cash runway and clinical results drive the stock."
   },
-  "seg": [{ "k": "collab", "ko": "공동 연구 매출", "en": "Collaboration revenue" }],
-  "profit": { "ko": "영업손실", "en": "Operating loss" },
+  "seg": [
+    {
+      "k": "collab",
+      "ko": "공동 연구 매출",
+      "en": "Collaboration revenue"
+    }
+  ],
+  "profit": {
+    "ko": "영업손실",
+    "en": "Operating loss"
+  },
   "kpi": [
-    { "k": "cash", "ko": "보유 현금", "en": "Cash & equivalents", "f": "usdM" }
+    {
+      "k": "cash",
+      "ko": "보유 현금",
+      "en": "Cash & equivalents",
+      "f": "usdM"
+    }
   ],
   "guide": {
     "ko": "2026년 현금 영업비용 3.75억 달러 미만(하향) · 추가 자금 조달 없이 2028년 초까지 버틸 현금",
@@ -17,46 +38,113 @@
   },
   "q": [
     {
-      "q": "2026Q2", "filed": "2026-08-05", "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183026000097/exhibit991-q0226.htm",
-      "rev": 7.7, "seg": { "collab": 7.7 }, "op": -135.0,
-      "k": { "cash": 556.8 },
+      "q": "2026Q2",
+      "filed": "2026-08-05",
+      "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183026000097/exhibit991-q0226.htm",
+      "rev": 7.7,
+      "seg": {
+        "collab": 7.7
+      },
+      "op": -135.0,
+      "k": {
+        "cash": 556.8
+      },
       "hl": [
-        { "ko": "제넨텍이 신경과학 공동연구의 첫 신규 타깃을 초기 신약 개발로 채택", "en": "Genentech advanced the first neuroscience target from the collaboration into early discovery" },
-        { "ko": "REC-7735(PI3Kα 억제제) 임상 승인(IND) — 하반기 1/2상 시작", "en": "REC-7735 (PI3Kα inhibitor) IND cleared — Phase 1/2 to start in 2H26" },
-        { "ko": "REC-4881(가족성 선종성 용종증) 2상 추가 데이터 11월 학회 발표 예정", "en": "More REC-4881 (FAP) Phase 2 data to be presented at a November meeting" }
+        {
+          "ko": "제넨텍이 신경과학 공동연구의 첫 신규 타깃을 초기 신약 개발로 채택",
+          "en": "Genentech advanced the first neuroscience target from the collaboration into early discovery"
+        },
+        {
+          "ko": "REC-7735(PI3Kα 억제제) 임상 승인(IND) — 하반기 1/2상 시작",
+          "en": "REC-7735 (PI3Kα inhibitor) IND cleared — Phase 1/2 to start in 2H26"
+        },
+        {
+          "ko": "REC-4881(가족성 선종성 용종증) 2상 추가 데이터 11월 학회 발표 예정",
+          "en": "More REC-4881 (FAP) Phase 2 data to be presented at a November meeting"
+        }
       ]
     },
     {
-      "q": "2026Q1", "filed": "2026-05-06", "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183026000077/exhibit991-q0126.htm",
-      "rev": 6.5, "seg": { "collab": 6.5 }, "op": -128.5,
-      "k": { "cash": 665.2 },
+      "q": "2026Q1",
+      "filed": "2026-05-06",
+      "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183026000077/exhibit991-q0126.htm",
+      "rev": 6.5,
+      "seg": {
+        "collab": 6.5
+      },
+      "op": -128.5,
+      "k": {
+        "cash": 665.2
+      },
       "hl": [
-        { "ko": "REC-4881 2상 효능 신호로 FDA와 허가 경로 논의 시작", "en": "Strong REC-4881 Phase 2 signals; FDA talks started on a registrational path" },
-        { "ko": "REC-4539(LSD1 억제제) 1상 첫 환자 투약 · REC-1245 초기 안전성 양호", "en": "First patient dosed with REC-4539 (LSD1) · REC-1245 early safety looks clean" }
+        {
+          "ko": "REC-4881 2상 효능 신호로 FDA와 허가 경로 논의 시작",
+          "en": "Strong REC-4881 Phase 2 signals; FDA talks started on a registrational path"
+        },
+        {
+          "ko": "REC-4539(LSD1 억제제) 1상 첫 환자 투약 · REC-1245 초기 안전성 양호",
+          "en": "First patient dosed with REC-4539 (LSD1) · REC-1245 early safety looks clean"
+        }
       ]
     },
     {
-      "q": "2025Q4", "filed": "2026-02-25", "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183026000038/exhibit991-10xk25.htm",
-      "rev": 35.5, "seg": { "collab": 35.5 }, "op": -108.3,
-      "k": { "cash": 753.9 },
+      "q": "2025Q4",
+      "filed": "2026-02-25",
+      "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183026000038/exhibit991-10xk25.htm",
+      "rev": 35.5,
+      "seg": {
+        "collab": 35.5
+      },
+      "op": -108.3,
+      "k": {
+        "cash": 753.9
+      },
       "hl": [
-        { "ko": "사노피 다섯 번째 마일스톤 달성(누적 1.34억 달러)", "en": "Fifth Sanofi milestone reached ($134M received to date)" },
-        { "ko": "비용 절감 초과 달성 — 현금 버티는 기간 2028년 초로 연장", "en": "Beat cost-savings goal — runway extended into early 2028" }
+        {
+          "ko": "사노피 다섯 번째 마일스톤 달성(누적 1.34억 달러)",
+          "en": "Fifth Sanofi milestone reached ($134M received to date)"
+        },
+        {
+          "ko": "비용 절감 초과 달성 — 현금 버티는 기간 2028년 초로 연장",
+          "en": "Beat cost-savings goal — runway extended into early 2028"
+        }
       ]
     },
     {
-      "q": "2025Q3", "filed": "2025-11-05", "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183025000164/exhibit991-q0325.htm",
-      "rev": 5.2, "seg": { "collab": 5.2 }, "op": -172.2,
-      "k": { "cash": 667.1 },
+      "q": "2025Q3",
+      "filed": "2025-11-05",
+      "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183025000164/exhibit991-q0325.htm",
+      "rev": 5.2,
+      "seg": {
+        "collab": 5.2
+      },
+      "op": -172.2,
+      "k": {
+        "cash": 667.1
+      },
       "hl": [
-        { "ko": "로슈·제넨텍에서 3,000만 달러 마일스톤(미세아교세포 지도 완성)", "en": "$30M milestone from Roche/Genentech for a microglia whole-genome map" },
-        { "ko": "제휴사로부터 받은 선급금·마일스톤 누적 5억 달러 돌파", "en": "Upfront and milestone payments from partners passed $500M in total" }
+        {
+          "ko": "로슈·제넨텍에서 3,000만 달러 마일스톤(미세아교세포 지도 완성)",
+          "en": "$30M milestone from Roche/Genentech for a microglia whole-genome map"
+        },
+        {
+          "ko": "제휴사로부터 받은 선급금·마일스톤 누적 5억 달러 돌파",
+          "en": "Upfront and milestone payments from partners passed $500M in total"
+        }
       ]
     },
     {
-      "q": "2025Q2", "filed": "2025-08-05", "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183025000126/exhibit991-q0225.htm",
-      "rev": 19.2, "seg": { "collab": 19.2 }, "op": -176.2,
-      "k": { "cash": 533.8 }
+      "q": "2025Q2",
+      "filed": "2025-08-05",
+      "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183025000126/exhibit991-q0225.htm",
+      "rev": 19.2,
+      "seg": {
+        "collab": 19.2
+      },
+      "op": -176.2,
+      "k": {
+        "cash": 533.8
+      }
     }
   ]
 }

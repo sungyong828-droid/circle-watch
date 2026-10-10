@@ -1,17 +1,41 @@
 {
   "sym": "FRVO",
+  "name": {
+    "ko": "퍼보 에너지",
+    "en": "Fervo Energy"
+  },
   "cur": "USD",
-  "src": { "ko": "SEC 8-K 실적 발표문", "en": "SEC 8-K earnings release" },
+  "src": {
+    "ko": "SEC 8-K 실적 발표문",
+    "en": "SEC 8-K earnings release"
+  },
   "easy": {
     "ko": "퍼보 에너지는 셰일가스 시추 기술로 땅속 깊은 뜨거운 암반에서 열을 뽑아 24시간 전기를 만드는 '차세대 지열' 회사예요. 2026년 5월 상장했고, 첫 대형 발전소(유타주 케이프 스테이션)를 짓는 중이라 아직 매출은 거의 없고 설비투자에 큰돈을 쓰고 있어요. AI 데이터센터처럼 끊김 없는 전기가 필요한 곳의 수요가 기대 포인트예요.",
     "en": "Fervo Energy is a next-generation geothermal company: it uses shale-drilling techniques to pull heat from hot rock deep underground and make power around the clock. It listed in May 2026 and is building its first big plant (Cape Station, Utah), so revenue is still near zero while it spends heavily on construction. Demand from places that need always-on power, like AI data centers, is the key hope."
   },
   "seg": [],
-  "bar": { "k": "capex", "ko": "설비투자", "en": "Capex" },
-  "profit": { "ko": "영업손실", "en": "Operating loss" },
+  "bar": {
+    "k": "capex",
+    "ko": "설비투자",
+    "en": "Capex"
+  },
+  "profit": {
+    "ko": "영업손실",
+    "en": "Operating loss"
+  },
   "kpi": [
-    { "k": "capex", "ko": "설비투자", "en": "Capital expenditures", "f": "usdM" },
-    { "k": "cash", "ko": "보유 현금", "en": "Cash & equivalents", "f": "usdM" }
+    {
+      "k": "capex",
+      "ko": "설비투자",
+      "en": "Capital expenditures",
+      "f": "usdM"
+    },
+    {
+      "k": "cash",
+      "ko": "보유 현금",
+      "en": "Cash & equivalents",
+      "f": "usdM"
+    }
   ],
   "guide": {
     "ko": "케이프 스테이션 1단계(약 100MW) 첫 전력 2026년 4분기 · 2단계(약 400MW) 2028년 · 2030년까지 1.1GW 개발 목표 · 하반기 설비투자 8.5~9억 달러",
@@ -19,25 +43,70 @@
   },
   "q": [
     {
-      "q": "2026Q2", "filed": "2026-08-12", "url": "https://www.sec.gov/Archives/edgar/data/1853868/000162828026055942/exhibit991earningsrelease8.htm",
-      "op": -28.7, "k": { "capex": 226.5, "cash": 2106.4 },
+      "q": "2026Q2",
+      "filed": "2026-08-12",
+      "url": "https://www.sec.gov/Archives/edgar/data/1853868/000162828026055942/exhibit991earningsrelease8.htm",
+      "op": -28.7,
+      "k": {
+        "capex": 226.5,
+        "cash": 2106.4
+      },
       "hl": [
-        { "ko": "상장(IPO)으로 약 22억 달러 조달 · 현금 21억 달러", "en": "IPO raised ~$2.2B · $2.1B cash on hand" },
-        { "ko": "2030년 개발 목표 1.1GW로 100MW 상향", "en": "2030 development target raised by 100 MW to 1.1 GW" },
-        { "ko": "케이프 스테이션 1단계 1·2호기 기계적 준공, 시운전 중", "en": "Cape Station Phase I GeoBlocks 1 and 2 mechanically complete, commissioning under way" },
-        { "ko": "새 시추 기록: 깊이 약 1만 9,500피트(약 5.9km) 시추를 21일 만에", "en": "Drilling record: ~19,500 ft well drilled in 21 days" }
+        {
+          "ko": "상장(IPO)으로 약 22억 달러 조달 · 현금 21억 달러",
+          "en": "IPO raised ~$2.2B · $2.1B cash on hand"
+        },
+        {
+          "ko": "2030년 개발 목표 1.1GW로 100MW 상향",
+          "en": "2030 development target raised by 100 MW to 1.1 GW"
+        },
+        {
+          "ko": "케이프 스테이션 1단계 1·2호기 기계적 준공, 시운전 중",
+          "en": "Cape Station Phase I GeoBlocks 1 and 2 mechanically complete, commissioning under way"
+        },
+        {
+          "ko": "새 시추 기록: 깊이 약 1만 9,500피트(약 5.9km) 시추를 21일 만에",
+          "en": "Drilling record: ~19,500 ft well drilled in 21 days"
+        }
       ]
     },
     {
-      "q": "2026Q1", "filed": "2026-06-22", "url": "https://www.sec.gov/Archives/edgar/data/1853868/000162828026044474/exhibit991-earningsrelease.htm",
-      "op": -20.1, "k": { "capex": 172.8, "cash": 280.8 },
+      "q": "2026Q1",
+      "filed": "2026-06-22",
+      "url": "https://www.sec.gov/Archives/edgar/data/1853868/000162828026044474/exhibit991-earningsrelease.htm",
+      "op": -20.1,
+      "k": {
+        "capex": 172.8,
+        "cash": 280.8
+      },
       "hl": [
-        { "ko": "구글과 2033년까지 최대 3GW 지열 개발 협약", "en": "Framework agreement with Google for up to 3 GW of geothermal through 2033" },
-        { "ko": "1단계용 프로젝트 금융 4.21억 달러 확보 · 2단계(약 400MW) 착공", "en": "$421.4M project financing for Phase I · Phase II (~400 MW) construction started" },
-        { "ko": "유타 블랜퍼드 시추공 555°F — 회사 역사상 가장 뜨거운 우물", "en": "Blanford, Utah well hit 555°F — hottest in company history" }
+        {
+          "ko": "구글과 2033년까지 최대 3GW 지열 개발 협약",
+          "en": "Framework agreement with Google for up to 3 GW of geothermal through 2033"
+        },
+        {
+          "ko": "1단계용 프로젝트 금융 4.21억 달러 확보 · 2단계(약 400MW) 착공",
+          "en": "$421.4M project financing for Phase I · Phase II (~400 MW) construction started"
+        },
+        {
+          "ko": "유타 블랜퍼드 시추공 555°F — 회사 역사상 가장 뜨거운 우물",
+          "en": "Blanford, Utah well hit 555°F — hottest in company history"
+        }
       ]
     },
-    { "q": "2025Q2", "op": -10.3, "k": { "capex": 108.0 } },
-    { "q": "2025Q1", "op": -9.9, "k": { "capex": 105.4 } }
+    {
+      "q": "2025Q2",
+      "op": -10.3,
+      "k": {
+        "capex": 108.0
+      }
+    },
+    {
+      "q": "2025Q1",
+      "op": -9.9,
+      "k": {
+        "capex": 105.4
+      }
+    }
   ]
 }

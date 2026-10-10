@@ -1,22 +1,65 @@
 {
   "sym": "PLTR",
+  "name": {
+    "ko": "팔란티어",
+    "en": "Palantir"
+  },
   "cur": "USD",
-  "src": { "ko": "SEC 8-K 실적 발표문", "en": "SEC 8-K earnings release" },
+  "src": {
+    "ko": "SEC 8-K 실적 발표문",
+    "en": "SEC 8-K earnings release"
+  },
   "easy": {
     "ko": "팔란티어는 흩어진 데이터를 한곳에 모아 분석하고, 그 위에서 AI가 실제 업무를 하도록 만드는 소프트웨어(고담·파운드리·AIP)를 팔아요. 처음엔 미국 정부·국방이 큰 고객이었지만, 요즘은 AIP 덕분에 미국 기업 고객 매출이 훨씬 빠르게 늘고 있어요. 매출 성장률+이익률을 더한 '40의 법칙' 점수가 높기로 유명해요.",
     "en": "Palantir sells software (Gotham, Foundry, AIP) that pulls scattered data together and lets AI do real work on top of it. The U.S. government and defense were the first big customers, but thanks to AIP, U.S. commercial revenue is now growing much faster. It's known for a very high 'Rule of 40' score (growth rate + margin)."
   },
   "seg": [
-    { "k": "usgov", "ko": "미국 정부", "en": "U.S. government" },
-    { "k": "uscom", "ko": "미국 기업", "en": "U.S. commercial" },
-    { "k": "intl", "ko": "해외", "en": "International" }
+    {
+      "k": "usgov",
+      "ko": "미국 정부",
+      "en": "U.S. government"
+    },
+    {
+      "k": "uscom",
+      "ko": "미국 기업",
+      "en": "U.S. commercial"
+    },
+    {
+      "k": "intl",
+      "ko": "해외",
+      "en": "International"
+    }
   ],
-  "profit": { "ko": "영업이익", "en": "Operating income" },
+  "profit": {
+    "ko": "영업이익",
+    "en": "Operating income"
+  },
   "kpi": [
-    { "k": "uscom", "ko": "미국 기업 매출", "en": "U.S. commercial revenue", "f": "usdM", "seg": true },
-    { "k": "tcv", "ko": "신규 계약 총액(TCV)", "en": "Total contract value (TCV)", "f": "usdM" },
-    { "k": "r40", "ko": "40의 법칙 점수", "en": "Rule of 40 score", "f": "pctN" },
-    { "k": "fcf", "ko": "조정 잉여현금흐름", "en": "Adjusted free cash flow", "f": "usdM" }
+    {
+      "k": "uscom",
+      "ko": "미국 기업 매출",
+      "en": "U.S. commercial revenue",
+      "f": "usdM",
+      "seg": true
+    },
+    {
+      "k": "tcv",
+      "ko": "신규 계약 총액(TCV)",
+      "en": "Total contract value (TCV)",
+      "f": "usdM"
+    },
+    {
+      "k": "r40",
+      "ko": "40의 법칙 점수",
+      "en": "Rule of 40 score",
+      "f": "pctN"
+    },
+    {
+      "k": "fcf",
+      "ko": "조정 잉여현금흐름",
+      "en": "Adjusted free cash flow",
+      "f": "usdM"
+    }
   ],
   "guide": {
     "ko": "2026년 매출 전망 81.50~81.58억 달러로 상향 · 미국 기업 매출 34.2억 달러 이상(+134% 이상)",
@@ -24,46 +67,138 @@
   },
   "q": [
     {
-      "q": "2026Q2", "filed": "2026-08-03", "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000039/a2026q2ex991pressrelease.htm",
-      "rev": 1935, "seg": { "usgov": 809, "uscom": 764, "intl": 362 }, "op": 912,
-      "k": { "uscom": 764, "tcv": 3373, "r40": 155, "fcf": 1220 },
+      "q": "2026Q2",
+      "filed": "2026-08-03",
+      "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000039/a2026q2ex991pressrelease.htm",
+      "rev": 1935,
+      "seg": {
+        "usgov": 809,
+        "uscom": 764,
+        "intl": 362
+      },
+      "op": 912,
+      "k": {
+        "uscom": 764,
+        "tcv": 3373,
+        "r40": 155,
+        "fcf": 1220
+      },
       "hl": [
-        { "ko": "매출 +93%(19.35억 달러) · 미국 기업 매출 +149%", "en": "Revenue +93% to $1.935B · U.S. commercial +149%" },
-        { "ko": "미국 기업 신규 계약 21.3억 달러로 역대 최대(+153%)", "en": "Record $2.132B of U.S. commercial TCV (+153%)" },
-        { "ko": "100만 달러 이상 계약 220건 · 1,000만 달러 이상 73건", "en": "220 deals of $1M+ · 73 deals of $10M+" },
-        { "ko": "40의 법칙 155% · 연간 매출 전망 다시 상향", "en": "Rule of 40 at 155% · full-year revenue guidance raised again" }
+        {
+          "ko": "매출 +93%(19.35억 달러) · 미국 기업 매출 +149%",
+          "en": "Revenue +93% to $1.935B · U.S. commercial +149%"
+        },
+        {
+          "ko": "미국 기업 신규 계약 21.3억 달러로 역대 최대(+153%)",
+          "en": "Record $2.132B of U.S. commercial TCV (+153%)"
+        },
+        {
+          "ko": "100만 달러 이상 계약 220건 · 1,000만 달러 이상 73건",
+          "en": "220 deals of $1M+ · 73 deals of $10M+"
+        },
+        {
+          "ko": "40의 법칙 155% · 연간 매출 전망 다시 상향",
+          "en": "Rule of 40 at 155% · full-year revenue guidance raised again"
+        }
       ]
     },
     {
-      "q": "2026Q1", "filed": "2026-05-04", "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000026/a2026q1ex991pressrelease.htm",
-      "rev": 1633, "seg": { "usgov": 687, "uscom": 595, "intl": 351 }, "op": 754,
-      "k": { "uscom": 595, "tcv": 2410, "r40": 145, "fcf": 925 },
+      "q": "2026Q1",
+      "filed": "2026-05-04",
+      "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000026/a2026q1ex991pressrelease.htm",
+      "rev": 1633,
+      "seg": {
+        "usgov": 687,
+        "uscom": 595,
+        "intl": 351
+      },
+      "op": 754,
+      "k": {
+        "uscom": 595,
+        "tcv": 2410,
+        "r40": 145,
+        "fcf": 925
+      },
       "hl": [
-        { "ko": "매출 +85% · 미국 기업 +133% · 미국 정부 +84%", "en": "Revenue +85% · U.S. commercial +133% · U.S. government +84%" },
-        { "ko": "미국 기업 남은 계약 금액(RDV) 49.2억 달러(+112%)", "en": "U.S. commercial remaining deal value $4.92B (+112%)" }
+        {
+          "ko": "매출 +85% · 미국 기업 +133% · 미국 정부 +84%",
+          "en": "Revenue +85% · U.S. commercial +133% · U.S. government +84%"
+        },
+        {
+          "ko": "미국 기업 남은 계약 금액(RDV) 49.2억 달러(+112%)",
+          "en": "U.S. commercial remaining deal value $4.92B (+112%)"
+        }
       ]
     },
     {
-      "q": "2025Q4", "filed": "2026-02-02", "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000004/a2025q4ex991earningsrelease.htm",
-      "rev": 1407, "seg": { "usgov": 570, "uscom": 507, "intl": 330 }, "op": 575,
-      "k": { "uscom": 507, "tcv": 4262, "r40": 127, "fcf": 791 },
+      "q": "2025Q4",
+      "filed": "2026-02-02",
+      "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000004/a2025q4ex991earningsrelease.htm",
+      "rev": 1407,
+      "seg": {
+        "usgov": 570,
+        "uscom": 507,
+        "intl": 330
+      },
+      "op": 575,
+      "k": {
+        "uscom": 507,
+        "tcv": 4262,
+        "r40": 127,
+        "fcf": 791
+      },
       "hl": [
-        { "ko": "신규 계약 42.6억 달러로 역대 최대 · 고객 수 +34%", "en": "Record $4.262B TCV · customer count +34%" },
-        { "ko": "2025년 미국 기업 매출 +109%(14.65억 달러) · 2026년 매출 +61% 전망 첫 제시", "en": "2025 U.S. commercial revenue +109% to $1.465B · first 2026 guide of +61% revenue growth" }
+        {
+          "ko": "신규 계약 42.6억 달러로 역대 최대 · 고객 수 +34%",
+          "en": "Record $4.262B TCV · customer count +34%"
+        },
+        {
+          "ko": "2025년 미국 기업 매출 +109%(14.65억 달러) · 2026년 매출 +61% 전망 첫 제시",
+          "en": "2025 U.S. commercial revenue +109% to $1.465B · first 2026 guide of +61% revenue growth"
+        }
       ]
     },
     {
-      "q": "2025Q3", "filed": "2025-11-03", "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165525000130/a2025q3ex991earningsrelease.htm",
-      "rev": 1181, "seg": { "usgov": 486, "uscom": 397, "intl": 298 }, "op": 393,
-      "k": { "uscom": 397, "tcv": 2760, "r40": 114, "fcf": 540 },
+      "q": "2025Q3",
+      "filed": "2025-11-03",
+      "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165525000130/a2025q3ex991earningsrelease.htm",
+      "rev": 1181,
+      "seg": {
+        "usgov": 486,
+        "uscom": 397,
+        "intl": 298
+      },
+      "op": 393,
+      "k": {
+        "uscom": 397,
+        "tcv": 2760,
+        "r40": 114,
+        "fcf": 540
+      },
       "hl": [
-        { "ko": "매출 +63% · 미국 기업 +121% · 신규 계약 27.6억 달러(당시 최대)", "en": "Revenue +63% · U.S. commercial +121% · record-at-the-time $2.76B TCV" }
+        {
+          "ko": "매출 +63% · 미국 기업 +121% · 신규 계약 27.6억 달러(당시 최대)",
+          "en": "Revenue +63% · U.S. commercial +121% · record-at-the-time $2.76B TCV"
+        }
       ]
     },
     {
-      "q": "2025Q2", "filed": "2025-08-04", "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165525000105/a2025q2ex991pressrelease.htm",
-      "rev": 1004, "seg": { "usgov": 426, "uscom": 306, "intl": 272 }, "op": 269,
-      "k": { "uscom": 306, "tcv": 2270, "r40": 94, "fcf": 569 }
+      "q": "2025Q2",
+      "filed": "2025-08-04",
+      "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165525000105/a2025q2ex991pressrelease.htm",
+      "rev": 1004,
+      "seg": {
+        "usgov": 426,
+        "uscom": 306,
+        "intl": 272
+      },
+      "op": 269,
+      "k": {
+        "uscom": 306,
+        "tcv": 2270,
+        "r40": 94,
+        "fcf": 569
+      }
     }
   ]
 }

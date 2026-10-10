@@ -4813,7 +4813,7 @@
     if (!el) return;
     el.hidden = !BIZ_KEYS.has(k);
     if (el.hidden) return;
-    const B = state.biz?.[k], name = STOCK_INFO[sym]?.short || STOCK_INFO[sym]?.name || symLabel(sym);
+    const B = state.biz?.[k], name = (B?.name && tx(B.name)) || STOCK_INFO[sym]?.short || STOCK_INFO[sym]?.name || symLabel(sym);
     const title = EN ? `${esc(name)} business snapshot` : `${esc(name)} 사업 현황`;
     if (!B?.q?.length) { card('biz', { title, body: '<p class="skeleton">불러오는 중…</p>' }); return; }
     const Q = B.q, L = Q[0], pv = Q[1], ya = Q.find((x) => x.q === `${+L.q.slice(0, 4) - 1}${L.q.slice(4)}`);
@@ -5332,7 +5332,7 @@
     const kh = document.querySelector('#home-stock .group-h'); if (kh) kh.hidden = false;
     if (kr) {
       document.getElementById('c-searnday').hidden = true;
-      for (const j of [() => renderSPriceCard(sym), () => renderSPriceChart(sym), () => renderKrKpis(sym), () => renderKrDeal(sym), () => renderKrAnalyst(sym), () => renderKrEarn(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
+      for (const j of [() => renderSPriceCard(sym), () => renderSPriceChart(sym), () => renderKrKpis(sym), () => renderKrDeal(sym), () => renderKrAnalyst(sym), () => renderBiz(sym), () => renderKrEarn(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
       return;
     }
     const jobs = [() => renderSPriceCard(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
