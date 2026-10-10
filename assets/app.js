@@ -1612,7 +1612,7 @@
       sub: `${state.syncedAt ? ago(state.syncedAt) : ago(d.updatedAt)} 업데이트 기준 · 규칙 기반 자동 요약`,
       info: INFO.summary,
       body: `
-        <p class="sum-line">${tags.length ? tags.map((t, k) => `<span class="${t.tone}">${k ? '<i>·</i>' : ''}${t.tag}</span>`).join(' ') : '뚜렷한 변화 없이 보합'}</p>
+        <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('') : '뚜렷한 변화 없이 보합'}</p>
         ${sumListHtml('summary', pxLine + fireLine, items)}`,
     });
   }
@@ -5442,7 +5442,7 @@
     card('ssummary', {
       title: '현재 상황 요약', sub: `${S.name} · 규칙 기반 자동 요약`, info: INFO.summary,
       body: `
-        <p class="sum-line">${tags.length ? tags.map((t, k) => `<span class="${t.tone}">${k ? '<i>·</i>' : ''}${t.tag}</span>`).join(' ') : '뚜렷한 변화 없이 보합'}</p>
+        <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('') : '뚜렷한 변화 없이 보합'}</p>
         ${sumListHtml('ssummary', pxLine, items)}`,
     });
   }

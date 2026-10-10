@@ -1515,3 +1515,4 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .sum-list .sum-empty { padding: 14px 16px; color: var(--muted); font-size: 13px; }
 .sum-more { margin: 6px 0 0; }
 .sum-more > .sum-list { margin-top: 4px; }
+.sum-line { display: flex; flex-wrap: wrap; gap: 2px 14px; }
