@@ -2546,14 +2546,17 @@
   // ---- 배당 캘린더: 앞으로 3개월 입금 예정(발표된 배당 + 최근 1년 일정이 반복된다고 본 예상) — 지급일 기준, 세후
   function divCalendar(c) {
     const today = isoToday(), end = addDays(today, 92), out = [];
-    for (const r of c.pending) if (r.pay >= today && r.pay <= end) out.push({ sym: r.sym, ex: r.ex, pay: r.pay, est: r.est, declared: !r.est, net: r.gross * (1 - c.tax) });
+    for (const r of c.pending) if (r.pay >= today && r.pay <= end) out.push({ sym: r.sym, ex: r.ex, pay: r.pay, est: r.est, declared: c.per[r.sym]?.D?.next?.ex === r.ex, net: r.gross * (1 - c.tax) });
     for (const P of Object.values(c.per)) {
       const D = P.D; if (!D || !(P.sh > 0)) continue;
-      for (const e of D.events.filter((x) => x.ex > addDays(today, -365) && x.ex <= today)) {
+      const yr = D.events.filter((x) => x.ex > addDays(today, -365) && x.ex <= today);
+      // 매주·매달 주는 종목은 금액이 자주 바뀌어서, 작년 같은 때 금액 대신 최근 3회 평균으로 본다
+      const recentAvg = yr.length >= 10 ? yr.slice(-3).reduce((a, e) => a + e.amt, 0) / Math.min(3, yr.length) : null;
+      for (const e of yr) {
         const ex1 = addDays(e.ex, 364), pay1 = addDays(payDateOf(D, e.ex).pay, 364);
         if (pay1 < today || pay1 > end) continue;
-        if (c.pending.some((r) => r.sym === P.sym && Math.abs(daysBetween(r.ex, ex1)) < 20)) continue;
-        out.push({ sym: P.sym, ex: ex1, pay: pay1, est: true, declared: false, net: e.amt * P.sh * (1 - c.tax) });
+        if (c.pending.some((r) => r.sym === P.sym && Math.abs(daysBetween(r.ex, ex1)) < (recentAvg ? 3 : 20))) continue;
+        out.push({ sym: P.sym, ex: ex1, pay: pay1, est: true, declared: false, net: (recentAvg ?? e.amt) * P.sh * (1 - c.tax) });
       }
     }
     return out.sort((a, b) => (a.pay < b.pay ? -1 : a.pay > b.pay ? 1 : 0));
@@ -3224,7 +3227,7 @@
   }
   // 목표 월배당 → 필요한 투자금(지금 포트폴리오의 세후 배당률로 나눔)
   function simGoalHtml(S = simCalc()) {
-    const g = +simCfg.goal || 0, fx = S.fx;
+    const g = +(simCfg.goal ?? 200) || 0, fx = S.fx;
     if (!S.ready || !S.cost || !S.yearNet || !fx) return '<p class="note">계산하기를 먼저 누르면 바로 보여요.</p>';
     if (g <= 0) return '<p class="note">받고 싶은 금액을 넣어 주세요.</p>';
     const netYld = S.yearNet / S.cost, needUsd = (g * 1e4 * 12) / fx / netYld, needKrw = needUsd * fx;
