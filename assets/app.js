@@ -6110,7 +6110,7 @@
   // 순서는 functions/api/admin/stats.js 의 USE_BITS 와 같아야 한다
   function markUse(name) {
     try {
-      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr'];
+      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr', 'sns'];
       const i = BITS.indexOf(name);
       if (i < 0 || !IS_PROD) return;
       const U = (window.__fpUse ||= { day: '', sent: 0, pend: 0, t: null });
@@ -6230,6 +6230,7 @@
   sendPicks();
   document.addEventListener('click', (ev) => {
     if (ev.target.closest?.('a[href*="blog.naver.com"]')) markUse('blog');
+    if (ev.target.closest?.('a[href*="instagram.com/myfireportfolio"], a[href*="x.com/myfireportfolio"]')) markUse('sns');
     const fb = ev.target.closest?.('a.fl-fb');
     if (fb) fb.href = `feedback?from=${encodeURIComponent(state.view)}${EN ? '&lang=en' : ''}`; // 어느 화면에서 문의했는지 함께
   }, true);

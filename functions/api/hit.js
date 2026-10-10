@@ -40,7 +40,7 @@ export async function onRequestGet({ request, env }) {
   const db = env.STATS;
   try {
     if (kind === 'u') {
-      const bits = Math.max(0, Math.min(0xfffff, parseInt(url.searchParams.get('u'), 10) || 0));
+      const bits = Math.max(0, Math.min(0x3fffff, parseInt(url.searchParams.get('u'), 10) || 0));
       if (bits) await db.prepare('UPDATE visits SET used = used | ?3, last_at = ?4 WHERE day = ?1 AND vid = ?2').bind(day, vid, bits, now).run();
       return done;
     }

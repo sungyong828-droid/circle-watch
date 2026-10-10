@@ -2087,7 +2087,11 @@ window.__I18N_EN = {
 "Personalis와 MRD 협력 확대(대장암 추가)": "Expanded MRD collaboration with Personalis (adds colorectal cancer)",
 "아스트라제네카·Pathos와 종양 파운데이션 모델 협력(3년간 2억 달러)": "Oncology foundation model deal with AstraZeneca & Pathos ($200M over 3 years)",
 "Ambry Genetics(유전성 검사) 인수 완료": "Completed acquisition of Ambry Genetics (hereditary testing)",
-"xT CDx 전국 출시(ADLT 검사당 4,500달러)": "xT CDx launched nationwide (ADLT, $4,500 per test)"
+"xT CDx 전국 출시(ADLT 검사당 4,500달러)": "xT CDx launched nationwide (ADLT, $4,500 per test)",
+"매일 아침 스테이블코인 카드": "Daily stablecoin cards every morning",
+"USDC·서클 소식을 인스타그램·X로 받아보세요 · @myfireportfolio": "Get USDC & Circle updates on Instagram and X · @myfireportfolio",
+"인스타그램": "Instagram",
+"📷 인스타그램": "📷 Instagram"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
