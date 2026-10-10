@@ -1505,3 +1505,13 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .ch-btn.ig { color: #e1306c; border-color: color-mix(in srgb, #e1306c 45%, var(--line)); }
 .ch-btn:active { background: var(--surface-2); }
 @media (min-width: 720px) { #view-home .ch-card { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; } #view-home .ch-card .ch-btns { margin-top: 0; flex: 0 1 440px; } }
+
+/* 현재 상황 요약: 골라 보기 칩 + 접기 */
+.sum-count { flex-wrap: wrap; }
+.sum-count button.tone { font: inherit; font-size: 12px; font-weight: 700; padding: 6px 11px; cursor: pointer; opacity: 0.72; }
+.sum-count button.tone.all { color: var(--ink-2); background: var(--surface-2); border-color: var(--line); }
+.sum-count button.tone[aria-pressed="true"] { opacity: 1; box-shadow: inset 0 0 0 1.5px currentColor; }
+.sum-count button.tone:disabled { opacity: 0.35; cursor: default; }
+.sum-list .sum-empty { padding: 14px 16px; color: var(--muted); font-size: 13px; }
+.sum-more { margin: 6px 0 0; }
+.sum-more > .sum-list { margin-top: 4px; }

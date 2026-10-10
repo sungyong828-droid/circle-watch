@@ -11,6 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🧭 '현재 상황 요약'에서 긍정·주의·중립을 눌러 그 항목만 골라 볼 수 있어요. 목록은 앞의 4개만 펼쳐 두고 나머지는 '더 보기'로 접어 둬요.
+<!-- EN
+- Filter the summary by Positive / Watch / Neutral, with longer lists folded under "Show more".
+-->
+
 ## v2026.10.10-6 — 2026-10-10
 
 [이 버전 보기](https://842c0521.my-fire-portfolio.pages.dev) · 커밋 `0021b35`

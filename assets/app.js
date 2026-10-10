@@ -1496,6 +1496,23 @@
   }
 
   // ---------------------------------------------------------------- 현재 상황 요약 (규칙 기반)
+  // 목록 공통: 위 칩(전체·긍정·주의·중립)으로 골라 보고, 앞 4개만 펼친 뒤 나머지는 접어 둔다(고른 보기는 이번 방문 동안만 기억)
+  const SUM_FOLD = 4;
+  const sumTone = {};
+  function sumListHtml(id, fixed, items) {
+    const toneName = { pos: EN ? 'Positive' : '긍정', neg: EN ? 'Watch' : '주의', neu: EN ? 'Neutral' : '중립' };
+    const chevron = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+    const f = sumTone[id] || 'all';
+    const n = { pos: 0, neg: 0, neu: 0 };
+    for (const i of items) n[i.tone]++;
+    const list = byTone(items).filter((i) => f === 'all' || i.tone === f);
+    const row = (i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`;
+    const head = list.slice(0, SUM_FOLD), rest = list.slice(SUM_FOLD), key = `sum-${id}-${f}`;
+    const chips = [['all', EN ? 'All' : '전체', items.length], ['pos', toneName.pos, n.pos], ['neg', toneName.neg, n.neg], ['neu', toneName.neu, n.neu]];
+    return `<div class="sum-count" role="group" aria-label="${EN ? 'Filter' : '골라 보기'}">${chips.map(([k, l, c]) => `<button type="button" class="tone ${k === 'all' ? 'all' : k}" data-sumtone="${id}:${k}" aria-pressed="${f === k}"${c || k === 'all' ? '' : ' disabled'}>${l} ${c}</button>`).join('')}</div>
+        <ul class="sum-list">${f === 'all' ? fixed : ''}${head.map(row).join('')}${list.length ? '' : `<li class="sum-empty">${EN ? 'Nothing here right now.' : '지금은 해당 항목이 없어요.'}</li>`}</ul>
+        ${rest.length ? `<details class="more sum-more" data-more="${key}" ${state.openMore.has(key) ? 'open' : ''}><summary><span>${EN ? `Show ${rest.length} more` : `${rest.length}개 더 보기`}</span></summary><ul class="sum-list">${rest.map(row).join('')}</ul></details>` : ''}`;
+  }
   const TONE_ORDER = { pos: 0, neg: 1, neu: 2 };
   const byTone = (items) => items.map((it, i) => ({ it, i })).sort((a, b) => (TONE_ORDER[a.it.tone] - TONE_ORDER[b.it.tone]) || (b.it.weight - a.it.weight) || (a.i - b.i)).map((x) => x.it);
   function renderSummary() {
@@ -1596,8 +1613,7 @@
       info: INFO.summary,
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
-        <div class="sum-count"><span class="tone pos">긍정 ${nPos}</span><span class="tone neg">주의 ${nNeg}</span><span class="tone neu">중립 ${items.length - nPos - nNeg}</span></div>
-        <ul class="sum-list">${pxLine}${fireLine}${byTone(items).map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
+        ${sumListHtml('summary', pxLine + fireLine, items)}`,
     });
   }
 
@@ -5427,8 +5443,7 @@
       title: '현재 상황 요약', sub: `${S.name} · 규칙 기반 자동 요약`, info: INFO.summary,
       body: `
         <p class="sum-line">${tags.length ? tags.map((t) => `<span class="${t.tone}">${t.tag}</span>`).join('<i>·</i>') : '뚜렷한 변화 없이 보합'}</p>
-        <div class="sum-count"><span class="tone pos">긍정 ${nPos}</span><span class="tone neg">주의 ${nNeg}</span><span class="tone neu">중립 ${items.length - nPos - nNeg}</span></div>
-        <ul class="sum-list">${pxLine}${byTone(items).map((i) => `<li><button type="button" data-go="${i.go}"><span class="tone ${i.tone}">${toneName[i.tone]}</span><span class="txt">${i.html}</span>${chevron}</button></li>`).join('')}</ul>`,
+        ${sumListHtml('ssummary', pxLine, items)}`,
     });
   }
 
@@ -5945,6 +5960,8 @@
     }
     const stk = ev.target.closest('[data-stock]');
     if (stk) { setStock(stk.dataset.stock); return; }
+    const stn = ev.target.closest('[data-sumtone]');
+    if (stn) { const [id, t] = stn.dataset.sumtone.split(':'); sumTone[id] = sumTone[id] === t ? 'all' : t; if (id === 'summary') renderSummary(); else renderSSummary(); return; }
     const sr = ev.target.closest('[data-srange]');
     if (sr) { state.srange = sr.dataset.srange; savePref('jrange', state.srange); renderSPriceChart(); paintStock(); return; }
     if (ev.target.closest('[data-wedit]')) { openWatchSheet(); return; }
