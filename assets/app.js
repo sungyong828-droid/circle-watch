@@ -415,7 +415,8 @@
   };
 
   // ---------------------------------------------------------------- 포맷
-  const nf = (dp) => new Intl.NumberFormat('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  const NF = new Map();
+  const nf = (dp) => { let f = NF.get(dp); if (!f) NF.set(dp, (f = new Intl.NumberFormat('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp }))); return f; };
   function unit(v) {
     if (v == null || !isFinite(v)) return '–';
     if (v === 0) return '0';
@@ -579,7 +580,8 @@
       },
     };
   }
-  function draw(id, cfg) {
+  const pendingCharts = {};
+  function draw(id, cfg, after) {
     if (!window.Chart) return;
     if (EN) { // 캔버스 안 글자는 화면 번역기가 못 보므로 여기서 바꾼다(데이터셋 이름은 코드가 쓰므로 그대로 둔다)
       const cb = cfg.options?.plugins?.tooltip?.callbacks;
@@ -587,8 +589,23 @@
       for (const sc of Object.values(cfg.options?.scales || {})) { const f = sc?.ticks?.callback; if (f) sc.ticks.callback = (...a) => T(f(...a)); }
     }
     charts[id]?.destroy();
+    delete charts[id];
     const cv = document.getElementById('cv-' + id);
-    if (cv) charts[id] = new Chart(cv, cfg);
+    if (!cv) return;
+    if (cv.closest('.view')?.hidden) { pendingCharts[id] = { cfg, after }; return; }
+    delete pendingCharts[id];
+    charts[id] = new Chart(cv, cfg);
+    after?.(charts[id]);
+  }
+  function flushCharts() {
+    for (const [id, { cfg, after }] of Object.entries(pendingCharts)) {
+      const cv = document.getElementById('cv-' + id);
+      if (!cv) { delete pendingCharts[id]; continue; }
+      if (cv.closest('.view')?.hidden) continue;
+      delete pendingCharts[id];
+      charts[id] = new Chart(cv, cfg);
+      after?.(charts[id]);
+    }
   }
   function areaFill(color) {
     return (ctx) => {
@@ -702,13 +719,13 @@
           },
       },
     });
-    if (charts[id]) { charts[id].$V = V; charts[id].$line = line; }
+    if (charts[id]) { charts[id].$V = V; charts[id].$line = line; } else if (pendingCharts[id]) pendingCharts[id].after = (c) => { c.$V = V; c.$line = line; };
     if (ind) setHtml('ctl-' + id, maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
     const c = charts[id], V = c?.$V;
-    if (!V?.length || last == null || !isFinite(last)) return;
+    if (!V?.length || last == null || !isFinite(last) || c.canvas?.closest('.view')?.hidden) return;
     const i = V.length - 1, k = V[i];
     k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last);
     if (c.$line) { c.data.datasets[0].data[i] = last; c.update('none'); return; }
@@ -1218,7 +1235,8 @@
   };
   const px = state.px;
   const price = (v) => (v == null || !isFinite(v) ? '–' : '$' + nf(2).format(v));
-  const hm = (ms) => new Date(ms).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit', hour12: false });
+  const HM_FMT = new Intl.DateTimeFormat(LOC, { hour: '2-digit', minute: '2-digit', hour12: false });
+  const hm = (ms) => HM_FMT.format(new Date(ms));
   const mdLocal = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
@@ -2430,14 +2448,18 @@
   }
 
   // 지급일: Nasdaq에 있으면 그대로, 없으면 그 종목의 보통 간격(배당락→지급)으로 추정
+  const LAG_MEMO = new WeakMap();
   function payDateOf(D, ex) {
     if (D.pay?.[ex]) return { pay: D.pay[ex], est: false };
+    const mk = D.pay || D.events, hit = LAG_MEMO.get(mk);
+    if (hit && hit.day === isoToday()) return { pay: addDays(ex, hit.lag), est: true };
     const lags = Object.entries(D.pay || {}).map(([e, p]) => daysBetween(e, p)).filter((n) => n >= 0 && n < 60).sort((a, b) => a - b);
     // 지급일 자료가 없으면 주기·종류로 추정: 매주 배당 ETF 1일, 월배당 ETF 3일, 그 밖의 ETF 5일, 개별 주식 14일
-    const recent = D.events.filter((e) => e.ex > addDays(isoToday(), -120)).length;
+    const cut = addDays(isoToday(), -120), recent = D.events.filter((e) => e.ex > cut).length;
     const etf = /ETF|FUND/i.test(D.type || '') || /(ETF|Fund|Trust|ProShares|Direxion|YieldMax|Roundhill|Defiance|GraniteShares|iShares|SPDR|Vanguard|Invesco|Schwab|Ultra)/i.test(D.name || ''); // CRCA처럼 Yahoo가 주식으로 분류한 ETF
     const kr = krTk(D.symbol || ''), krEtf = kr && (/ETF|FUND/i.test(D.type || '') || /^(TIGER|KODEX|SOL|ACE|RISE|PLUS|HANARO|KIWOOM|TIME|KOSEF|ARIRANG|KBSTAR|WON|1Q|BNK|DAISHIN|FOCUS|TREX|UNICORN|마이티|에셋플러스)\b/i.test(D.name || ''));
     const lag = lags.length ? lags[Math.floor(lags.length / 2)] : kr ? (krEtf ? 3 : 45) : recent >= 10 ? 1 : etf ? (recent >= 3 ? 3 : 5) : 14;
+    LAG_MEMO.set(mk, { lag, day: isoToday() });
     return { pay: addDays(ex, lag), est: true };
   }
   const freqOf = (n) => (n >= 40 ? ['매주 배당', 52] : n >= 10 ? ['월배당', 12] : n >= 3 ? ['분기 배당', 4] : n === 2 ? ['반기 배당', 2] : n === 1 ? ['연 1회', 1] : ['배당 없음', 0]);
@@ -2451,8 +2473,16 @@
     const k = (divCfg?.tax ? (1 - 0.154) / (1 - divCfg.tax) : 1) / fx;
     return { ...raw, kr: true, fx, adj: k * fx, price: raw.price != null ? raw.price / fx : null, events: raw.events.map((e) => ({ ...e, amt: e.amt * k })), next: raw.next ? { ...raw.next, amt: raw.next.amt != null ? raw.next.amt * k : null } : null };
   }
+  let divMemo = { k: null, v: null };
   function divCalc() {
     if (!divCfg) return null;
+    const k = `${isoToday()}|${state.quote?.fx?.rate}|${JSON.stringify(divCfg)}|${Object.entries(state.divData).map(([s, x]) => s + ':' + x.t).join(',')}`;
+    if (divMemo.k === k) return divMemo.v;
+    const v = divCalcNow();
+    divMemo = { k, v };
+    return v;
+  }
+  function divCalcNow() {
     const today = isoToday(), yearAgo = addDays(today, -365), tax = divCfg.tax;
     const per = {}, received = [], pending = [], missing = [];
     const byT = {};
@@ -4376,7 +4406,8 @@
 
   // ---------------------------------------------------------------- 실적 발표 당일 모드
   // 발표 전날~당일(미국 날짜): 일정·시각·예상치·옵션이 보는 변동폭 / 발표 후 36시간: 실제 vs 예상·주가 반응·공시·관련 뉴스
-  const etDate = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+  const ET_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const etDate = (ms = Date.now()) => ET_FMT.format(ms);
   const etOffset = (iso) => { try { const v = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'shortOffset' }).formatToParts(new Date(iso + 'T12:00:00Z')).find((p) => p.type === 'timeZoneName').value; const m = v.match(/GMT([+-]\d+)/); return m ? `${m[1].startsWith('-') ? '-' : '+'}${String(Math.abs(+m[1])).padStart(2, '0')}:00` : '-05:00'; } catch { return '-05:00'; } };
   const earnOf = (sym) => (sym === 'CRCL' ? state.earnings : st(sym).earn);
   function earnDay(sym) {
@@ -5672,6 +5703,7 @@
     document.getElementById('view-title').textContent = viewTitle(v);
     try { history.replaceState(null, '', '#' + v); } catch {}
     savePref('view', v);
+    flushCharts();
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
     fireLoop(v === 'fire' || isOther());
     if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
