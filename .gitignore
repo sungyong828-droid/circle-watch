@@ -6,3 +6,4 @@ worker/.wrangler/
 dist/
 .dev.vars
 promo/
+.env.local
