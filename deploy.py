@@ -4,7 +4,8 @@
   python deploy.py prod   → https://my-fire-portfolio.pages.dev       (실제 사이트, 확인 질문 있음)
   python deploy.py notify-test → 디스코드 알림이 오는지 시험 메시지 한 통
 
-디스코드 알림: .env.local 의 DISCORD_WEBHOOK_URL(GitHub에 안 올라감)이 있으면 테스트 준비·실제 배포 완료·배포 실패 때 메시지를 보낸다.
+디스코드 알림: .env.local 의 DISCORD_WEBHOOK_URL(GitHub에 안 올라감)이 있으면 실제 배포 완료·배포 실패 때 메시지를 보낸다.
+테스트 배포는 고치는 중에 여러 번 올리므로 알리지 않고, 다 끝난 마지막 한 번만 `python deploy.py test --notify` 로 알린다.
 주소가 없거나 보내기에 실패해도 배포는 그대로 진행한다(주소는 화면에 찍지 않는다).
 
 - 두 곳 모두 같은 코드(dist)·같은 서버 기능(/api)을 쓰고, 데이터 출처도 같다.
@@ -168,6 +169,8 @@ def main():
     except SystemExit:
         raise
     except BaseException as e:
+        if target == 'test' and '--notify' not in sys.argv:
+            raise
         notify(f'❌ Fire Portfolio {"실제" if target == "prod" else "테스트"} 배포 실패', f'{type(e).__name__}: {str(e)[:300]}\nPC 터미널에서 내용을 확인해 주세요.', color=0xE5484D)
         raise
 
@@ -188,7 +191,8 @@ def deploy(target):
         os.makedirs(os.path.dirname(MARK), exist_ok=True)
         open(MARK, 'w', encoding='utf-8').write(ver)
         print(f'\n✅ 테스트 환경: https://test.{PROJECT}.pages.dev  (버전 {ver})')
-        notify('🧪 테스트 사이트 준비됨', f'버전 `{ver}` — 확인해 보시고 괜찮으면 "배포해줘"라고 말씀해 주세요.', f'https://test.{PROJECT}.pages.dev', 0xF2994A)
+        if '--notify' in sys.argv:
+            notify('🧪 테스트 사이트 준비됨', f'버전 `{ver}` — 확인해 보시고 괜찮으면 "배포해줘"라고 말씀해 주세요.', f'https://test.{PROJECT}.pages.dev', 0xF2994A)
         return
     rel = next_version()
     sha = ver.replace('+변경', '')

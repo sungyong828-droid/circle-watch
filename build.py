@@ -71,7 +71,7 @@ wk = os.path.join(DIST, '.well-known')
 os.makedirs(wk, exist_ok=True)
 exp = (datetime.date.today() + datetime.timedelta(days=330)).isoformat()
 with open(os.path.join(wk, 'security.txt'), 'w', encoding='utf-8') as f:
-    f.write(f'Contact: https://blog.naver.com/ky828\nExpires: {exp}T00:00:00.000Z\nPreferred-Languages: ko, en\nCanonical: {landing.SITE}.well-known/security.txt\n')
+    f.write(f'Contact: https://blog.naver.com/fireportfolio\nExpires: {exp}T00:00:00.000Z\nPreferred-Languages: ko, en\nCanonical: {landing.SITE}.well-known/security.txt\n')
 # 앱의 '새로 업데이트됐어요' 카드(CHANGELOG 다음 배포 칸 또는 최근 버전) → assets/whatsnew.js
 import json as _wjson
 wn = landing.whatsnew()

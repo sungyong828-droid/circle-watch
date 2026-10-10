@@ -133,7 +133,7 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noin
 '''
 
 
-FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="stablecoin">스테이블코인 한눈에</a><a href="daily">오늘의 스테이블코인</a><a href="dividend">배당금 계산기</a><a href="portfolio">배당 포트폴리오 계산기</a><a href="bonus">성과급 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="updates">업데이트 소식</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
+FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/fireportfolio" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="about">사이트 소개</a><a href="stablecoin">스테이블코인 한눈에</a><a href="daily">오늘의 스테이블코인</a><a href="dividend">배당금 계산기</a><a href="portfolio">배당 포트폴리오 계산기</a><a href="bonus">성과급 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="updates">업데이트 소식</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
   <p>투자 조언이 아닌 개인 모니터링 도구예요. 데이터는 공개 출처(Nasdaq·SEC·Yahoo Finance·Binance·FINRA·CBOE 등)에서 가져오며 지연·오류가 있을 수 있어요.</p>'''
 FOOT_EN = '''<nav aria-label="Pages"><a href="about" hreflang="ko">한국어</a><a href="en">About</a><a href="./?lang=en&ref=page-en#dividend">Dividend tracker</a><a href="./?lang=en&ref=page-en#quit">FIRE calculator</a><a href="feedback?lang=en">💬 Feedback</a></nav>
   <p>A personal monitoring tool, not investment advice. Data comes from public sources (Nasdaq, SEC, Yahoo Finance, Binance, FINRA, CBOE and others) and may be delayed or wrong.</p>'''
@@ -191,7 +191,7 @@ def about_page():
   <li>공유 메뉴에서 <b>홈 화면에 추가</b>를 누르면 앱처럼 바로 열려요.</li>
   <li>위쪽 종목 칩으로 종목을 바꾸고, 아래 탭으로 차트·실적·뉴스를 넘겨 봐요. 카드의 ⓘ를 누르면 지표 설명이 나와요.</li>
 </ol></section>
-<section class="lp-sec"><h2>만든 사람</h2><a class="blog-card" href="https://blog.naver.com/ky828" target="_blank" rel="noopener" referrerpolicy="origin"><span class="bc-ic" aria-hidden="true">📝</span><span class="bc-t"><b>돼용 블로그</b><small><span>미국 주식 투자 기록과 대시보드 소식을 올려요</span><span>네이버 블로그</span></small></span><span class="bc-go" aria-hidden="true">→</span></a></section>
+<section class="lp-sec"><h2>만든 사람</h2><a class="blog-card" href="https://blog.naver.com/fireportfolio" target="_blank" rel="noopener" referrerpolicy="origin"><span class="bc-ic" aria-hidden="true">📝</span><span class="bc-t"><b>돼용 블로그</b><small><span>미국 주식 투자 기록과 대시보드 소식을 올려요</span><span>네이버 블로그</span></small></span><span class="bc-go" aria-hidden="true">→</span></a></section>
 <section class="lp-sec"><h2>개인 정보</h2><p>회원가입·로그인이 없고, 보유 정보와 관심 종목은 각자 기기의 브라우저에만 저장돼요. 사이트는 방문 수를 세려고 익명 기기 ID와 유입 경로를, 인기 종목 순위를 위해 새로 추가한 티커 이름만 익명으로 기록해요(수량·금액은 보내지 않아요).</p></section>
 {faq_html([
         ('어떤 데이터를 쓰나요?', 'Nasdaq(시세·실적·기관 보유·애널리스트), SEC(공시·재무제표), Yahoo Finance(실시간 체결·차트), Binance(24시간 주식 선물), FINRA(공매도), CBOE(옵션), 서클 공식 API·DefiLlama(USDC), 뉴스 RSS를 써요.'),
