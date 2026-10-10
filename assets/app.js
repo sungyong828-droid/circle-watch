@@ -4856,7 +4856,7 @@
     card('biz', {
       title, sub, easy: esc(tx(B.easy)),
       body: `${flash}${mix}
-        <div class="ns-grid h-grid">${tiles.map(([l, v, s, c]) => `<div><span>${esc(l)}</span><b class="${c}">${v}</b><small>${s || '&nbsp;'}</small></div>`).join('')}</div>
+        <div class="ns-grid h-grid biz-n${tiles.length <= 4 ? tiles.length : tiles.length <= 6 ? 3 : 4}">${tiles.map(([l, v, s, c]) => `<div><span>${esc(l)}</span><b class="${c}">${v}</b><small>${s || '&nbsp;'}</small></div>`).join('')}</div>
         ${B.guide ? `<p class="biz-guide">🎯 <b>${EN ? 'Company outlook' : '회사 전망'}</b> ${esc(tx(B.guide))}</p>` : ''}
         ${chart}
         ${hlQ.length ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>

@@ -1458,4 +1458,5 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .biz-guide b { color: var(--ink); margin-right: 4px; }
 .biz-new { font: 700 10.5px var(--sans); font-style: normal; color: var(--accent, #f2994a); border: 1px solid currentColor; border-radius: 6px; padding: 0 5px; margin-right: 6px; vertical-align: 1px; }
 .biz-flash b { margin-right: 4px; }
-#c-biz .ns-grid > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (max-width: 719px) { #c-biz .ns-grid > div:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+@media (min-width: 720px) { #c-biz .ns-grid.biz-n1 { grid-template-columns: 1fr; } #c-biz .ns-grid.biz-n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } #c-biz .ns-grid.biz-n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

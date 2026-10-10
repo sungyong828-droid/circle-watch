@@ -52,7 +52,8 @@
       "k": "r40",
       "ko": "40의 법칙 점수",
       "en": "Rule of 40 score",
-      "f": "pctN"
+      "f": "pctN",
+      "pp": true
     },
     {
       "k": "fcf",
