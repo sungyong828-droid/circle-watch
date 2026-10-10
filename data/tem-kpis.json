@@ -1,0 +1,42 @@
+{
+  "note": "템퍼스(TEM) 분기 실적 발표(SEC 8-K, 첨부 99.1)에서 확인해 넣은 값. 금액은 백만 달러. 새 실적은 서버가 자동으로 읽고(매출·사업별 매출·조정 EBITDA·종양 검사 증가율·MRD 건수), 진척 소식은 이 파일에 손으로 더한다.",
+  "guidance": { "asOf": "2026-07-30", "revenueLow": 1595, "revenueHigh": 1605, "growth": 0.25, "adjEbitda": 65 },
+  "quarters": [
+    {
+      "q": "2026Q2", "filed": "2026-07-30", "revenue": 382.5, "diagnostics": 289.3, "dataApps": 93.2, "adjEbitda": 8.0,
+      "oncologyGrowth": 0.31, "mrdTests": 9000, "insightsGrowth": 0.36,
+      "url": "https://www.sec.gov/Archives/edgar/data/1717115/000119312526326083/tem-ex99_1.htm",
+      "highlights": ["FDA, xT Tumor Only 동반진단 승인(조직 검사가 ADLT 가격으로)", "신규 데이터·앱 계약 약 2억 달러(BioNTech·다이이찌산쿄·Incyte 등)", "아스트라제네카에 첫 종양 파운데이션 모델 전달", "Personalis(MRD) 인수 합의(7/20)"]
+    },
+    {
+      "q": "2026Q1", "filed": "2026-05-05", "revenue": 348.1, "diagnostics": 261.1, "dataApps": 87.0, "adjEbitda": -2.8,
+      "oncologyGrowth": 0.28, "mrdTests": 6500, "insightsGrowth": 0.44,
+      "url": "https://www.sec.gov/Archives/edgar/data/1717115/000119312526206317/tem-ex99_1.htm",
+      "highlights": ["머크와 다년 협력(바이오마커 발굴에 템퍼스 데이터·Lens 활용)", "길리어드와 협력 확대(회사 전체에 Lens 플랫폼·데이터)", "노스웨스턴 메디슨, 종양 환자 유전체 검사 확대"]
+    },
+    {
+      "q": "2025Q4", "filed": "2026-02-24", "revenue": 367.2, "diagnostics": 266.9, "dataApps": 100.4, "adjEbitda": 12.9,
+      "oncologyGrowth": 0.29, "mrdTests": 4700, "insightsGrowth": 0.69,
+      "url": "https://www.sec.gov/Archives/edgar/data/1717115/000119312526066931/",
+      "highlights": ["AI 디지털 병리 'Paige Predict' 출시(16개 암, 123개 바이오마커 예측)", "NYU 랭곤 헬스와 다년 협력(암 진화 추적)", "2025년 연간 매출 약 12.7억 달러(+83%)"]
+    },
+    {
+      "q": "2025Q3", "filed": "2025-11-04", "revenue": 334.2, "diagnostics": 252.9, "dataApps": 81.3, "adjEbitda": 1.5,
+      "oncologyGrowth": 0.27, "mrdTests": null, "insightsGrowth": 0.37,
+      "url": "https://www.sec.gov/Archives/edgar/data/1717115/000119312525264616/",
+      "highlights": ["디지털 병리 AI 기업 Paige 인수", "FDA 510(k) 허가: xR IVD(RNA 검사), Tempus Pixel·ECG 저박출률 AI", "Insights 신규 계약 1.5억 달러", "조정 EBITDA 흑자 전환(+150만 달러)"]
+    },
+    {
+      "q": "2025Q2", "filed": "2025-08-08", "revenue": 314.6, "diagnostics": 241.8, "dataApps": 72.8, "adjEbitda": -5.6,
+      "oncologyGrowth": 0.26, "mrdTests": null, "insightsGrowth": 0.40,
+      "url": "https://www.sec.gov/Archives/edgar/data/1717115/000095017025105441/",
+      "highlights": ["7.5억 달러 전환사채 발행(재무 여력 확대)", "Tempus xM 출시(면역항암 치료 반응 모니터링)", "Personalis와 MRD 협력 확대(대장암 추가)"]
+    },
+    {
+      "q": "2025Q1", "filed": "2025-05-06", "revenue": 255.7, "diagnostics": 193.8, "dataApps": 61.9, "adjEbitda": -16.2,
+      "oncologyGrowth": null, "mrdTests": null, "insightsGrowth": 0.58,
+      "url": "https://www.sec.gov/Archives/edgar/data/1717115/000095017025064419/",
+      "highlights": ["아스트라제네카·Pathos와 종양 파운데이션 모델 협력(3년간 2억 달러)", "Ambry Genetics(유전성 검사) 인수 완료", "xT CDx 전국 출시(ADLT 검사당 4,500달러)"]
+    }
+  ]
+}

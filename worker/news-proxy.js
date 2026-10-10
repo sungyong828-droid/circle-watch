@@ -1263,6 +1263,24 @@ export function parseFaaChart(html) {
   if (s[1][0] !== 100 || s[3][0] !== 100) return null;
   return { asOf: `${m[3]}-${pad2(mon)}-${pad2(m[2])}`, stages: s };
 }
+// 템퍼스(TEM) 분기 실적 발표문(8-K 첨부 99.1): 표의 첫 열(이번 분기)에서 매출·사업별 매출·조정 EBITDA, 본문에서 종양 검사 증가율·MRD 건수
+const QWORD = { First: 1, Second: 2, Third: 3, Fourth: 4 };
+export function parseTemRelease(html, filed = '') {
+  const t = String(html).replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/&#8217;|&rsquo;/g, "'").replace(/\s+/g, ' ');
+  const n = (re) => { const m = t.match(re); if (!m) return null; const neg = m[1] === '('; const v = +String(m[2]).replace(/,/g, ''); return isFinite(v) ? (neg ? -v : v) : null; };
+  const qm = t.match(/\b(First|Second|Third|Fourth) Quarter(?: and Full Year)? (20\d\d)\b/);
+  const out = {
+    q: qm ? `${qm[2]}Q${QWORD[qm[1]]}` : null, filed,
+    revenue: n(/Revenue \$ ?(\(?)([\d,]+)/), diagnostics: n(/(?:Diagnostics|Genomics) revenue \$ ?(\(?)([\d,]+)/), dataApps: n(/Data and (?:applications|services|Applications) revenue \$ ?(\(?)([\d,]+)/i),
+    adjEbitda: n(/Adjusted EBITDA \$ ?(\(?)([\d,]+)/),
+  };
+  for (const k of ['revenue', 'diagnostics', 'dataApps', 'adjEbitda']) if (out[k] != null) out[k] = Math.round(out[k] / 100) / 10; // 천 달러 → 백만 달러
+  const og = t.match(/Oncology volume growth (?:of |accelerating to )?~?(\d{1,3})%/); out.oncologyGrowth = og ? +og[1] / 100 : null;
+  const mrd = t.match(/MRD\)? volume was ~?([\d,]+) tests/); out.mrdTests = mrd ? +mrd[1].replace(/,/g, '') : null;
+  // 검증: 매출이 있고 사업별 합이 매출과 거의 같아야 쓴다
+  out.ok = !!(out.q && out.revenue > 0 && (out.diagnostics == null || out.dataApps == null || Math.abs(out.diagnostics + out.dataApps - out.revenue) < 2));
+  return out;
+}
 const LOCKUP_CHANGE_RE = /waive|waiver|release|amend|terminat|early/i;
 export async function checkFacts(env, force = false) {
   if (!env?.SUMS) return null;
@@ -1309,6 +1327,20 @@ export async function checkFacts(env, force = false) {
     out.spcxChecked = [...checked].slice(-300);
     delete out.spcxErr;
   } catch (e) { out.spcxErr = String(e.message || e); }
+  try {
+    const r = (await secGet('https://data.sec.gov/submissions/CIK0001717115.json')).filings.recent;
+    const i = r.form.findIndex((f, k) => f === '8-K' && /2\.02/.test(r.items[k] || ''));
+    if (i >= 0) {
+      const acc = r.accessionNumber[i].replace(/-/g, '');
+      if (cur.tem?.acc !== acc || !cur.tem?.ok) {
+        const base = `https://www.sec.gov/Archives/edgar/data/1717115/${acc}/`;
+        const names = (await secGet(base + 'index.json')).directory.item.map((x) => x.name).filter((nm) => /ex[a-z_-]{0,4}99[._-]?1/i.test(nm) && /\.htm$/i.test(nm));
+        const p = names[0] ? parseTemRelease(await secGet(base + names[0], 'text'), r.filingDate[i]) : { ok: false };
+        out.tem = { ...p, acc, filed: r.filingDate[i], url: names[0] ? base + names[0] : base };
+      }
+    }
+    delete out.temErr;
+  } catch (e) { out.temErr = String(e.message || e); }
   await env.SUMS.put('facts', JSON.stringify(out));
   return out;
 }

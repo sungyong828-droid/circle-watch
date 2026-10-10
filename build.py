@@ -22,7 +22,7 @@ os.makedirs(os.path.join(DIST, 'data'))
 for f in ['index.html', 'admin.html', '_headers', 'robots.txt']:
     shutil.copy(os.path.join(ROOT, f), os.path.join(DIST, f))
 shutil.copytree(os.path.join(ROOT, 'assets'), os.path.join(DIST, 'assets'))
-for f in ['faa-joby.json', 'spcx-facts.json']:
+for f in ['faa-joby.json', 'spcx-facts.json', 'tem-kpis.json']:
     shutil.copy(os.path.join(ROOT, 'data', f), os.path.join(DIST, 'data', f))
 
 app = os.path.join(DIST, 'assets', 'app.js')

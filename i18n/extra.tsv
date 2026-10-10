@@ -527,3 +527,20 @@ VIX가 50일 평균보다 높을수록 시장이 불안해하는 상태(공포)	
 직전 대비	vs. previous
 분배 기록 불러오는 중	Loading payouts
 분배금 기록 불러오는 중…	Loading payout history…
+템퍼스 사업 현황	Tempus business snapshot
+분기 매출	Quarterly revenue
+데이터·앱 매출	Data & apps revenue
+종양 검사 증가율	Oncology volume growth
+종양 검사 건수 증가율	Oncology test volume growth
+MRD(재발 감시) 검사	MRD (recurrence monitoring) tests
+조정 EBITDA	Adjusted EBITDA
+올해 회사 전망	Company guidance (this year)
+분기별 매출과 수익성	Quarterly revenue & profitability
+분기별 진척	Quarterly milestones
+제약사 데이터 라이선스 등	pharma data licensing, etc.
+전년 같은 분기 대비 건수	tests vs. same quarter last year
+세부 진척은 정리 중이에요	Details coming soon
+원문	Source
+막대: 진단(파랑) + 데이터·앱(주황) 매출 · 아래 숫자: 조정 EBITDA(백만 달러)	Bars: diagnostics (blue) + data & apps (orange) revenue · numbers below: adjusted EBITDA ($M)
+템퍼스는 신약을 직접 만들지 않아요. 병원에서 암 환자의 유전자 검사를 해 주고(진단), 그 과정에서 쌓인 개인 정보를 지운 의료 데이터를 제약사에 팔거나 AI 모델을 만들어 제공해요(데이터·앱). 검사가 늘수록 데이터가 쌓이고, 데이터가 쌓일수록 제약사에 팔 것이 많아지는 구조예요.	Tempus doesn't develop drugs itself. It runs genetic tests for cancer patients (diagnostics), then licenses the de-identified data to pharma companies and builds AI models (data & apps). More tests mean more data, and more data means more to sell to pharma.
+숫자는 회사가 분기마다 SEC에 내는 실적 발표문 기준이에요. 새 발표가 나오면 매출·사업별 매출·조정 EBITDA·검사 지표는 자동으로 반영되고, 진척 소식은 확인 후 더해요. 투자 조언이 아니에요.	Figures come from the quarterly earnings releases filed with the SEC. Revenue, segment revenue, adjusted EBITDA and test metrics update automatically on a new release; milestones are added after review. Not investment advice.

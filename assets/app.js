@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=22';
+    sc.src = 'assets/i18n-en.js?v=23';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -1822,6 +1822,7 @@
     async quote() { await loadQuote(); }, // 종목 카드·Fire 시세·환율
     // ---- 선택한 종목만 받는다 (sym을 먼저 잡아 두어 도중에 종목을 바꿔도 섞이지 않게)
     async faa() { state.faa = await getJ(`data/faa-joby.json?t=${Math.floor(Date.now() / 600000)}`); },
+    async temk() { state.temk = await getJ(`data/tem-kpis.json?t=${Math.floor(Date.now() / 600000)}`); },
     async sfacts() { state.spcx = await getJ(`data/spcx-facts.json?t=${Math.floor(Date.now() / 600000)}`); },
     async schart(d, L, sym = state.stock) {
       const s = sym, x = st(s);
@@ -3672,7 +3673,7 @@
   state.holdTab = loadPref('holdTab', 'top');
   const shortOf = (sym) => state.data?.short?.by?.[sym] || (sym === 'JOBY' ? state.data?.short?.joby : null) || st(sym).short || null;
   const stockParts = (sym) => (sym === 'CRCL' ? ['holders', 'analyst', 'options'] : isKR(sym) ? ['schart', 'snews', 'krinfo'] : ['schart', 'searn', 'snews', 'sfilings', 'holders', 'analyst', 'options',
-    ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : []), ...(STOCK_INFO[sym]?.custom ? ['sshort'] : []), 'etfdiv']);
+    ...(sym === 'JOBY' ? ['faa', 'facts'] : []), ...(sym === 'SPCX' ? ['sfacts', 'facts'] : []), ...(sym === 'TEM' ? ['temk', 'facts'] : []), ...(STOCK_INFO[sym]?.custom ? ['sshort'] : []), 'etfdiv']);
   const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const usdS2 = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
   const sp = (v) => (v == null || !isFinite(v) ? '–' : `<span class="${cls(v)}">${pct(v)}</span>`);
@@ -4636,6 +4637,46 @@
     });
   }
 
+  // ---------------------------------------------------------------- TEM: 템퍼스 사업 현황(분기 실적 발표 기준)
+  // 기본값은 data/tem-kpis.json(확인해 넣은 값), 서버가 새 실적 발표에서 자동으로 읽은 분기가 더 새로우면 맨 앞에 더한다
+  const temQ = (q) => `'${q.slice(2, 4)} ${q.slice(5)}분기`;
+  function temData() {
+    const M = state.temk; if (!M?.quarters?.length) return null;
+    const A = state.facts?.tem, Q = [...M.quarters];
+    if (A?.ok && A.q && !Q.some((x) => x.q === A.q) && A.q > Q[0].q) Q.unshift({ ...A, auto: true, highlights: [] });
+    const L = Q[0], ya = Q.find((x) => x.q === `${+L.q.slice(0, 4) - 1}${L.q.slice(4)}`), pv = Q[1];
+    const g = (k) => (ya?.[k] && L[k] != null ? L[k] / ya[k] - 1 : null);
+    return { M, Q, L, pv, yoy: { revenue: g('revenue'), diagnostics: g('diagnostics'), dataApps: g('dataApps') } };
+  }
+  function renderTempus() {
+    const T = temData();
+    if (!T) { card('tempus', { title: '템퍼스 사업 현황', body: '<p class="skeleton">불러오는 중…</p>' }); return; }
+    const { M, Q, L, pv, yoy } = T, G = M.guidance;
+    const dShare = L.diagnostics != null && L.revenue ? L.diagnostics / L.revenue : null;
+    const bars = [...Q].reverse(), mx = Math.max(...bars.map((x) => x.revenue || 0)) || 1;
+    const usdM = (v) => (v == null ? '–' : `$${v >= 100 ? v.toFixed(0) : v.toFixed(1)}M`);
+    card('tempus', {
+      title: '템퍼스 사업 현황', sub: `${temQ(L.q)} 실적 발표(${md(isoToTs(L.filed))}) 기준 · SEC${L.auto ? ' · 자동 반영' : ''}`,
+      easy: '템퍼스는 신약을 직접 만들지 않아요. 병원에서 암 환자의 유전자 검사를 해 주고(진단), 그 과정에서 쌓인 개인 정보를 지운 의료 데이터를 제약사에 팔거나 AI 모델을 만들어 제공해요(데이터·앱). 검사가 늘수록 데이터가 쌓이고, 데이터가 쌓일수록 제약사에 팔 것이 많아지는 구조예요.',
+      body: `<div class="tem-mix">${dShare != null ? `<div class="tem-bar"><i style="width:${(dShare * 100).toFixed(1)}%"></i><em style="width:${((1 - dShare) * 100).toFixed(1)}%"></em></div>
+          <div class="tem-leg"><span><i></i>진단(유전자 검사) ${usdM(L.diagnostics)} · ${Math.round(dShare * 100)}%</span><span><i class="d"></i>데이터·앱 ${usdM(L.dataApps)} · ${Math.round((1 - dShare) * 100)}%</span></div>` : ''}</div>
+        <div class="ns-grid h-grid">
+          <div><span>분기 매출</span><b>${usdM(L.revenue)}</b><small>${yoy.revenue != null ? `전년 대비 <span class="${cls(yoy.revenue)}">${pct(yoy.revenue, 0)}</span>` : ''}</small></div>
+          <div><span>데이터·앱 매출</span><b>${usdM(L.dataApps)}</b><small>${yoy.dataApps != null ? `전년 대비 <span class="${cls(yoy.dataApps)}">${pct(yoy.dataApps, 0)}</span>` : ''}${L.insightsGrowth != null ? ` · 데이터 라이선스 +${Math.round(L.insightsGrowth * 100)}%` : ''}</small></div>
+          <div><span>종양 검사 건수 증가율</span><b>${L.oncologyGrowth != null ? `+${Math.round(L.oncologyGrowth * 100)}%` : '–'}</b><small>${pv?.oncologyGrowth != null ? `직전 분기 +${Math.round(pv.oncologyGrowth * 100)}%` : '전년 같은 분기 대비'}</small></div>
+          <div><span>MRD(재발 감시) 검사</span><b>${L.mrdTests != null ? nf(0).format(L.mrdTests) + '건' : '–'}</b><small>${pv?.mrdTests != null ? `직전 분기 ${nf(0).format(pv.mrdTests)}건` : '분기 검사 건수'}</small></div>
+          <div><span>조정 EBITDA</span><b class="${cls(L.adjEbitda)}">${L.adjEbitda != null ? (L.adjEbitda < 0 ? '-' : '+') + usdM(Math.abs(L.adjEbitda)) : '–'}</b><small>${pv?.adjEbitda != null ? `직전 분기 ${pv.adjEbitda < 0 ? '-' : '+'}${usdM(Math.abs(pv.adjEbitda))}` : ''}</small></div>
+          <div><span>올해 회사 전망</span><b>${G ? `$${(G.revenueLow / 1000).toFixed(2)}~${(G.revenueHigh / 1000).toFixed(2)}B` : '–'}</b><small>${G ? `매출 · 조정 EBITDA 약 $${G.adjEbitda}M` : ''}</small></div>
+        </div>
+        <div class="mini-h er-h">분기별 매출과 수익성</div>
+        <div class="tem-chart">${bars.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col" title="${temQ(x.q)} 매출 ${usdM(x.revenue)}"><b>${usdM(x.revenue)}</b><div class="tem-stack"><em style="height:${h(x.dataApps)}"></em><i style="height:${h(x.diagnostics)}"></i></div><span>${temQ(x.q).replace('분기', 'Q')}</span><small class="${cls(x.adjEbitda)}">${x.adjEbitda != null ? (x.adjEbitda < 0 ? '−' : '+') + Math.abs(x.adjEbitda).toFixed(1) : '–'}</small></div>`; }).join('')}</div>
+        <p class="note">막대: 진단(파랑) + 데이터·앱(주황) 매출 · 아래 숫자: 조정 EBITDA(백만 달러)</p>
+        <div class="mini-h er-h">분기별 진척</div>
+        <ul class="faa-ms tem-ms">${Q.slice(0, 4).map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${temQ(x.q)}</b> ${x.highlights?.length ? x.highlights.map(esc).join(' · ') : '세부 진척은 정리 중이에요'} <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">원문</a></div></li>`).join('')}</ul>
+        <p class="note">숫자는 회사가 분기마다 SEC에 내는 실적 발표문 기준이에요. 새 발표가 나오면 매출·사업별 매출·조정 EBITDA·검사 지표는 자동으로 반영되고, 진척 소식은 확인 후 더해요. 투자 조언이 아니에요.</p>`,
+    });
+  }
+
   // ---------------------------------------------------------------- SPCX: 보호예수(락업) 해제 일정
   const addTradingDays = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); let k = 0; while (k < n) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) k++; } return d.toISOString().slice(0, 10); };
   // 실적 발표에 연동된 해제일은 다음 실적 발표 예정일 + 2거래일로 추정
@@ -4900,6 +4941,14 @@
         tile('현금·단기투자', last?.liquidity != null ? usd(last.liquidity) : '–', rw ? `<span class="flat">약 ${(rw.quarters / 4).toFixed(1)}년치</span>` : '', 'searn:c-searnings'),
         tile('분기 현금 소진', last?.burn != null ? usd(-last.burn) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'searn:c-searnings'),
       ];
+    } else if (sym === 'TEM' && temData()) {
+      const { L, yoy } = temData();
+      own = [
+        tile('분기 매출', usd(L.revenue * 1e6), `<span class="flat">${temQ(L.q)}</span>${yoy.revenue != null ? ` <span class="${cls(yoy.revenue)}">${pct(yoy.revenue, 0)}</span>` : ''}`, 'searn:c-tempus'),
+        tile('데이터·앱 매출', L.dataApps != null ? usd(L.dataApps * 1e6) : '–', `${yoy.dataApps != null ? `<span class="${cls(yoy.dataApps)}">${pct(yoy.dataApps, 0)}</span> ` : ''}<span class="flat">제약사 데이터 라이선스 등</span>`, 'searn:c-tempus'),
+        tile('종양 검사 증가율', L.oncologyGrowth != null ? `<span class="up">+${Math.round(L.oncologyGrowth * 100)}%</span>` : '–', `<span class="flat">전년 같은 분기 대비 건수</span>`, 'searn:c-tempus'),
+        tile('조정 EBITDA', L.adjEbitda != null ? `<span class="${cls(L.adjEbitda)}">${L.adjEbitda < 0 ? '-' : '+'}${usd(Math.abs(L.adjEbitda) * 1e6)}</span>` : '–', `<span class="flat">${L.adjEbitda > 0 ? '흑자' : '적자'} · ${temQ(L.q)}</span>`, 'searn:c-tempus'),
+      ];
     } else if (sym === 'SPCX') {
       const q = pq('SPCX'), ip = ipoPx(), nx = nextLockup(), yoy = yoyQ(Q, last);
       own = [
@@ -5074,6 +5123,7 @@
     if (!isOther(sym)) return;
     if (sym === 'JOBY') renderFaa();
     if (sym === 'SPCX') renderLockup();
+    if (sym === 'TEM') renderTempus();
     if (isEtf(sym)) { renderEtfDist(sym); return; }
     STOCK_INFO[sym].mode === 'burn' ? renderBurnEarnings(sym) : renderGrowthEarnings(sym);
   }
@@ -5083,6 +5133,7 @@
     if (!isOther(sym)) { for (const j of [() => renderHolders('CRCL', 'holders'), () => renderAnalyst('CRCL'), () => renderInsider('CRCL'), () => renderOptions('CRCL'), () => renderEarnDay('CRCL')]) { try { j(); } catch (e) { console.error(e); } } return; }
     document.getElementById('c-faa').hidden = sym !== 'JOBY';
     document.getElementById('c-lockup').hidden = sym !== 'SPCX';
+    const ct = document.getElementById('c-tempus'); if (ct) ct.hidden = sym !== 'TEM';
     const S = STOCK_INFO[sym], kr = isKR(sym);
     for (const id of ['c-sshort', 'c-sinsider', 'c-soptions', 'c-ssummary']) { const el = document.getElementById(id); if (el) el.hidden = kr; }
     for (const id of ['c-sanalyst', 'c-sholders', 'skpis']) { const el = document.getElementById(id); if (el) el.hidden = false; }
