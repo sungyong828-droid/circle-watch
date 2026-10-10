@@ -104,3 +104,7 @@ body.lp { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
 .dl-bars span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dl-bars i { height: 8px; border-radius: 4px; background: #5b9bff; }
 .dl-bars b { text-align: right; font-variant-numeric: tabular-nums; }
+/* 깔끔한 줄바꿈: 제목은 고르게, 본문은 마지막 줄 한 단어 방지 */
+.lp-hero h1, .lp-sec h2, .dl-list b { text-wrap: balance; }
+.lp-lead, .lp-note, .lp-faq p, .lp-feats span { text-wrap: pretty; }
+@media (max-width: 440px) { .dl-tbl th:nth-child(7), .dl-tbl td:nth-child(7) { display: none; } .dl-tbl th, .dl-tbl td { padding-left: 4px; padding-right: 4px; } .dl-bars li { grid-template-columns: 104px minmax(0, 1fr) 48px; } }

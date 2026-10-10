@@ -2,7 +2,7 @@
 // 숫자는 대시보드와 같은 데이터(/api/data)를 서버에서 바로 채워 넣는다 → 검색엔진도 숫자를 읽는다. 10분 캐시.
 import { SITE, esc, nf, usdKo, pctS, ppS, pctP, tone, krDay, md, fill, respond } from '../worker/ssr.js';
 
-const CHAIN_KO = { ETH: '이더리움', SOL: '솔라나', BASE: '베이스', ARB: '아비트럼', HYPEREVM: '하이퍼리퀴드(HyperEVM)', POLYGON: '폴리곤', AVAX: '아발란체', OP: '옵티미즘', TRON: '트론', NOBLE: '노블(코스모스)', SUI: '수이', APTOS: '앱토스', STELLAR: '스텔라', ALGO: '알고랜드', NEAR: '니어', ARC: 'Arc(서클)', UNICHAIN: '유니체인', WORLDCHAIN: '월드체인', LINEA: '리니아', SEI: '세이', ZKSYNC: 'zkSync', CELO: '셀로' };
+const CHAIN_KO = { ETH: '이더리움', SOL: '솔라나', BASE: '베이스', ARB: '아비트럼', HYPEREVM: '하이퍼리퀴드', POLYGON: '폴리곤', POLY: '폴리곤', MATIC: '폴리곤', BSC: 'BNB 체인', LINEA_: '리니아', INK: '잉크', PLUME: '플룸', XDC: 'XDC', HEDERA: '헤데라', ZKSYNC_: 'zkSync', AVAX: '아발란체', OP: '옵티미즘', TRON: '트론', NOBLE: '노블(코스모스)', SUI: '수이', APTOS: '앱토스', STELLAR: '스텔라', ALGO: '알고랜드', NEAR: '니어', ARC: 'Arc(서클)', UNICHAIN: '유니체인', WORLDCHAIN: '월드체인', LINEA: '리니아', SEI: '세이', ZKSYNC: 'zkSync', CELO: '셀로' };
 const FAQ = [
   ['스테이블코인이 뭔가요?', '가격이 1달러처럼 법정화폐에 고정되도록 만든 디지털 화폐예요. 발행사가 맡긴 돈만큼 현금·단기 국채 같은 준비금을 쌓아 두고, 원하면 1:1로 돌려주는 구조라 가격이 거의 움직이지 않아요. 코인 거래, 해외 송금, 결제에 많이 쓰여요.'],
   ['USDT와 USDC는 뭐가 다른가요?', 'USDT는 테더(Tether)가, USDC는 미국 상장사 서클(Circle, CRCL)이 발행해요. 둘 다 1달러를 따라가지만, USDC는 미국 규제 아래에서 준비금을 현금과 단기 미 국채로 두고 정기적으로 회계 법인 확인을 받아 공개하는 점을 강점으로 내세워요. 발행량은 USDT가 더 크고, USDC는 2위예요.'],
@@ -48,7 +48,7 @@ function page(D, dailyLatest) {
   <h1>스테이블코인 시가총액 · USDC 유통량 한눈에</h1>
   <p class="lp-lead">USDT·USDC 등 달러 스테이블코인이 지금 얼마나 발행됐는지, 누가 얼마나 차지하는지, 서클(CRCL)의 USDC는 어디서 얼마나 쓰이는지 매일 숫자로 정리해요.</p>
   <div class="dl-grid">
-    <div><span>달러 스테이블코인 전체</span><b>${usdKo(total)}</b><small><span class="${tone(tot1)}">1일 ${pctS(tot1, 2)}</span> · <span class="${tone(tot7)}">7일 ${pctS(tot7, 2)}</span></small></div>
+    <div><span>달러 스테이블코인 전체</span><b>${usdKo(total)}</b><small><span class="${tone(tot1)}">1일 ${pctS(tot1, 2)}</span><br><span class="${tone(tot7)}">7일 ${pctS(tot7, 2)}</span></small></div>
     <div><span>USDC 유통량(서클 공식)</span><b>${usdKo(usdcNow)}</b><small><span class="${tone(d7 ? usdcNow / d7 - 1 : null)}">7일 ${pctS(d7 ? usdcNow / d7 - 1 : null, 2)}</span></small></div>
     <div><span>USDT 점유율</span><b>${pctP(usdt?.share)}</b><small>${usdKo(usdt?.supply)}</small></div>
     <div><span>USDC 점유율</span><b>${pctP(usdc?.share ?? S.usdcShare)}</b><small>2위 · 서클 발행</small></div>
@@ -95,7 +95,7 @@ ${news.length ? `<section class="lp-sec"><h2>최근 스테이블코인 뉴스</h
 
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url), host = url.hostname;
-  const cache = caches.default, key = new Request(`${url.origin}/stablecoin?v=1`);
+  const cache = caches.default, key = new Request(`${url.origin}/stablecoin?v=2`);
   const hit = await cache.match(key);
   if (hit) return respond(await hit.text(), 200, host, 600);
   const r = await fetch(`${url.origin}/api/data`, { headers: { accept: 'application/json' } }).catch(() => null);
