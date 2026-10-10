@@ -120,7 +120,8 @@ def commit_notes():
     last = git('describe', '--tags', '--abbrev=0', '--match', 'v20*')
     rng = f'{last}..HEAD' if last else 'HEAD~10..HEAD'
     subs = [s for s in git('log', rng, '--format=%s').splitlines() if s and not s.startswith('Release v')]
-    return '\n'.join(f'- {s}' for s in reversed(subs)) or '- 작은 수정'
+    # 커밋 제목은 영어·개발용이라 기록에만 남기고(internal), 업데이트 소식엔 한국어 한 줄만 보인다
+    return '\n'.join(['- 🔧 화면을 다듬고 작은 문제를 고쳤어요.'] + [f'<!-- internal --> - {s}' for s in reversed(subs)])
 
 
 def record_release(ver, sha, url):

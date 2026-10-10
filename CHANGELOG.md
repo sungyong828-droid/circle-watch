@@ -11,65 +11,75 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+<!-- internal --> 10/10 하루 동안 나간 v2026.10.10-1~-5의 사용자용 정리본(앞 버전들의 공개 항목은 internal로 돌림)
+**새 기능**
+- 🏢 **종목별 사업 현황**: 많이 추가된 13개 종목(테슬라·알파벳·팔란티어·팔로알토·플러그파워·리커전·퍼보 에너지·세이프 하버, 삼성전자·SK하이닉스·현대차·기아·현대글로비스)의 실적 탭 맨 위에서 사업별 매출 비중, 회사마다 중요한 숫자, 최근 5개 분기 흐름, 분기별 주요 소식과 회사 전망을 한눈에 봐요.
+- 🌡️ **과매수·과매도 표시**: 모든 종목의 가격 차트 아래에 RSI(14일) 점수와 구간, 20일 평균선 대비, 52주 범위 중 위치를 보여줘요.
+- 📈 **1년 차트**: 가격 추이에 1년 보기가 생겼어요(서클·스페이스X·템퍼스 포함).
+- 🔍 **미국 주식 한글 검색**: '테슬라', '엔비디아', '팔란티어'처럼 한글로 찾아도 나오고, '슈드(SCHD)'·'제피(JEPI)' 같은 ETF 별명도 알아들어요.
+- 📅 **배당 캘린더**: 배당금 탭에서 앞으로 3개월 동안 언제 얼마가 들어오는지 지급일 기준으로 보여줘요(확정·예상 구분).
+- 🎯 **목표 월배당 역산**: 배당 포트폴리오 짜보기에서 "한 달에 ○○만원 받으려면 얼마가 필요할까?"를 계산해요.
+- 🏝️ **퇴사 후 생활비, 배당으로 될까?**: 한 달 생활비를 넣으면 배당이 얼마나 덮는지, 4% 법칙 기준 필요 자산을 보여줘요.
+- 🧬 **템퍼스 사업 현황** · ✈️ **조비 진척 타임라인**: 템퍼스는 사업 비중·분기 실적·진척을, 조비는 인증·비행·상업 운항 소식을 시간순으로 모았어요.
+- 🪙 **스테이블코인 한눈에**(/stablecoin) · 💵 **오늘의 스테이블코인**(/daily): 스테이블코인 시장 전체와 USDC·서클 소식을 정리한 페이지가 생겼어요.
+
+**개선**
+- 📰 뉴스 화면을 '새 소식 · 공시 요약'으로 가볍게 정리하고, 실적 보고서(10-Q·10-K 원문)는 실적 탭에서 보도록 옮겼어요.
+- 📣 홈 맨 아래 '돼용의 투자 채널'에서 네이버 블로그(새 주소)·인스타그램·X(@myfireportfolio)로 바로 갈 수 있어요.
+<!-- EN
+- 🏢 **Business snapshots** for 13 popular stocks (Tesla, Alphabet, Palantir, Samsung Electronics, SK hynix and more): revenue mix, key metrics, five quarters and highlights.
+- 🌡️ **Overbought/oversold gauge** (RSI 14) under every price chart, plus a **1-year** chart view.
+- 🔍 Search U.S. stocks by Korean name, a **dividend calendar**, a **monthly dividend goal** calculator and a **life-after-quitting** check.
+- 🪙 New pages: **Stablecoins at a glance** (/stablecoin) and the **Stablecoin Daily** archive (/daily). Follow along on Instagram and X (@myfireportfolio).
+-->
+
 ## v2026.10.10-5 — 2026-10-10
 
 [이 버전 보기](https://be945122.my-fire-portfolio.pages.dev) · 커밋 `3467641`
 
-- Instagram and X links: home card, footers, about page, sameAs; count SNS clicks
-- SNS card: handle on its own line
-- One channel card: Naver blog, Instagram, X with market/CRCL/JOBY copy
-- Channel card full width on desktop
+<!-- internal --> - Instagram and X links: home card, footers, about page, sameAs; count SNS clicks
+<!-- internal --> - SNS card: handle on its own line
+<!-- internal --> - One channel card: Naver blog, Instagram, X with market/CRCL/JOBY copy
+<!-- internal --> - Channel card full width on desktop
 
 ## v2026.10.10-4 — 2026-10-10
 
 [이 버전 보기](https://4477fa9f.my-fire-portfolio.pages.dev) · 커밋 `5208353`
 
-- 📈 가격 추이에 **1년** 보기가 생겼어요(서클·스페이스X·템퍼스도). 바이낸스 선물은 상장한 지 1년이 안 돼서 1년은 실제 주가 주봉으로 보여줘요.
-- 🌡️ 가격 차트 아래에 **과매수·과매도** 표시가 생겼어요: RSI(14일) 점수와 구간(과매도·중립·과매수), 20일 평균선보다 얼마나 위·아래인지, 52주 범위 중 위치를 한눈에 봐요.
-- 📰 뉴스 화면의 '공시 · 발표 한눈에'를 '새 소식 · 공시 요약'으로 가볍게 정리했어요. 실적 보고서는 Earnings 탭에서(실적 카드에 10-Q·10-K 원문 링크), 내부자 거래는 종목 탭에서 보도록 바로가기를 달았어요.
-- 📝 돼용 블로그 주소가 https://blog.naver.com/fireportfolio 로 바뀌어서, 홈·푸터·소개 페이지의 블로그 링크를 모두 새 주소로 바꿨어요.
-- ⚡ 새로고침이 빨라졌어요: 같은 계산을 반복하지 않고, 지금 안 보는 화면의 차트는 그 화면을 열 때 그려요(휴대폰 기준 새로고침 화면 작업 약 3분의 1로).
-<!-- EN
-- 1-year view on price charts, an RSI-based overbought/oversold gauge under each chart, a lighter news summary card, and faster refreshes.
--->
+<!-- internal --> - 📈 가격 추이에 **1년** 보기가 생겼어요(서클·스페이스X·템퍼스도). 바이낸스 선물은 상장한 지 1년이 안 돼서 1년은 실제 주가 주봉으로 보여줘요.
+<!-- internal --> - 🌡️ 가격 차트 아래에 **과매수·과매도** 표시가 생겼어요: RSI(14일) 점수와 구간(과매도·중립·과매수), 20일 평균선보다 얼마나 위·아래인지, 52주 범위 중 위치를 한눈에 봐요.
+<!-- internal --> - 📰 뉴스 화면의 '공시 · 발표 한눈에'를 '새 소식 · 공시 요약'으로 가볍게 정리했어요. 실적 보고서는 Earnings 탭에서(실적 카드에 10-Q·10-K 원문 링크), 내부자 거래는 종목 탭에서 보도록 바로가기를 달았어요.
+<!-- internal --> - 📝 돼용 블로그 주소가 https://blog.naver.com/fireportfolio 로 바뀌어서, 홈·푸터·소개 페이지의 블로그 링크를 모두 새 주소로 바꿨어요.
+<!-- internal --> - ⚡ 새로고침이 빨라졌어요: 같은 계산을 반복하지 않고, 지금 안 보는 화면의 차트는 그 화면을 열 때 그려요(휴대폰 기준 새로고침 화면 작업 약 3분의 1로).
 
 ## v2026.10.10-3 — 2026-10-10
 
 [이 버전 보기](https://831a0e7e.my-fire-portfolio.pages.dev) · 커밋 `8e27cf5`
 
-- 인기 종목 13개에 '사업 현황' 카드가 생겼어요(실적 탭 맨 위): 테슬라·알파벳·팔란티어·팔로알토·플러그파워·리커전·퍼보 에너지·세이프 하버, 삼성전자·SK하이닉스·현대차·기아·현대글로비스. 회사가 직접 낸 실적 발표문에서 확인한 사업별 매출 비중, 핵심 지표(테슬라 인도량, 팔란티어 미국 기업 매출, 삼성 반도체 영업이익 등), 최근 5개 분기 막대, 분기별 주요 소식과 회사 전망을 한 화면에 모았어요. 실적 뒤에 나온 소식(테슬라 3분기 인도량, 삼성전자 3분기 잠정 실적 등)도 '최근'으로 함께 보여줘요.
-- 미국 종목도 한글 이름으로 찾을 수 있어요: 종목 추가·포트폴리오 짜보기 검색창에 '테슬라', '엔비디아', '팔란티어'처럼 쳐도 나오고, '슈드(SCHD)'·'제피(JEPI)' 같은 ETF 별명도 알아들어요. 배당·Fire 입력칸에 '테슬라'라고 써도 TSLA로 바뀌어요.
+<!-- internal --> - 인기 종목 13개에 '사업 현황' 카드가 생겼어요(실적 탭 맨 위): 테슬라·알파벳·팔란티어·팔로알토·플러그파워·리커전·퍼보 에너지·세이프 하버, 삼성전자·SK하이닉스·현대차·기아·현대글로비스. 회사가 직접 낸 실적 발표문에서 확인한 사업별 매출 비중, 핵심 지표(테슬라 인도량, 팔란티어 미국 기업 매출, 삼성 반도체 영업이익 등), 최근 5개 분기 막대, 분기별 주요 소식과 회사 전망을 한 화면에 모았어요. 실적 뒤에 나온 소식(테슬라 3분기 인도량, 삼성전자 3분기 잠정 실적 등)도 '최근'으로 함께 보여줘요.
+<!-- internal --> - 미국 종목도 한글 이름으로 찾을 수 있어요: 종목 추가·포트폴리오 짜보기 검색창에 '테슬라', '엔비디아', '팔란티어'처럼 쳐도 나오고, '슈드(SCHD)'·'제피(JEPI)' 같은 ETF 별명도 알아들어요. 배당·Fire 입력칸에 '테슬라'라고 써도 TSLA로 바뀌어요.
 <!-- internal --> 한글 검색 = /api/lookup이 네이버 증권 자동완성(ac.stock.naver.com)에서 미국 종목만 골라 반환, 영문 회사명은 '추가' 때 티커로 다시 찾음. 별명 목록 KR_US_ALIAS.
 <!-- internal --> data/biz/<종목>.json + app.js BIZ_KEYS(build.py가 목록 일치 검사). 새 분기는 확인 후 손으로 추가.
-<!-- EN
-- Search US stocks by their Korean names too (e.g. 테슬라 → TSLA), including common ETF nicknames.
-- 13 popular stocks now have a 'business snapshot' card at the top of the Earnings tab: revenue mix by business, key metrics, five quarters of bars, quarterly highlights and company outlook — all checked against the companies' own earnings releases.
--->
 
 ## v2026.10.10-2 — 2026-10-10
 
 [이 버전 보기](https://5552188a.my-fire-portfolio.pages.dev) · 커밋 `51c72ce`
 
-- English view: translate new cards (calendar, life costs, goal calc, Joby timeline, Tempus)
-- English: shorter dividend-calendar subtitle
+<!-- internal --> - English view: translate new cards (calendar, life costs, goal calc, Joby timeline, Tempus)
+<!-- internal --> - English: shorter dividend-calendar subtitle
 
 ## v2026.10.10-1 — 2026-10-10
 
 [이 버전 보기](https://a19e7e6c.my-fire-portfolio.pages.dev) · 커밋 `ea2ff73`
 
-**새 기능**
-- 💵 **오늘의 스테이블코인 기록**(/daily): 매일 아침 USDC 유통량·점유율, 서클(CRCL) 주가·공매도, 그날의 주요 뉴스를 날짜별 페이지로 쌓아요. 인스타그램·X(@myfireportfolio)에 올리는 카드와 같은 내용이에요.
-- 🪙 **스테이블코인 한눈에**(/stablecoin): 달러 스테이블코인 전체 시가총액, USDT·USDC 점유율과 발행사 순위, USDC 1년 추이, 체인별 분포, 서클이 USDC로 돈을 버는 구조를 한 페이지에 정리했어요.
-- 🧬 **템퍼스 사업 현황**: 템퍼스(TEM) 실적 탭에 진단·데이터 사업 비중, 분기 매출과 조정 EBITDA 추이, 종양 검사 증가율·MRD 검사 건수, 분기별 진척(FDA 승인·제약사 계약 등)을 모았어요. 새 실적 발표가 나오면 자동으로 반영돼요.
-- 🎯 **목표 월배당 역산**: 배당 포트폴리오 짜보기 결과 아래에 "한 달에 ○○만원 받으려면 얼마가 필요할까?"를 지금 고른 종목·비중 그대로 계산해요.
-- 📅 **배당 캘린더**: 배당금 탭에서 앞으로 3개월 동안 언제 얼마가 들어올지 지급일 기준 달력으로 보여줘요(확정·예상 구분, 가까운 4건만 펼쳐 두고 나머지는 접어 둬요).
-- 🏝️ **퇴사 후 생활비, 배당으로 될까?**: 퇴사까지 탭에 한 달 생활비를 넣으면 배당이 생활비를 얼마나 덮는지, 4% 법칙 기준 필요 자산, 배당만으로 생활하려면 필요한 금액을 보여줘요.
-- ✈️ **조비 진척 타임라인**: 조비 실적 탭에 인증·비행·상업 운항·생산·협력 소식을 시간순으로 모았어요(회사 보도자료 자동 분류 + 주요 이정표).
-
-<!-- EN
-- 💵 **Stablecoin Daily archive** (/daily): USDC supply & share, $CRCL price & short volume and the day's news, one page per day.
-- 🪙 **Stablecoins at a glance** (/stablecoin): total supply, issuer ranking, USDC trend and chain split.
--->
+<!-- internal --> **새 기능**
+<!-- internal --> - 💵 **오늘의 스테이블코인 기록**(/daily): 매일 아침 USDC 유통량·점유율, 서클(CRCL) 주가·공매도, 그날의 주요 뉴스를 날짜별 페이지로 쌓아요. 인스타그램·X(@myfireportfolio)에 올리는 카드와 같은 내용이에요.
+<!-- internal --> - 🪙 **스테이블코인 한눈에**(/stablecoin): 달러 스테이블코인 전체 시가총액, USDT·USDC 점유율과 발행사 순위, USDC 1년 추이, 체인별 분포, 서클이 USDC로 돈을 버는 구조를 한 페이지에 정리했어요.
+<!-- internal --> - 🧬 **템퍼스 사업 현황**: 템퍼스(TEM) 실적 탭에 진단·데이터 사업 비중, 분기 매출과 조정 EBITDA 추이, 종양 검사 증가율·MRD 검사 건수, 분기별 진척(FDA 승인·제약사 계약 등)을 모았어요. 새 실적 발표가 나오면 자동으로 반영돼요.
+<!-- internal --> - 🎯 **목표 월배당 역산**: 배당 포트폴리오 짜보기 결과 아래에 "한 달에 ○○만원 받으려면 얼마가 필요할까?"를 지금 고른 종목·비중 그대로 계산해요.
+<!-- internal --> - 📅 **배당 캘린더**: 배당금 탭에서 앞으로 3개월 동안 언제 얼마가 들어올지 지급일 기준 달력으로 보여줘요(확정·예상 구분, 가까운 4건만 펼쳐 두고 나머지는 접어 둬요).
+<!-- internal --> - 🏝️ **퇴사 후 생활비, 배당으로 될까?**: 퇴사까지 탭에 한 달 생활비를 넣으면 배당이 생활비를 얼마나 덮는지, 4% 법칙 기준 필요 자산, 배당만으로 생활하려면 필요한 금액을 보여줘요.
+<!-- internal --> - ✈️ **조비 진척 타임라인**: 조비 실적 탭에 인증·비행·상업 운항·생산·협력 소식을 시간순으로 모았어요(회사 보도자료 자동 분류 + 주요 이정표).
 
 ## v2026.10.09-5 — 2026-10-09
 
