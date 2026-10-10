@@ -1462,7 +1462,7 @@
     const live = sym === 'CRCL' ? px.t?.last : pq(sym)?.price;
     // 오늘 캔들이 있으면 마지막 종가를 실시간 가격으로(장중 상태 반영)
     if (live && pts.length && etDate(pts.at(-1)[0]) === etDate()) closes[closes.length - 1] = live;
-    const rsi = rsiOf(closes);
+    const rsiRaw = rsiOf(closes), rsi = rsiRaw == null ? null : Math.round(rsiRaw); // 보이는 숫자와 구간 판정을 맞춘다
     if (rsi == null) return `<p class="note">${EN ? 'Not enough price history yet for RSI (needs 15 trading days).' : '상장한 지 얼마 안 돼 RSI를 계산할 거래일이 아직 부족해요(15일 필요).'}</p>`;
     const last = closes.at(-1), m20 = closes.length >= 20 ? closes.slice(-20).reduce((a, b) => a + b, 0) / 20 : null;
     const yr = pts.filter((p) => p[0] >= pts.at(-1)[0] - 365 * 86400000);
@@ -5635,10 +5635,14 @@
   }
   // 지금 안 보는 종목도 뒤에서 받아 둔다 → 종목을 바꾸면 바로 보임(10분마다)
   let lastPrefetch = 0;
+  const prefetchParts = (sym) => (isKR(sym) ? ['schart', 'snews', 'krinfo'] : ['schart', 'searn', 'snews']);
   async function prefetchStocks() {
     if (Date.now() - lastPrefetch < 10 * 60000 || document.hidden) return;
     lastPrefetch = Date.now();
-    await Promise.all(WATCH.filter((sym) => sym !== state.stock).map((sym) => syncNow(stockParts(sym), { sym, quiet: true }).catch(() => {})));
+    // 다른 종목은 종목 칩·키워드 속보에 필요한 것(가격·실적 일정·뉴스)만 미리 받고, 나머지는 그 종목을 열 때 받는다.
+    // 한꺼번에 몰아 보내지 않게 3종목씩 나눠서(서버의 IP당 요청 제한 · 무료 한도 보호)
+    const L = WATCH.filter((sym) => sym !== state.stock && sym !== 'CRCL');
+    for (let i = 0; i < L.length; i += 3) await Promise.all(L.slice(i, i + 3).map((sym) => syncNow(prefetchParts(sym), { sym, quiet: true }).catch(() => {})));
   }
   // 화면 맨 위 얇은 진행 막대: 처음 불러올 때·종목을 바꿀 때
   let busyCount = 0;

@@ -3,7 +3,7 @@
 // 2) 한 IP가 짧은 시간에 몰아서 호출하면 잠시 막는다(무료 한도 소진 방지 — 실행 인스턴스별 간이 제한).
 // 3) 응답에 보안 헤더를 붙인다.
 const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 90; // 정상 사용(종목 전환·새로고침 포함)보다 넉넉한 값
+const MAX_PER_WINDOW = 180; // 정상 사용(관심 종목 많을 때 새로고침·종목 전환 포함)보다 넉넉한 값
 const hits = new Map();
 
 function tooMany(ip) {
@@ -29,7 +29,7 @@ export async function onRequest({ request, next, waitUntil }) {
     return new Response('forbidden', { status: 403 });
   }
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  // 1) 실행 인스턴스 안의 간이 제한(빠름) 2) 같은 데이터센터 전체 캐시 카운터(분당 200회) — 자동화된 대량 호출 차단
+  // 1) 실행 인스턴스 안의 간이 제한(빠름) 2) 같은 데이터센터 전체 캐시 카운터(분당 300회) — 자동화된 대량 호출 차단
   if (tooMany(ip) || await tooManyShared(ip, waitUntil)) {
     return new Response(JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }), {
       status: 429, headers: { 'content-type': 'application/json; charset=utf-8', 'retry-after': '60' },
@@ -47,7 +47,7 @@ export async function onRequest({ request, next, waitUntil }) {
   return out;
 }
 
-const SHARED_PER_MIN = 200;
+const SHARED_PER_MIN = 300;
 async function tooManyShared(ip, waitUntil) {
   try {
     const key = new Request(`https://ratelimit.internal/${encodeURIComponent(ip)}/${Math.floor(Date.now() / 60000)}`);
