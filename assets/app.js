@@ -55,7 +55,7 @@
     document.documentElement.classList.add('i18n-wait');
     setTimeout(() => document.documentElement.classList.remove('i18n-wait'), 1500);
     const sc = document.createElement('script');
-    sc.src = 'assets/i18n-en.js?v=25';
+    sc.src = 'assets/i18n-en.js?v=26';
     document.head.appendChild(sc);
     document.title = "Fire Portfolio · US stock dashboard for financial independence (FIRE) — Circle, Joby, SpaceX, Tempus";
   }
@@ -2239,12 +2239,12 @@
     const netYld = d && d.value ? d.annualNet / d.value : null, needDiv = netYld ? yearNeed / netYld : null;
     const have = c?.basis ?? null;
     return `<div class="ns-grid h-grid">
-        <div><span>배당이 생활비를 덮는 비율</span><b class="${cover >= 1 ? 'up' : ''}">${cover != null ? pctPlain(Math.min(cover, 9.99), 0) : '–'}</b><small>${divMonthKrw != null ? `월 배당 ${manwon(divMonthKrw)} / 생활비 ${manwon(m * 1e4)}` : '배당금 탭에 종목을 넣으면 계산돼요'}</small></div>
-        <div><span>4% 법칙 기준 필요 자산</span><b>${manwon(rule4)}</b><small>${have != null ? `지금 평가액의 ${(rule4 / have).toFixed(1)}배 · 목표 ${manwon(fireCfg?.goal || 0)}` : '연 생활비 × 25'}</small></div>
-        <div><span>배당만으로 생활하려면</span><b>${needDiv ? manwon(needDiv) : '–'}</b><small>${netYld ? `지금 배당 종목의 세후 배당률 ${pctPlain(netYld, 2)} 기준` : '배당 종목을 넣으면 계산돼요'}</small></div>
+        <div><span>배당이 생활비를 덮는 비율</span><b class="${cover >= 1 ? 'up' : ''}">${cover != null ? pctPlain(Math.min(cover, 9.99), 0) : '–'}</b><small>${divMonthKrw != null ? (EN ? `Dividends ${manwon(divMonthKrw)}/mo vs living costs ${manwon(m * 1e4)}` : `월 배당 ${manwon(divMonthKrw)} / 생활비 ${manwon(m * 1e4)}`) : '배당금 탭에 종목을 넣으면 계산돼요'}</small></div>
+        <div><span>4% 법칙 기준 필요 자산</span><b>${manwon(rule4)}</b><small>${have != null ? (EN ? `${(rule4 / have).toFixed(1)}x your current value · goal ${manwon(fireCfg?.goal || 0)}` : `지금 평가액의 ${(rule4 / have).toFixed(1)}배 · 목표 ${manwon(fireCfg?.goal || 0)}`) : '연 생활비 × 25'}</small></div>
+        <div><span>배당만으로 생활하려면</span><b>${needDiv ? manwon(needDiv) : '–'}</b><small>${netYld ? (EN ? `at your holdings' after-tax yield of ${pctPlain(netYld, 2)}` : `지금 배당 종목의 세후 배당률 ${pctPlain(netYld, 2)} 기준`) : '배당 종목을 넣으면 계산돼요'}</small></div>
         <div><span>목표 금액으로 버틸 수 있는 생활비</span><b>${fireCfg?.goal ? manwon((fireCfg.goal * 0.04) / 12) : '–'}</b><small>목표의 4%를 매년 쓴다고 보면 · 월 기준</small></div>
       </div>
-      <div class="life-acts"><button type="button" class="btn-ghost sm" data-ftabgo="div">💰 배당금 탭 열기</button><button type="button" class="btn-ghost sm" data-lifesim="${Math.round(m)}">🎯 월 ${m >= 1 ? nf(0).format(m) + '만원' : ''} 배당 포트폴리오 짜보기</button></div>
+      <div class="life-acts"><button type="button" class="btn-ghost sm" data-ftabgo="div">💰 배당금 탭 열기</button><button type="button" class="btn-ghost sm" data-lifesim="${Math.round(m)}">${EN ? `🎯 Build a ${manwon(m * 1e4)}/mo dividend portfolio` : `🎯 월 ${m >= 1 ? nf(0).format(m) + '만원' : ''} 배당 포트폴리오 짜보기`}</button></div>
       <p class="note">4% 법칙: 모은 돈의 4%씩 매년 꺼내 쓰면 오래 버틸 수 있다는 미국 연구에서 나온 어림 기준이에요(물가·세금·수익률에 따라 달라요). 배당 비율은 최근 1년 배당이 이어진다고 본 값이에요.</p>`;
   }
   function renderFireLife() {
@@ -2571,15 +2571,16 @@
     for (const x of L) { const m = x.pay.slice(0, 7); (mTot[m] ||= { n: 0, v: 0 }); mTot[m].n++; mTot[m].v += x.net; }
     const total = L.reduce((a, x) => a + x.net, 0);
     // 월별로 묶어 그린다(앞의 몇 건만 바로 보이고 나머지는 접어 둔다)
-    const groups = (xs, cont) => { const by = {}; for (const x of xs) (by[x.pay.slice(0, 7)] ||= []).push(x); return Object.entries(by).map(([m, ys], i) => `<div class="dc-month"><div class="dc-mh"><b>${+m.slice(5)}월${cont && i === 0 && ys.length < mTot[m].n ? ' <small>(이어서)</small>' : ''}</b><span>${mTot[m].n}건 · ${usd2(mTot[m].v)}</span></div>
-          <ul class="dc-list">${ys.map((x) => `<li><time>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}<small>${'일월화수목금토'[new Date(x.pay + 'T12:00:00').getDay()]}</small></time><div><b>${esc(fireName(x.sym))}</b><small>배당락 ${+x.ex.slice(5, 7)}/${+x.ex.slice(8)}</small></div><span class="dc-amt">${usd2(x.net)}<em class="${x.declared ? 'ok' : 'est'}">${x.declared ? '확정' : '예상'}</em></span></li>`).join('')}</ul></div>`).join(''); };
+    const monL = (ym) => new Date(ym + '-15T12:00:00').toLocaleDateString(LOC, { month: 'short' }), cntL = (n) => (EN ? `${n} payout${n === 1 ? '' : 's'}` : `${n}건`);
+    const groups = (xs, cont) => { const by = {}; for (const x of xs) (by[x.pay.slice(0, 7)] ||= []).push(x); return Object.entries(by).map(([m, ys], i) => `<div class="dc-month"><div class="dc-mh"><b>${monL(m)}${cont && i === 0 && ys.length < mTot[m].n ? ' <small>(이어서)</small>' : ''}</b><span>${cntL(mTot[m].n)} · ${usd2(mTot[m].v)}</span></div>
+          <ul class="dc-list">${ys.map((x) => `<li><time>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}<small>${new Date(x.pay + 'T12:00:00').toLocaleDateString(LOC, { weekday: 'short' })}</small></time><div><b>${esc(fireName(x.sym))}</b><small>${EN ? 'ex-div' : '배당락'} ${+x.ex.slice(5, 7)}/${+x.ex.slice(8)}</small></div><span class="dc-amt">${usd2(x.net)}<em class="${x.declared ? 'ok' : 'est'}">${x.declared ? '확정' : '예상'}</em></span></li>`).join('')}</ul></div>`).join(''); };
     const FIRST = 4, head = L.slice(0, FIRST), rest = L.slice(FIRST);
     card('divcal', {
-      title: '📅 배당 캘린더', sub: `앞으로 3개월 입금 예정 · 지급일 기준 · 세후 · ${L.length}건`,
+      title: '📅 배당 캘린더', sub: EN ? `Coming in the next 3 months · by pay date · after tax · ${cntL(L.length)}` : `앞으로 3개월 입금 예정 · 지급일 기준 · 세후 · ${L.length}건`,
       easy: '지금 가진 수량으로 언제 배당이 들어올지 미리 보는 달력이에요. "확정"은 회사가 발표한 배당이고, "예상"은 작년 같은 때 준 배당이 올해도 비슷하게 나온다고 보고 계산한 거예요.',
       body: `<div class="dc-sum"><span>3개월 합계(예상 포함)</span><b>${usd2(total)}</b>${fx ? `<small>${manwon(total * fx)}</small>` : ''}</div>
         ${groups(head, false)}
-        ${rest.length ? `${more('divcal', `나머지 ${rest.length}건 더 보기 · ${[...new Set(rest.map((x) => +x.pay.slice(5, 7) + '월'))].join('·')}`)}${groups(rest, true)}</details>` : ''}
+        ${rest.length ? `${more('divcal', `${EN ? `Show ${rest.length} more` : `나머지 ${rest.length}건 더 보기`} · ${[...new Set(rest.map((x) => monL(x.pay.slice(0, 7))))].join('·')}`)}${groups(rest, true)}</details>` : ''}
         <p class="note">배당락일 전날까지 그 수량을 들고 있어야 받아요. 지급일을 발표하지 않은 배당은 그 종목의 보통 지급 간격으로 추정했어요.</p>`,
     });
   }
@@ -3236,7 +3237,7 @@
     if (g <= 0) return '<p class="note">받고 싶은 금액을 넣어 주세요.</p>';
     const netYld = S.yearNet / S.cost, needUsd = (g * 1e4 * 12) / fx / netYld, needKrw = needUsd * fx;
     const now = simCfg.unit === 'usd' ? (+simCfg.amount || 0) * fx : (+simCfg.amount || 0) * 1e4;
-    return `<div class="sim-goal-r"><span>필요한 투자금</span><b>${manwon(needKrw)}</b><small>≈ ${usd(needUsd)} · 세후 배당률 ${pctPlain(netYld, 2)} 기준${now ? ` · 지금 투자금의 ${(needKrw / now).toFixed(1)}배` : ''}</small></div>
+    return `<div class="sim-goal-r"><span>필요한 투자금</span><b>${manwon(needKrw)}</b><small>${EN ? `≈ ${usd(needUsd)} · at ${pctPlain(netYld, 2)} after-tax yield${now ? ` · ${(needKrw / now).toFixed(1)}x your current amount` : ''}` : `≈ ${usd(needUsd)} · 세후 배당률 ${pctPlain(netYld, 2)} 기준${now ? ` · 지금 투자금의 ${(needKrw / now).toFixed(1)}배` : ''}`}</small></div>
       <button type="button" class="btn-ghost sm" data-simgoal="${Math.ceil(needKrw / 1e4)}">이 금액으로 다시 계산하기</button>
       <p class="note">최근 1년 배당이 그대로 이어진다고 보고 계산했어요. 배당은 줄거나 늘 수 있고, 주가가 바뀌면 필요한 금액도 달라져요.</p>`;
   }
@@ -4739,7 +4740,7 @@
     const cnt = (k) => (k === 'all' ? items.length : items.filter((x) => x.cat === k).length);
     let lastY = '';
     card('jobytl', {
-      title: '조비 진척 타임라인', sub: `확인한 주요 이정표 ⭐ + 회사 보도자료 ${P.length}건 자동 분류`,
+      title: '조비 진척 타임라인', sub: EN ? `Verified milestones ⭐ + ${P.length} company press releases, auto-sorted` : `확인한 주요 이정표 ⭐ + 회사 보도자료 ${P.length}건 자동 분류`,
       easy: '조비가 실제로 어디까지 왔는지 시간순으로 모았어요. ⭐는 직접 확인해 넣은 핵심 이정표, 나머지는 회사 공식 보도자료 제목을 분야별로 자동 분류한 거예요.',
       body: `${upcoming.length ? `<div class="mini-h er-h">앞으로 남은 큰 단계</div><ul class="faa-ms">${upcoming.map((m) => `<li class="todo"><span class="faa-dot"></span><div><b>${esc(m.title)}</b>${m.note ? ` <small class="dim">${esc(m.note)}</small>` : ''}</div></li>`).join('')}</ul>` : ''}
         <div class="jt-cats" role="group" aria-label="분야">${Object.entries(JT_CAT).filter(([k]) => cnt(k)).map(([k, [l, i]]) => `<button type="button" class="chip-btn sm" data-jtcat="${k}" aria-pressed="${jtCat === k}">${i} ${l} ${cnt(k)}</button>`).join('')}</div>
@@ -4750,7 +4751,7 @@
 
   // ---------------------------------------------------------------- TEM: 템퍼스 사업 현황(분기 실적 발표 기준)
   // 기본값은 data/tem-kpis.json(확인해 넣은 값), 서버가 새 실적 발표에서 자동으로 읽은 분기가 더 새로우면 맨 앞에 더한다
-  const temQ = (q) => `'${q.slice(2, 4)} ${q.slice(5)}분기`;
+  const temQ = (q) => (EN ? `Q${q.slice(5)} '${q.slice(2, 4)}` : `'${q.slice(2, 4)} ${q.slice(5)}분기`);
   function temData() {
     const M = state.temk; if (!M?.quarters?.length) return null;
     const A = state.facts?.tem, Q = [...M.quarters];
@@ -4767,17 +4768,17 @@
     const bars = [...Q].reverse(), mx = Math.max(...bars.map((x) => x.revenue || 0)) || 1;
     const usdM = (v) => (v == null ? '–' : `$${v >= 100 ? v.toFixed(0) : v.toFixed(1)}M`);
     card('tempus', {
-      title: '템퍼스 사업 현황', sub: `${temQ(L.q)} 실적 발표(${md(isoToTs(L.filed))}) 기준 · SEC${L.auto ? ' · 자동 반영' : ''}`,
+      title: '템퍼스 사업 현황', sub: EN ? `${temQ(L.q)} earnings (${md(isoToTs(L.filed))}) · SEC${L.auto ? ' · auto-updated' : ''}` : `${temQ(L.q)} 실적 발표(${md(isoToTs(L.filed))}) 기준 · SEC${L.auto ? ' · 자동 반영' : ''}`,
       easy: '템퍼스는 신약을 직접 만들지 않아요. 병원에서 암 환자의 유전자 검사를 해 주고(진단), 그 과정에서 쌓인 개인 정보를 지운 의료 데이터를 제약사에 팔거나 AI 모델을 만들어 제공해요(데이터·앱). 검사가 늘수록 데이터가 쌓이고, 데이터가 쌓일수록 제약사에 팔 것이 많아지는 구조예요.',
       body: `<div class="tem-mix">${dShare != null ? `<div class="tem-bar"><i style="width:${(dShare * 100).toFixed(1)}%"></i><em style="width:${((1 - dShare) * 100).toFixed(1)}%"></em></div>
-          <div class="tem-leg"><span><i></i>진단(유전자 검사) ${usdM(L.diagnostics)} · ${Math.round(dShare * 100)}%</span><span><i class="d"></i>데이터·앱 ${usdM(L.dataApps)} · ${Math.round((1 - dShare) * 100)}%</span></div>` : ''}</div>
+          <div class="tem-leg"><span><i></i>${EN ? 'Diagnostics (genomic testing)' : '진단(유전자 검사)'} ${usdM(L.diagnostics)} · ${Math.round(dShare * 100)}%</span><span><i class="d"></i>${EN ? 'Data & apps' : '데이터·앱'} ${usdM(L.dataApps)} · ${Math.round((1 - dShare) * 100)}%</span></div>` : ''}</div>
         <div class="ns-grid h-grid">
           <div><span>분기 매출</span><b>${usdM(L.revenue)}</b><small>${yoy.revenue != null ? `전년 대비 <span class="${cls(yoy.revenue)}">${pct(yoy.revenue, 0)}</span>` : ''}</small></div>
-          <div><span>데이터·앱 매출</span><b>${usdM(L.dataApps)}</b><small>${yoy.dataApps != null ? `전년 대비 <span class="${cls(yoy.dataApps)}">${pct(yoy.dataApps, 0)}</span>` : ''}${L.insightsGrowth != null ? ` · 데이터 라이선스 +${Math.round(L.insightsGrowth * 100)}%` : ''}</small></div>
+          <div><span>데이터·앱 매출</span><b>${usdM(L.dataApps)}</b><small>${yoy.dataApps != null ? `전년 대비 <span class="${cls(yoy.dataApps)}">${pct(yoy.dataApps, 0)}</span>` : ''}${L.insightsGrowth != null ? ` · ${EN ? 'data licensing' : '데이터 라이선스'} +${Math.round(L.insightsGrowth * 100)}%` : ''}</small></div>
           <div><span>종양 검사 건수 증가율</span><b>${L.oncologyGrowth != null ? `+${Math.round(L.oncologyGrowth * 100)}%` : '–'}</b><small>${pv?.oncologyGrowth != null ? `직전 분기 +${Math.round(pv.oncologyGrowth * 100)}%` : '전년 같은 분기 대비'}</small></div>
           <div><span>MRD(재발 감시) 검사</span><b>${L.mrdTests != null ? nf(0).format(L.mrdTests) + '건' : '–'}</b><small>${pv?.mrdTests != null ? `직전 분기 ${nf(0).format(pv.mrdTests)}건` : '분기 검사 건수'}</small></div>
           <div><span>조정 EBITDA</span><b class="${cls(L.adjEbitda)}">${L.adjEbitda != null ? (L.adjEbitda < 0 ? '-' : '+') + usdM(Math.abs(L.adjEbitda)) : '–'}</b><small>${pv?.adjEbitda != null ? `직전 분기 ${pv.adjEbitda < 0 ? '-' : '+'}${usdM(Math.abs(pv.adjEbitda))}` : ''}</small></div>
-          <div><span>올해 회사 전망</span><b>${G ? `$${(G.revenueLow / 1000).toFixed(3)}~${(G.revenueHigh / 1000).toFixed(3)}B` : '–'}</b><small>${G ? `매출 · 조정 EBITDA 약 $${G.adjEbitda}M` : ''}</small></div>
+          <div><span>올해 회사 전망</span><b>${G ? `$${(G.revenueLow / 1000).toFixed(3)}~${(G.revenueHigh / 1000).toFixed(3)}B` : '–'}</b><small>${G ? (EN ? `revenue · adj. EBITDA ~$${G.adjEbitda}M` : `매출 · 조정 EBITDA 약 $${G.adjEbitda}M`) : ''}</small></div>
         </div>
         <div class="mini-h er-h">분기별 매출과 수익성</div>
         <div class="tem-chart">${bars.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col" title="${temQ(x.q)} 매출 ${usdM(x.revenue)}"><b>${usdM(x.revenue)}</b><div class="tem-stack"><i style="height:${h(x.diagnostics)}"></i><em style="height:${h(x.dataApps)}"></em></div><span>${temQ(x.q).replace('분기', 'Q')}</span><small class="${cls(x.adjEbitda)}">${x.adjEbitda != null ? (x.adjEbitda < 0 ? '−' : '+') + Math.abs(x.adjEbitda).toFixed(1) : '–'}</small></div>`; }).join('')}</div>
@@ -5058,7 +5059,7 @@
         tile('분기 매출', usd(L.revenue * 1e6), `<span class="flat">${temQ(L.q)}</span>${yoy.revenue != null ? ` <span class="${cls(yoy.revenue)}">${pct(yoy.revenue, 0)}</span>` : ''}`, 'searn:c-tempus'),
         tile('데이터·앱 매출', L.dataApps != null ? usd(L.dataApps * 1e6) : '–', `${yoy.dataApps != null ? `<span class="${cls(yoy.dataApps)}">${pct(yoy.dataApps, 0)}</span> ` : ''}<span class="flat">제약사 데이터 라이선스 등</span>`, 'searn:c-tempus'),
         tile('종양 검사 증가율', L.oncologyGrowth != null ? `<span class="up">+${Math.round(L.oncologyGrowth * 100)}%</span>` : '–', `<span class="flat">전년 같은 분기 대비 건수</span>`, 'searn:c-tempus'),
-        tile('조정 EBITDA', L.adjEbitda != null ? `<span class="${cls(L.adjEbitda)}">${L.adjEbitda < 0 ? '-' : '+'}${usd(Math.abs(L.adjEbitda) * 1e6)}</span>` : '–', `<span class="flat">${L.adjEbitda > 0 ? '흑자' : '적자'} · ${temQ(L.q)}</span>`, 'searn:c-tempus'),
+        tile('조정 EBITDA', L.adjEbitda != null ? `<span class="${cls(L.adjEbitda)}">${L.adjEbitda < 0 ? '-' : '+'}${usd(Math.abs(L.adjEbitda) * 1e6)}</span>` : '–', `<span class="flat">${EN ? (L.adjEbitda > 0 ? 'profitable' : 'loss') : L.adjEbitda > 0 ? '흑자' : '적자'} · ${temQ(L.q)}</span>`, 'searn:c-tempus'),
       ];
     } else if (sym === 'SPCX') {
       const q = pq('SPCX'), ip = ipoPx(), nx = nextLockup(), yoy = yoyQ(Q, last);
