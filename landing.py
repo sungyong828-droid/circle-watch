@@ -580,9 +580,11 @@ def rss():
 def daily_template():
     """/daily 서버 페이지(functions/daily)가 채워 쓰는 틀 — 소개 페이지와 같은 머리·바닥글. %%TITLE%% 등은 함수가 바꾼다."""
     t = page('daily', '%%TITLE%%', '%%DESC%%', '%%BODY%%', {'x': 1})
-    t = t.replace(f'{SITE}daily"', '%%CANON%%"').replace('<head>', '<head>\n<base href="/">', 1)
+    t = t.replace(f'{SITE}daily"', '%%CANON%%"')
     t = _re.sub(r'<script type="application/ld\+json">.*?</script>', '%%LD%%', t, flags=_re.S)
-    t = t.replace('./?ref=page-daily', './?ref=page-daily')
+    # /daily/날짜 처럼 한 단계 안쪽 주소에서도 맞게 내부 링크를 모두 절대 경로로(보안 정책 base-uri 'none' 이라 <base> 태그는 못 씀)
+    t = _re.sub(r'(href|src)="\./', r'\1="/', t)
+    t = _re.sub(r'(href|src)="(?!https?:|/|#|mailto:|data:|%%)', r'\1="/', t)
     return t
 
 
