@@ -11,6 +11,15 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.10.10-5 — 2026-10-10
+
+[이 버전 보기](https://be945122.my-fire-portfolio.pages.dev) · 커밋 `3467641`
+
+- Instagram and X links: home card, footers, about page, sameAs; count SNS clicks
+- SNS card: handle on its own line
+- One channel card: Naver blog, Instagram, X with market/CRCL/JOBY copy
+- Channel card full width on desktop
+
 ## v2026.10.10-4 — 2026-10-10
 
 [이 버전 보기](https://4477fa9f.my-fire-portfolio.pages.dev) · 커밋 `5208353`
