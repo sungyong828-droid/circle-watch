@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.10.11-2 — 2026-10-11
+
+[이 버전 보기](https://edd606e4.my-fire-portfolio.pages.dev) · 커밋 `abb40e7`
+
 - 📤 퇴사까지·배당금·성과급 결과를 **이미지 카드로 저장·공유**할 수 있어요. 기본은 '금액 가리기'라 퍼센트만 보이고, 원하면 금액도 넣을 수 있어요.
 - 🏢 **사업 현황이 훨씬 많은 종목으로**: S&P 500 전체와 미국 상장사 대부분, 한국 시가총액 상위 100개와 요즘 화제인 종목까지 실적 탭 맨 위에 회사 소개와 최근 분기 매출·영업이익·순이익·현금 흐름을 보여줘요(회사 공시 재무제표 자동 정리, 매주 갱신). 한 번 본 종목은 다음에 기다리지 않고 바로 떠요.
 <!-- internal --> 매주 월 06:00 KST GitHub Actions(.github/workflows/biz-auto.yml)가 biz_auto.py 실행 → Cloudflare API로 KV 갱신(Secrets: CLOUDFLARE_API_TOKEN·CLOUDFLARE_ACCOUNT_ID·DISCORD_WEBHOOK_URL). 회사 소개 모음 tools/biz_desc/.
