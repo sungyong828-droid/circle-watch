@@ -1518,7 +1518,7 @@
       if (!c || !c.recvNet) return null;
       const fx = state.quote?.fx?.rate;
       return { kind, tag, title: EN ? '💰 My dividends' : '💰 내 배당금', bar: Math.min(1, c.payback),
-        hero: { label: EN ? 'Dividends received (after tax)' : '지금까지 받은 배당(세후)', value: usd2(c.recvNet) + (fx ? ` · ${manwon(c.recvNet * fx)}` : ''), money: true,
+        hero: { label: EN ? 'Dividends received (after tax)' : '지금까지 받은 배당(세후)', value: usd2(c.recvNet), sub: fx ? (EN ? `≈ ${manwon(c.recvNet * fx)} in KRW` : `원화로 약 ${manwon(c.recvNet * fx)}`) : '', money: true,
           alt: { label: EN ? 'Cost recovered by dividends' : '배당으로 원금 회수', value: pctPlain(c.payback, 1), money: false } },
         lines: [
           { label: EN ? 'Monthly average' : '월 평균 배당', value: usd2(c.monthly), money: true },
@@ -1547,7 +1547,7 @@
     if (!d) { toast(EN ? 'Fill in the numbers first' : '먼저 값을 넣어 계산해 주세요', true); return; }
     if (btn) btn.disabled = true;
     try {
-      const m = await import('./share-card.js?v=1');
+      const m = await import('./share-card.js?v=2');
       await m.openShareCard(d, {
         title: EN ? 'Share as image' : '이미지로 공유', close: EN ? 'Close' : '닫기', hide: EN ? 'Hide amounts (show % only)' : '금액 가리기 (퍼센트만 보여요)',
         save: EN ? 'Save image' : '이미지 저장', share: EN ? 'Share' : '공유하기', saved: EN ? 'Saved' : '이미지를 저장했어요',

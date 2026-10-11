@@ -2,6 +2,7 @@
 
   python tools/biz_auto.py            # 만들고 KV에 올리기
   python tools/biz_auto.py --dry      # 만들기만(tools/cache/biz_auto_*.json 확인용)
+  매주 월요일 아침 GitHub Actions(.github/workflows/biz-auto.yml)가 서버에서 자동으로 돌린다(PC가 꺼져 있어도 됨).
 
 - 미국: SEC XBRL frames(한 번에 모든 상장사의 분기 값) → 매출·영업이익·순이익·EPS·현금성 자산, 최근 6개 분기.
   frames 하나로 수천 개 회사를 받으므로 요청이 몇십 번뿐이다. 회사 소개(한국어)·한글 이름은 S&P 500 + 화제 종목만 네이버 증권에서.
@@ -21,8 +22,10 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE = os.path.join(ROOT, 'tools', 'cache')
+CACHE = os.path.join(ROOT, 'tools', 'cache')          # 임시(깃에 안 올림)
+DESC = os.path.join(ROOT, 'tools', 'biz_desc')         # 회사 소개 모음(깃에 올림) — 매주 새로 생긴 종목만 더 받는다
 os.makedirs(CACHE, exist_ok=True)
+os.makedirs(DESC, exist_ok=True)
 NS = 'a8b6d687f1e140d38b1d720e20afb360'
 SEC_UA = {'User-Agent': 'FirePortfolio dashboard (https://my-fire-portfolio.pages.dev)'}
 BR_UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36'}
@@ -52,6 +55,15 @@ def cached(name, fn, days=30):
     v = fn()
     json.dump(v, open(p, 'w', encoding='utf-8'), ensure_ascii=False)
     return v
+
+
+def load_desc(name):
+    p = os.path.join(DESC, name)
+    return json.load(open(p, encoding='utf-8')) if os.path.exists(p) else {}
+
+
+def save_desc(name, d):
+    json.dump(dict(sorted(d.items())), open(os.path.join(DESC, name), 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
 
 
 def sentences(text, n=2, cap=230):
@@ -223,15 +235,15 @@ def build_us():
     S = sp500()
     meta = {x['sym']: x for x in S}
     want = list(dict.fromkeys([x['sym'] for x in S] + HOT_US))
-    desc = cached('us_desc.json', lambda: {}, days=3650)
-    miss = [s for s in want if s not in desc]
+    desc = load_desc('us_desc.json')
+    miss = [s for s in want if not desc.get(s)]  # 처음 보는 종목 + 지난번에 못 받은 종목만
     print(f'  네이버 회사 소개: {len(want)}개 중 새로 {len(miss)}개')
     for i, s in enumerate(miss):
         desc[s] = naver_us(s)
         if i % 50 == 49:
-            json.dump(desc, open(os.path.join(CACHE, 'us_desc.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+            save_desc('us_desc.json', desc)
             print('   ', i + 1)
-    json.dump(desc, open(os.path.join(CACHE, 'us_desc.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+    save_desc('us_desc.json', desc)
     data, cik2t = us_numbers()
     out = {}
     for cik, qd in data.items():
@@ -288,7 +300,7 @@ def build_kr():
         r = next((x for x in stocks if x[0] == c), None)
         if r:
             pick[c] = r
-    desc = cached('kr_desc.json', lambda: {}, days=3650)
+    desc = load_desc('kr_desc.json')
     out = {}
     for code, r in pick.items():
         name, mk = r[1], r[2]
@@ -325,12 +337,26 @@ def build_kr():
         if desc[code]:
             B['easy'] = {'ko': desc[code].replace('동사는', f'{name}{josa(name)}', 1), 'en': ''}
         out[code] = B
-    json.dump(desc, open(os.path.join(CACHE, 'kr_desc.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+    save_desc('kr_desc.json', desc)
     print(f'  한국 {len(out)}개 회사')
     return out
 
 
 def kv_put(items):
+    # 서버(GitHub Actions)에서는 Cloudflare API로 바로 올린다 — 토큰·계정 ID는 GitHub Secrets(CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID)
+    tok, acc = os.environ.get('CLOUDFLARE_API_TOKEN'), os.environ.get('CLOUDFLARE_ACCOUNT_ID')
+    if tok and acc:
+        req = urllib.request.Request(f'https://api.cloudflare.com/client/v4/accounts/{acc}/storage/kv/namespaces/{NS}/bulk',
+                                     data=json.dumps(items).encode('utf-8'), method='PUT',
+                                     headers={'Authorization': f'Bearer {tok}', 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                res = json.loads(r.read())
+            print('  Cloudflare API:', 'success' if res.get('success') else res.get('errors'))
+            return bool(res.get('success'))
+        except urllib.error.HTTPError as e:
+            print('  Cloudflare API 오류', e.code, e.read()[:300])
+            return False
     f = os.path.join(CACHE, 'kv_bulk.json')
     json.dump(items, open(f, 'w', encoding='utf-8'), ensure_ascii=False)
     cmd = f'npx wrangler kv bulk put "{f}" --namespace-id {NS} --remote'
@@ -357,7 +383,10 @@ def main():
     if DRY:
         print('(--dry) KV에 올리지 않았어요')
         return
-    print('KV 올리기:', 'OK' if kv_put(items) else '실패')
+    ok = kv_put(items)
+    print('KV 올리기:', 'OK' if ok else '실패')
+    if not ok:
+        sys.exit(1)
 
 
 if __name__ == '__main__':

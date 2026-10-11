@@ -43,14 +43,18 @@ async function draw(d, hide, icon) {
   const hv = hide && hero.money ? MASK : hero.value;
   g.font = fit(g, hv, W - X * 2, 124); g.fillStyle = accent;
   g.fillText(hv, X, 570);
+  // 큰 숫자 아래 보조 줄(예: 달러 금액 아래 '원화로 약 ₩2,087만') — 통화가 섞여 보이지 않게 따로 한 줄
+  const sub = !(hide && hero.money) && hero.sub ? hero.sub : '';
+  if (sub) { g.font = `600 40px ${FONT}`; g.fillStyle = C.ink2; g.fillText(sub, X, 630); }
+  const dy = sub ? 50 : 0;
   // 진행 막대
   if (d.bar != null && isFinite(d.bar)) {
-    const y = 625, w = W - X * 2;
+    const y = 625 + dy, w = W - X * 2;
     g.fillStyle = 'rgba(255,255,255,0.08)'; round(g, X, y, w, 30, 15); g.fill();
     g.fillStyle = accent; round(g, X, y, Math.max(30, w * Math.min(1, Math.max(0, d.bar))), 30, 15); g.fill();
   }
   // 세부 줄
-  let y = 760;
+  let y = 760 + dy;
   for (const L of d.lines.slice(0, 4)) {
     g.strokeStyle = C.line; g.lineWidth = 2; g.beginPath(); g.moveTo(X, y - 62); g.lineTo(W - X, y - 62); g.stroke();
     g.font = `600 36px ${FONT}`; g.fillStyle = C.muted; g.textAlign = 'left'; g.fillText(L.label, X, y);
