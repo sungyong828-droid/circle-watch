@@ -45,8 +45,8 @@ async function draw(d, hide, icon) {
   g.fillText(hv, X, 570);
   // 큰 숫자 아래 보조 줄(예: 달러 금액 아래 '원화로 약 ₩2,087만') — 통화가 섞여 보이지 않게 따로 한 줄
   const sub = !(hide && hero.money) && hero.sub ? hero.sub : '';
-  if (sub) { g.font = `600 40px ${FONT}`; g.fillStyle = C.ink2; g.fillText(sub, X, 630); }
-  const dy = sub ? 50 : 0;
+  if (sub) { g.font = `600 40px ${FONT}`; g.fillStyle = C.ink2; g.fillText(sub, X, 652); }
+  const dy = sub ? 64 : 0;
   // 진행 막대
   if (d.bar != null && isFinite(d.bar)) {
     const y = 625 + dy, w = W - X * 2;
@@ -61,7 +61,7 @@ async function draw(d, hide, icon) {
     const v = hide && L.money ? MASK : L.value;
     g.font = fit(g, v, W - X * 2 - g.measureText(L.label).width - 40, 46); g.fillStyle = C.ink; g.textAlign = 'right'; g.fillText(v, W - X, y);
     g.textAlign = 'left';
-    y += 108;
+    y += sub ? 96 : 108; // 보조 줄이 있으면 줄 간격을 조금 줄여 바닥 주소와 띄운다
   }
   // 바닥: 사이트 주소(홍보)
   g.fillStyle = accent; g.font = `800 44px ${FONT}`; g.fillText('my-fire-portfolio.pages.dev', X, H - 128);
