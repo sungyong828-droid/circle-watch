@@ -4,3 +4,4 @@ Disallow: /api/
 Disallow: /admin
 
 Sitemap: https://my-fire-portfolio.pages.dev/sitemap.xml
+Sitemap: https://my-fire-portfolio.pages.dev/sitemap-daily.xml

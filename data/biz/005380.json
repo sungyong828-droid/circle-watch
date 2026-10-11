@@ -4,6 +4,8 @@
     "ko": "현대차",
     "en": "Hyundai Motor"
   },
+  "slug": "hyundai-motor",
+  "app": "005380.KS",
   "cur": "KRW",
   "src": {
     "ko": "현대자동차그룹 뉴스룸 경영실적 발표",

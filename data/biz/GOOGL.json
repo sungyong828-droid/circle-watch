@@ -4,6 +4,8 @@
     "ko": "알파벳(구글)",
     "en": "Alphabet (Google)"
   },
+  "slug": "alphabet",
+  "app": "GOOGL",
   "cur": "USD",
   "src": {
     "ko": "SEC 8-K 실적 발표문",

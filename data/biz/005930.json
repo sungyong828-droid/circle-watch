@@ -4,6 +4,8 @@
     "ko": "삼성전자",
     "en": "Samsung Electronics"
   },
+  "slug": "samsung-electronics",
+  "app": "005930.KS",
   "cur": "KRW",
   "src": {
     "ko": "삼성전자 뉴스룸 분기 실적 발표",

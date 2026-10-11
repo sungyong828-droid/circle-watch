@@ -4,6 +4,8 @@
     "ko": "테슬라",
     "en": "Tesla"
   },
+  "slug": "tesla",
+  "app": "TSLA",
   "cur": "USD",
   "src": {
     "ko": "SEC 8-K 분기 업데이트",

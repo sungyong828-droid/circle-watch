@@ -4,6 +4,8 @@
     "ko": "팔로알토 네트웍스",
     "en": "Palo Alto Networks"
   },
+  "slug": "palo-alto-networks",
+  "app": "PANW",
   "cur": "USD",
   "fy": {
     "ko": "회계연도가 8월에 시작해요(FY26 = 2025년 8월~2026년 7월)",

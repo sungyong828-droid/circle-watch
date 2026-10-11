@@ -172,6 +172,7 @@ def about_page():
     title = '퇴사를 위한 미국 주식 실시간 대시보드 소개 — 서클·조비·스페이스X·템퍼스'
     desc = "Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·캔들 차트, 뉴스 AI 한 줄 요약, 시장 개요, 키워드 속보, 공매도·기관·애널리스트·옵션을 휴대폰 한 화면에 모은 무료 대시보드예요."
     cards = ''.join(f'<a class="lp-stock" href="{slug}"><img src="{S["logo"]}" alt="" width="28" height="28"><b>{esc(S["short"])}</b><small>{S["sym"]}</small></a>' for slug, S in STOCKS.items())
+    biz_links = ''.join(f'<a class="lp-stock" href="{B["slug"]}"><b>{esc(B["name"]["ko"])}</b><small>{B["app"].split(".")[0]}</small></a>' for B in load_biz())
     body = f'''<section class="lp-hero">
   <h1>퇴사(FIRE)를 향한 포트폴리오,<br>앱 여러 개 열지 말고 한 화면에서</h1>
   <p class="lp-lead">주가는 증권사 앱, 뉴스는 포털, 공시는 SEC, 공매도는 또 다른 사이트… 보유 종목 하나 확인하려고 여러 곳을 돌아다니다 지쳐서 직접 만든 대시보드예요. 다른 분들도 쓸 수 있게 무료로 공개했어요.</p>
@@ -179,6 +180,7 @@ def about_page():
   <p class="lp-sub">무료 · 회원가입 없음 · 휴대폰 최적화</p>
 </section>
 <section class="lp-sec"><h2>기본 종목</h2><div class="lp-stocks">{cards}</div><p class="lp-note">+ 추가·편집으로 아무 미국 주식이나 내 종목에 넣을 수 있어요.</p></section>
+<section class="lp-sec"><h2>종목별 실적·사업 현황</h2><div class="lp-stocks">{biz_links}</div><p class="lp-note">회사 실적 발표문에서 확인한 사업별 매출 비중·핵심 지표·분기별 소식이에요.</p></section>
 <section class="lp-sec"><h2>주요 기능</h2>{feat_list([
         ('시장 개요', 'S&P 500·나스닥·다우·러셀·VIX·미국 10년물 금리·달러 지수·비트코인, 장전·정규장·장후 상태와 지수 선물.'),
         ('키워드 속보', 'FOMC·CPI·관세처럼 등록한 단어가 들어간 시장·종목 기사만 모아 보기.'),
@@ -589,8 +591,143 @@ def daily_template():
     return t
 
 
+
+# ---------------------------------------------------------------- 종목별 실적·사업 현황 페이지(/samsung-electronics 등) — data/biz/*.json 으로 자동 생성
+# 앱의 '사업 현황' 카드와 같은 자료. 새 분기를 json에 더하면 페이지도 같이 바뀐다.
+def load_biz():
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'biz')
+    out = []
+    for f in sorted(os.listdir(d)):
+        if f.endswith('.json'):
+            with open(os.path.join(d, f), encoding='utf-8') as fh:
+                B = json.load(fh)
+            if B.get('slug') and B.get('q'):
+                out.append(B)
+    return out
+
+
+def _josa(word, a, b):
+    # 받침 있으면 a(은·이), 없으면 b(는·가)
+    for ch in reversed(word):
+        if '가' <= ch <= '힣':
+            return a if (ord(ch) - 0xAC00) % 28 else b
+    return b
+
+
+def _bmoney(B, v):
+    if v is None:
+        return '–'
+    sg, a = ('-' if v < 0 else ''), abs(v)
+    if B['cur'] == 'KRW':
+        return f'{sg}{round(a * 1e4):,}억원' if a < 1 else f'{sg}{a:,.1f}조원'.replace('.0조', '조')
+    if a >= 1000:
+        return f'{sg}${a / 1000:.1f}B' if a >= 1e4 else f'{sg}${a / 1000:.2f}B'
+    return f'{sg}${a:.0f}M' if a >= 100 else f'{sg}${a:.1f}M' if a >= 1 else f'{sg}${a:.2f}M'
+
+
+def _bkpi(B, K, v):
+    f, u = K.get('f'), (K.get('u') or {}).get('ko', '')
+    n = (f'{v:,.0f}' if f == 'n' else f'{v:.1f}' if f == 'd1' else f'{v:.2f}' if f == 'd2' else f'{v:.0f}%' if f == 'pctN'
+         else f'{v:.1f}%' if f == 'pct1' else _bmoney(B, v))
+    return f'{n} {u}' if u and u[0].isascii() else n + u
+
+
+def _bq(x):
+    lb = (x.get('lb') or {}).get('ko')
+    return lb or f"{x['q'][:4]}년 {x['q'][5]}분기"
+
+
+def _chg(a, b):
+    if a is None or b is None or a <= 0 or b <= 0:
+        return None
+    return a / b - 1
+
+
+def _pct(v):
+    return f'{v * 100:+.0f}%' if abs(v) < 9 else f'{1 + v:.0f}배'
+
+
+def biz_page(B, all_biz):
+    name, Q = B['name']['ko'], B['q']
+    L = Q[0]
+    ya = next((x for x in Q if x['q'] == f"{int(L['q'][:4]) - 1}{L['q'][4:]}"), None)
+    tick = B['app'].split('.')[0]
+    rev, op = L.get('rev'), L.get('op')
+    head = [f'매출 {_bmoney(B, rev)}'] if rev is not None else []
+    if op is not None:
+        head.append(f"{B['profit']['ko']} {_bmoney(B, abs(op) if B['profit']['ko'].endswith('손실') else op)}")
+    title = f"{name} 실적·사업 현황 — {_bq(L)} " + '·'.join(head)
+    segs = [s for s in B.get('seg', []) if (L.get('seg') or {}).get(s['k']) is not None]
+    tot = sum(L['seg'][s['k']] for s in segs) if segs else 0
+    mix = ' · '.join(f"{s['ko']} {L['seg'][s['k']] / tot * 100:.0f}%" for s in segs[:3]) if tot else ''
+    desc = (f"{name}({tick}) 최근 분기 실적" + (f"과 사업별 매출 비중({mix})" if mix else '') +
+            ", 핵심 지표, 분기별 주요 소식을 회사 실적 발표문 기준으로 정리했어요. 실시간 주가·차트·과매수·과매도도 무료로 봐요.")
+    open_url = f"./?s={B['app']}&ref=page-{B['slug']}#searn"
+    # 핵심 숫자
+    nums = []
+    if rev is not None:
+        c = _chg(rev, ya and ya.get('rev'))
+        nums.append(('분기 매출', _bmoney(B, rev) + (f' · 전년 대비 {_pct(c)}' if c is not None else '')))
+    if op is not None:
+        mg = f' · 이익률 {op / rev * 100:.0f}%' if rev else ''
+        nums.append((B['profit']['ko'], _bmoney(B, abs(op) if B['profit']['ko'].endswith('손실') else op) + mg + (f" · 1년 전 {_bmoney(B, ya['op'])}" if ya and ya.get('op') is not None else '')))
+    for K in B.get('kpi', []):
+        v = (L.get('k') or {}).get(K['k'])
+        if v is None:
+            continue
+        ky = (L.get('ky') or {}).get(K['k'])
+        yv = ((ya or {}).get('k') or {}).get(K['k'])
+        extra = (f" · 전년 대비 {ky:+.1f}%p" if K.get('pp') else f" · 전년 대비 {ky * 100:+.1f}%") if ky is not None else (
+            f" · 전년 대비 {v - yv:+.1f}%p" if K.get('pp') and yv is not None else f' · 전년 대비 {_pct(_chg(v, yv))}' if _chg(v, yv) is not None else '')
+        nums.append((K['ko'], _bkpi(B, K, v) + extra))
+    nums_html = feat_list(nums)
+    seg_html = ''
+    if tot:
+        seg_html = f'<section class="lp-sec"><h2>사업별 매출 비중</h2>' + feat_list([(s['ko'], f"{_bmoney(B, L['seg'][s['k']])} · {L['seg'][s['k']] / tot * 100:.0f}%") for s in segs]) + '</section>'
+    bar = B.get('bar')
+    rows = ''.join(f"<tr><td>{esc(_bq(x))}</td><td>{_bmoney(B, x['k'].get(bar['k']) if bar else x.get('rev')) if (x.get('k') if bar else True) else '–'}</td><td>{_bmoney(B, x.get('op'))}</td></tr>" for x in Q)
+    tbl = (f'<section class="lp-sec"><h2>분기별 실적</h2><table class="dl-tbl"><thead><tr><th>분기</th><th>{esc(bar["ko"]) if bar else "매출"}</th><th>{esc(B["profit"]["ko"])}</th></tr></thead>'
+           f'<tbody>{rows}</tbody></table></section>')
+    def _hlq(x):
+        src = f' · <a href="{esc(x["url"])}" rel="nofollow noopener" target="_blank">원문</a>' if x.get('url') else ''
+        return f'<h3>{esc(_bq(x))}{src}</h3><ul>' + ''.join(f"<li>{esc(h['ko'])}</li>" for h in x['hl']) + '</ul>'
+    hl = ''.join(_hlq(x) for x in Q if x.get('hl'))
+    hl_html = f'<section class="lp-sec lp-hl"><h2>분기별 주요 소식</h2>{hl}</section>' if hl else ''
+    flash = ''.join(f"<li><b>{f['d'][5:].replace('-', '/')}</b> {esc(f['ko'])}</li>" for f in B.get('flash', []) if f['d'] > (L.get('filed') or ''))
+    flash_html = f'<section class="lp-sec"><h2>최근 소식</h2><ul>{flash}</ul></section>' if flash else ''
+    guide_html = f"<section class=\"lp-sec\"><h2>회사 전망</h2><p>{esc(B['guide']['ko'])}</p></section>" if B.get('guide') else ''
+    recent = '·'.join(head)
+    faq = [
+        (f"{name}{_josa(name, '은', '는')} 무엇으로 돈을 버나요?", B['easy']['ko']),
+        (f"{name} 최근 실적은 어땠나요?", f"{_bq(L)} 실적 발표({L.get('filed', '')}) 기준으로 {recent}이에요." + (f" 사업별로는 {mix}예요." if mix else '')),
+        ('숫자는 어디서 가져오나요?', f"{B['src']['ko']} 원문에서 확인해 넣었어요. 새 분기 실적이 나오면 확인 후 더해요."),
+        (f'{name} 실시간 주가도 볼 수 있나요?', '네. 대시보드에서 실시간 주가와 차트, RSI 과매수·과매도, 뉴스 요약, 애널리스트 의견까지 무료로 볼 수 있어요. 가입도 필요 없어요.'),
+    ]
+    others = ''.join(f'<a class="lp-stock" href="{O["slug"]}"><b>{esc(O["name"]["ko"])}</b><small>{O["app"].split(".")[0]}</small></a>' for O in all_biz if O['slug'] != B['slug'])
+    filed = L.get('filed', '')
+    body = f'''<section class="lp-hero">
+  <h1>{esc(name)} 실적·사업 현황</h1>
+  <p class="lp-sub">{esc(_bq(L))} 실적 발표{f'({filed})' if filed else ''} 기준 · 출처: {esc(B['src']['ko'])}</p>
+  <p class="lp-lead">{esc(B['easy']['ko'])}</p>
+  <a class="lp-cta" href="{open_url}">{esc(name)} 실시간으로 보기 →</a>
+  <p class="lp-sub">무료 · 회원가입 없음 · 휴대폰 최적화</p>
+</section>
+<section class="lp-sec"><h2>{esc(_bq(L))} 핵심 숫자</h2>{nums_html}</section>
+{flash_html}{seg_html}{guide_html}{tbl}{hl_html}
+{faq_html(faq)}
+<section class="lp-sec"><h2>다른 종목 실적·사업 현황</h2><div class="lp-stocks">{others}</div></section>
+<section class="lp-sec lp-end"><a class="lp-cta" href="{open_url}">{esc(name)} 대시보드 열기 →</a><p class="lp-note">투자 조언이 아니에요. 회사 발표 자료를 정리한 것이라 원문과 함께 확인해 주세요.</p></section>'''
+    ld = [
+        {'@context': 'https://schema.org', '@type': 'WebPage', 'name': title, 'description': desc, 'url': SITE + B['slug'], 'inLanguage': 'ko',
+         'dateModified': filed or None, 'about': {'@type': 'Corporation', 'name': name, 'tickerSymbol': tick}},
+        faq_ld(faq),
+    ]
+    return page(B['slug'], title, desc, body, ld)
+
 def build(dist):
     out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'bonus': bonus_page(), 'portfolio': portfolio_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
+    biz = load_biz()
+    out.update({B['slug']: biz_page(B, biz) for B in biz})
     for slug, text in out.items():
         with open(os.path.join(dist, slug + '.html'), 'w', encoding='utf-8') as f:
             f.write(text)

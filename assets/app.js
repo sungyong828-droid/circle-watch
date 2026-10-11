@@ -4947,7 +4947,7 @@
     if (v == null) return '–';
     const sg = v < 0 ? '-' : '', a = Math.abs(v);
     const money = () => (B.cur === 'KRW'
-      ? (a < 1 ? (EN ? `${sg}₩${nf(0).format(a * 1000)}B` : `${sg}${nf(0).format(a * 1e4)}억원`) : (EN ? `${sg}₩${a.toFixed(a >= 100 ? 0 : 1)}T` : `${sg}${a.toFixed(a >= 100 ? 0 : 1)}조원`))
+      ? (a < 1 ? (EN ? `${sg}₩${nf(0).format(a * 1000)}B` : `${sg}${nf(0).format(a * 1e4)}억원`) : (EN ? `${sg}₩${a.toFixed(1).replace(/\.0$/, '')}T` : `${sg}${a.toFixed(1).replace(/\.0$/, '')}조원`))
       : a >= 1000 ? `${sg}$${(a / 1000).toFixed(a >= 1e4 ? 1 : 2)}B` : `${sg}$${a >= 100 ? a.toFixed(0) : a >= 1 ? a.toFixed(1) : a.toFixed(2)}M`);
     const num = f === 'n' ? nf(0).format(v) : f === 'd1' ? v.toFixed(1) : f === 'd2' ? v.toFixed(2) : f === 'pctN' ? `${nf(0).format(v)}%` : f === 'pct1' ? `${v.toFixed(1)}%` : money();
     const unit = tx(u);
