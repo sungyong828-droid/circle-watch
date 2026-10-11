@@ -8,7 +8,7 @@ import json
 import os
 
 SITE = 'https://my-fire-portfolio.pages.dev/'
-VER = '8'
+VER = '9'
 
 COMMON_FEATURES = [
     ('실시간 주가 · 캔들 차트', '1일·1주·1개월·3개월·1년 캔들 차트에 이동평균선(5·20·60·120일)과 거래량. 캔들/라인 전환.'),
@@ -667,10 +667,10 @@ def biz_page(B, all_biz):
     nums = []
     if rev is not None:
         c = _chg(rev, ya and ya.get('rev'))
-        nums.append(('분기 매출', _bmoney(B, rev) + (f' · 전년 대비 {_pct(c)}' if c is not None else '')))
+        nums.append(('분기 매출', _bmoney(B, rev), f'전년 대비 {_pct(c)}' if c is not None else ''))
     if op is not None:
         mg = f' · 이익률 {op / rev * 100:.0f}%' if rev else ''
-        nums.append((B['profit']['ko'], _bmoney(B, abs(op) if B['profit']['ko'].endswith('손실') else op) + mg + (f" · 1년 전 {_bmoney(B, ya['op'])}" if ya and ya.get('op') is not None else '')))
+        nums.append((B['profit']['ko'], _bmoney(B, abs(op) if B['profit']['ko'].endswith('손실') else op), (mg[3:] if mg else '') + (f" · 1년 전 {_bmoney(B, ya['op'])}" if ya and ya.get('op') is not None else '')))
     for K in B.get('kpi', []):
         v = (L.get('k') or {}).get(K['k'])
         if v is None:
@@ -679,11 +679,14 @@ def biz_page(B, all_biz):
         yv = ((ya or {}).get('k') or {}).get(K['k'])
         extra = (f" · 전년 대비 {ky:+.1f}%p" if K.get('pp') else f" · 전년 대비 {ky * 100:+.1f}%") if ky is not None else (
             f" · 전년 대비 {v - yv:+.1f}%p" if K.get('pp') and yv is not None else f' · 전년 대비 {_pct(_chg(v, yv))}' if _chg(v, yv) is not None else '')
-        nums.append((K['ko'], _bkpi(B, K, v) + extra))
-    nums_html = feat_list(nums)
+        nums.append((K['ko'], _bkpi(B, K, v), extra[3:] if extra else ''))
+    nums_html = '<div class="lp-kpis">' + ''.join(f'<div><span>{esc(l)}</span><b>{esc(v)}</b><small>{esc(x)}</small></div>' for l, v, x in nums) + '</div>'
     seg_html = ''
     if tot:
-        seg_html = f'<section class="lp-sec"><h2>사업별 매출 비중</h2>' + feat_list([(s['ko'], f"{_bmoney(B, L['seg'][s['k']])} · {L['seg'][s['k']] / tot * 100:.0f}%") for s in segs]) + '</section>'
+        cols = ['#5b9bff', '#f2994a', '#3fbf7f', '#b48cff']
+        bar_ = ''.join(f'<i style="width:{L["seg"][s["k"]] / tot * 100:.1f}%;background:{cols[i % 4]}"></i>' for i, s in enumerate(segs))
+        leg = ''.join(f'<li><i style="background:{cols[i % 4]}"></i><b>{esc(s["ko"])}</b><span>{_bmoney(B, L["seg"][s["k"]])} · {L["seg"][s["k"]] / tot * 100:.0f}%</span></li>' for i, s in enumerate(segs))
+        seg_html = f'<section class="lp-sec"><h2>사업별 매출 비중</h2><div class="lp-mix" role="img" aria-label="{esc(mix)}">{bar_}</div><ul class="lp-leg">{leg}</ul></section>'
     bar = B.get('bar')
     rows = ''.join(f"<tr><td>{esc(_bq(x))}</td><td>{_bmoney(B, x['k'].get(bar['k']) if bar else x.get('rev')) if (x.get('k') if bar else True) else '–'}</td><td>{_bmoney(B, x.get('op'))}</td></tr>" for x in Q)
     tbl = (f'<section class="lp-sec"><h2>분기별 실적</h2><table class="dl-tbl"><thead><tr><th>분기</th><th>{esc(bar["ko"]) if bar else "매출"}</th><th>{esc(B["profit"]["ko"])}</th></tr></thead>'
