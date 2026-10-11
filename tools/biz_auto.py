@@ -272,7 +272,7 @@ def build_us():
           ko = Dn.get('desc') or (f"{nm}{josa(nm)} S&P 500에 속한 {GICS_KO.get(M['sector'], M['sector'])} 업종 회사예요." if M else '')
           en = f"{M['name']} — {M['sector']} · {M['sub']}." if M else ''
           if ko or en:
-              B['easy'] = {'ko': ko or en, 'en': en or ko}
+              B['easy'] = {'ko': ko or en, 'en': en}  # 영어 소개가 없으면 영어 화면에선 설명을 숨긴다
           out[sym] = B
     print(f'  미국 {len(out)}개 회사')
     return out
