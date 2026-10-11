@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: '0 21 * * 0'
   workflow_dispatch:
+  push:                       # 갱신 스크립트나 이 파일을 고치면 바로 한 번 돌려 확인
+    branches: [main]
+    paths: ['tools/biz_auto.py', '.github/workflows/biz-auto.yml']
 
 permissions:
   contents: write
