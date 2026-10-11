@@ -12,10 +12,13 @@
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
 - 📤 퇴사까지·배당금·성과급 결과를 **이미지 카드로 저장·공유**할 수 있어요. 기본은 '금액 가리기'라 퍼센트만 보이고, 원하면 금액도 넣을 수 있어요.
+- 🏢 **사업 현황이 훨씬 많은 종목으로**: S&P 500 전체와 미국 상장사 대부분, 한국 시가총액 상위 100개와 요즘 화제인 종목까지 실적 탭 맨 위에 회사 소개와 최근 분기 매출·영업이익·순이익·현금 흐름을 보여줘요(회사 공시 재무제표 자동 정리, 매주 갱신). 한 번 본 종목은 다음에 기다리지 않고 바로 떠요.
+<!-- internal --> tools/biz_auto.py → KV(bizauto:us:<128칸>, bizauto:kr) · /api/biz · 앱은 13개 손정리(data/biz) 우선, 나머지는 자동. 본 종목 30개 localStorage 캐시(cw.bizCache).
 - 📄 **종목별 실적·사업 현황 페이지**가 생겼어요(예: 삼성전자·테슬라·팔란티어). 검색에서 바로 찾아 들어와 핵심 숫자와 분기별 소식을 볼 수 있어요.
 <!-- internal --> /sitemap-daily.xml(KV daily:index로 그때그때 생성, robots.txt 등록) · publish-daily.mjs가 새 날짜를 IndexNow로 알림 · indexnow.py에 종목 페이지 추가
 <!-- EN
 - Save or share your FIRE, dividend and bonus results as an image card (amounts hidden by default).
+- Business snapshots now cover the S&P 500, most U.S. listed companies and Korea's top 100 (auto-compiled from filings, refreshed weekly).
 - New per-stock earnings & business pages (Samsung Electronics, Tesla, Palantir and more).
 -->
 
