@@ -11,6 +11,14 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📤 퇴사까지·배당금·성과급 결과를 **이미지 카드로 저장·공유**할 수 있어요. 기본은 '금액 가리기'라 퍼센트만 보이고, 원하면 금액도 넣을 수 있어요.
+- 📄 **종목별 실적·사업 현황 페이지**가 생겼어요(예: 삼성전자·테슬라·팔란티어). 검색에서 바로 찾아 들어와 핵심 숫자와 분기별 소식을 볼 수 있어요.
+<!-- internal --> /sitemap-daily.xml(KV daily:index로 그때그때 생성, robots.txt 등록) · publish-daily.mjs가 새 날짜를 IndexNow로 알림 · indexnow.py에 종목 페이지 추가
+<!-- EN
+- Save or share your FIRE, dividend and bonus results as an image card (amounts hidden by default).
+- New per-stock earnings & business pages (Samsung Electronics, Tesla, Palantir and more).
+-->
+
 ## v2026.10.11-1 — 2026-10-11
 
 [이 버전 보기](https://f4890858.my-fire-portfolio.pages.dev) · 커밋 `25cd02e`

@@ -522,7 +522,7 @@
   };
   EASY.holders = EASY.sholders = "블랙록·뱅가드 같은 큰 기관(펀드)들이 이 주식을 얼마나 들고 있는지예요. 기관이 늘리면 큰손이 사 모으는 중이라는 뜻이고, '평단≈'은 기관들이 대략 얼마에 샀는지 추정한 값이에요.";
   // easy: 처음 보는 사람용 '💡 설명' — 제목 바로 옆 칩을 누르면 머리 아래에 펼쳐진다(자동 새로고침으로 다시 그려도 펼친 상태 유지)
-  function card(id, { title, sub, info, easy, body }) {
+  function card(id, { title, sub, info, easy, body, share }) {
     const el = document.getElementById('c-' + id);
     const open = state.openInfo.has(id);
     const ez = easy ?? EASY[id], ezOpen = state.openMore.has('easy:' + id);
@@ -533,7 +533,7 @@
       </div>
       ${ez ? `<div class="easy-panel" id="easy-${id}" ${ezOpen ? '' : 'hidden'}>${ez}</div>` : ''}
       ${info ? `<div class="info" id="info-${id}" ${open ? '' : 'hidden'}>${info}</div>` : ''}
-      ${body}`;
+      ${body}${share ? `<button type="button" class="share-card-btn" data-sharecard="${share}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>${EN ? 'Share as image' : '이미지로 공유'}</button>` : ''}`;
     for (const d of el.querySelectorAll('details.more')) if (!d.querySelector(':scope > .more-close')) d.insertAdjacentHTML('beforeend', `<button type="button" class="more-close">${EN ? 'Collapse' : '접기'}</button>`);
     return el;
   }
@@ -1496,6 +1496,69 @@
     if (!st(sym).daily || Date.now() - st(sym).dailyAt > 1800000) ensureDaily(sym).then(() => { const e = document.getElementById(elId); if (e && (sym === 'CRCL' || state.stock === sym)) e.innerHTML = oscHtml(sym); }).catch(() => { const e = document.getElementById(elId); if (e) e.innerHTML = ''; });
   }
 
+  // ---------------------------------------------------------------- 결과를 이미지 카드로 공유(퇴사까지·배당금·성과급)
+  // 그리는 코드는 assets/share-card.js — 버튼을 누를 때만 받아서 첫 로딩에는 영향이 없다
+  function shareCardData(kind) {
+    const tag = EN ? 'Free FIRE & dividend dashboard · no sign-up' : '퇴사를 위한 주식 대시보드 · 무료 · 가입 없음';
+    if (kind === 'fire') {
+      const c = fireCfg && state.quote ? (() => { try { return fireCalc(); } catch { return null; } })() : null;
+      if (!c) return null;
+      const p = Math.max(0, c.progress);
+      return { kind, tag, title: EN ? '🔥 Road to FIRE' : '🔥 퇴사까지', bar: Math.min(1, p),
+        hero: { label: EN ? 'Progress to my goal' : '목표까지 진행률', value: `${(p * 100).toFixed(1)}%`, money: false },
+        lines: [
+          { label: EN ? 'Current value' : '현재 평가액', value: wonFull(c.basis), money: true },
+          { label: EN ? 'Goal' : '목표 금액', value: wonFull(c.F.goal), money: true },
+          { label: EN ? 'Left to go' : '남은 금액', value: wonFull(Math.max(0, c.remainKrw)), money: true },
+          { label: EN ? 'Return' : '수익률', value: pct(c.gainPct, 1), money: false },
+        ] };
+    }
+    if (kind === 'div') {
+      const c = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
+      if (!c || !c.recvNet) return null;
+      const fx = state.quote?.fx?.rate;
+      return { kind, tag, title: EN ? '💰 My dividends' : '💰 내 배당금', bar: Math.min(1, c.payback),
+        hero: { label: EN ? 'Dividends received (after tax)' : '지금까지 받은 배당(세후)', value: usd2(c.recvNet) + (fx ? ` · ${manwon(c.recvNet * fx)}` : ''), money: true,
+          alt: { label: EN ? 'Cost recovered by dividends' : '배당으로 원금 회수', value: pctPlain(c.payback, 1), money: false } },
+        lines: [
+          { label: EN ? 'Monthly average' : '월 평균 배당', value: usd2(c.monthly), money: true },
+          { label: EN ? 'Yearly (est.)' : '연 예상 배당', value: usd2(c.annualNet), money: true },
+          { label: EN ? 'Cost recovered' : '원금 회수', value: pctPlain(c.payback, 1), money: false },
+          { label: EN ? 'Yield on cost' : '투자금 대비 배당률', value: c.yoc != null ? pctPlain(c.yoc, 2) : '–', money: false },
+        ] };
+    }
+    if (kind === 'bonus') {
+      const R = bonusCalc();
+      if (!R.ready) return null;
+      const CO = BONUS_CO[bonusCfg.co] || BONUS_CO.custom;
+      return { kind, tag, title: EN ? '💼 Bonus take-home' : '💼 성과급 실수령액', bar: Math.min(1, R.netRatio),
+        hero: { label: `${CO.name} ${EN ? 'take-home (est.)' : '실수령액(추정)'}`, value: manwon(R.net), money: true,
+          alt: { label: EN ? 'Take-home ratio' : '세후 실수령 비율', value: pctPlain(R.netRatio, 0), money: false } },
+        lines: [
+          { label: EN ? 'Before tax' : '세전 성과급', value: manwon(R.B), money: true },
+          { label: EN ? 'Tax & insurance' : '세금·4대보험', value: manwon(R.taxInc + R.insT), money: true },
+          { label: EN ? 'Take-home ratio' : '세후 실수령 비율', value: pctPlain(R.netRatio, 0), money: false },
+        ] };
+    }
+    return null;
+  }
+  async function openShare(kind, btn) {
+    const d = shareCardData(kind);
+    if (!d) { toast(EN ? 'Fill in the numbers first' : '먼저 값을 넣어 계산해 주세요', true); return; }
+    if (btn) btn.disabled = true;
+    try {
+      const m = await import('./share-card.js?v=1');
+      await m.openShareCard(d, {
+        title: EN ? 'Share as image' : '이미지로 공유', close: EN ? 'Close' : '닫기', hide: EN ? 'Hide amounts (show % only)' : '금액 가리기 (퍼센트만 보여요)',
+        save: EN ? 'Save image' : '이미지 저장', share: EN ? 'Share' : '공유하기', saved: EN ? 'Saved' : '이미지를 저장했어요',
+        noShare: EN ? 'Sharing isn’t supported here — the image was saved instead' : '이 브라우저는 바로 공유가 안 돼서 이미지로 저장했어요',
+        shareText: 'https://my-fire-portfolio.pages.dev/?ref=share-card', done: (msg) => toast(msg),
+      });
+      markUse('share');
+    } catch (e) { console.error(e); toast(EN ? 'Could not make the image' : '이미지를 만들지 못했어요', true); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
   // ---------------------------------------------------------------- 현재 상황 요약 (규칙 기반)
   // 목록 공통: 위 칩(전체·긍정·주의·중립)으로 골라 보고, 앞 4개만 펼친 뒤 나머지는 접어 둔다(고른 보기는 이번 방문 동안만 기억)
   const SUM_FOLD = 4;
@@ -2382,6 +2445,7 @@
       return `<div class="fire-pos"><div class="fp-h"><b>${logoOf(r.ticker) ? `<img class="fp-logo" src="${logoOf(r.ticker)}" alt="" width="16" height="16">` : ''}${esc(nm)}</b><span class="fp-v">${wonFull(r.valueUsd * c.fx)} <span class="${cls(g)}">${pct(g)}</span></span></div><div class="fp-d">${nf(0).format(r.shares)}주 · ${pxS(r.ticker, r.px)} <span class="${cls(r.q?.pct)}">${pct(r.q?.pct, 2)}</span> · ${esc(mktStatus(r.q?.status))}</div></div>`;
     }).join('');
     card('fire', {
+      share: 'fire',
       title: '퇴사까지', sub: `${c.rows.map((r) => `${esc(fireName(r.ticker))} ${nf(0).format(r.shares)}주`).join(' · ')} · 목표 ${wonFull(F.goal)}${F.afterTax ? ' · 세후 기준' : ''}`, info: INFO.fire,
       body: `
         <div class="fire-hero">
@@ -2725,6 +2789,7 @@
     const why = [noDiv.length ? (EN ? `${noDiv.join(', ')} ${noDiv.length > 1 ? "don't" : "doesn't"} pay dividends` : `배당을 주지 않는 종목: ${noDiv.join('·')}`) : '', notYet.length ? (EN ? `${notYet.join(', ')}: no ex-dividend date has passed since the buy date yet` : `매수일 이후 아직 배당락일이 없어 받은 배당이 없는 종목: ${notYet.join('·')} (앞으로 받을 배당만 계산)`) : ''].filter(Boolean).join(EN ? ' · ' : ' · ');
     const big = Object.entries(c.byYear).find(([, v]) => state.quote?.fx?.rate && v.gross * state.quote.fx.rate > 2e7 * 0.8);
     card('div', {
+      share: 'div',
       title: '배당금', sub: EN ? `${P.length} stocks · ${c.tax ? `after tax (US 15%${P.some((x) => krTk(x.sym)) ? ' · KR 15.4%' : ''})` : 'pre-tax'} · current shares` : `${P.length}종목 · ${taxLabel} 기준 · 현재 보유 수량 기준`, info: INFO.div,
       body: `${loading.length ? `<p class="skeleton">배당 내역 불러오는 중… (${esc(loading.join(', '))})</p>` : ''}
         ${errs.length ? `<p class="err">배당 내역을 받지 못한 종목: ${esc(errs.join(', '))} — 티커를 확인해 주세요.</p>` : ''}
@@ -3084,6 +3149,7 @@
     const fx = state.quote?.fx?.rate;
     const field = (k, label, unitTxt, def, max) => `<label class="bn-f"><span>${label}</span><div class="bn-in"><input inputmode="decimal" data-bnrate="${k}" value="${esc(String(c.rates?.[k] ?? def))}" aria-label="${esc(label)}"><em>%</em></div><small>${unitTxt}${max ? ` · 최대 ${max}%` : ''}</small></label>`;
     card('bonus', {
+      share: R.ready ? 'bonus' : null,
       title: '💼 성과급 계산기', sub: '삼성전자 · SK하이닉스 성과급 세후 실수령액 추정',
       easy: '연봉과 지급률을 넣으면 성과급이 얼마인지, 세금·4대보험을 떼고 실제로 얼마를 받는지 계산해요. 맨 아래 버튼으로 이 돈을 배당주에 넣으면 배당을 얼마나 받는지도 바로 이어서 볼 수 있어요.',
       info: INFO.bonus,
@@ -5967,6 +6033,8 @@
     if (stk) { setStock(stk.dataset.stock); return; }
     const stn = ev.target.closest('[data-sumtone]');
     if (stn) { const [id, t] = stn.dataset.sumtone.split(':'); sumTone[id] = sumTone[id] === t ? 'all' : t; if (id === 'summary') renderSummary(); else renderSSummary(); return; }
+    const scb = ev.target.closest('[data-sharecard]');
+    if (scb) { openShare(scb.dataset.sharecard, scb); return; }
     const dsb = ev.target.closest('[data-dsub]');
     if (dsb) { setDivSub(dsb.dataset.dsub); applyFireTab(); if (state.divSub === 'sim') renderDivSim(); else renderDiv(); markUse(state.divSub === 'sim' ? 'divsim' : 'div'); return; }
     const mc = ev.target.closest('.more-close');

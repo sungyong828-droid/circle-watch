@@ -1525,3 +1525,21 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .div-tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(63, 191, 127, 0.55); }
 .sub-off { display: none !important; }
 #c-div-set { grid-column: 1 / -1; }
+
+/* 결과 이미지로 공유 */
+.share-card-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 40px; margin-top: 12px; border-radius: 10px; border: 1px dashed var(--line); background: transparent; color: var(--ink-2); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.share-card-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.share-card-btn:active { background: var(--surface-2); }
+.sc-sheet { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0.6); }
+.sc-panel { width: min(480px, 100%); max-height: 100%; overflow: auto; background: var(--surface); border-radius: 18px 18px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); }
+@media (min-width: 720px) { .sc-sheet { align-items: center; } .sc-panel { border-radius: 18px; } }
+.sc-head { display: flex; align-items: center; justify-content: space-between; }
+.sc-head b { font-size: 16px; }
+.sc-x { width: 36px; height: 36px; border: 0; border-radius: 10px; background: var(--surface-2); color: var(--ink); font-size: 22px; line-height: 1; cursor: pointer; }
+.sc-prev { margin-top: 10px; display: flex; justify-content: center; }
+.sc-prev img { width: auto; max-width: 100%; height: auto; max-height: 56vh; border-radius: 12px; border: 1px solid var(--line-soft); }
+.sc-hide { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; color: var(--ink-2); }
+.sc-hide input { width: 18px; height: 18px; accent-color: var(--c-orange, #f2994a); }
+.sc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.sc-btns button { height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; }
+.sc-btns .sc-share { background: linear-gradient(135deg, #f2994a, #e0721e); border-color: transparent; color: #fff; }

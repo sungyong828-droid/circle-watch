@@ -2096,7 +2096,8 @@ window.__I18N_EN = {
 "블로그": "Blog",
 "💰 내 배당금": "💰 My dividends",
 "🧮 포트폴리오 짜보기": "🧮 Plan a portfolio",
-"배당금 보기": "Dividend views"
+"배당금 보기": "Dividend views",
+"이미지로 공유": "Share as image"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
