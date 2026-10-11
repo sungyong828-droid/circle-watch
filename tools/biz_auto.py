@@ -130,7 +130,7 @@ def us_numbers():
     today = datetime.date.today()
     qs = []
     y, n = today.year, (today.month - 1) // 3 + 1
-    for _ in range(7):
+    for _ in range(9):  # 2년치 남짓: 연간 − 세 분기 계산에 앞 분기도 필요
         n -= 1
         if n == 0:
             y, n = y - 1, 4
@@ -159,6 +159,50 @@ def us_numbers():
         for r in frame('CashAndCashEquivalentsAtCarryingValue', p + 'I'):
             data.setdefault(r['cik'], {}).setdefault(q, {})['cash'] = r['val']
         print('  SEC', p, 'done')
+    # 회계연도 마지막 분기는 연간 보고서(10-K)에만 있어 분기 값이 빠지는 회사가 많다(애플 7~9월, 대부분 10~12월)
+    # → 연간 값 − 그해 나머지 세 분기로 채운다(연간 기간 끝을 기준으로 네 분기를 잡음. EPS는 주식 수가 달라 빼지 않음)
+    def prevq(q, n):
+        y, k = int(q[:4]), int(q[5]) - n
+        while k <= 0:
+            y, k = y - 1, k + 4
+        while k > 4:
+            y, k = y + 1, k - 4
+        return f'{y}Q{k}'
+    for y in sorted({x[2:6] for x in qs}):
+        ann = {}
+        for rank, c in enumerate(REV):
+            for r in frame(c, f'CY{y}'):
+                a = ann.setdefault(r['cik'], {})
+                if 'rev' not in a or rank < a.get('_rr', 9):
+                    a['rev'], a['_rr'], a['accn'], a['start'] = r['val'], rank, r['accn'], r.get('start')
+        for key, c in [('op', 'OperatingIncomeLoss'), ('net', 'NetIncomeLoss')]:
+            for r in frame(c, f'CY{y}'):
+                a = ann.setdefault(r['cik'], {})
+                a[key] = r['val']
+                a.setdefault('start', r.get('start'))
+        filled = 0
+        for cik, a in ann.items():
+            qd = data.get(cik)
+            if not qd or not a.get('start'):
+                continue
+            # 회계연도 시작 + 45일이 들어 있는 달력 분기부터 네 분기(엔비디아 2~1월 → 1~4분기, 애플 10~9월 → 전년 4분기~3분기)
+            st = datetime.date.fromisoformat(a['start']) + datetime.timedelta(days=45)
+            first = f'{st.year}Q{(st.month - 1) // 3 + 1}'
+            four = [prevq(first, -n) for n in (0, 1, 2, 3)]
+            for key in ('rev', 'op', 'net'):
+                if a.get(key) is None:
+                    continue
+                miss = [q for q in four if qd.get(q, {}).get(key) is None]
+                if len(miss) != 1:
+                    continue
+                v = a[key] - sum(qd[q][key] for q in four if q != miss[0])
+                if key == 'rev' and v <= 0:
+                    continue
+                d = qd.setdefault(miss[0], {})
+                d[key] = v
+                d.setdefault('accn', a.get('accn'))
+                filled += 1
+        print('  SEC 연간', y, '로 빠진 분기', filled, '칸 채움')
     return data, cik2t
 
 
@@ -217,7 +261,7 @@ def build_us():
           Dn = desc.get(sym) or {}
           M = meta.get(sym)
           B = {'sym': sym, 'auto': True, 'cur': 'USD',
-               'src': {'ko': 'SEC 분기 재무제표(XBRL) 자동 정리' + (' · 회사 소개: 네이버 증권' if Dn.get('desc') else ''), 'en': 'SEC quarterly financials (XBRL), compiled automatically'},
+               'src': {'ko': 'SEC 분기 재무제표' + (' · 회사 소개: 네이버 증권' if Dn.get('desc') else ''), 'en': 'SEC quarterly financials (XBRL)'},
                'profit': {'ko': '영업이익', 'en': 'Operating income'} if has_op else {'ko': '순이익', 'en': 'Net income'},
                'kpi': ([{'k': 'net', 'ko': '순이익', 'en': 'Net income', 'f': 'usdM'}] if has_op else []) + [
                    {'k': 'eps', 'ko': '주당순이익(EPS)', 'en': 'EPS (diluted)', 'f': 'px'}, {'k': 'cash', 'ko': '현금성 자산', 'en': 'Cash & equivalents', 'f': 'usdM'}],
@@ -274,7 +318,7 @@ def build_kr():
             except Exception:
                 desc[code] = ''
         B = {'sym': code, 'auto': True, 'cur': 'KRW', 'name': {'ko': name, 'en': name},
-             'src': {'ko': '네이버 증권 분기 실적(FnGuide) 자동 정리' + (' · 회사 소개: WiseReport' if desc[code] else ''), 'en': 'Naver Finance quarterly results (FnGuide), compiled automatically'},
+             'src': {'ko': '네이버 증권 분기 실적(FnGuide)' + (' · 회사 소개: WiseReport' if desc[code] else ''), 'en': 'Naver Finance quarterly results (FnGuide)'},
              'profit': {'ko': '영업이익', 'en': 'Operating profit'},
              'kpi': [{'k': 'net', 'ko': '순이익', 'en': 'Net income', 'f': 'krwJo'}], 'seg': [], 'q': rows[:6],
              'url': f'https://m.stock.naver.com/domestic/stock/{code}/finance/quarter'}
