@@ -534,6 +534,7 @@
       ${ez ? `<div class="easy-panel" id="easy-${id}" ${ezOpen ? '' : 'hidden'}>${ez}</div>` : ''}
       ${info ? `<div class="info" id="info-${id}" ${open ? '' : 'hidden'}>${info}</div>` : ''}
       ${body}`;
+    for (const d of el.querySelectorAll('details.more')) if (!d.querySelector(':scope > .more-close')) d.insertAdjacentHTML('beforeend', `<button type="button" class="more-close">${EN ? 'Collapse' : '접기'}</button>`);
     return el;
   }
   const failed = (id, title, msg) => card(id, { title, body: `<p class="err">데이터를 불러오지 못했습니다${msg ? ': ' + esc(msg) : ''}. 다음 수집 때 다시 시도합니다.</p>` });
@@ -2646,10 +2647,14 @@
 
   // Fire 화면 위 탭: 퇴사까지 / 배당금 — 카드의 data-pane으로 보이기·숨기기(선택은 이 기기에 기억)
   state.fireTab = ['div', 'bonus'].includes(loadPref('fireTab', 'fire')) ? loadPref('fireTab', 'fire') : 'fire';
+  state.divSub = loadPref('divSub', 'mine') === 'sim' ? 'sim' : 'mine'; // 배당금 탭 안: 내 배당금 · 포트폴리오 짜보기
+  const setDivSub = (v) => { state.divSub = v === 'sim' ? 'sim' : 'mine'; savePref('divSub', state.divSub); };
   function applyFireTab() {
     for (const b of document.querySelectorAll('[data-ftab]')) b.setAttribute('aria-selected', String(b.dataset.ftab === state.fireTab));
     for (const el of document.querySelectorAll('#view-fire [data-pane]')) el.classList.toggle('pane-off', el.dataset.pane !== state.fireTab);
-    if (state.fireTab === 'div') for (const id of ['div-month']) charts[id]?.resize();
+    for (const el of document.querySelectorAll('#view-fire [data-dpane]')) el.classList.toggle('sub-off', el.dataset.dpane !== state.divSub);
+    for (const b of document.querySelectorAll('[data-dsub]')) b.setAttribute('aria-selected', String(b.dataset.dsub === state.divSub));
+    if (state.fireTab === 'div') for (const id of ['div-month', 'sim-month']) charts[id]?.resize();
     if (state.view === 'fire') { document.getElementById('view-title').textContent = viewTitle('fire'); markUse(state.fireTab); }
   }
   // ---- 배당 캘린더: 앞으로 3개월 입금 예정(발표된 배당 + 최근 1년 일정이 반복된다고 본 예상) — 지급일 기준, 세후
@@ -2700,7 +2705,7 @@
     if (!el) return;
     const mEl = document.getElementById('c-div-month');
     if (!divCfg) {
-      card('div', { title: '배당금', sub: '매수한 주식·ETF로 받은 배당과 원금 회수', info: INFO.div, body: `<p class="fire-empty">아래 <b>배당 종목 입력</b>에 종목·수량·평균 단가·<b>매수일</b>을 넣으면, 지금까지 받은 배당금, 원금을 되찾기까지 남은 금액, 월별 배당금을 계산해요. 같은 종목을 여러 번 나눠 샀다면 매수일별로 따로 넣어 주세요.</p>` });
+      card('div', { title: '배당금', sub: '매수한 주식·ETF로 받은 배당과 원금 회수', info: INFO.div, body: `<p class="fire-empty">위 <b>배당 종목 입력</b>에 종목·수량·평균 단가·<b>매수일</b>을 넣으면, 지금까지 받은 배당금, 원금을 되찾기까지 남은 금액, 월별 배당금을 계산해요. 같은 종목을 여러 번 나눠 샀다면 매수일별로 따로 넣어 주세요.</p>` });
       if (mEl) mEl.hidden = true;
       return;
     }
@@ -3401,7 +3406,7 @@
     if (!R.ready) return;
     simCfg.unit = 'manwon'; simCfg.amount = Math.floor(R.net / 1e4);
     writeJSON(SIM_KEY, simCfg);
-    state.fireTab = 'div'; savePref('fireTab', 'div'); applyFireTab(); renderDiv();
+    state.fireTab = 'div'; savePref('fireTab', 'div'); setDivSub('sim'); applyFireTab(); renderDiv();
     renderDivSim();
     runSim();
   }
@@ -5962,6 +5967,10 @@
     if (stk) { setStock(stk.dataset.stock); return; }
     const stn = ev.target.closest('[data-sumtone]');
     if (stn) { const [id, t] = stn.dataset.sumtone.split(':'); sumTone[id] = sumTone[id] === t ? 'all' : t; if (id === 'summary') renderSummary(); else renderSSummary(); return; }
+    const dsb = ev.target.closest('[data-dsub]');
+    if (dsb) { setDivSub(dsb.dataset.dsub); applyFireTab(); if (state.divSub === 'sim') renderDivSim(); else renderDiv(); markUse(state.divSub === 'sim' ? 'divsim' : 'div'); return; }
+    const mc = ev.target.closest('.more-close');
+    if (mc) { const d = mc.closest('details.more'); if (d) { d.open = false; const y = d.getBoundingClientRect().top; if (y < 70) window.scrollBy({ top: y - 90 }); } return; }
     const sr = ev.target.closest('[data-srange]');
     if (sr) { state.srange = sr.dataset.srange; savePref('jrange', state.srange); renderSPriceChart(); paintStock(); return; }
     if (ev.target.closest('[data-wedit]')) { openWatchSheet(); return; }
@@ -6020,7 +6029,7 @@
     if (ev.target.closest('[data-simeq]')) { readSimForm(); const rows = simCfg.rows.filter((r) => r.t); rows.forEach((r) => { r.w = 0; }); simCfg.rows = rows; normalizeSimWeights(); writeJSON(SIM_KEY, simCfg); renderDivSim(); return; }
     if (ev.target.closest('[data-simadd]')) { readSimForm(); simSearchOpen = !simSearchOpen; simResults = []; renderDivSim(); document.getElementById('sim-q')?.focus(); return; }
     const ls = ev.target.closest('[data-lifesim]');
-    if (ls) { simCfg.goal = +ls.dataset.lifesim; writeJSON(SIM_KEY, simCfg); state.fireTab = 'div'; savePref('fireTab', 'div'); applyFireTab(); renderDiv(); renderDivSim(); setTimeout(() => document.getElementById('sim-goal')?.closest('.sim-goal')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) || document.getElementById('c-divsim')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 150); return; }
+    if (ls) { simCfg.goal = +ls.dataset.lifesim; writeJSON(SIM_KEY, simCfg); state.fireTab = 'div'; savePref('fireTab', 'div'); setDivSub('sim'); applyFireTab(); renderDiv(); renderDivSim(); setTimeout(() => document.getElementById('sim-goal')?.closest('.sim-goal')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) || document.getElementById('c-divsim')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 150); return; }
     const jc = ev.target.closest('[data-jtcat]');
     if (jc) { jtCat = jc.dataset.jtcat; renderJobyTimeline(); return; }
     const sg = ev.target.closest('[data-simgoal]');
@@ -6221,6 +6230,7 @@
     let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0;
     if (['dividend', 'quit', 'bonus', 'portfolio'].includes(v0)) { // 소개 페이지(/dividend · /fire · /bonus · /portfolio)에서 바로 열기
       state.fireTab = v0 === 'quit' ? 'fire' : v0 === 'bonus' ? 'bonus' : 'div'; savePref('fireTab', state.fireTab);
+      if (v0 === 'portfolio' || v0 === 'dividend') setDivSub(v0 === 'portfolio' ? 'sim' : 'mine');
       if (v0 === 'portfolio') setTimeout(() => document.getElementById('c-divsim')?.scrollIntoView({ block: 'start' }), 600);
       v0 = 'fire';
     }

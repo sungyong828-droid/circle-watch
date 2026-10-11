@@ -2093,7 +2093,10 @@ window.__I18N_EN = {
 "돼용의 투자 채널": "Dwaeyong's investing channels",
 "매일 미국 주식 시황과": "Daily U.S. market notes",
 "서클(CRCL)·조비(JOBY) 소식을 올려요": "plus Circle (CRCL) & Joby (JOBY) updates",
-"블로그": "Blog"
+"블로그": "Blog",
+"💰 내 배당금": "💰 My dividends",
+"🧮 포트폴리오 짜보기": "🧮 Plan a portfolio",
+"배당금 보기": "Dividend views"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

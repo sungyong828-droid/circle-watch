@@ -11,6 +11,13 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 💰 배당금 탭을 **내 배당금**과 **포트폴리오 짜보기** 두 보기로 나눴어요. 내 배당금에서는 맨 위의 '배당 종목 수정'으로 종목을 넣고 바로 아래에서 결과와 배당 캘린더를 봐요.
+- 📂 '더 보기'로 펼치면 '접기' 버튼이 펼친 내용 맨 아래로 내려가요.
+<!-- EN
+- The Dividends tab is now split into **My dividends** and **Plan a portfolio**, with "Edit holdings" at the top.
+- "Show more" sections now have the Collapse button at the bottom of the expanded list.
+-->
+
 ## v2026.10.10-7 — 2026-10-10
 
 [이 버전 보기](https://3e049363.my-fire-portfolio.pages.dev) · 커밋 `41e7c1b`
