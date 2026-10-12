@@ -5821,7 +5821,15 @@
     auto: ['market', 'feargreed', 'mnews', 'circle', 'cirbtc', 'stables', 'series', 'dex', 'tvl', 'accounts', 'activity', 'cctp', 'rates', 'short', 'filings', 'news', 'earnings', 'quote'],
     light: ['circle', 'cirbtc', 'quote', 'market', 'mnews'],
   };
-  SYNC_SETS.boot = SYNC_SETS.manual; // 사이트를 처음 열 때: 전 항목을 새로(조용히)
+  // 처음 열 때: 느린 외부 사이트(DefiLlama·Arc 체인·미 재무부)는 서버가 15분마다 모아 둔 값(data.json)이 있으니 기다리지 않는다.
+  // 핵심 항목(주가·서클·시장·뉴스·실적)만 받으면 '최신 값 받는 중'을 끝내고, 서버 값이 20분 넘게 묵었을 때만 느린 것들을 뒤에서 조용히 받는다.
+  const SLOW_PARTS = ['stables', 'cirbtc', 'dex', 'tvl', 'lending', 'accounts', 'activity', 'cctp', 'rates'];
+  SYNC_SETS.boot = SYNC_SETS.manual.filter((p) => !SLOW_PARTS.includes(p));
+  function bootSlow() {
+    const age = Date.now() - Date.parse(state.data?.updatedAt || 0);
+    if (!(age > 20 * 60000)) return;
+    syncNow(SLOW_PARTS, { quiet: true }).then(() => renderAll()).catch(() => {});
+  }
   let manualRunning = false, manualQueued = false, doneTimer = null;
   function setRefreshUi(mode) { // 'loading' | 'done' | 'fail' | 'idle'
     const btn = document.getElementById('refresh');
@@ -5861,6 +5869,7 @@
       const r = await syncNow([...SYNC_SETS[kind], ...stockP]);
       if (state.booting) { state.booting = false; busyBar(false); }
       renderAll();
+      if (kind === 'boot') bootSlow();
       if (kind !== 'light') setTimeout(prefetchStocks, 1500);
       if (kind === 'manual') {
         const now = new Date(), t = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');

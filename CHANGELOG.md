@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- ⚡ 처음 들어올 때 '최신 값 받는 중'이 훨씬 빨리 끝나요. 주가·뉴스·실적 같은 핵심 값만 먼저 받고, 느린 외부 자료(스테이블코인·체인 지표)는 서버가 15분마다 모아 둔 값을 바로 써요.
+<!-- internal --> SYNC_SETS.boot에서 SLOW_PARTS(stables·cirbtc·dex·tvl·lending·accounts·activity·cctp·rates) 제외, data.json이 20분 넘게 묵었을 때만 bootSlow()가 뒤에서 조용히 받음.
+<!-- EN
+- First load finishes much faster: core prices, news and earnings first; slow third-party stats come from the server's 15-minute snapshot.
+-->
+
 ## v2026.10.11-2 — 2026-10-11
 
 [이 버전 보기](https://edd606e4.my-fire-portfolio.pages.dev) · 커밋 `abb40e7`
