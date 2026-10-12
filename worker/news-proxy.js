@@ -801,9 +801,10 @@ export async function buildQuote(extra = []) {
 
 // 실시간성이 중요해서 10초만 캐시
 export async function handleQuote(url, cache, cors, ctx) {
-  // 8초 안이면 그대로, 10분 안이면 저장값을 즉시 주고 뒤에서 갱신(Nasdaq 8종목 조회는 3~4초 걸림)
+  // 8초 안이면 그대로, 하루 안이면 저장값을 즉시 주고 뒤에서 갱신(Nasdaq 8종목 조회는 3~4초 걸림).
+  // 방문이 뜸해도 첫 화면이 3~4초 기다리지 않게 — 앱은 1분마다 다시 묻기 때문에 묵은 값은 곧 새 값으로 바뀐다
   const extra = [...new Set(String(url.searchParams.get('x') || '').toUpperCase().split(',').filter((x) => SYM_RE.test(x)))].sort().slice(0, 12);
-  return swr(cache, ctx, `${url.origin}/quote?v=swr2&x=${extra.join(',')}`, { freshSec: 8, keepSec: 600, cors, build: async () => JSON.stringify(await buildQuote(extra)) });
+  return swr(cache, ctx, `${url.origin}/quote?v=swr2&x=${extra.join(',')}`, { freshSec: 8, keepSec: 86400, cors, build: async () => JSON.stringify(await buildQuote(extra)) });
 }
 
 // ---------------------------------------------------------------- 가격 차트 (Yahoo, 바이낸스에 없는 종목용)
