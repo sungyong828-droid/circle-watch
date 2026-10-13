@@ -2385,6 +2385,138 @@
     try { checkMilestone(fc); } catch (e) { console.error(e); }
   }
 
+
+  // ---------------------------------------------------------------- 💸 시장 자금 동향(국내 증시): 빚투(신용융자) · 대기 자금(고객예탁금) · 투자자별 매매 → 과열 신호
+  // 자료: 네이버 증권(금융투자협회 집계, 하루 늦게 나옴) · 서버 1시간 캐시 · 이 기기에도 저장해 두고 바로 그린다
+  const FLOW_CACHE = 'cw.flowCache';
+  state.flow = readJSON(FLOW_CACHE, null);
+  let flowLoading = null, flowMemo = null;
+  function loadFlow(force) {
+    if (flowLoading) return flowLoading;
+    if (!force && state.flow?.rows?.length && Date.now() - Date.parse(state.flow.got || 0) < 30 * 60000) return Promise.resolve(state.flow);
+    flowLoading = getJ(`${NEWS_API}/flow`, 15000)
+      .then((j) => { if (j?.rows?.length) { state.flow = { ...j, got: new Date().toISOString() }; writeJSON(FLOW_CACHE, state.flow); } return state.flow; })
+      .finally(() => { flowLoading = null; });
+    return flowLoading;
+  }
+  const jo = (v) => (v == null || !isFinite(v) ? '–' : Math.abs(v) >= 10000 ? `${(v / 1e4).toFixed(1)}${EN ? 'T' : '조'}` : `${nf(0).format(v)}${EN ? '00M' : '억'}`); // 억원 → 조
+  const joS = (v) => (v == null ? '–' : (v > 0 ? '+' : v < 0 ? '-' : '') + jo(Math.abs(v)));
+  function flowCalc(F = state.flow) {
+    if (!F?.rows?.length) return null;
+    if (flowMemo?.at === F.at) return flowMemo.v;
+    const R = F.rows, n = R.length, L = R[n - 1];
+    const back = (k) => R[Math.max(0, n - 1 - k)];
+    const rank = (arr, v) => arr.filter((x) => x <= v).length / arr.length;
+    const cr = R.map((r) => r[2]), ratio = R.map((r) => r[2] / r[1]);
+    const crMax = R.reduce((m, r) => (r[2] > m[2] ? r : m), R[0]);
+    const c = {
+      date: L[0], dep: L[1], cr: L[2], ratio: L[2] / L[1],
+      cr20: L[2] / back(20)[2] - 1, cr60: L[2] / back(60)[2] - 1, cr250: L[2] / back(250)[2] - 1,
+      dep60: L[1] / back(60)[1] - 1, dep250: L[1] / back(250)[1] - 1,
+      crPct: rank(cr, L[2]), ratioPct: rank(ratio, L[2] / L[1]), crMax, fromMax: L[2] / crMax[2] - 1,
+      ratioAvg: ratio.reduce((a, b) => a + b, 0) / ratio.length, years: Math.max(1, Math.round(n / 245)),
+    };
+    // 점수: 빚투 규모(5년 중 위치) · 늘어나는 속도 · 예탁금 대비 비율 · 대기 자금 감소
+    let sc = 0; const why = [];
+    const top = (p) => Math.max(1, Math.round((1 - p) * 100));
+    if (c.crPct >= 0.9) { sc += 2; why.push(EN ? `Margin loans are near a ${c.years}-year high (top ${top(c.crPct)}%)` : `빚내서 산 주식(신용융자)이 최근 ${c.years}년 중 상위 ${top(c.crPct)}% 수준이에요`); }
+    else if (c.crPct >= 0.75) { sc += 1; why.push(EN ? `Margin loans are on the high side (top ${top(c.crPct)}%)` : `신용융자가 최근 ${c.years}년 중 높은 편이에요(상위 ${top(c.crPct)}%)`); }
+    if (c.cr60 >= 0.1) { sc += 2; why.push(EN ? `Margin loans grew ${pct(c.cr60, 1)} in 3 months — fast` : `최근 3개월 동안 신용융자가 ${pct(c.cr60, 1)} 늘었어요(빠른 증가)`); }
+    else if (c.cr60 >= 0.05) { sc += 1; why.push(EN ? `Margin loans grew ${pct(c.cr60, 1)} in 3 months` : `최근 3개월 동안 신용융자가 ${pct(c.cr60, 1)} 늘었어요`); }
+    if (c.ratioPct >= 0.9) { sc += 2; why.push(EN ? `Debt relative to cash waiting to invest is in the top ${top(c.ratioPct)}%` : `대기 자금 대비 빚 비율이 ${c.years}년 중 상위 ${top(c.ratioPct)}%예요`); }
+    else if (c.ratioPct >= 0.75) { sc += 1; why.push(EN ? 'Debt-to-cash ratio is on the high side' : '대기 자금 대비 빚 비율이 높은 편이에요'); }
+    if (c.dep60 <= -0.05) { sc += 1; why.push(EN ? `Cash waiting to invest fell ${pct(c.dep60, 1)} in 3 months` : `주식 사려고 넣어 둔 돈(예탁금)은 3개월 새 ${pct(c.dep60, 1)} 줄었어요`); }
+    else if (c.dep60 >= 0.05) why.push(EN ? `Cash waiting to invest rose ${pct(c.dep60, 1)} — fuel for buying` : `주식 사려고 넣어 둔 돈(예탁금)이 3개월 새 ${pct(c.dep60, 1)} 늘었어요(살 여력 ↑)`);
+    const lv = sc >= 5 ? { k: 'hot', e: '🔴', t: EN ? 'Overheated — looks risky' : '과열 · 위험위험해 보여요', d: EN ? 'A lot of borrowed money is in the market. If prices drop sharply, forced selling can make the fall worse.' : '빚내서 투자한 돈이 많이 쌓였어요. 주가가 크게 빠지면 반대매매(강제 매도)로 하락이 더 커질 수 있어요.' }
+      : sc >= 3 ? { k: 'warn', e: '🟠', t: EN ? 'Caution — leverage is building' : '주의 · 빚투가 꽤 늘었어요', d: EN ? 'Borrowed money is rising. Be careful about chasing prices.' : '빚내서 사는 사람이 늘고 있어요. 무리한 추격 매수는 조심할 때예요.' }
+      : sc >= 1 ? { k: 'mid', e: '🟡', t: EN ? 'Normal — a little warm' : '보통 · 조금 뜨거운 편', d: EN ? 'No strong overheating signal yet.' : '아직 뚜렷한 과열 신호는 크지 않아요.' }
+      : { k: 'calm', e: '🟢', t: EN ? 'Calm — little leverage' : '안정 · 빚투가 적어요', d: EN ? 'Not much borrowed money in the market.' : '빚내서 투자하는 돈이 많지 않아요.' };
+    if (c.cr60 <= -0.1) why.push(EN ? 'Margin loans dropped fast — often after forced selling (a fear phase)' : '신용융자가 빠르게 줄었어요 — 반대매매·청산이 나온 뒤일 수 있어요(공포 구간)');
+    const v = { ...c, sc, why, lv };
+    flowMemo = { at: F.at, v };
+    return v;
+  }
+  const invLine = (I, name) => (I ? `<span class="fl-inv-k">${name}</span>${[['p', EN ? 'Retail' : '개인'], ['f', EN ? 'Foreign' : '외국인'], ['i', EN ? 'Institutions' : '기관']].map(([k, l]) => `<span>${l} <b class="${cls(I[k])}">${joS(I[k])}</b></span>`).join('')}` : '');
+  function renderFlowCard() {
+    const el = document.getElementById('c-flow');
+    if (!el) return;
+    const F = state.flow, c = flowCalc(F);
+    if (!c) { card('flow', { title: EN ? '💸 Market money flow' : '💸 시장 자금 동향', body: `<p class="skeleton">${EN ? 'Loading…' : '불러오는 중…'}</p>` }); return; }
+    const I = F.inv?.KOSPI;
+    card('flow', {
+      title: EN ? '💸 Market money flow' : '💸 시장 자금 동향', sub: EN ? `Korean stocks · borrowed money & cash on the sidelines · ${c.date.slice(5).replace('-', '/')}` : `국내 증시 · 빚투와 대기 자금으로 본 분위기 · ${+c.date.slice(5, 7)}/${+c.date.slice(8)} 기준`,
+      easy: EN ? 'Shows how much people borrow to buy stocks and how much cash is waiting to invest. When borrowing piles up fast, the market tends to be overheated.' : '사람들이 빚을 내서 주식을 얼마나 샀는지, 주식 사려고 넣어 둔 돈이 얼마인지 보여줘요. 빚투가 빠르게 쌓이면 시장이 과열됐다는 신호로 봐요.',
+      body: `<div class="fl-verdict lv-${c.lv.k}"><span class="fl-e" aria-hidden="true">${c.lv.e}</span><div><b>${c.lv.t}</b><small>${esc(c.why[0] || c.lv.d)}</small></div></div>
+        <div class="fl-grid">
+          <div><span>${EN ? 'Margin loans' : '신용융자(빚투)'}</span><b>${jo(c.cr)}</b><small>${EN ? '3 mo' : '3개월'} <em class="${cls(c.cr60)}">${pct(c.cr60, 1)}</em></small></div>
+          <div><span>${EN ? 'Cash waiting' : '고객예탁금'}</span><b>${jo(c.dep)}</b><small>${EN ? '3 mo' : '3개월'} <em class="${cls(c.dep60)}">${pct(c.dep60, 1)}</em></small></div>
+          <div><span>${EN ? 'Debt ÷ cash' : '빚투 비율'}</span><b>${(c.ratio * 100).toFixed(1)}%</b><small>${EN ? 'avg' : '평균'} ${(c.ratioAvg * 100).toFixed(0)}%</small></div>
+        </div>
+        ${I ? `<p class="fl-inv">${EN ? 'Today' : '오늘'} ${invLine(I, EN ? 'KOSPI' : '코스피')}</p>` : ''}
+        <button type="button" class="link-btn" data-go="flow">${EN ? 'What it means · charts' : '무슨 뜻인지 · 차트 자세히 보기'}${chevron}</button>`,
+    });
+  }
+  const FLOW_RANGES = { '1y': [245, EN ? '1Y' : '1년'], '3y': [735, EN ? '3Y' : '3년'], all: [99999, EN ? '5Y' : '5년'] };
+  function flowChart(id, R, ds, yfmt, tip) {
+    const labels = R.map((r) => Date.parse(r[0] + 'T12:00:00') / 1000);
+    const yr = (t) => { const d = new Date(t * 1000); return R.length > 300 ? `'${String(d.getFullYear()).slice(2)}.${d.getMonth() + 1}` : `${d.getMonth() + 1}/${d.getDate()}`; };
+    draw(id, {
+      type: 'line', data: { labels, datasets: ds },
+      options: { interaction, plugins: { legend: { display: ds.length > 1, labels: { boxWidth: 10, boxHeight: 2, font: { size: 11 } } }, tooltip: tooltip((it) => R[it.dataIndex][0], tip) }, scales: { x: axisX(labels, yr, 5), y: axisY(yfmt) } },
+    });
+  }
+  function renderFlowView() {
+    if (!document.getElementById('c-flowsum')) return;
+    const F = state.flow, c = flowCalc(F);
+    if (!c) { card('flowsum', { title: EN ? 'Market money flow' : '시장 자금 동향', body: `<p class="skeleton">${EN ? 'Loading…' : '불러오는 중…'}</p>` }); return; }
+    const rg = FLOW_RANGES[state.flowRange] ? state.flowRange : '3y', R = F.rows.slice(-FLOW_RANGES[rg][0]);
+    const rgBtns = `<div class="seg range fl-rg" role="group">${Object.entries(FLOW_RANGES).map(([k, [, l]]) => `<button type="button" data-flowrange="${k}" aria-pressed="${k === rg}">${l}</button>`).join('')}</div>`;
+    const ma = (arr, k) => arr.map((_, i) => (i < k - 1 ? null : arr.slice(i - k + 1, i + 1).reduce((a, b) => a + b, 0) / k));
+    const all = F.rows, crAll = all.map((r) => r[2]), ma60 = ma(crAll, 60).slice(-R.length);
+    card('flowsum', {
+      title: EN ? '💸 Market money flow — the verdict' : '💸 지금 시장 분위기', sub: EN ? `Korean stocks · as of ${c.date} · KOFIA data via Naver` : `국내 증시 · ${c.date} 기준 · 금융투자협회 자료(네이버 증권)`,
+      body: `<div class="fl-verdict big lv-${c.lv.k}"><span class="fl-e" aria-hidden="true">${c.lv.e}</span><div><b>${c.lv.t}</b><small>${c.lv.d}</small></div></div>
+        <div class="fl-meter" aria-label="${EN ? 'Heat score' : '과열 점수'} ${c.sc}/7"><i style="left:${Math.min(100, (c.sc / 7) * 100)}%"></i><span>${EN ? 'Calm' : '안정'}</span><span>${EN ? 'Normal' : '보통'}</span><span>${EN ? 'Caution' : '주의'}</span><span>${EN ? 'Hot' : '과열'}</span></div>
+        <ul class="fl-why">${c.why.map((w) => `<li>${esc(w)}</li>`).join('') || `<li>${EN ? 'No notable signals.' : '눈에 띄는 신호가 없어요.'}</li>`}</ul>
+        <p class="note">${EN ? 'Scored from margin-loan size (vs the last 5 years), how fast it grew in 3 months, debt vs cash on the sidelines, and cash outflows. One indicator can’t time tops or bottoms — not investment advice.' : '신용융자 규모(최근 5년과 비교)·3개월 증가 속도·예탁금 대비 빚 비율·대기 자금 감소를 점수로 매겼어요. 지표 하나로 고점·저점을 맞힐 수는 없어요. 투자 조언이 아니에요.'}</p>`,
+    });
+    card('flowcr', {
+      title: EN ? '🏦 Margin loans (buying on credit)' : '🏦 신용융자 잔고 — 빚내서 산 주식', sub: `${jo(c.cr)} · ${EN ? '1Y' : '1년'} ${pct(c.cr250, 1)} · ${EN ? 'peak' : '최고'} ${jo(c.crMax[2])} (${c.crMax[0].slice(2).replace(/-/g, '.')})`,
+      body: `${rgBtns}<div class="chart"><canvas id="cv-flowcr" role="img" aria-label="${EN ? 'Margin loan balance' : '신용융자 잔고'}"></canvas></div>
+        <div class="fl-explain"><b>💡 ${EN ? 'What is it?' : '이게 뭐예요?'}</b><p>${EN ? 'Money investors borrowed from brokers to buy stocks. Rising = more people betting on gains with debt. When it rises too fast the market is often overheated, and when prices fall, brokers force-sell (margin calls), which can deepen the drop.' : '증권사에서 돈을 빌려 주식을 산 금액이에요(빚투). 늘어나면 빚을 내서라도 오를 거라고 베팅하는 사람이 많다는 뜻이에요. 너무 빨리 늘면 과열 신호이고, 주가가 크게 빠지면 담보가 부족해져 증권사가 강제로 파는 <b>반대매매</b>가 나와 하락이 더 커질 수 있어요.'}</p>
+        <p class="fl-how">${EN ? 'Dashed line = 60-day average. Above it and rising fast = heating up.' : '점선은 60일 평균이에요. 평균선 위에서 가파르게 오르면 과열, 갑자기 꺾이면 반대매매·청산 구간인 경우가 많아요.'}</p></div>`,
+    });
+    flowChart('flowcr', R, [lineDs(EN ? 'Margin loans' : '신용융자', R.map((r) => r[2]), C.red || '#f04452', { borderWidth: 2 }), lineDs(EN ? '60-day avg' : '60일 평균', ma60, C.muted, { borderWidth: 1.5, borderDash: [5, 4] })], (v) => jo(v), (v) => jo(v));
+    card('flowdep', {
+      title: EN ? '💵 Investor deposits (cash on the sidelines)' : '💵 고객예탁금 — 주식 사려고 넣어 둔 돈', sub: `${jo(c.dep)} · ${EN ? '3 mo' : '3개월'} ${pct(c.dep60, 1)} · ${EN ? '1Y' : '1년'} ${pct(c.dep250, 1)}`,
+      body: `<div class="chart"><canvas id="cv-flowdep" role="img" aria-label="${EN ? 'Investor deposits' : '고객예탁금'}"></canvas></div>
+        <div class="fl-explain"><b>💡 ${EN ? 'What is it?' : '이게 뭐예요?'}</b><p>${EN ? 'Cash sitting in brokerage accounts, ready to buy stocks. Rising = more buying power (fuel for the market). Falling = money leaving the market.' : '증권 계좌에 넣어 두고 아직 주식을 사지 않은 현금이에요. 늘면 주식을 살 여력(시장의 연료)이 많아진다는 뜻이고, 줄면 돈이 증시에서 빠져나가고 있다는 뜻이에요.'}</p></div>`,
+    });
+    flowChart('flowdep', R, [lineDs(EN ? 'Deposits' : '고객예탁금', R.map((r) => r[1]), C.teal || '#3fbf7f', { fill: 'start', backgroundColor: areaFill(C.teal || '#3fbf7f') })], (v) => jo(v), (v) => jo(v));
+    card('flowratio', {
+      title: EN ? '⚖️ Debt ÷ cash ratio' : '⚖️ 빚투 비율 — 대기 자금 대비 빚', sub: `${(c.ratio * 100).toFixed(1)}% · ${EN ? `${c.years}-yr avg` : `${c.years}년 평균`} ${(c.ratioAvg * 100).toFixed(1)}%`,
+      body: `<div class="chart"><canvas id="cv-flowratio" role="img" aria-label="${EN ? 'Debt to cash ratio' : '빚투 비율'}"></canvas></div>
+        <div class="fl-explain"><b>💡 ${EN ? 'How to read' : '어떻게 봐요?'}</b><p>${EN ? 'Margin loans divided by investor deposits. High = the market leans on borrowed money more than on spare cash, so it is more fragile.' : '신용융자 ÷ 고객예탁금이에요. 높을수록 여윳돈보다 빚에 기대 오르는 장이라 작은 충격에도 흔들리기 쉬워요. 평균선(점선)보다 한참 위면 조심할 때예요.'}</p></div>`,
+    });
+    const ratioR = R.map((r) => (r[2] / r[1]) * 100);
+    flowChart('flowratio', R, [lineDs(EN ? 'Ratio' : '빚투 비율', ratioR, C.orange, { borderWidth: 2 }), lineDs(EN ? 'Average' : '평균', R.map(() => c.ratioAvg * 100), C.muted, { borderWidth: 1.2, borderDash: [5, 4] })], (v) => v.toFixed(0) + '%', (v) => (+v).toFixed(1) + '%');
+    const IK = F.inv?.KOSPI, IQ = F.inv?.KOSDAQ;
+    card('flowinv', {
+      title: EN ? '👥 Who bought today' : '👥 오늘 누가 샀을까 — 투자자별 순매수', sub: IK ? `${IK.d.slice(4, 6)}/${IK.d.slice(6)} · ${EN ? 'KRW, net buy' : '순매수 금액'}` : '',
+      body: `${IK || IQ ? `<div class="fl-invs">${IK ? `<p>${invLine(IK, EN ? 'KOSPI' : '코스피')}</p>` : ''}${IQ ? `<p>${invLine(IQ, EN ? 'KOSDAQ' : '코스닥')}</p>` : ''}</div>` : `<p class="note">${EN ? 'No data yet today.' : '아직 오늘 자료가 없어요.'}</p>`}
+        <div class="fl-explain"><b>💡 ${EN ? 'How to read' : '어떻게 봐요?'}</b><p>${EN ? 'Net buying (+) means that group bought more than it sold. When retail buys heavily while foreigners and institutions sell — especially with rising margin loans — the market is often running on retail leverage.' : '+는 판 것보다 산 게 많다는 뜻(순매수)이에요. 외국인·기관이 팔 때 개인만 크게 사고, 신용융자까지 늘고 있다면 개인의 빚투로 버티는 장일 수 있어요.'}</p></div>`,
+    });
+    card('flowguide', {
+      title: EN ? '📚 More money-flow terms' : '📚 함께 알아 두면 좋은 자금 지표',
+      body: `<dl class="fl-dl">
+        <dt>${EN ? 'Unsettled receivables (미수금)' : '위탁매매 미수금'}</dt><dd>${EN ? 'Stocks bought without paying in full (due in 2 days). If unpaid, the broker sells them — another source of forced selling.' : '돈을 다 내지 않고 산 주식 대금이에요(2일 안에 갚아야 해요). 못 갚으면 증권사가 바로 팔아 버려서(반대매매) 하락장에 매물이 쏟아질 수 있어요.'}</dd>
+        <dt>${EN ? 'Forced selling (반대매매)' : '반대매매'}</dt><dd>${EN ? 'When collateral falls below the required level, brokers sell your stock at market price. Spikes usually show up after sharp drops.' : '빌린 돈의 담보(주식) 가치가 기준 아래로 떨어지면 증권사가 시장가로 강제로 파는 거예요. 급락 직후에 크게 늘어요.'}</dd>
+        <dt>${EN ? 'Futures margin deposits (선물예수금)' : '선물·옵션 예수금'}</dt><dd>${EN ? 'Cash parked for futures and options trading — a rough gauge of short-term speculative appetite.' : '선물·옵션을 하려고 넣어 둔 돈이에요. 단기 투기 심리를 대략 보여줘요.'}</dd>
+        <dt>${EN ? 'Fear & Greed' : '공포·탐욕 지수'}</dt><dd>${EN ? 'US market sentiment on the Home screen. Read it together with this page.' : '홈 화면의 미국 증시 심리 지표예요. 이 화면과 같이 보면 분위기를 더 정확히 알 수 있어요.'}</dd>
+      </dl><p class="note">${EN ? 'Source: Korea Financial Investment Association data via Naver Securities (published with a one-day lag). Not investment advice.' : '자료: 금융투자협회 집계(네이버 증권), 하루 늦게 발표돼요. 투자 조언이 아니에요.'}</p>`,
+    });
+  }
+
   // ---------------------------------------------------------------- 🎯 목표가: 종목 주가 카드에서 정해 두면, 도달했을 때 알려 주고 홈 '바뀐 것'에 보여 준다(이 기기에만 저장)
   const TGT_KEY = 'cw.targets';
   let targets = DEMO ? { CRCL: { p: 120, dir: 'up', at: Date.now() }, JOBY: { p: 8, dir: 'up', at: Date.now() } } : readJSON(TGT_KEY, {}) || {};
@@ -3362,13 +3494,15 @@
     ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
     ['market', () => (EN ? '📊 Market overview' : '📊 시장 개요'), ['c-market']],
     ['fg', () => (EN ? '😨 Fear & Greed' : '😨 공포·탐욕 지수'), ['c-feargreed']],
+    ['flow', () => (EN ? '💸 Market money flow' : '💸 시장 자금 동향'), ['c-flow']],
     ['channel', () => (EN ? '📝 Investing channel' : '📝 돼용의 투자 채널'), ['ch-card']],
   ];
-  const DEFAULT_ORDER = ['fire', 'market', 'fg', 'stocks', 'channel'];
+  const DEFAULT_ORDER = ['fire', 'market', 'fg', 'flow', 'stocks', 'channel'];
   function homeLayout() {
     const L = readJSON('cw.homeLayout', null) || {};
     const order = (L.order || []).filter((k) => HOME_SECTIONS.some((x) => x[0] === k));
-    for (const k of DEFAULT_ORDER) if (!order.includes(k)) order.push(k);
+    // 새로 생긴 구역은 기본 순서에서 바로 앞 구역 뒤에 끼워 넣는다
+    DEFAULT_ORDER.forEach((k, i) => { if (order.includes(k)) return; const prev = DEFAULT_ORDER.slice(0, i).reverse().find((x) => order.includes(x)); order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, k); });
     return { order, off: L.off || [], tabs: L.tabs !== false };
   }
   function applyHomeLayout() {
@@ -4407,7 +4541,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[ic]}</svg><span>${label}</span>${ic === 'news' ? '<b class="tab-badge" id="news-badge" hidden></b>' : ''}</button>`).join('');
     updateNewsBadge();
   }
-  const viewAllowed = (v) => v === 'fire' || TAB_SETS[state.stock].some(([t]) => t === v);
+  const viewAllowed = (v) => v === 'fire' || v === 'flow' || TAB_SETS[state.stock].some(([t]) => t === v);
 
   // 종목 시세: 바이낸스 선물이 있는 종목(SPCX·TEM)은 CRCL처럼 바이낸스 값만, 나머지(JOBY)는 Nasdaq + Yahoo 실시간 체결
   function pq(sym) {
@@ -6471,7 +6605,7 @@
 
   // ---------------------------------------------------------------- 화면 전환 (하단 탭)
   const VIEW_TITLES = {
-    home: "Fire Portfolio", fire: 'Fire · 퇴사까지',
+    home: "Fire Portfolio", fire: 'Fire · 퇴사까지', flow: '시장 자금 동향',
     crcl: '서클 주가 · 수급', earn: '서클 실적', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: '서클 뉴스 · 공시',
     sprice: '주가 · 수급', searn: '실적', snews: '뉴스 · 공시',
   };
@@ -6503,6 +6637,7 @@
     if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
+    if (v === 'flow') { renderFlowView(); loadFlow().then(() => { renderFlowView(); renderFlowCard(); }).catch(() => {}); }
     if (v === 'sprice' && isKR(state.stock)) { renderSPriceChart(); renderKrDeal(state.stock); renderKrAnalyst(state.stock); }
     else if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
     if (v === 'crcl') { renderHolders('CRCL', 'holders'); renderAnalyst('CRCL'); renderInsider('CRCL'); renderOptions('CRCL'); }
@@ -6794,6 +6929,8 @@
     if (tgd) { saveTgt(tgd.dataset.tgtdel, true); return; }
     const tgx = ev.target.closest('[data-tgtx]');
     if (tgx) { const host = document.querySelector(`[data-tgthost="${CSS.escape(tgx.dataset.tgtx)}"]`); if (host) host.innerHTML = tgtHtml(tgx.dataset.tgtx); return; }
+    const frg = ev.target.closest('[data-flowrange]');
+    if (frg) { state.flowRange = frg.dataset.flowrange; savePref('flowRange', state.flowRange); renderFlowView(); return; }
     const vb = ev.target.closest('[data-vote]');
     if (vb) { const [k, v] = vb.dataset.vote.split('|'); castVote(k, +v); return; }
     const mo = ev.target.closest('[data-moveopen]');
@@ -6966,6 +7103,9 @@
   document.getElementById('home-stock').hidden = !isOther();
   renderDemoBar();
   applyHomeLayout();
+  state.flowRange = loadPref('flowRange', '3y');
+  try { renderFlowCard(); } catch (e) { console.error(e); }
+  setTimeout(() => loadFlow().then(() => { renderFlowCard(); if (state.view === 'flow') renderFlowView(); }).catch(() => {}), 1800);
   renderStockSwitch();
   updateFireChip();
   {

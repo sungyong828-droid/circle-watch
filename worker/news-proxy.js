@@ -1114,6 +1114,32 @@ export async function handleFearGreed(url, cache, cors, ctx) {
   return swr(cache, ctx, `${url.origin}/feargreed?v=1`, { freshSec: url.searchParams.has('fresh') ? 60 : 900, keepSec: 3 * 86400, cors, build: async () => JSON.stringify(await buildFearGreed()) });
 }
 
+// ---------------------------------------------------------------- 시장 자금 동향(국내 증시): 고객예탁금 · 신용융자 잔고(네이버 증권 · 금융투자협회 자료, 단위 억원)
+// + 오늘 투자자별 순매수(코스피·코스닥, 억원). 하루에 한 번 바뀌는 자료라 1시간 캐시, 받기 실패하면 7일까지 이전 값.
+export async function buildFlow() {
+  const get = (u) => fetch(u, { headers: { 'user-agent': BROWSER_UA, accept: 'application/json' }, signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  // 한 쪽에 200일 · 6쪽 ≈ 최근 5년(거래일 1,200일)
+  const pages = await Promise.all([0, 1, 2, 3, 4, 5].map((i) => get(`https://stock.naver.com/api/domestic/market/trendDeposit?startIdx=${i}&pageSize=200`)));
+  const seen = new Set(), rows = [];
+  for (const P of pages) for (const x of P?.content || []) {
+    const d = String(x.bizdate || ''), dep = Number(x.customerDeposit), cr = Number(x.creditLoan);
+    if (!/^\d{8}$/.test(d) || !(dep > 0) || !(cr > 0) || seen.has(d)) continue;
+    seen.add(d); rows.push([`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`, dep, cr]);
+  }
+  if (rows.length < 120) throw new Error('flow: no data');
+  rows.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  const num = (v) => { const n = Number(String(v ?? '').replace(/[,+\s]/g, '')); return Number.isFinite(n) ? n : null; };
+  const inv = {};
+  for (const ix of ['KOSPI', 'KOSDAQ']) {
+    const t = await get(`https://m.stock.naver.com/api/index/${ix}/trend`);
+    if (t?.bizdate) inv[ix] = { d: t.bizdate, p: num(t.personalValue), f: num(t.foreignValue), i: num(t.institutionalValue) };
+  }
+  return { at: new Date().toISOString(), rows, inv };
+}
+export async function handleFlow(url, cache, cors, ctx) {
+  return swr(cache, ctx, `${url.origin}/flow?v=1`, { freshSec: 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildFlow()) });
+}
+
 // ---------------------------------------------------------------- 종목 검색 (종목 추가 화면)
 // 영문: Nasdaq 자동완성. 한글(테슬라·엔비디아…): 네이버 증권 자동완성에서 미국 종목만 골라 영문 이름을 붙인다
 // 네이버에 한글 이름이 없는 미국 ETF는 흔히 부르는 별명으로 찾는다
@@ -1642,7 +1668,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo', '/flow'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
@@ -1663,6 +1689,7 @@ export default {
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
     if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
     if (url.pathname === '/feargreed') return handleFearGreed(url, cache, cors, ctx);
+    if (url.pathname === '/flow') return handleFlow(url, cache, cors, ctx);
     if (url.pathname === '/krquote') return handleKrQuote(url, cache, cors, ctx);
     if (url.pathname === '/krinfo') return handleKrInfo(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
