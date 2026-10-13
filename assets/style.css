@@ -1665,3 +1665,89 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .tx-box .mv-in input { height: 48px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--surface); color: var(--ink); font: 700 18px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.06em; text-transform: uppercase; }
 .mv-in .btn-primary { height: 48px; padding: 0 18px; }
 .note.warn { color: var(--warn); }
+
+/* 내 종목: 폴더 탭 · 한 줄 가로 */
+.ss-btns { display: inline-flex; gap: 6px; }
+.ss-folders { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -2px; padding: 2px; }
+.ss-folders::-webkit-scrollbar { display: none; }
+.fd { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.fd small { font: 600 11px var(--mono); color: var(--muted); }
+.fd[aria-selected="true"] { background: var(--ink); color: var(--bg, #0d1117); border-color: var(--ink); }
+.fd[aria-selected="true"] small { color: inherit; opacity: 0.7; }
+.fd-act { border-style: dashed; color: var(--muted); font-weight: 600; }
+.stock-switch.ss-row { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; }
+.stock-switch.ss-row::-webkit-scrollbar { display: none; }
+.stock-switch.ss-row .ss { flex: 0 0 auto; min-width: 96px; scroll-snap-align: start; }
+.ss-empty { grid-column: 1 / -1; margin: 0; padding: 14px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); text-align: center; }
+.fd-panel { display: grid; gap: 12px; }
+.fd-name { display: grid; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.fd-name input { height: 46px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--surface-2); color: var(--ink); font: 600 15px var(--sans); }
+.fd-sub { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.fd-sub b { font-size: 14px; }
+.fd-sub small { font-size: 12px; color: var(--muted); }
+.fd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 44vh; overflow-y: auto; }
+.fd-list label { display: grid; grid-template-columns: 20px 28px minmax(0, 1fr); align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); cursor: pointer; }
+.fd-list input { width: 18px; height: 18px; accent-color: var(--accent); }
+.fd-nm { display: grid; min-width: 0; }
+.fd-nm b { font-size: 14px; }
+.fd-nm small { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-btns { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.fd-btns .btn-primary, .fd-btns .btn-ghost { height: 48px; }
+
+/* 홈 화면 편집 */
+.hl-off { display: none !important; }
+.home-edit { grid-column: 1 / -1; justify-self: center; display: inline-flex; align-items: baseline; gap: 6px; margin-top: 2px; padding: 8px 14px; border-radius: 12px; border: 1px dashed var(--line); background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.home-edit small { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.he-panel { display: grid; gap: 12px; }
+.he-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.he-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto 36px 36px; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); }
+.he-list li.off .he-nm { opacity: 0.5; }
+.he-nm { font-size: 14px; font-weight: 700; min-width: 0; }
+.he-sw { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; cursor: pointer; }
+.he-sw input { width: 18px; height: 18px; accent-color: var(--accent); }
+.he-list .ws-btn { width: 36px; padding: 0; }
+.he-tabs { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); }
+.he-tabs input { width: 18px; height: 18px; accent-color: var(--accent); }
+.he-reset { justify-self: start; height: 38px; font-size: 13px; }
+
+/* 시작 안내 · 예시로 둘러보기 */
+.demo-go { display: grid; gap: 2px; width: 100%; margin: 10px 0 4px; padding: 12px 14px; border-radius: 14px; border: 0; background: linear-gradient(135deg, #f2994a, #e0721e); color: #fff; font: inherit; text-align: left; cursor: pointer; }
+.demo-go b { font-size: 15px; }
+.demo-go small { font-size: 12px; opacity: 0.92; line-height: 1.5; }
+.st-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.st-list li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.st-n { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); font: 700 13px var(--mono); color: var(--ink-2); }
+.st-list li.ok .st-n { background: rgba(63, 191, 127, 0.2); color: var(--up, #3fbf7f); }
+.st-list li.ok b { color: var(--muted); text-decoration: line-through; }
+.st-list b { display: block; font-size: 14px; }
+.st-list small { display: block; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.st-list .chip-btn { white-space: nowrap; }
+.st-bar { height: 6px; margin-top: 12px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.st-bar i { display: block; height: 100%; background: var(--up, #3fbf7f); }
+.demo-bar { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; background: #5b4bd6; color: #fff; font-size: 13px; font-weight: 700; }
+.demo-bar span { min-width: 0; }
+.demo-bar button { flex: none; height: 32px; padding: 0 12px; border-radius: 10px; border: 0; background: #fff; color: #3b2fa6; font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+
+/* 주간 리포트 */
+.week-card { background: linear-gradient(135deg, rgba(242, 153, 74, 0.12), rgba(91, 141, 239, 0.06)); border-color: rgba(242, 153, 74, 0.35); }
+.wk-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.wk-top > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--surface); }
+.wk-top span { font-size: 12px; color: var(--muted); }
+.wk-top b { font: 700 20px var(--mono); }
+.wk-top small { font-size: 12px; color: var(--ink-2); }
+.wk-chip { display: inline-flex; align-items: baseline; gap: 6px; min-height: 30px; padding: 4px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; white-space: nowrap; }
+
+/* 목표가 */
+.tgt-host { margin-top: 10px; }
+.tgt-set { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px dashed var(--line); background: transparent; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 700; text-align: left; cursor: pointer; flex-wrap: wrap; }
+.tgt-set small { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.tgt-line { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; flex-wrap: wrap; }
+.tgt-line.hit { background: rgba(63, 191, 127, 0.14); }
+.tgt-l b { font-family: var(--mono); }
+.tgt-left { color: var(--ink-2); white-space: nowrap; }
+.tgt-ed { margin-left: auto; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; cursor: pointer; }
+.tgt-form { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 6px; }
+.tgt-form .bn-in { min-width: 0; }
+.tgt-form .btn-primary, .tgt-form .btn-ghost { height: 40px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+@media (max-width: 400px) { .tgt-form { grid-template-columns: auto minmax(0, 1fr) auto; } }
+.demo-bar small { display: block; font-size: 11.5px; font-weight: 600; opacity: 0.85; }

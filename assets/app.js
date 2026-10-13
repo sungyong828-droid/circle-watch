@@ -1390,6 +1390,7 @@
           <div><span>펀딩비</span><b id="px-fund">–</b><small id="px-next"></small></div>
           <div><span>미결제약정</span><b id="px-oi">–</b></div>
         </div>
+        ${tgtHost('CRCL')}
         <button type="button" class="link-btn" data-go="crcl:c-pricechart">가격 차트 · 공매도 · 기관 보유 보기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>`,
     });
     drawPriceLine('spark', px.klines['1d'], { compact: true });
@@ -1528,6 +1529,20 @@
           { label: EN ? 'Cost recovered' : '원금 회수', value: pctPlain(c.payback, 1), money: false },
           { label: EN ? 'Yield on cost' : '투자금 대비 배당률', value: c.yoc != null ? pctPlain(c.yoc, 2) : '–', money: false },
         ] };
+    }
+    if (kind === 'week') {
+      const fc = fireCfg ? (() => { try { return fireCalc(); } catch { return null; } })() : null, W = weekData(fc);
+      if (!W.ok) return null;
+      const best = W.movers?.[0], worst = W.movers?.at(-1);
+      return { kind, tag, title: EN ? '📅 My week in review' : '📅 이번 주 내 포트폴리오', bar: W.p1 != null ? Math.min(1, Math.max(0, W.p1)) : null,
+        hero: W.r != null ? { label: EN ? 'Return this week' : '이번 주 수익률', value: pct(W.r, 1), money: false } : { label: EN ? 'Dividends this week' : '이번 주 받은 배당', value: usd2(W.divNet || 0), money: true, alt: { label: EN ? 'Dividends this week' : '이번 주 받은 배당', value: `${W.divGot?.length || 0}${EN ? ' payouts' : '건'}`, money: false } },
+        lines: [
+          W.r != null && { label: EN ? 'Value change' : '평가금액 변화', value: signed(W.v1 - W.v0, wonFull), money: true },
+          W.p1 != null && { label: EN ? 'FIRE progress' : '퇴사까지 진행률', value: `${(W.p1 * 100).toFixed(1)}% (${W.p1 - W.p0 >= 0 ? '+' : ''}${((W.p1 - W.p0) * 100).toFixed(1)}%p)`, money: false },
+          best && best.r > 0 && { label: EN ? 'Top gainer' : '가장 많이 오른 종목', value: `${nameOfSym(best.sym)} ${pct(best.r, 1)}`, money: false },
+          worst && worst.r < 0 && { label: EN ? 'Biggest decliner' : '가장 많이 내린 종목', value: `${nameOfSym(worst.sym)} ${pct(worst.r, 1)}`, money: false },
+          W.divGot?.length && { label: EN ? 'Dividends this week' : '이번 주 받은 배당', value: usd2(W.divNet), money: true },
+        ].filter(Boolean).slice(0, 4) };
     }
     if (kind === 'bonus') {
       const R = bonusCalc();
@@ -2211,7 +2226,20 @@
   const FIRE_KEY = 'cw.fire', FIRE_HIST = 'cw.fireHist';
   const FIRE_TICKERS = { CRCA: 'CRCA · ProShares Ultra CRCL (2배)', CRCL: 'CRCL · 서클 인터넷 그룹', JOBY: 'JOBY · 조비 에비에이션', SPCX: 'SPCX · 스페이스X', TEM: 'TEM · 템퍼스 AI' };
   const readJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-  const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  // 👀 예시로 둘러보기: 이 탭에서만 예시 포트폴리오로 화면을 채운다(내 저장 정보는 읽지도 바꾸지도 않음). ?demo=1 링크로도 켠다
+  const DEMO = (() => {
+    try {
+      const q = new URLSearchParams(location.search).get('demo');
+      if (q === '1') sessionStorage.setItem('cw.demo', '1');
+      if (q === '0') sessionStorage.removeItem('cw.demo');
+      return sessionStorage.getItem('cw.demo') === '1';
+    } catch { return false; }
+  })();
+  const DEMO_BLOCK = new Set(['cw.fire', 'cw.fireHist', 'cw.div', 'cw.fireMile', 'cw.visit', 'cw.pxDay', 'cw.targets', 'cw.votes']);
+  const DEMO_FIRE = { positions: [{ ticker: 'CRCL', shares: 400, avg: 72, n: '서클 인터넷 그룹' }, { ticker: 'JOBY', shares: 3000, avg: 6.2, n: '조비 에비에이션' }, { ticker: 'SCHD', shares: 800, avg: 26.5, n: 'Schwab US Dividend Equity ETF' }, { ticker: '005930.KS', shares: 150, avg: 62000, n: '삼성전자' }], goal: 1e9, buyFx: 1350, afterTax: false };
+  const DEMO_DIV = { hold: [{ t: 'SCHD', sh: 800, avg: 26.5, d: '2024-03-04' }, { t: 'O', sh: 300, avg: 54, d: '2024-06-03' }, { t: 'JEPI', sh: 400, avg: 55, d: '2025-01-13' }, { t: 'KO', sh: 100, avg: 60, d: '2024-09-03' }], tax: 0.15 };
+  const writeJSON = (k, v) => { if (DEMO && DEMO_BLOCK.has(k)) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  const readSaved = (k, d) => (DEMO && DEMO_BLOCK.has(k) ? ({ 'cw.fire': DEMO_FIRE, 'cw.div': DEMO_DIV })[k] ?? d : readJSON(k, d));
   // 미국 티커 또는 한국 종목(종목코드.KS/.KQ)
   const FIRE_BASE = Object.keys(FIRE_TICKERS), TICKER_RE = /^([A-Z]{1,5}(\.[A-Z])?|[0-9A-Z]{6}\.(KS|KQ))$/;
   const krTk = (s) => /^[0-9A-Z]{6}\.(KS|KQ)$/.test(String(s || ''));
@@ -2221,7 +2249,7 @@
   const fireLabel = (t, n) => (!n || n === t ? t : krTk(t) ? `${keepName(n)} · ${t.slice(0, 6)}` : `${t} · ${n}`);
   for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (TICKER_RE.test(sym)) FIRE_TICKERS[sym] ||= krTk(sym) ? `${m?.name || sym} · ${sym.slice(0, 6)}` : `${sym} · ${m?.name || sym}`;
   // 관심 종목에서 뺐어도 보유 정보에 남아 있는 종목은 계속 고를 수 있게
-  for (const p of readJSON(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= fireLabel(p.ticker, p.n);
+  for (const p of readSaved(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= fireLabel(p.ticker, p.n);
   // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지 기본 종목. 관심 종목에서 뺀 종목은 목록에서 빠진다
   // (keep: 이미 그 종목으로 저장된 행은 값이 바뀌지 않도록 그 행에만 남긴다)
   const fireName = (t) => (krTk(t) ? keepName(STOCK_INFO[t]?.short || state.divData?.[t]?.d?.name || (FIRE_TICKERS[t] || t).split(' · ')[0].replace(/\.K[SQ]$/, '')) : t);
@@ -2236,8 +2264,8 @@
     F.positions = (F.positions || []).filter((p) => FIRE_TICKERS[p.ticker] && p.shares > 0 && p.avg > 0);
     return F.positions.length ? F : null;
   };
-  let fireCfg = normFire(readJSON(FIRE_KEY, null));
-  let fireHist = readJSON(FIRE_HIST, []);
+  let fireCfg = normFire(structuredClone(readSaved(FIRE_KEY, null)));
+  let fireHist = readSaved(FIRE_HIST, []) || [];
   let fireSim = null; // 시뮬레이터 가격(주력 종목)
   let fireConfirmDelete = false;
   let fireRows = null; // 입력 폼 편집 중인 종목 목록
@@ -2319,6 +2347,10 @@
 
   function recordFireHistory(c) {
     if (!c) return;
+    if (DEMO && fireHist.length < 2) {
+      fireHist = Array.from({ length: 60 }, (_, i) => { const p = c.progress * (0.82 + 0.18 * (i / 59)) * (1 + 0.025 * Math.sin(i / 4)); return { d: addDays(isoToday(), i - 59), p: +p.toFixed(5), v: Math.round(p * c.F.goal) }; });
+      return;
+    }
     const d = new Date(), key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const row = { d: key, p: +c.progress.toFixed(5), v: Math.round(c.basis) };
     if (fireHist.at(-1)?.d === key) fireHist[fireHist.length - 1] = row; else fireHist.push(row);
@@ -2349,7 +2381,110 @@
     } catch {}
     setText('hf-div-s', dc ? (ready ? `${EN ? 'Got' : '받은'} ${usd2(dc.recvNet)} · ${EN ? 'back' : '회수'} ${(dc.payback * 100).toFixed(1)}%` : (EN ? 'Loading dividends…' : '배당 내역 불러오는 중…')) : (EN ? 'Enter dividend stocks to calculate' : '배당 종목을 넣으면 계산돼요'));
     try { renderSince(fc); } catch (e) { console.error(e); }
+    try { renderWelcome(); } catch (e) { console.error(e); }
     try { checkMilestone(fc); } catch (e) { console.error(e); }
+  }
+
+  // ---------------------------------------------------------------- 🎯 목표가: 종목 주가 카드에서 정해 두면, 도달했을 때 알려 주고 홈 '바뀐 것'에 보여 준다(이 기기에만 저장)
+  const TGT_KEY = 'cw.targets';
+  let targets = DEMO ? { CRCL: { p: 120, dir: 'up', at: Date.now() }, JOBY: { p: 8, dir: 'up', at: Date.now() } } : readJSON(TGT_KEY, {}) || {};
+  const tgtCur = (sym) => (isKR(sym) ? (EN ? '₩' : '원') : '$');
+  function tgtHtml(sym) {
+    const T = targets[sym], x = pxOf(sym);
+    if (!T) return `<button type="button" class="tgt-set" data-tgt="${esc(sym)}">🎯 ${EN ? 'Set a target price' : '목표가 정해 두기'}<small>${EN ? 'We’ll tell you when it gets there' : '도달하면 알려 드려요'}</small></button>`;
+    const left = x ? T.p / x - 1 : null;
+    return `<div class="tgt-line${T.hit ? ' hit' : ''}"><span class="tgt-l">🎯 ${EN ? 'Target' : '목표가'} <b>${pxS(sym, T.p)}</b></span><span class="tgt-left">${T.hit ? (EN ? 'Reached ✓' : '도달 ✓') : left != null ? `<span class="${cls(left)}">${pct(left, 1)}</span> ${EN ? 'to go' : '남음'}` : ''}</span><button type="button" class="tgt-ed" data-tgt="${esc(sym)}">${EN ? 'Edit' : '수정'}</button></div>`;
+  }
+  const tgtHost = (sym) => `<div class="tgt-host" data-tgthost="${esc(sym)}">${tgtHtml(sym)}</div>`;
+  function openTgt(sym) {
+    const host = document.querySelector(`[data-tgthost="${CSS.escape(sym)}"]`);
+    if (!host) return;
+    host.innerHTML = `<div class="tgt-form"><span aria-hidden="true">🎯</span><div class="bn-in"><input id="tgt-in" inputmode="decimal" value="${targets[sym]?.p ?? ''}" placeholder="${EN ? 'Target price' : '목표 가격'}" aria-label="${EN ? 'Target price' : '목표 가격'}"><em>${tgtCur(sym)}</em></div>
+      <button type="button" class="btn-primary sm" data-tgtsave="${esc(sym)}">${EN ? 'Save' : '저장'}</button>${targets[sym] ? `<button type="button" class="btn-ghost sm" data-tgtdel="${esc(sym)}">${EN ? 'Remove' : '지우기'}</button>` : ''}<button type="button" class="btn-ghost sm" data-tgtx="${esc(sym)}">${EN ? 'Cancel' : '취소'}</button></div>`;
+    document.getElementById('tgt-in')?.focus();
+  }
+  function paintTgt(sym) { const host = document.querySelector(`[data-tgthost="${CSS.escape(sym)}"]`); if (host && !host.querySelector('#tgt-in')) { const h = tgtHtml(sym); if (host.innerHTML !== h) host.innerHTML = h; } }
+  function saveTgt(sym, del) {
+    if (del) delete targets[sym];
+    else {
+      const v = parseFloat((document.getElementById('tgt-in')?.value || '').replace(/[,\s$₩원]/g, '')), x = pxOf(sym);
+      if (!(v > 0)) { toast(EN ? 'Enter a price' : '가격을 숫자로 넣어 주세요', true); return; }
+      targets[sym] = { p: v, dir: x && v < x ? 'down' : 'up', at: Date.now() };
+      toast(EN ? `✓ Target ${pxS(sym, v)} saved` : `✓ 목표가 ${pxS(sym, v)} · 도달하면 알려 드려요`);
+      markUse('watch');
+    }
+    writeJSON(TGT_KEY, targets);
+    const host = document.querySelector(`[data-tgthost="${CSS.escape(sym)}"]`); if (host) host.innerHTML = tgtHtml(sym);
+  }
+  function checkTargets() {
+    for (const [sym, T] of Object.entries(targets)) {
+      const x = pxOf(sym);
+      if (!T.hit && x > 0 && (T.dir === 'down' ? x <= T.p : x >= T.p)) {
+        T.hit = Date.now(); T.hitPx = x;
+        writeJSON(TGT_KEY, targets);
+        toast(EN ? `🎯 ${nameOfSym(sym)} hit your target ${pxS(sym, T.p)}` : `🎯 ${nameOfSym(sym)} 목표가 ${pxS(sym, T.p)} 도달!`);
+      }
+      paintTgt(sym);
+    }
+  }
+
+  // ---------------------------------------------------------------- 📅 주간 리포트(금요일 오후 4시~일요일): 이번 주 내 포트폴리오 · 이미지로 공유
+  const PXDAY_KEY = 'cw.pxDay';
+  let pxDay = readSaved(PXDAY_KEY, {}) || {}, pxDaySavedAt = 0;
+  function recordPxDay(px) {
+    const d = isoToday();
+    pxDay[d] = { ...(pxDay[d] || {}), ...px };
+    for (const k of Object.keys(pxDay).sort().slice(0, -21)) delete pxDay[k];
+    writeJSON(PXDAY_KEY, pxDay);
+  }
+  const FORCE_WEEK = /[?&]week=1\b/.test(location.search);
+  const weekOpen = () => { if (FORCE_WEEK || DEMO) return true; const d = new Date(Date.now() + 9 * 3600000), wd = d.getUTCDay(); return wd === 6 || wd === 0 || (wd === 5 && d.getUTCHours() >= 16); };
+  const weekKey = () => { const d = new Date(Date.now() + 9 * 3600000); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+  function weekData(fc) {
+    const today = isoToday(), wkAgo = addDays(today, -7), out = {};
+    if (DEMO && fc && fireHist.length < 2) recordFireHistory(fc);
+    const base = (list) => list.filter((d) => d <= wkAgo).at(-1) || list.find((d) => daysBetween(d, today) >= 3) || null;
+    if (fc && fireHist.length) {
+      const hd = base(fireHist.map((r) => r.d)), h = hd && fireHist.find((r) => r.d === hd);
+      if (h?.v > 0) Object.assign(out, { from: hd, v0: h.v, v1: fc.basis, p0: h.p, p1: fc.progress, r: fc.basis / h.v - 1 });
+    }
+    const now = {};
+    for (const sym of mySyms()) { const x = pxOf(sym); if (x > 0) now[sym] = x; }
+    const pd = base(Object.keys(pxDay).sort()), P0 = DEMO ? visit.prev?.v?.px || {} : pd ? pxDay[pd] : null;
+    if (P0) { out.movers = Object.keys(now).filter((sym) => P0[sym] > 0).map((sym) => ({ sym, r: now[sym] / P0[sym] - 1 })).filter((m) => Math.abs(m.r) >= 0.001).sort((a, b) => b.r - a.r); out.from ||= pd; }
+    const c = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
+    if (c && !c.missing?.length) {
+      out.divGot = c.received.filter((r) => r.pay > wkAgo && r.pay <= today);
+      out.divNet = out.divGot.reduce((a, r) => a + r.gross, 0) * (1 - c.tax);
+      out.divNext = divCalendar(c).filter((x) => { const n = daysBetween(today, x.pay); return n >= 1 && n <= 7; });
+    }
+    out.earnNext = WATCH.filter((sym) => !isKR(sym)).map((sym) => ({ sym, d: earnOf(sym)?.next?.date })).filter((x) => x.d && dday(x.d) >= 1 && dday(x.d) <= 7);
+    out.ok = out.r != null || out.movers?.length >= 2 || out.divGot?.length;
+    return out;
+  }
+  let weekAt = 0;
+  function renderWeek(fc) {
+    const el = document.getElementById('c-week');
+    if (!el) return;
+    if (!weekOpen() || (!fireCfg && !divCfg) || loadPref('weekClosed', '') === weekKey()) { el.hidden = true; return; }
+    if (Date.now() - weekAt < 5000) return;
+    weekAt = Date.now();
+    const W = weekData(fc);
+    if (!W.ok) { el.hidden = true; return; }
+    const top = (W.movers || []).filter((m) => m.r > 0).slice(0, 2), low = (W.movers || []).filter((m) => m.r < 0).slice(-2).reverse();
+    const chips = (L) => L.map((m) => `<span class="wk-chip"><span>${esc(nameOfSym(m.sym))}</span><b class="${cls(m.r)}">${pct(m.r, 1)}</b></span>`).join('');
+    const from = W.from ? `${+W.from.slice(5, 7)}/${+W.from.slice(8)}` : '', to = `${+isoToday().slice(5, 7)}/${+isoToday().slice(8)}`;
+    const nxt = [...(W.earnNext || []).map((x) => `${esc(nameOfSym(x.sym))} ${EN ? 'earnings' : '실적'} ${+x.d.slice(5, 7)}/${+x.d.slice(8)}`), ...(W.divNext || []).slice(0, 3).map((x) => `${esc(fireName(x.sym))} ${EN ? 'dividend' : '배당'} ${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}`)];
+    el.innerHTML = `<div class="sc-head"><div><h3>📅 ${EN ? 'My week in review' : '이번 주 내 포트폴리오'}</h3><p class="sub">${from ? `${from} ~ ${to} · ` : ''}${EN ? 'every Friday evening' : '매주 금요일 저녁에 정리돼요'}</p></div><button type="button" class="sc-x" data-weekclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
+      ${W.r != null ? `<div class="wk-top"><div><span>${EN ? 'This week' : '이번 주 수익률'}</span><b class="${cls(W.r)}">${pct(W.r, 1)}</b><small>${signed(W.v1 - W.v0, wonFull)}</small></div><div><span>${EN ? 'FIRE progress' : '퇴사까지 진행률'}</span><b>${(W.p1 * 100).toFixed(1)}%</b><small class="${cls(W.p1 - W.p0)}">${W.p1 - W.p0 >= 0 ? '+' : ''}${((W.p1 - W.p0) * 100).toFixed(1)}%p</small></div></div>` : ''}
+      <ul class="sc-list">
+        ${top.length ? `<li><span class="sc-i" aria-hidden="true">🔺</span><div><b>${EN ? 'Top gainers' : '가장 많이 오른 종목'}</b><div class="sc-chips">${chips(top)}</div></div></li>` : ''}
+        ${low.length ? `<li><span class="sc-i" aria-hidden="true">🔻</span><div><b>${EN ? 'Biggest decliners' : '가장 많이 내린 종목'}</b><div class="sc-chips">${chips(low)}</div></div></li>` : ''}
+        ${W.divGot?.length ? `<li><span class="sc-i" aria-hidden="true">💰</span><div><b>${EN ? 'Dividends this week' : '이번 주 받은 배당'} <span class="up">${usd2(W.divNet)}</span></b><small>${[...new Set(W.divGot.map((r) => fireName(r.sym)))].map(esc).join(' · ')}</small></div></li>` : ''}
+        ${nxt.length ? `<li><span class="sc-i" aria-hidden="true">📅</span><div><b>${EN ? 'Next week' : '다음 주 일정'}</b><small>${nxt.join(' · ')}</small></div></li>` : ''}
+      </ul>
+      <button type="button" class="share-card-btn" data-sharecard="week"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>${EN ? 'Share as image' : '이미지로 공유'}</button>`;
+    el.hidden = false;
   }
 
   // ---------------------------------------------------------------- 👋 지난번 들어온 뒤 바뀐 것 (홈 맨 위)
@@ -2357,7 +2492,8 @@
   const VISIT_KEY = 'cw.visit', VISIT_GAP = 3 * 3600000;
   const visit = (() => {
     const now = Date.now();
-    let V = readJSON(VISIT_KEY, null);
+    let V = readSaved(VISIT_KEY, null);
+    if (DEMO) V = { prev: { t: now - 2 * 86400000, seen: now - 2 * 86400000, v: { demo: true, px: {} } }, cur: { t: now, seen: now, v: {} } };
     if (!V?.cur?.t) V = { prev: null, cur: { t: now, seen: now, v: {} } };
     else if (now - (V.cur.seen || V.cur.t) > VISIT_GAP) V = { prev: V.cur, cur: { t: now, seen: now, v: {} } };
     V.cur.v ||= {};
@@ -2387,28 +2523,40 @@
     if (fc) { V.fire = Math.round(fc.basis); V.prog = +fc.progress.toFixed(5); }
     V.px ||= {};
     for (const sym of mySyms()) { const x = pxOf(sym); if (x > 0) V.px[sym] = x; }
+    if (P?.v?.demo) { // 예시: 이틀 전 값을 종목마다 조금씩 다르게
+      if (fc && P.v.fire == null) { P.v.fire = Math.round(fc.basis * 0.965); P.v.prog = fc.progress * 0.965; }
+      for (const [sym, x] of Object.entries(V.px)) if (P.v.px[sym] == null) { let h = 0; for (const ch of sym) h = (h * 31 + ch.charCodeAt(0)) % 997; P.v.px[sym] = x / (1 + ((h % 21) - 8) / 100); }
+    }
     saveVisit();
-    if (!P?.v || visit.closed === visit.cur.t) { el.hidden = true; return; }
+    if (now - pxDaySavedAt > 60000) { pxDaySavedAt = now; recordPxDay(V.px); }
+    checkTargets();
+    try { renderWeek(fc); } catch (e) { console.error(e); }
     const rows = [];
     const row = (icon, head, small) => `<li><span class="sc-i" aria-hidden="true">${icon}</span><div><b>${head}</b>${small ? `<small>${small}</small>` : ''}</div></li>`;
+    // 0) 목표가 도달(지난 3일)
+    const hits = Object.entries(targets).filter(([, T]) => T.hit && now - T.hit < 3 * 86400000);
+    if (hits.length) rows.push(`<li><span class="sc-i" aria-hidden="true">🎯</span><div><b>${EN ? 'Target price reached' : '목표가에 도달했어요'}</b><div class="sc-chips">${hits.map(([sym, T]) => `<button type="button" class="sc-chip" data-sincego="${esc(sym)}:stock"><span>${esc(nameOfSym(sym))}</span><b>${pxS(sym, T.p)}</b></button>`).join('')}</div></div></li>`);
+    if (!P?.v || visit.closed === visit.cur.t) {
+      if (!rows.length || visit.closed === visit.cur.t) { el.hidden = true; return; }
+    }
     // 1) 퇴사까지 평가금액
-    if (fc && P.v.fire > 0) {
+    if (fc && P?.v?.fire > 0) {
       const d = fc.basis - P.v.fire, dp = P.v.prog != null ? fc.progress - P.v.prog : 0;
       if (Math.abs(d) >= 10000) rows.push(row('🔥', `${EN ? 'Road to FIRE' : '퇴사까지'} <span class="${cls(d)}">${signed(d, wonFull)}</span>`,
         `${EN ? 'now' : '지금'} ${wonFull(fc.basis)} · ${EN ? 'progress' : '진행률'} ${(fc.progress * 100).toFixed(1)}%${Math.abs(dp) >= 0.0005 ? ` (<span class="${cls(dp)}">${dp > 0 ? '+' : ''}${(dp * 100).toFixed(1)}%p</span>)` : ''}`));
     }
     // 2) 내 종목 주가: 많이 움직인 순서로 4개
-    const mv = mySyms().map((sym) => { const a = P.v.px?.[sym], b = V.px[sym]; return a > 0 && b > 0 ? { sym, r: b / a - 1 } : null; })
+    const mv = !P?.v ? [] : mySyms().map((sym) => { const a = P.v.px?.[sym], b = V.px[sym]; return a > 0 && b > 0 ? { sym, r: b / a - 1 } : null; })
       .filter((x) => x && Math.abs(x.r) >= 0.005).sort((a, b) => Math.abs(b.r) - Math.abs(a.r)).slice(0, 4);
     if (mv.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📈</span><div><b>${EN ? 'My stocks since then' : '그동안 내 종목 주가'}</b><div class="sc-chips">${mv.map((x) => `<button type="button" class="sc-chip" data-sincego="${esc(x.sym)}:stock"><span>${esc(nameOfSym(x.sym))}</span><b class="${cls(x.r)}">${pct(x.r, 1)}</b></button>`).join('')}</div></div></li>`);
     // 3) 들어온 배당
     const c = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
-    if (c && !c.missing?.length) {
+    if (c && !c.missing?.length && P?.v) {
       const from = kstIso(P.seen || P.t), got = c.received.filter((r) => r.pay > from && r.pay <= isoToday());
       if (got.length) rows.push(row('💰', `${EN ? 'Dividends paid' : '배당이 들어왔어요'} <span class="up">${usd2(got.reduce((a, r) => a + r.gross, 0) * (1 - c.tax))}</span>`, [...new Set(got.map((r) => fireName(r.sym)))].map(esc).join(' · ')));
     }
     // 4) 새 공시(지난 방문 날짜 다음 날부터 제출된 것)
-    const from = kstIso(P.seen || P.t), fl = [];
+    const from = P?.v ? kstIso(P.seen || P.t) : '9999', fl = [];
     for (const sym of WATCH) {
       if (isKR(sym)) continue;
       const N = NEWS_UI[sym]?.getN?.();
@@ -2426,7 +2574,7 @@
     if (c) for (const x of divCalendar(c)) { const d = daysBetween(isoToday(), x.pay); if (d >= 0 && d <= 7) soon.push({ d, html: `<button type="button" class="sc-chip" data-ftabgo="div"><span>${esc(fireName(x.sym))} ${EN ? 'dividend' : '배당'}</span><b>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}</b></button>` }); }
     if (soon.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📅</span><div><b>${EN ? 'Coming up this week' : '이번 주 일정'}</b><div class="sc-chips">${soon.sort((a, b) => a.d - b.d).slice(0, 6).map((x) => x.html).join('')}</div></div></li>`);
     if (!rows.length) { el.hidden = true; return; }
-    const html = `<div class="sc-head"><div><h3>👋 ${EN ? 'Welcome back' : '다시 오셨네요'}</h3><p class="sub">${EN ? `What changed since your visit ${agoTxt(P.seen || P.t)}` : `${agoTxt(P.seen || P.t)} 방문 이후 바뀐 것`}</p></div><button type="button" class="sc-x" data-sinceclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div><ul class="sc-list">${rows.join('')}</ul>`;
+    const html = `<div class="sc-head"><div><h3>${P?.v ? `👋 ${EN ? 'Welcome back' : '다시 오셨네요'}` : `🔔 ${EN ? 'Alerts' : '알림'}`}</h3><p class="sub">${P?.v ? (EN ? `What changed since your visit ${agoTxt(P.seen || P.t)}` : `${agoTxt(P.seen || P.t)} 방문 이후 바뀐 것`) : (EN ? 'Updates for you' : '알려 드릴 소식')}</p></div><button type="button" class="sc-x" data-sinceclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div><ul class="sc-list">${rows.join('')}</ul>`;
     if (el.innerHTML !== html) el.innerHTML = html;
     el.hidden = false;
   }
@@ -2684,7 +2832,7 @@
   const divLots = () => (divCfg?.hold || []).flatMap((h) => (h.trades?.length
     ? h.trades.map((x) => ({ t: h.t, sh: x.sh, avg: x.price, d: x.d, ...(x.sell ? { sell: true } : {}) }))
     : [{ t: h.t, sh: h.sh, avg: h.avg, d: h.d }]));
-  let divCfg = normDiv(readJSON(DIV_KEY, null));
+  let divCfg = normDiv(structuredClone(readSaved(DIV_KEY, null)));
   let divRows = null, divConfirmDelete = false;
   state.divData = readJSON(DIV_CACHE, {}) || {}; // { SYM: { t: 받은 시각, d: 서버 응답 } } — 다음 방문 때 바로 그린다
   state.divErr = {};
@@ -3050,6 +3198,7 @@
     loadDividends(true).catch(() => {});
   }
   function deleteDiv() {
+    if (DEMO) { toast(EN ? 'This is the sample view — nothing to delete' : '예시 화면이라 지울 내용이 없어요', true); return; }
     if (!divConfirmDelete) { divConfirmDelete = true; const b = document.getElementById('d-del'); if (b) b.textContent = '정말 삭제'; return; }
     divCfg = null; divConfirmDelete = false; state.divData = {};
     try { localStorage.removeItem(DIV_KEY); localStorage.removeItem(DIV_CACHE); } catch {}
@@ -3207,10 +3356,66 @@
     toast('🔥 보유 종목을 불러왔어요 · 거래 내역은 넣어도 되고 비워도 돼요');
   }
 
+  // ---- 🧩 홈 화면 편집: 홈 구역 순서·숨기기, 아래 탭의 USDC·Arc 숨기기(이 기기에 저장)
+  const HOME_SECTIONS = [
+    ['fire', () => (EN ? '🔥 FIRE · Dividends · Bonus' : '🔥 퇴사까지·배당금·성과급'), ['home-fire']],
+    ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
+    ['market', () => (EN ? '📊 Market overview' : '📊 시장 개요'), ['c-market']],
+    ['fg', () => (EN ? '😨 Fear & Greed' : '😨 공포·탐욕 지수'), ['c-feargreed']],
+    ['channel', () => (EN ? '📝 Investing channel' : '📝 돼용의 투자 채널'), ['ch-card']],
+  ];
+  const DEFAULT_ORDER = ['fire', 'market', 'fg', 'stocks', 'channel'];
+  function homeLayout() {
+    const L = readJSON('cw.homeLayout', null) || {};
+    const order = (L.order || []).filter((k) => HOME_SECTIONS.some((x) => x[0] === k));
+    for (const k of DEFAULT_ORDER) if (!order.includes(k)) order.push(k);
+    return { order, off: L.off || [], tabs: L.tabs !== false };
+  }
+  function applyHomeLayout() {
+    const L = homeLayout();
+    L.order.forEach((k, i) => { for (const id of HOME_SECTIONS.find((x) => x[0] === k)[2]) { const el = document.getElementById(id); if (el) { el.style.order = String(10 + i); el.classList.toggle('hl-off', L.off.includes(k)); } } });
+    const he = document.getElementById('home-edit'); if (he) he.style.order = '99';
+    TAB_SETS.CRCL = CRCL_TABS.filter(([v]) => L.tabs || !['usdc', 'arc'].includes(v));
+    renderTabbar();
+    if (state.view && !viewAllowed(state.view)) showView('home');
+  }
+  function saveHomeLayout(L) { writeJSON('cw.homeLayout', L); applyHomeLayout(); paintHomeEdit(); }
+  function paintHomeEdit() {
+    const el = document.getElementById('he-sheet');
+    if (!el || el.hidden) return;
+    const L = homeLayout();
+    el.innerHTML = `<div class="sheet-bg" data-heclose="1"></div><div class="sheet-panel he-panel">
+      <div class="sheet-h"><b>🧩 ${EN ? 'Customize Home' : '홈 화면 편집'}</b><button type="button" class="ws-btn" data-heclose="1">${EN ? 'Done' : '완료'}</button></div>
+      <p class="note">${EN ? 'Reorder or hide sections. Saved on this device.' : '자주 보는 건 위로, 안 보는 건 숨겨요. 이 기기에 저장돼요.'}</p>
+      <ul class="he-list">${L.order.map((k, i) => { const S = HOME_SECTIONS.find((x) => x[0] === k), on = !L.off.includes(k); return `<li class="${on ? '' : 'off'}"><span class="he-nm">${S[1]()}</span>
+        <label class="he-sw"><input type="checkbox" data-heon="${k}" ${on ? 'checked' : ''}><span>${on ? (EN ? 'Shown' : '보이기') : (EN ? 'Hidden' : '숨김')}</span></label>
+        <button type="button" class="ws-btn" data-hemove="${k}:-1" aria-label="${EN ? 'Move up' : '위로'}" ${i === 0 ? 'disabled' : ''}>▲</button><button type="button" class="ws-btn" data-hemove="${k}:1" aria-label="${EN ? 'Move down' : '아래로'}" ${i === L.order.length - 1 ? 'disabled' : ''}>▼</button></li>`; }).join('')}</ul>
+      <label class="chk he-tabs"><input type="checkbox" data-hetabs="1" ${L.tabs ? 'checked' : ''}> ${EN ? 'Show USDC · Arc tabs at the bottom' : '아래 탭에 USDC·Arc 보이기'}</label>
+      <button type="button" class="btn-ghost he-reset" data-hereset="1">↺ ${EN ? 'Reset to default' : '처음 상태로'}</button>
+    </div>`;
+  }
+  function openHomeEdit() {
+    let el = document.getElementById('he-sheet');
+    if (!el) { el = document.createElement('div'); el.id = 'he-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', EN ? 'Customize Home' : '홈 화면 편집'); document.body.appendChild(el); }
+    el.hidden = false; document.body.classList.add('sheet-open');
+    paintHomeEdit();
+  }
+  function closeHomeEdit() { const el = document.getElementById('he-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+
+  // ---- 👀 예시로 둘러보기 위쪽 띠
+  function renderDemoBar() {
+    if (!DEMO) return;
+    const bar = document.createElement('div');
+    bar.className = 'demo-bar'; bar.id = 'demo-bar';
+    bar.innerHTML = `<span><b>👀 ${EN ? 'Sample portfolio' : '예시 포트폴리오로 보는 중'}</b><small>${EN ? 'Nothing is saved' : '내 정보엔 저장되지 않아요'}</small></span><button type="button" data-demo="off">${EN ? 'Start with mine' : '내 정보로 시작'}</button>`;
+    document.querySelector('header.top')?.after(bar);
+  }
+
   // ---- 🔄 다른 기기로 옮기기 — assets/move.js(누를 때만 받음). 코드로 암호화해 10분만 서버에 두고, 받으면 바로 지운다
-  const MOVE_KEYS = ['cw.fire', 'cw.fireHist', 'cw.div', 'cw.divSim', 'cw.watch', 'cw.life', 'cw.bonus', 'cw.kw', 'cw.votes', 'cw.fireMile'];
+  const MOVE_KEYS = ['cw.fire', 'cw.fireHist', 'cw.div', 'cw.divSim', 'cw.watch', 'cw.life', 'cw.bonus', 'cw.kw', 'cw.votes', 'cw.fireMile', 'cw.targets', 'cw.homeLayout', 'cw.pxDay'];
   function moveBtn() { return SITE_API ? `<button type="button" class="move-open" data-moveopen="send">🔄 ${EN ? 'Move to another device' : '다른 기기로 옮기기'}<small>${EN ? 'Phone ↔ PC with a short code' : '폰 ↔ PC, 짧은 코드로'}</small></button>` : ''; }
   async function openMove(tab, code) {
+    if (DEMO) { toast(EN ? 'Turn off the sample view first' : '예시 화면을 끈 뒤에 써 주세요', true); return; }
     if (!SITE_API) { toast(EN ? 'Available on the live site' : '실제 사이트에서 쓸 수 있어요', true); return; }
     try {
       const m = await import('./move.js?v=2');
@@ -3764,6 +3969,7 @@
     renderSummary();
   }
   function deleteFire() {
+    if (DEMO) { toast(EN ? 'This is the sample view — nothing to delete' : '예시 화면이라 지울 내용이 없어요', true); return; }
     if (!fireConfirmDelete) { fireConfirmDelete = true; const b = document.getElementById('f-del'); if (b) b.textContent = '정말 삭제'; return; }
     fireCfg = null; fireHist = []; fireSim = null; fireConfirmDelete = false;
     try { localStorage.removeItem(FIRE_KEY); localStorage.removeItem(FIRE_HIST); } catch {}
@@ -3935,7 +4141,7 @@
   const ttlName = (sym) => (isKR(sym) && (STOCK_INFO[sym]?.name || '').length > 9 ? '' : symLabel(sym) + ' '); // 카드 제목 앞 이름(긴 한국 이름은 부제로)
   const symLabel = (sym) => (isKR(sym) ? STOCK_INFO[sym]?.short || sym.slice(0, 6) : sym);
   const WATCH_KEY = 'cw.watch';
-  const watchCfg = (() => { const w = readJSON(WATCH_KEY, null); return w?.list?.length ? { list: w.list, custom: w.custom || {} } : { list: BUILTIN.slice(), custom: {} }; })();
+  const watchCfg = (() => { const w = readJSON(WATCH_KEY, null); return w?.list?.length ? { list: w.list, custom: w.custom || {}, folders: w.folders || [] } : { list: BUILTIN.slice(), custom: {}, folders: [] }; })();
   // 추가한 종목의 기본 설정(이름·색·관련어). 로고는 이니셜.
   // 로고: 기본 4종목은 assets/logos, 그 밖의 S&P 500·자주 찾는 종목은 assets/logos/t (tools/fetch_logos.py가 받아 둠)
   const LOGOS = new Set(String(window.__LOGOS || '').split(' ').filter(Boolean));
@@ -4172,6 +4378,7 @@
   const TAB_SETS = {
     CRCL: [['home', 'Home', 'home'], ['crcl', 'CRCL', 'chart'], ['usdc', 'USDC', 'usdc'], ['arc', 'Arc', 'arc'], ['earn', 'Earnings', 'earn'], ['news', 'News', 'news']],
   };
+  const CRCL_TABS = TAB_SETS.CRCL.slice();
   const tabsFor = (s) => (isKR(s) ? [['home', 'Home', 'home'], ['sprice', symLabel(s).replace('…', ''), 'chart'], ['searn', '실적', 'earn'], ['snews', 'News', 'news']] : [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', STOCK_INFO[s]?.etf ? '분배금' : 'Earnings', 'earn'], ['snews', 'News', 'news']]);
   for (const s of OTHER) TAB_SETS[s] = tabsFor(s);
   const OLD_VIEWS = { jprice: 'sprice', jearn: 'searn', jnews: 'snews' }; // 예전 주소(#jprice 등) 호환
@@ -4220,15 +4427,92 @@
   // 종목 선택: 모든 종목이 한눈에 보이는 격자 칩(한 줄 4개, 종목이 늘면 줄이 늘어남).
   // 15초마다 시세를 바꿀 때 버튼을 새로 만들지 않고 값만 바꾼다(누르는 순간 버튼이 바뀌어 터치가 씹히지 않게).
   const logoOf = (t) => STOCK_INFO[t === 'CRCA' ? 'CRCL' : t]?.logo || logoPath(t) || '';
+  // ---- 내 종목 폴더(탭): 전체 · 보유(퇴사까지·배당금에 넣은 종목, 자동) · 내가 만든 폴더. 종목은 한 줄로 옆으로 넘기고 '모두 보기'로 펼친다
+  watchCfg.folders = (watchCfg.folders || []).filter((f) => f?.id && f.name && Array.isArray(f.syms)).slice(0, 12);
+  const heldSet = () => new Set([...(fireCfg?.positions || []).map((p) => p.ticker), ...(divCfg?.hold || []).map((h) => h.t)]);
+  function curFolder() {
+    const f = loadPref('folder', 'all');
+    if (f === 'hold') return WATCH.some((x) => heldSet().has(x)) ? 'hold' : 'all';
+    return watchCfg.folders.some((x) => x.id === f) ? f : 'all';
+  }
+  function folderSyms(f = curFolder()) {
+    if (f === 'hold') { const H = heldSet(); return WATCH.filter((x) => H.has(x)); }
+    const F = watchCfg.folders.find((x) => x.id === f);
+    return F ? WATCH.filter((x) => F.syms.includes(x)) : WATCH;
+  }
+  const ssExpanded = () => loadPref('ssExpand', innerWidth >= 900 ? '1' : '0') === '1';
+  function renderFolders(n) {
+    const el = document.getElementById('ss-folders');
+    if (!el) return;
+    const f = curFolder(), H = heldSet(), nHold = WATCH.filter((x) => H.has(x)).length;
+    const chip = (id, label, cnt, user) => `<button type="button" role="tab" class="fd" data-folder="${esc(id)}" aria-selected="${f === id}"${user ? ' data-noi18n="1"' : ''}>${label}<small>${cnt}</small></button>`;
+    const html = chip('all', EN ? 'All' : '전체', WATCH.length) + (nHold ? chip('hold', EN ? 'Holdings' : '보유', nHold) : '')
+      + watchCfg.folders.map((x) => chip(x.id, esc(x.name), WATCH.filter((y) => x.syms.includes(y)).length, true)).join('')
+      + (watchCfg.folders.some((x) => x.id === f) ? `<button type="button" class="fd fd-act" data-fedit="${esc(f)}">✎ ${EN ? 'Edit' : '편집'}</button>` : '')
+      + `<button type="button" class="fd fd-act" data-fnew="1">＋ ${EN ? 'Folder' : '폴더'}</button>`;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    const tg = document.getElementById('ss-toggle');
+    if (tg) { tg.hidden = n <= 4 && !ssExpanded(); const t = ssExpanded() ? (EN ? 'One row ▴' : '한 줄로 ▴') : (EN ? `All ${n} ▾` : `모두 보기 ${n} ▾`); if (tg.textContent !== t) tg.textContent = t; }
+  }
+  function ssScrollToActive() {
+    const el = document.getElementById('stock-switch'), b = el?.querySelector('.ss[aria-selected="true"]');
+    if (!b || !el.classList.contains('ss-row')) return;
+    if (b.offsetLeft < el.scrollLeft || b.offsetLeft + b.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = Math.max(0, b.offsetLeft - 24);
+  }
+  let fdEdit = null, fdConfirm = false;
+  function openFolderSheet(id) {
+    const F = watchCfg.folders.find((x) => x.id === id);
+    fdEdit = F ? id : null; fdConfirm = false;
+    if (!F && watchCfg.folders.length >= 12) { toast(EN ? 'Up to 12 folders' : '폴더는 12개까지 만들 수 있어요', true); return; }
+    let el = document.getElementById('fd-sheet');
+    if (!el) { el = document.createElement('div'); el.id = 'fd-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); document.body.appendChild(el); }
+    el.setAttribute('aria-label', F ? (EN ? 'Edit folder' : '폴더 편집') : (EN ? 'New folder' : '새 폴더'));
+    el.hidden = false; document.body.classList.add('sheet-open');
+    el.innerHTML = `<div class="sheet-bg" data-fclose="1"></div><div class="sheet-panel fd-panel">
+      <div class="sheet-h"><b>📁 ${F ? (EN ? 'Edit folder' : '폴더 편집') : (EN ? 'New folder' : '새 폴더')}</b><button type="button" class="ws-btn" data-fclose="1">${EN ? 'Close' : '닫기'}</button></div>
+      <label class="fd-name"><span>${EN ? 'Folder name' : '폴더 이름'}</span><input id="fd-name" maxlength="12" value="${esc(F?.name || '')}" placeholder="${EN ? 'e.g. Watching, Dividend picks' : '예: 관심 종목, 눈여겨볼 종목, 배당주'}" autocomplete="off"></label>
+      <div class="fd-sub"><b>${EN ? 'Stocks in this folder' : '넣을 종목'}</b><small>${EN ? 'from My stocks' : '내 종목 중에서 골라요 · 여러 폴더에 넣어도 돼요'}</small></div>
+      <ul class="fd-list">${WATCH.map((x) => { const S = STOCK_INFO[x]; return `<li><label><input type="checkbox" value="${esc(x)}" ${F?.syms.includes(x) ? 'checked' : ''}><span class="ws-logo" style="--sc:${S.color}">${S.logo ? `<img src="${S.logo}" alt="" width="20" height="20">` : esc((S.mark || symLabel(x))[0])}</span><span class="fd-nm"><b>${esc(symLabel(x))}</b><small>${esc(S.name || '')}</small></span></label></li>`; }).join('')}</ul>
+      <p class="note">${EN ? 'Not listed? Add it first with <b>＋ Add · Edit</b>.' : '목록에 없는 종목은 먼저 <b>＋ 추가·편집</b>으로 내 종목에 넣어 주세요.'}</p>
+      <div class="fd-btns"><button type="button" class="btn-primary" data-fsave="1">${EN ? 'Save' : '저장'}</button>${F ? `<button type="button" class="btn-ghost" data-fdel="1">${EN ? 'Delete folder' : '폴더 삭제'}</button>` : ''}</div>
+    </div>`;
+    if (!F) setTimeout(() => document.getElementById('fd-name')?.focus(), 50);
+  }
+  function closeFolderSheet() { const el = document.getElementById('fd-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+  function saveFolder() {
+    const name = (document.getElementById('fd-name')?.value || '').trim().slice(0, 12);
+    if (!name) { toast(EN ? 'Name the folder' : '폴더 이름을 넣어 주세요', true); document.getElementById('fd-name')?.focus(); return; }
+    const syms = [...document.querySelectorAll('#fd-sheet .fd-list input:checked')].map((i) => i.value);
+    let F = watchCfg.folders.find((x) => x.id === fdEdit);
+    if (F) Object.assign(F, { name, syms });
+    else { F = { id: 'f' + Date.now().toString(36), name, syms }; watchCfg.folders.push(F); }
+    saveWatch(); savePref('folder', F.id);
+    closeFolderSheet();
+    const sw = document.getElementById('stock-switch'); if (sw) sw.dataset.built = '';
+    renderStockSwitch();
+    toast(EN ? `✓ “${name}” · ${syms.length} stocks` : `✓ '${name}' 폴더 · 종목 ${syms.length}개`);
+  }
+  function deleteFolder() {
+    if (!fdConfirm) { fdConfirm = true; const b = document.querySelector('[data-fdel]'); if (b) b.textContent = EN ? 'Really delete' : '정말 삭제'; return; }
+    watchCfg.folders = watchCfg.folders.filter((x) => x.id !== fdEdit);
+    saveWatch(); savePref('folder', 'all');
+    closeFolderSheet();
+    const sw = document.getElementById('stock-switch'); if (sw) sw.dataset.built = '';
+    renderStockSwitch();
+    toast(EN ? 'Folder deleted (stocks stay in My stocks)' : '폴더를 지웠어요(종목은 내 종목에 그대로 있어요)');
+  }
   function renderStockSwitch() {
     const el = document.getElementById('stock-switch');
     if (!el) return;
-    const syms = WATCH;
-    if (el.dataset.built !== syms.join(',')) {
-      el.innerHTML = syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
+    const syms = folderSyms(), key = `${curFolder()}|${ssExpanded() ? 'g' : 'r'}|${syms.join(',')}`;
+    renderFolders(syms.length);
+    if (el.dataset.built !== key) {
+      el.classList.toggle('ss-row', !ssExpanded());
+      el.innerHTML = !syms.length ? `<p class="ss-empty">${EN ? 'No stocks in this folder yet — tap <b>✎ Edit</b> to add some.' : '이 폴더에 아직 종목이 없어요. <b>✎ 편집</b>에서 넣어 주세요.'}</p>` : syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
         <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span><i class="ss-ed" hidden>실적</i></span>
         <span class="ss-px">–</span><em class="ss-ch flat"></em></button>`).join('');
-      el.dataset.built = syms.join(',');
+      el.dataset.built = key;
+      requestAnimationFrame(ssScrollToActive);
     }
     for (const btn of el.querySelectorAll('.ss[data-stock]')) {
       const sym = btn.dataset.stock, p = stockPx(sym);
@@ -4249,6 +4533,7 @@
     document.getElementById('home-stock').hidden = !isOther(sym);
     renderTabbar();
     renderStockSwitch();
+    ssScrollToActive();
     if (!viewAllowed(state.view)) showView('home');
     else document.getElementById('view-title').textContent = viewTitle(state.view);
     fireLoop(state.view === 'fire' || isOther());
@@ -4339,6 +4624,7 @@
             <div><span>펀딩비</span><b id="spx-fund">–</b><small id="spx-next"></small></div>
             <div><span>미결제약정</span><b id="spx-oi">–</b></div>
           </div>
+          ${tgtHost(sym)}
           <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
       });
       sLine('sspark', X.klines['1d'], { compact: true, sym, range: 'bn' });
@@ -4361,6 +4647,7 @@
         <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 오늘 가격"></canvas></div>
         <div class="px-range" aria-label="오늘 가격 범위"><span>${pxS(sym, lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${pxS(sym, hi)}</span></div>
         <div class="px-stats">${stats}${S.peer ? `<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div>` : `<div><span>52주 위치</span><b>${q?.price && y1?.high52 > y1?.low52 ? Math.round(((q.price - y1.low52) / (y1.high52 - y1.low52)) * 100) + '%' : '–'}</b><small>최저 0% · 최고 100%</small></div>`}</div>
+        ${tgtHost(sym)}
         <button type="button" class="link-btn" data-go="sprice:c-spricechart">${isKR(sym) ? '가격 차트 보기' : '가격 차트 · 공매도 · 기관 보유 보기'}${chevron}</button>`,
     });
     sLine('sspark', pts, { compact: true, sym });
@@ -4950,7 +5237,7 @@
 
   // ---------------------------------------------------------------- 종목 추가·삭제·순서 (이 기기에 저장)
   let watchSearchTimer = null, watchResults = [];
-  function saveWatch() { writeJSON(WATCH_KEY, { list: WATCH, custom: watchCfg.custom }); }
+  function saveWatch() { writeJSON(WATCH_KEY, { list: WATCH, custom: watchCfg.custom, folders: watchCfg.folders }); }
   function openWatchSheet() {
     let el = document.getElementById('watch-sheet');
     if (!el) {
@@ -5091,6 +5378,8 @@
     if (!SYM_OK.test(sym) || WATCH.includes(sym)) return;
     if (!BUILTIN.includes(sym)) { watchCfg.custom[sym] = { name: meta.name || sym, exchange: meta.exchange || '' }; registerStock(sym); }
     WATCH.push(sym);
+    const F = watchCfg.folders.find((x) => x.id === curFolder());
+    if (F && !F.syms.includes(sym)) F.syms.push(sym);
     saveWatch();
     afterWatchChange(sym);
     toast(`✓ ${esc(symLabel(sym))} 추가 · 홈 상단에서 고를 수 있어요`);
@@ -6201,6 +6490,7 @@
     if (!VIEW_TITLES[v] || !viewAllowed(v)) v = 'home';
     if (state.view !== v) scrollMem[state.view] = window.scrollY;
     if (v === 'fire' && state.view !== 'fire') state.prevView = state.view; // 🔥를 다시 누르면 돌아갈 화면
+    if (v === 'fire' && (fireCfg || divCfg) && !DEMO) savePref('startV', '1');
     state.view = v;
     document.querySelectorAll('.view').forEach((el) => { el.hidden = el.dataset.view !== v; });
     document.querySelectorAll('[data-tab]').forEach((b) => (b.dataset.tab === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
@@ -6471,6 +6761,39 @@
     const txrm = ev.target.closest('[data-txrm]');
     if (txrm) { txDraft.splice(+txrm.dataset.txrm, 1); paintTxList(); return; }
     if (ev.target.closest('#d-import')) { importFireToDiv(); return; }
+    const dm = ev.target.closest('[data-demo]');
+    if (dm) { try { dm.dataset.demo === 'on' ? sessionStorage.setItem('cw.demo', '1') : sessionStorage.removeItem('cw.demo'); } catch {} markUse('home'); location.href = location.pathname + (dm.dataset.demo === 'on' ? '#home' : '#home'); location.reload(); return; }
+    const stb = ev.target.closest('[data-start]');
+    if (stb) {
+      const k = stb.dataset.start;
+      if (k === 'watch') { openWatchSheet(); return; }
+      state.fireTab = 'fire'; savePref('fireTab', 'fire'); showView('fire'); window.scrollTo({ top: 0 });
+      if (k === 'hold') openHoldImport('fire', null, 'shot');
+      return;
+    }
+    const fdb = ev.target.closest('[data-folder]');
+    if (fdb) { savePref('folder', fdb.dataset.folder); renderStockSwitch(); const fs = folderSyms(); if (fs.length && !fs.includes(state.stock)) setStock(fs[0]); return; } // 폴더를 바꾸면 그 폴더 첫 종목을 보여 준다
+    if (ev.target.closest('[data-fnew]')) { openFolderSheet(null); return; }
+    const fde = ev.target.closest('[data-fedit]');
+    if (fde) { openFolderSheet(fde.dataset.fedit); return; }
+    if (ev.target.closest('[data-fclose]')) { closeFolderSheet(); return; }
+    if (ev.target.closest('[data-fsave]')) { saveFolder(); return; }
+    if (ev.target.closest('[data-fdel]')) { deleteFolder(); return; }
+    if (ev.target.closest('[data-sstoggle]')) { savePref('ssExpand', ssExpanded() ? '0' : '1'); renderStockSwitch(); return; }
+    if (ev.target.closest('[data-homeedit]')) { openHomeEdit(); return; }
+    if (ev.target.closest('[data-heclose]')) { closeHomeEdit(); return; }
+    const hem = ev.target.closest('[data-hemove]');
+    if (hem) { const [k, d] = hem.dataset.hemove.split(':'), L = homeLayout(), i = L.order.indexOf(k), j = i + +d; if (j >= 0 && j < L.order.length) { [L.order[i], L.order[j]] = [L.order[j], L.order[i]]; saveHomeLayout(L); } return; }
+    if (ev.target.closest('[data-hereset]')) { saveHomeLayout({}); return; }
+    if (ev.target.closest('[data-weekclose]')) { savePref('weekClosed', weekKey()); document.getElementById('c-week').hidden = true; return; }
+    const tg = ev.target.closest('[data-tgt]');
+    if (tg) { openTgt(tg.dataset.tgt); return; }
+    const tgs = ev.target.closest('[data-tgtsave]');
+    if (tgs) { saveTgt(tgs.dataset.tgtsave); return; }
+    const tgd = ev.target.closest('[data-tgtdel]');
+    if (tgd) { saveTgt(tgd.dataset.tgtdel, true); return; }
+    const tgx = ev.target.closest('[data-tgtx]');
+    if (tgx) { const host = document.querySelector(`[data-tgthost="${CSS.escape(tgx.dataset.tgtx)}"]`); if (host) host.innerHTML = tgtHtml(tgx.dataset.tgtx); return; }
     const vb = ev.target.closest('[data-vote]');
     if (vb) { const [k, v] = vb.dataset.vote.split('|'); castVote(k, +v); return; }
     const mo = ev.target.closest('[data-moveopen]');
@@ -6518,7 +6841,7 @@
       if (location.search) location.replace(location.pathname + location.hash); else location.reload();
       return;
     }
-    if (ev.target.closest('[data-welcome-close]')) { savePref('welcomed', '1'); renderWelcome(false); }
+    if (ev.target.closest('[data-welcome-close]')) { savePref('welcomed', '1'); savePref('startClosed', '1'); startShow = false; renderWelcome(); }
     if (ev.target.closest('[data-news-close]')) { savePref('seenNews', window.__WHATSNEW?.id || ''); const n = document.getElementById('c-whatsnew'); if (n) n.hidden = true; }
   });
 
@@ -6596,20 +6919,24 @@
       <ul class="wn-list">${items.slice(0, 7).map((x) => `<li>${x}</li>`).join('')}</ul>
       <div class="wn-act"><a class="btn-ghost sm" href="updates?ref=whatsnew">${EN ? 'All updates' : '업데이트 소식 전체 보기'} →</a><button type="button" class="btn-primary wc-ok" data-news-close>${EN ? 'Got it' : '확인'}</button></div>`;
   }
+  let startShow = false;
   function renderWelcome(firstVisit) {
     const el = document.getElementById('c-welcome');
     if (!el) return;
-    if (!firstVisit || loadPref('welcomed', '')) { el.hidden = true; return; }
+    if (firstVisit !== undefined) startShow = !DEMO && !loadPref('startClosed', '') && (firstVisit || (!fireCfg && !divCfg && !loadPref('welcomed', '')));
+    const steps = [
+      ['watch', WATCH.some((x) => !BUILTIN.includes(x)), EN ? 'Add your stocks' : '내 종목 추가하기', EN ? 'Any US or Korean stock on Home' : '관심 있는 미국·한국 주식을 홈에 넣어요', EN ? 'Add' : '추가하기'],
+      ['hold', !!(fireCfg || divCfg), EN ? 'Enter your holdings' : '보유 종목 넣기', EN ? 'One broker screenshot or a CSV does it' : '증권 앱 캡처 한 장이나 CSV면 끝나요', EN ? 'Enter' : '넣기'],
+      ['view', !!loadPref('startV', ''), EN ? 'See FIRE & dividends' : '퇴사까지·배당금 보기', EN ? 'How far to your goal, monthly dividends' : '목표까지 몇 %인지, 한 달 배당이 얼마인지', EN ? 'View' : '보기'],
+    ];
+    const done = steps.filter((x) => x[1]).length;
+    if (!startShow || done === 3) { el.hidden = true; return; }
     el.hidden = false;
-    el.innerHTML = `<div class="wc-head"><b>처음 오셨나요? 👋</b><button type="button" class="wc-x" data-welcome-close aria-label="안내 닫기">×</button></div>
-      <ul class="wc-list">
-        <li><b>종목 칩</b>을 누르면 서클·조비·스페이스X·템퍼스 화면이 바뀌어요.</li>
-        <li>아래 <b>탭</b>에서 차트(캔들·이동평균)·실적·뉴스(AI 한 줄 요약)를 볼 수 있어요.</li>
-        <li><b>+ 추가·편집</b>으로 아무 미국 주식이나 내 종목에 넣을 수 있어요.</li>
-        <li>🔥 <b>Fire</b>에 보유 수량·평단을 넣으면 목표 금액까지 몇 %인지 계산해요(이 기기에만 저장).</li>
-        <li>카드 제목 옆 <b>ⓘ</b>를 누르면 지표 설명이 나와요.</li>
-      </ul>
-      <button type="button" class="btn-primary wc-ok" data-welcome-close>알겠어요</button>`;
+    const html = `<div class="wc-head"><b>${EN ? '👋 New here? Three steps to your own dashboard' : '👋 처음 오셨나요? 3단계면 내 대시보드가 돼요'}</b><button type="button" class="wc-x" data-welcome-close aria-label="${EN ? 'Close' : '안내 닫기'}">×</button></div>
+      <button type="button" class="demo-go" data-demo="on"><b>👀 ${EN ? 'Look around with a sample portfolio' : '예시 포트폴리오로 먼저 둘러보기'}</b><small>${EN ? 'Every screen filled with sample holdings · nothing is saved' : '예시 보유 종목으로 모든 화면을 채워요 · 저장은 안 돼요'}</small></button>
+      <ol class="st-list">${steps.map(([k, ok, t, d, b], n) => `<li class="${ok ? 'ok' : ''}"><span class="st-n">${ok ? '✓' : n + 1}</span><div><b>${t}</b><small>${d}</small></div>${ok ? '' : `<button type="button" class="chip-btn sm" data-start="${k}">${b}</button>`}</li>`).join('')}</ol>
+      <div class="st-bar" aria-label="${done}/3"><i style="width:${(done / 3) * 100}%"></i></div>`;
+    if (el.innerHTML !== html) el.innerHTML = html;
   }
   async function shareSite() {
     markUse('share');
@@ -6637,7 +6964,8 @@
   if (divCfg) loadDividends().catch(() => {});
   document.getElementById('home-crcl').hidden = isOther();
   document.getElementById('home-stock').hidden = !isOther();
-  renderTabbar();
+  renderDemoBar();
+  applyHomeLayout();
   renderStockSwitch();
   updateFireChip();
   {
@@ -6661,7 +6989,7 @@
   for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
   refresh('boot');
   renderWelcome(firstVisit && !MIGRATED);
-  renderWhatsNew(firstVisit && !MIGRATED && !loadPref('welcomed', '') && !loadPref('seenNews', ''));
+  if (!DEMO) renderWhatsNew(firstVisit && !MIGRATED && !loadPref('welcomed', '') && !loadPref('seenNews', ''));
   if (MIGRATED) setTimeout(() => toast(EN ? '✓ Moved your data from the old address' : '✓ 예전 주소에서 쓰던 보유 정보·관심 종목을 옮겼어요'), 800);
   countVisit();
   if (fireCfg?.positions?.length) markUse('fireSet');
@@ -6678,8 +7006,15 @@
   setInterval(() => { if (!document.hidden) refresh('light'); }, LIVE_REFRESH_MS);
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
-  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { closeWatchSheet(); closeTxSheet(); } });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') { closeWatchSheet(); closeTxSheet(); closeFolderSheet(); closeHomeEdit(); }
+    if (ev.key === 'Enter' && ev.target?.id === 'tgt-in') { const b = document.querySelector('[data-tgtsave]'); if (b) saveTgt(b.dataset.tgtsave); }
+    if (ev.key === 'Enter' && ev.target?.id === 'fd-name') saveFolder();
+  });
   document.addEventListener('change', (ev) => {
+    const heo = ev.target.closest?.('[data-heon]');
+    if (heo) { const L = homeLayout(), k = heo.dataset.heon; L.off = heo.checked ? L.off.filter((x) => x !== k) : [...new Set([...L.off, k])]; saveHomeLayout(L); return; }
+    if (ev.target.dataset?.hetabs) { const L = homeLayout(); L.tabs = ev.target.checked; saveHomeLayout(L); return; }
     if (ev.target.id === 'oc-file') runOcr(ev.target.files);
     if (ev.target.id === 'oc-y') applyOcrYear();
     if (ev.target.classList?.contains('f-ticker')) { const a = ev.target.closest('.f-row')?.querySelector('.f-avg'); if (a) a.placeholder = krTk(ev.target.value) ? '평균 단가(원)' : '평균 단가($)'; }

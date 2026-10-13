@@ -11,6 +11,20 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📁 **내 종목을 폴더(탭)로 정리**: '관심 종목'·'눈여겨볼 종목'처럼 이름을 붙인 폴더를 만들고 종목을 나눠 담을 수 있어요. '보유' 폴더는 퇴사까지·배당금에 넣은 종목으로 자동으로 채워지고, 종목 줄은 한 줄로 옆으로 넘기다가 '모두 보기'로 펼쳐요.
+- 👀 **예시 포트폴리오로 둘러보기**: 처음 오셨다면 예시 보유 종목으로 모든 화면을 먼저 구경할 수 있어요(내 정보엔 저장 안 돼요). 홈 맨 위 '3단계 시작 안내'로 바로 내 대시보드를 만들 수 있어요.
+- 🧩 **홈 화면 편집**: 홈 맨 아래 버튼으로 구역 순서를 바꾸거나 안 보는 구역을 숨기고, 아래 탭의 USDC·Arc도 숨길 수 있어요.
+- 📅 **주간 리포트**: 금요일 저녁부터 주말 동안 홈에 '이번 주 내 포트폴리오'(수익률·진행률·많이 오른/내린 종목·받은 배당·다음 주 일정)가 뜨고, 이미지로 공유할 수 있어요.
+- 🎯 **목표가 알림**: 종목 주가 카드에서 목표가를 정해 두면, 도달했을 때 알려 주고 홈에도 보여줘요.
+<!-- internal --> 폴더 cw.watch.folders · 데모 sessionStorage cw.demo(?demo=1, DEMO_BLOCK 저장 막음) · cw.homeLayout · cw.pxDay(주간 리포트용 일별 가격) · cw.targets · 주간 리포트 ?week=1로 강제 표시.
+<!-- EN
+- Organize My stocks into named folders (tabs); a Holdings folder fills itself, and the stock row scrolls sideways with a Show all toggle.
+- New here? Look around with a sample portfolio first (nothing saved), plus a three-step start guide on Home.
+- Customize Home: reorder or hide sections, and hide the USDC · Arc tabs.
+- Weekly review on weekends: return, progress, top movers, dividends and next week's schedule, shareable as an image.
+- Target price alerts from any stock's price card.
+-->
+
 ## v2026.10.13-2 — 2026-10-13
 
 [이 버전 보기](https://93389834.my-fire-portfolio.pages.dev) · 커밋 `778d926`
