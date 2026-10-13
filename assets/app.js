@@ -2421,12 +2421,15 @@
     const top = (p) => Math.max(1, Math.round((1 - p) * 100));
     if (c.crPct >= 0.9) { sc += 2; why.push(EN ? `Margin loans are near a ${c.years}-year high (top ${top(c.crPct)}%)` : `빚내서 산 주식(신용융자)이 최근 ${c.years}년 중 상위 ${top(c.crPct)}% 수준이에요`); }
     else if (c.crPct >= 0.75) { sc += 1; why.push(EN ? `Margin loans are on the high side (top ${top(c.crPct)}%)` : `신용융자가 최근 ${c.years}년 중 높은 편이에요(상위 ${top(c.crPct)}%)`); }
-    if (c.cr60 >= 0.1) { sc += 2; why.push(EN ? `Margin loans grew ${pct(c.cr60, 1)} in 3 months — fast` : `최근 3개월 동안 신용융자가 ${pct(c.cr60, 1)} 늘었어요(빠른 증가)`); }
-    else if (c.cr60 >= 0.05) { sc += 1; why.push(EN ? `Margin loans grew ${pct(c.cr60, 1)} in 3 months` : `최근 3개월 동안 신용융자가 ${pct(c.cr60, 1)} 늘었어요`); }
+    if (c.cr60 >= 0.1) { sc += 2; why.push(EN ? `Margin loans grew ${pct(c.cr60, 1)} in 3 months — fast` : `최근 3개월 동안 신용융자가 ${pctPlain(c.cr60, 1)} 늘었어요(빠른 증가)`); }
+    else if (c.cr60 >= 0.05) { sc += 1; why.push(EN ? `Margin loans grew ${pct(c.cr60, 1)} in 3 months` : `최근 3개월 동안 신용융자가 ${pctPlain(c.cr60, 1)} 늘었어요`); }
+    if (c.cr250 >= 0.3) { sc += 2; why.push(EN ? `Margin loans are up ${pct(c.cr250, 0)} from a year ago` : `1년 전보다 신용융자가 ${pctPlain(c.cr250, 0)} 늘었어요(빚투가 빠르게 쌓임)`); }
+    else if (c.cr250 >= 0.15) { sc += 1; why.push(EN ? `Margin loans are up ${pct(c.cr250, 0)} from a year ago` : `1년 전보다 신용융자가 ${pctPlain(c.cr250, 0)} 늘었어요`); }
+    if (c.fromMax <= -0.08 && c.crPct >= 0.75) why.push(EN ? `Still ${pct(c.fromMax, 0)} below the ${c.crMax[0].slice(0, 7)} peak, but high` : `${+c.crMax[0].slice(5, 7)}월 최고치(${jo(c.crMax[2])})보다는 ${pctPlain(-c.fromMax, 0)} 줄었지만 여전히 높아요`);
     if (c.ratioPct >= 0.9) { sc += 2; why.push(EN ? `Debt relative to cash waiting to invest is in the top ${top(c.ratioPct)}%` : `대기 자금 대비 빚 비율이 ${c.years}년 중 상위 ${top(c.ratioPct)}%예요`); }
     else if (c.ratioPct >= 0.75) { sc += 1; why.push(EN ? 'Debt-to-cash ratio is on the high side' : '대기 자금 대비 빚 비율이 높은 편이에요'); }
-    if (c.dep60 <= -0.05) { sc += 1; why.push(EN ? `Cash waiting to invest fell ${pct(c.dep60, 1)} in 3 months` : `주식 사려고 넣어 둔 돈(예탁금)은 3개월 새 ${pct(c.dep60, 1)} 줄었어요`); }
-    else if (c.dep60 >= 0.05) why.push(EN ? `Cash waiting to invest rose ${pct(c.dep60, 1)} — fuel for buying` : `주식 사려고 넣어 둔 돈(예탁금)이 3개월 새 ${pct(c.dep60, 1)} 늘었어요(살 여력 ↑)`);
+    if (c.dep60 <= -0.05) { sc += 1; why.push(EN ? `Cash waiting to invest fell ${pctPlain(-c.dep60, 1)} in 3 months` : `주식 사려고 넣어 둔 돈(예탁금)은 3개월 새 ${pctPlain(-c.dep60, 1)} 줄었어요`); }
+    else if (c.dep60 >= 0.05) why.push(EN ? `Cash waiting to invest rose ${pct(c.dep60, 1)} — fuel for buying` : `주식 사려고 넣어 둔 돈(예탁금)이 3개월 새 ${pctPlain(c.dep60, 1)} 늘었어요(살 여력 ↑)`);
     const lv = sc >= 5 ? { k: 'hot', e: '🔴', t: EN ? 'Overheated — looks risky' : '과열 · 위험위험해 보여요', d: EN ? 'A lot of borrowed money is in the market. If prices drop sharply, forced selling can make the fall worse.' : '빚내서 투자한 돈이 많이 쌓였어요. 주가가 크게 빠지면 반대매매(강제 매도)로 하락이 더 커질 수 있어요.' }
       : sc >= 3 ? { k: 'warn', e: '🟠', t: EN ? 'Caution — leverage is building' : '주의 · 빚투가 꽤 늘었어요', d: EN ? 'Borrowed money is rising. Be careful about chasing prices.' : '빚내서 사는 사람이 늘고 있어요. 무리한 추격 매수는 조심할 때예요.' }
       : sc >= 1 ? { k: 'mid', e: '🟡', t: EN ? 'Normal — a little warm' : '보통 · 조금 뜨거운 편', d: EN ? 'No strong overheating signal yet.' : '아직 뚜렷한 과열 신호는 크지 않아요.' }
@@ -2476,9 +2479,9 @@
     card('flowsum', {
       title: EN ? '💸 Market money flow — the verdict' : '💸 지금 시장 분위기', sub: EN ? `Korean stocks · as of ${c.date} · KOFIA data via Naver` : `국내 증시 · ${c.date} 기준 · 금융투자협회 자료(네이버 증권)`,
       body: `<div class="fl-verdict big lv-${c.lv.k}"><span class="fl-e" aria-hidden="true">${c.lv.e}</span><div><b>${c.lv.t}</b><small>${c.lv.d}</small></div></div>
-        <div class="fl-meter" aria-label="${EN ? 'Heat score' : '과열 점수'} ${c.sc}/7"><i style="left:${Math.min(100, (c.sc / 7) * 100)}%"></i><span>${EN ? 'Calm' : '안정'}</span><span>${EN ? 'Normal' : '보통'}</span><span>${EN ? 'Caution' : '주의'}</span><span>${EN ? 'Hot' : '과열'}</span></div>
+        <div class="fl-meter" aria-label="${EN ? 'Heat score' : '과열 점수'} ${c.sc}"><i style="left:${{ calm: 12.5, mid: 37.5, warn: 62.5, hot: 87.5 }[c.lv.k] + Math.min(10, Math.max(-10, ((c.sc % 2) - 0.5) * 8))}%"></i><span>${EN ? 'Calm' : '안정'}</span><span>${EN ? 'Normal' : '보통'}</span><span>${EN ? 'Caution' : '주의'}</span><span>${EN ? 'Hot' : '과열'}</span></div>
         <ul class="fl-why">${c.why.map((w) => `<li>${esc(w)}</li>`).join('') || `<li>${EN ? 'No notable signals.' : '눈에 띄는 신호가 없어요.'}</li>`}</ul>
-        <p class="note">${EN ? 'Scored from margin-loan size (vs the last 5 years), how fast it grew in 3 months, debt vs cash on the sidelines, and cash outflows. One indicator can’t time tops or bottoms — not investment advice.' : '신용융자 규모(최근 5년과 비교)·3개월 증가 속도·예탁금 대비 빚 비율·대기 자금 감소를 점수로 매겼어요. 지표 하나로 고점·저점을 맞힐 수는 없어요. 투자 조언이 아니에요.'}</p>`,
+        <p class="note">${EN ? 'Scored from margin-loan size (vs the last 5 years), how fast it grew over 3 and 12 months, debt vs cash on the sidelines, and cash outflows. One indicator can’t time tops or bottoms — not investment advice.' : '신용융자 규모(최근 5년과 비교)·3개월과 1년 증가 속도·예탁금 대비 빚 비율·대기 자금 감소를 점수로 매겼어요. 지표 하나로 고점·저점을 맞힐 수는 없어요. 투자 조언이 아니에요.'}</p>`,
     });
     card('flowcr', {
       title: EN ? '🏦 Margin loans (buying on credit)' : '🏦 신용융자 잔고 — 빚내서 산 주식', sub: `${jo(c.cr)} · ${EN ? '1Y' : '1년'} ${pct(c.cr250, 1)} · ${EN ? 'peak' : '최고'} ${jo(c.crMax[2])} (${c.crMax[0].slice(2).replace(/-/g, '.')})`,
