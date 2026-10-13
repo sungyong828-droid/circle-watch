@@ -2109,7 +2109,8 @@ window.__I18N_EN = {
 "으로 찾아 넣어요. ": ". ",
 "📥 한 번에 넣기": "📥 Import",
 "로 증권 앱 보유 종목 캡처나 CSV 파일에서 수량·평단을 한꺼번에 채울 수도 있어요(사진·파일은 이 기기 안에서만 읽어요).": " to fill shares and average cost from a broker screenshot or CSV file at once (read on this device only).",
-"🔍 검색": "🔍 Search"
+"🔍 검색": "🔍 Search",
+"🔄 다른 기기로 옮기기": "🔄 Move to another device"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

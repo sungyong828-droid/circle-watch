@@ -19,10 +19,10 @@ function tooMany(ip) {
 }
 
 export async function onRequest({ request, next, waitUntil }) {
-  // 쓰기(POST)는 고객 문의(/api/feedback)만 허용한다
-  const isFeedback = new URL(request.url).pathname === '/api/feedback';
-  if (!(request.method === 'GET' || request.method === 'HEAD' || (request.method === 'POST' && isFeedback))) {
-    return new Response('Method Not Allowed', { status: 405, headers: { allow: isFeedback ? 'POST' : 'GET, HEAD' } });
+  // 쓰기(POST)는 고객 문의·실적 예측 투표·기기 옮기기만 허용한다
+  const isPost = ['/api/feedback', '/api/vote', '/api/move'].includes(new URL(request.url).pathname);
+  if (!(request.method === 'GET' || request.method === 'HEAD' || (request.method === 'POST' && isPost))) {
+    return new Response('Method Not Allowed', { status: 405, headers: { allow: isPost ? 'GET, POST' : 'GET, HEAD' } });
   }
   const site = request.headers.get('sec-fetch-site');
   if (site && site !== 'same-origin' && site !== 'none') {

@@ -14,6 +14,7 @@
   window.addEventListener('error', (e) => reportErr(e.message, e.filename ? `${e.filename}:${e.lineno}` : ''));
   window.addEventListener('unhandledrejection', (e) => reportErr('promise: ' + (e.reason?.message || e.reason)));
   const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
+  const SITE_API = ON_PAGES ? '/api' : null; // 이 사이트 서버(Pages Functions)에만 있는 기능: 투표·기기 옮기기
   const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
   const DATA_FALLBACK = 'https://sungyong828-droid.github.io/circle-watch/data/latest.json'; // /api/data가 막혔을 때만
   // 예전 주소(yongs-portfolio.pages.dev/move)에서 넘어온 이 기기의 데이터(보유 정보·관심 종목·키워드·설정)를 받는다.
@@ -1542,8 +1543,9 @@
     }
     return null;
   }
-  async function openShare(kind, btn) {
+  async function openShare(kind, btn, opt) {
     const d = shareCardData(kind);
+    if (d && opt?.title) d.title = opt.title;
     if (!d) { toast(EN ? 'Fill in the numbers first' : '먼저 값을 넣어 계산해 주세요', true); return; }
     if (btn) btn.disabled = true;
     try {
@@ -2345,6 +2347,117 @@
       document.querySelector('.hf-bonus3')?.classList.toggle('hf-empty', !br.ready);
     } catch {}
     setText('hf-div-s', dc ? (ready ? `${EN ? 'Got' : '받은'} ${usd2(dc.recvNet)} · ${EN ? 'back' : '회수'} ${(dc.payback * 100).toFixed(1)}%` : (EN ? 'Loading dividends…' : '배당 내역 불러오는 중…')) : (EN ? 'Enter dividend stocks to calculate' : '배당 종목을 넣으면 계산돼요'));
+    try { renderSince(fc); } catch (e) { console.error(e); }
+    try { checkMilestone(fc); } catch (e) { console.error(e); }
+  }
+
+  // ---------------------------------------------------------------- 👋 지난번 들어온 뒤 바뀐 것 (홈 맨 위)
+  // 이 기기에만 기록: 3시간 넘게 쉬었다 오면 새 방문으로 보고, 지난 방문 때 마지막으로 본 값(평가금액·주가)과 비교한다
+  const VISIT_KEY = 'cw.visit', VISIT_GAP = 3 * 3600000;
+  const visit = (() => {
+    const now = Date.now();
+    let V = readJSON(VISIT_KEY, null);
+    if (!V?.cur?.t) V = { prev: null, cur: { t: now, seen: now, v: {} } };
+    else if (now - (V.cur.seen || V.cur.t) > VISIT_GAP) V = { prev: V.cur, cur: { t: now, seen: now, v: {} } };
+    V.cur.v ||= {};
+    return V;
+  })();
+  let visitSavedAt = 0, sinceAt = 0;
+  function saveVisit(force) {
+    const now = Date.now();
+    if (!force && now - visitSavedAt < 20000) return;
+    visitSavedAt = now; visit.cur.seen = now;
+    writeJSON(VISIT_KEY, visit);
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveVisit(true); });
+  const mySyms = () => [...new Set([...WATCH, ...(fireCfg?.positions || []).map((p) => p.ticker), ...(divCfg?.hold || []).map((h) => h.t)])];
+  const pxOf = (sym) => { try { return (isKR(sym) ? state.krq?.[sym]?.price : null) ?? (STOCK_INFO[sym] ? stockPx(sym)?.price : null) ?? state.quote?.[sym]?.price ?? null; } catch { return null; } };
+  const nameOfSym = (sym) => (STOCK_INFO[sym] ? symLabel(sym) : fireName(sym));
+  const agoTxt = (ms) => { const h = Math.max(1, Math.round((Date.now() - ms) / 3600000)); return h < 24 ? (EN ? `${h}h ago` : `${h}시간 전`) : (EN ? `${Math.round(h / 24)}d ago` : `${Math.round(h / 24)}일 전`); };
+  const kstIso = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10);
+  function renderSince(fc) {
+    const el = document.getElementById('c-since');
+    if (!el) return;
+    const now = Date.now();
+    if (now - sinceAt < 3000) return;
+    sinceAt = now;
+    // 지금 값 기록(다음 방문 때 비교할 값)
+    const V = visit.cur.v, P = visit.prev;
+    if (fc) { V.fire = Math.round(fc.basis); V.prog = +fc.progress.toFixed(5); }
+    V.px ||= {};
+    for (const sym of mySyms()) { const x = pxOf(sym); if (x > 0) V.px[sym] = x; }
+    saveVisit();
+    if (!P?.v || visit.closed === visit.cur.t) { el.hidden = true; return; }
+    const rows = [];
+    const row = (icon, head, small) => `<li><span class="sc-i" aria-hidden="true">${icon}</span><div><b>${head}</b>${small ? `<small>${small}</small>` : ''}</div></li>`;
+    // 1) 퇴사까지 평가금액
+    if (fc && P.v.fire > 0) {
+      const d = fc.basis - P.v.fire, dp = P.v.prog != null ? fc.progress - P.v.prog : 0;
+      if (Math.abs(d) >= 10000) rows.push(row('🔥', `${EN ? 'Road to FIRE' : '퇴사까지'} <span class="${cls(d)}">${signed(d, wonFull)}</span>`,
+        `${EN ? 'now' : '지금'} ${wonFull(fc.basis)} · ${EN ? 'progress' : '진행률'} ${(fc.progress * 100).toFixed(1)}%${Math.abs(dp) >= 0.0005 ? ` (<span class="${cls(dp)}">${dp > 0 ? '+' : ''}${(dp * 100).toFixed(1)}%p</span>)` : ''}`));
+    }
+    // 2) 내 종목 주가: 많이 움직인 순서로 4개
+    const mv = mySyms().map((sym) => { const a = P.v.px?.[sym], b = V.px[sym]; return a > 0 && b > 0 ? { sym, r: b / a - 1 } : null; })
+      .filter((x) => x && Math.abs(x.r) >= 0.005).sort((a, b) => Math.abs(b.r) - Math.abs(a.r)).slice(0, 4);
+    if (mv.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📈</span><div><b>${EN ? 'My stocks since then' : '그동안 내 종목 주가'}</b><div class="sc-chips">${mv.map((x) => `<button type="button" class="sc-chip" data-sincego="${esc(x.sym)}:stock"><span>${esc(nameOfSym(x.sym))}</span><b class="${cls(x.r)}">${pct(x.r, 1)}</b></button>`).join('')}</div></div></li>`);
+    // 3) 들어온 배당
+    const c = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
+    if (c && !c.missing?.length) {
+      const from = kstIso(P.seen || P.t), got = c.received.filter((r) => r.pay > from && r.pay <= isoToday());
+      if (got.length) rows.push(row('💰', `${EN ? 'Dividends paid' : '배당이 들어왔어요'} <span class="up">${usd2(got.reduce((a, r) => a + r.gross, 0) * (1 - c.tax))}</span>`, [...new Set(got.map((r) => fireName(r.sym)))].map(esc).join(' · ')));
+    }
+    // 4) 새 공시(지난 방문 날짜 다음 날부터 제출된 것)
+    const from = kstIso(P.seen || P.t), fl = [];
+    for (const sym of WATCH) {
+      if (isKR(sym)) continue;
+      const N = NEWS_UI[sym]?.getN?.();
+      const n = (N?.filings || []).filter((f) => f.d > from).length;
+      if (n) fl.push({ sym, n });
+    }
+    if (fl.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📄</span><div><b>${EN ? `New SEC filings ${fl.reduce((a, x) => a + x.n, 0)}` : `새 공시 ${fl.reduce((a, x) => a + x.n, 0)}건`}</b><div class="sc-chips">${fl.map((x) => `<button type="button" class="sc-chip" data-sincego="${esc(x.sym)}:news"><span>${esc(nameOfSym(x.sym))}</span><b>${x.n}</b></button>`).join('')}</div></div></li>`);
+    // 5) 7일 안 일정: 실적 발표 · 배당 입금
+    const soon = [];
+    for (const sym of WATCH) {
+      if (isKR(sym)) continue;
+      const N = earnOf(sym)?.next, d = N?.date ? dday(N.date) : null;
+      if (d != null && d >= 0 && d <= 7) soon.push({ d, html: `<button type="button" class="sc-chip" data-sincego="${esc(sym)}:earn"><span>${esc(nameOfSym(sym))} ${EN ? 'earnings' : '실적'}</span><b>${d === 0 ? (EN ? 'today' : '오늘') : `D-${d}`}</b></button>` });
+    }
+    if (c) for (const x of divCalendar(c)) { const d = daysBetween(isoToday(), x.pay); if (d >= 0 && d <= 7) soon.push({ d, html: `<button type="button" class="sc-chip" data-ftabgo="div"><span>${esc(fireName(x.sym))} ${EN ? 'dividend' : '배당'}</span><b>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}</b></button>` }); }
+    if (soon.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📅</span><div><b>${EN ? 'Coming up this week' : '이번 주 일정'}</b><div class="sc-chips">${soon.sort((a, b) => a.d - b.d).slice(0, 6).map((x) => x.html).join('')}</div></div></li>`);
+    if (!rows.length) { el.hidden = true; return; }
+    const html = `<div class="sc-head"><div><h3>👋 ${EN ? 'Welcome back' : '다시 오셨네요'}</h3><p class="sub">${EN ? `What changed since your visit ${agoTxt(P.seen || P.t)}` : `${agoTxt(P.seen || P.t)} 방문 이후 바뀐 것`}</p></div><button type="button" class="sc-x" data-sinceclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div><ul class="sc-list">${rows.join('')}</ul>`;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    el.hidden = false;
+  }
+
+  // ---------------------------------------------------------------- 🎉 퇴사 목표 달성 축하(5·10·20…100%) — 처음 넣었을 때·목표를 바꿨을 때는 조용히 지금 위치만 기록
+  const MILE_KEY = 'cw.fireMile', MILES = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  let mileShown = false;
+  function checkMilestone(c) {
+    if (!c || !fireCfg || mileShown || !(c.progress >= 0)) return;
+    const hit = MILES.filter((m) => c.progress * 100 >= m).at(-1) || 0, M = readJSON(MILE_KEY, null);
+    if (!M || M.goal !== fireCfg.goal) { writeJSON(MILE_KEY, { m: hit, goal: fireCfg.goal }); return; }
+    if (hit <= M.m) return;
+    writeJSON(MILE_KEY, { m: hit, goal: fireCfg.goal });
+    mileShown = true;
+    setTimeout(() => showMilestone(hit, c), 1200);
+  }
+  function showMilestone(m, c) {
+    if (document.querySelector('.sheet:not([hidden]), .sc-sheet')) { setTimeout(() => showMilestone(m, c), 4000); return; } // 다른 창이 열려 있으면 닫힌 뒤에
+    const first = fireHist[0]?.d, days = first ? daysBetween(first, isoToday()) : 0;
+    const el = document.createElement('div');
+    el.className = 'ms-sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+    const done = m >= 100;
+    el.innerHTML = `<div class="ms-panel">
+      <div class="ms-confetti" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<i style="--x:${(i * 37) % 100}%;--d:${(i % 6) * 0.15}s;--c:${['#f2994a', '#3fbf7f', '#5b8def', '#f04452', '#f5c542'][i % 5]}"></i>`).join('')}</div>
+      <div class="ms-emoji" aria-hidden="true">${done ? '🎊' : '🎉'}</div>
+      <b class="ms-title">${done ? (EN ? 'You reached your FIRE goal!' : '퇴사 목표 달성!') : (EN ? `${m}% of the way to FIRE!` : `퇴사 목표 ${m}% 달성!`)}</b>
+      <p class="ms-sub">${EN ? `${wonFull(c.basis)} of your ${wonFull(c.F.goal)} goal.` : `목표 ${wonFull(c.F.goal)} 중 <b>${wonFull(c.basis)}</b>까지 왔어요.`}${days >= 7 ? (EN ? ` Day ${days} since you started tracking.` : ` 기록을 시작한 지 ${days}일째예요.`) : ''}</p>
+      <div class="ms-bar"><i style="width:${Math.min(100, c.progress * 100).toFixed(1)}%"></i></div>
+      <div class="ms-btns"><button type="button" class="ms-share" data-msshare="${m}">📤 ${EN ? 'Share' : '이미지로 공유'}</button><button type="button" class="ms-close" data-msclose="1">${EN ? 'Close' : '닫기'}</button></div>
+    </div>`;
+    document.body.appendChild(el);
+    markUse('fire');
   }
   function setText(id, t) { const el = document.getElementById(id); if (el && el.textContent !== t) el.textContent = t; }
   function updateFireChip(c = fireCfg ? fireCalc() : null) {
@@ -2384,6 +2497,7 @@
         <label class="chk"><input type="checkbox" id="f-tax" ${F.afterTax ? 'checked' : ''}> 세후 기준으로 계산 (해외주식 양도세 22%, 연 250만원 공제)</label>
         <div class="fire-btns"><button type="submit" class="btn-primary">저장</button>${fireCfg ? `<button type="button" id="f-del" class="btn-ghost">${fireConfirmDelete ? '정말 삭제' : '이 기기에서 삭제'}</button>` : ''}</div>
         <p class="note">🔒 입력한 값은 <b>이 기기(브라우저)에만</b> 저장돼요. 서버나 공유 링크로 전송되지 않아서, 같은 링크를 받은 다른 사람에게는 보이지 않아요.</p>
+        ${moveBtn()}
       </form>
     </details>`;
   }
@@ -2898,6 +3012,7 @@
         <label>배당 세금<select id="d-tax"><option value="0.15" ${!divCfg || divCfg.tax === 0.15 ? 'selected' : ''}>세후 — 미국 원천징수 15% 뺀 금액(실제 입금액)</option><option value="0" ${divCfg?.tax === 0 ? 'selected' : ''}>세전 — 세금 빼기 전 금액</option></select></label>
         <div class="fire-btns"><button type="submit" class="btn-primary">저장</button>${divCfg ? `<button type="button" id="d-del" class="btn-ghost">${divConfirmDelete ? '정말 삭제' : '이 기기에서 삭제'}</button>` : ''}</div>
         <p class="note">🔒 입력한 값은 <b>이 기기(브라우저)에만</b> 저장돼요.</p>
+        ${moveBtn()}
       </form>
     </details>`;
   }
@@ -3089,6 +3204,26 @@
     divRows = [...have, ...add];
     paintRows();
     toast('🔥 보유 종목을 불러왔어요 · 거래 내역은 넣어도 되고 비워도 돼요');
+  }
+
+  // ---- 🔄 다른 기기로 옮기기 — assets/move.js(누를 때만 받음). 코드로 암호화해 10분만 서버에 두고, 받으면 바로 지운다
+  const MOVE_KEYS = ['cw.fire', 'cw.fireHist', 'cw.div', 'cw.divSim', 'cw.watch', 'cw.life', 'cw.bonus', 'cw.kw', 'cw.votes', 'cw.fireMile'];
+  function moveBtn() { return SITE_API ? `<button type="button" class="move-open" data-moveopen="send">🔄 ${EN ? 'Move to another device' : '다른 기기로 옮기기'}<small>${EN ? 'Phone ↔ PC with a short code' : '폰 ↔ PC, 짧은 코드로'}</small></button>` : ''; }
+  async function openMove(tab, code) {
+    if (!SITE_API) { toast(EN ? 'Available on the live site' : '실제 사이트에서 쓸 수 있어요', true); return; }
+    try {
+      const m = await import('./move.js?v=1');
+      m.openMove({
+        EN, esc, toast, api: SITE_API, keys: MOVE_KEYS,
+        summary: (data) => {
+          const J = (k) => { try { return JSON.parse(data[k]); } catch { return null; } };
+          const f = J('cw.fire')?.positions?.length || 0, d = J('cw.div')?.hold?.length || 0, w = J('cw.watch')?.list?.length || 0, h = J('cw.fireHist')?.length || 0;
+          return [f && (EN ? `${f} FIRE holdings` : `퇴사까지 보유 종목 ${f}개`), d && (EN ? `${d} dividend stocks` : `배당 종목 ${d}개`), w && (EN ? `${w} watchlist stocks` : `관심 종목 ${w}개`), h > 1 && (EN ? `${h} days of progress history` : `진행률 기록 ${h}일`)].filter(Boolean);
+        },
+        loadQr: () => new Promise((ok, no) => { if (window.qrcode) return ok(window.qrcode); const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js'; sc.onload = () => ok(window.qrcode); sc.onerror = no; document.head.appendChild(sc); }),
+        done: () => { markUse('fireSet'); setTimeout(() => location.reload(), 900); },
+      }, { tab, code });
+    } catch (e) { console.error(e); toast(EN ? 'Could not open' : '화면을 열지 못했어요', true); }
   }
 
   // ---- 보유 종목 한 번에 넣기(CSV · 증권 앱 캡처 · 검색) → 퇴사까지·배당금의 수량·평단
@@ -3679,7 +3814,7 @@
       title: '서클 실적',
       sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc('CRCL'),
       info: INFO.earnings,
-      body: `${nextHtml}${tiles}
+      body: `${nextHtml}${voteBlock('CRCL')}${tiles}
         <div class="mini-h er-h">분기 매출 구성</div>
         <div class="chart"><canvas id="cv-er-rev" role="img" aria-label="분기별 매출"></canvas></div>
         <div class="legend"><span><i style="background:${C.blue}"></i>준비금 이자수익</span><span><i style="background:${C.teal}"></i>기타 매출</span></div>
@@ -4672,6 +4807,68 @@
   const earnOf = (sym) => (sym === 'CRCL' ? state.earnings : st(sym).earn);
   // 같은 자료로 짧은 시간에 여러 번 부르면(종목 칩·카드마다) 앞 결과를 쓴다
   const EARN_DAY_MEMO = new Map();
+  // ---- 🗳️ 실적 예측 투표(익명): 발표 전 '예상보다 좋을까?' → 발표 뒤 실제 결과·내 적중 여부. 키 = '종목:분기 말일'
+  const VOTE_KEY = 'cw.votes';
+  let myVotes = readJSON(VOTE_KEY, {}) || {};
+  state.votes = {};
+  function voteVid() {
+    let v = localStorage.getItem('cw.vid');
+    if (/^[a-z0-9]{16,40}$/.test(v || '')) return v;
+    v = localStorage.getItem('cw.vvid');
+    if (!/^[a-z0-9]{16,40}$/.test(v || '')) { v = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(36).padStart(2, '0')).join('').slice(0, 24); try { localStorage.setItem('cw.vvid', v); } catch {} }
+    return v;
+  }
+  function voteFetch(k) {
+    const c = state.votes[k];
+    if (!SITE_API || (c && (c.loading || Date.now() - c.t < 300000))) return;
+    state.votes[k] = { up: 0, down: 0, ...(c || {}), loading: true, t: Date.now() };
+    getJ(`${SITE_API}/vote?k=${encodeURIComponent(k)}`, 8000)
+      .then((j) => { state.votes[k] = { up: j.up || 0, down: j.down || 0, t: Date.now() }; paintVote(k); })
+      .catch(() => { state.votes[k] = { ...state.votes[k], loading: false }; });
+  }
+  function voteBox(k) {
+    const i = k.lastIndexOf(':'), sym = k.slice(0, i), q = k.slice(i + 1), E = earnOf(sym), mine = myVotes[k]?.v, c = state.votes[k];
+    const tot = c ? c.up + c.down : 0, upP = tot ? Math.round((c.up / tot) * 100) : 0;
+    const crowd = tot ? `<div class="vote-bar" aria-hidden="true"><i style="width:${upP}%"></i></div><small class="vote-n">👍 ${EN ? 'Beat' : '기대 이상'} ${upP}% · 👎 ${EN ? 'Miss' : '기대 이하'} ${100 - upP}% · ${tot}${EN ? ` vote${tot === 1 ? '' : 's'}` : '명 참여'}</small>` : '';
+    const rep = (E?.quarters || []).find((x) => x.end === q && x.reportedOn);
+    if (rep) {
+      if (mine == null && !tot) return `<div class="vote-box" data-vk="${esc(k)}" hidden></div>`;
+      const sur = (E.surprises || []).find((x) => x.end === q);
+      const beat = sur?.eps != null && sur?.consensus != null ? sur.eps >= sur.consensus : null;
+      if (beat != null && mine != null && myVotes[k].r == null) { myVotes[k].r = (mine === 1) === beat ? 1 : 0; writeJSON(VOTE_KEY, myVotes); }
+      const rec = Object.values(myVotes).filter((x) => x.r != null);
+      const hit = mine == null || beat == null ? '' : (mine === 1) === beat ? `<span class="vote-hit up">✓ ${EN ? 'You called it' : '내 예측 적중'}</span>` : `<span class="vote-hit down">✗ ${EN ? 'Not this time' : '이번엔 빗나갔어요'}</span>`;
+      return `<div class="vote-box done" data-vk="${esc(k)}"><div class="vote-q"><b>🗳️ ${EN ? 'Prediction poll' : '예측 투표 결과'} · ${qLabelLong(q)}</b>${hit}</div>
+        ${beat != null ? `<p class="vote-res">${EN ? 'Actual' : '실제'} <b class="${beat ? 'up' : 'down'}">${beat ? (EN ? 'beat' : '예상 상회') : (EN ? 'missed' : '예상 하회')}</b> · EPS $${sur.eps.toFixed(2)} ${EN ? 'vs est.' : '/ 예상'} $${sur.consensus.toFixed(2)}${mine != null ? ` · ${EN ? 'my pick' : '내 선택'} ${mine ? '👍' : '👎'}` : ''}</p>` : ''}
+        ${crowd}${rec.length >= 2 ? `<small class="vote-rec">${EN ? 'My hit rate' : '내 적중률'} <b>${rec.filter((x) => x.r).length}/${rec.length}</b></small>` : ''}</div>`;
+    }
+    return `<div class="vote-box" data-vk="${esc(k)}"><div class="vote-q"><b>🗳️ ${EN ? 'Will this report beat expectations?' : '이번 실적, 예상보다 좋을까요?'}</b><small>${EN ? 'Anonymous · see the result and whether you were right after the report' : '익명 투표 · 발표 뒤 결과와 적중 여부를 알려 드려요'}</small></div>
+      <div class="vote-btns"><button type="button" data-vote="${esc(k)}|1" aria-pressed="${mine === 1}">👍 ${EN ? 'Beat' : '기대 이상'}</button><button type="button" data-vote="${esc(k)}|0" aria-pressed="${mine === 0}">👎 ${EN ? 'Miss' : '기대 이하'}</button></div>
+      ${mine != null ? crowd || `<small class="vote-n">${EN ? 'Counting…' : '집계 중…'}</small>` : `<small class="vote-n">${EN ? 'Vote to see what others think' : '투표하면 다른 사람들 생각도 보여요'}</small>`}</div>`;
+  }
+  // 실적 카드·발표 카드에 붙는 투표 칸: 최근 발표(30일 안) 결과 + 다음 발표(30일 안) 투표
+  function voteBlock(sym) {
+    if (!SITE_API || isKR(sym)) return '';
+    const E = earnOf(sym);
+    if (!E) return '';
+    const out = [], last = (E.quarters || []).at(-1), N = E.next;
+    if (last?.end && last.reportedOn && daysBetween(last.reportedOn, isoToday()) <= 30) { const k = `${sym}:${last.end}`; out.push(voteBox(k)); voteFetch(k); }
+    const nk = N?.date && /^\d{4}-\d{2}-\d{2}$/.test(N.quarter || N.date) ? `${sym}:${N.quarter || N.date}` : null;
+    if (nk && dday(N.date) >= 0 && dday(N.date) <= 30 && (!last || (N.quarter || N.date) > last.end)) { out.push(voteBox(nk)); if (myVotes[nk]) voteFetch(nk); }
+    return out.join('');
+  }
+  function paintVote(k) { for (const el of document.querySelectorAll(`.vote-box[data-vk="${CSS.escape(k)}"]`)) el.outerHTML = voteBox(k); }
+  async function castVote(k, v) {
+    myVotes[k] = { v, at: Date.now() };
+    writeJSON(VOTE_KEY, myVotes);
+    paintVote(k);
+    try {
+      const r = await fetch(`${SITE_API}/vote`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k, v, vid: voteVid() }) });
+      const j = await r.json();
+      if (r.ok && !j.error) { state.votes[k] = { up: j.up || 0, down: j.down || 0, t: Date.now() }; paintVote(k); toast(EN ? '✓ Vote saved — check back after the report' : '✓ 투표했어요 · 발표 뒤 결과를 알려 드려요'); }
+      else throw new Error(j.error || r.status);
+    } catch { toast(EN ? 'Could not save your vote' : '투표를 저장하지 못했어요. 잠시 후 다시 눌러 주세요', true); }
+  }
   function earnDay(sym) {
     const E = earnOf(sym), A = state.analyst?.[sym]?.street;
     if (!E) return null;
@@ -4722,7 +4919,7 @@
             <div><span>옵션이 보는 변동폭</span><b>${O?.earn ? '±' + (O.earn.move * 100).toFixed(1) + '%' : '–'}</b><small>${O?.earn ? `${price(O.spot * (1 - O.earn.move))} ~ ${price(O.spot * (1 + O.earn.move))}` : '옵션 자료 없음'}</small></div>
             <div><span>최근 ${sur.length}분기 예상 상회</span><b>${sur.length ? `${beats}/${sur.length}` : '–'}</b><small>EPS 기준</small></div>
           </div>
-          <p class="ed-check">✅ 볼 것: ${EARN_CHECK[sym] || '매출·EPS가 예상보다 높은지, 다음 분기 가이던스'}</p>`,
+          <p class="ed-check">✅ 볼 것: ${EARN_CHECK[sym] || '매출·EPS가 예상보다 높은지, 다음 분기 가이던스'}</p>${voteBlock(sym)}`,
       });
       return;
     }
@@ -4746,7 +4943,7 @@
         </div>
         ${k8 ? `<a class="faa-notice good" href="${safeUrl(k8.url)}" target="_blank" rel="noopener">📄 실적 발표 공시(8-K, ${md(isoToTs(k8.d))}) 원문 보기 →</a>` : ''}
         ${news.length ? `<div class="mini-h er-h">실적 관련 소식</div><ul class="nl faa-nl">${news.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
-        <p class="ed-check">✅ 이어서 볼 것: ${EARN_CHECK[sym] || '가이던스와 컨퍼런스콜 내용'}</p>`,
+        <p class="ed-check">✅ 이어서 볼 것: ${EARN_CHECK[sym] || '가이던스와 컨퍼런스콜 내용'}</p>${voteBlock(sym)}`,
     });
   }
 
@@ -5262,8 +5459,8 @@
     const burn = burns.length ? burns.reduce((a, b) => a + b, 0) / burns.length : null;
     return last && burn > 0 ? { liq: last.liquidity, end: last.end, burn, quarters: last.liquidity / burn } : null;
   }
-  function nextEarnHtml(N, extra = '') {
-    if (!N?.date) return '';
+  function nextEarnHtml(N, extra = '', sym) {
+    if (!N?.date) return sym ? voteBlock(sym) : '';
     const dd = dday(N.date);
     return `
       <div class="er-next">
@@ -5271,7 +5468,7 @@
         <div class="er-next-d"><b>${krDate(N.date)}</b><span class="er-dday">${dd > 0 ? `D-${dd}` : dd === 0 ? 'D-DAY' : '발표 완료'}</span></div>
         <div class="er-next-m">${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}예상 EPS <b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b>${N.low != null ? ` (범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}${N.analysts ? `, ${N.analysts}명` : ''})` : ''}${N.lastYearEps != null ? ` · 작년 같은 분기 $${N.lastYearEps.toFixed(2)}` : ''}</div>
         ${extra}
-      </div>`;
+      </div>${sym ? voteBlock(sym) : ''}`;
   }
   const earnSkeleton = (sym, id) => card(id, { title: `${STOCK_INFO[sym].short} 실적`, info: INFO.searnings, body: `<p class="skeleton">${st(sym).earnErr ? '실적을 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` });
   const epsCell = (q) => `${q.eps != null ? '$' + q.eps.toFixed(2) : '–'}${q.consensus != null ? `<span class="dim" style="display:block;font-size:10.5px">예상 ${q.consensus.toFixed(2)}</span>` : ''}`;
@@ -5285,7 +5482,7 @@
     const rw = sRunway(E);
     card('searnings', {
       title: '조비 실적', sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc(sym), info: INFO.jearnings,
-      body: `${nextEarnHtml(E.next, '<p class="note">실적 발표 때 주주서한에 <b>FAA 인증 단계별 진행률</b>도 함께 공개돼요.</p>')}
+      body: `${nextEarnHtml(E.next, '<p class="note">실적 발표 때 주주서한에 <b>FAA 인증 단계별 진행률</b>도 함께 공개돼요.</p>', sym)}
         ${last ? `<div class="ns-grid er-grid">
           <div><span>현금·단기투자</span><b>${usdS2(last.liquidity)}</b><small>${rw ? `최근 2분기 평균 소진 ${usd(rw.burn)} → 약 <b>${(rw.quarters / 4).toFixed(1)}년</b> 버틸 수 있음` : '–'}</small></div>
           <div><span>분기 현금 소진</span><b class="down">${usdS2(last.burn)}</b><small>영업현금흐름 + 설비투자 · 전분기 ${usdS2(prev?.burn)}</small></div>
@@ -5347,7 +5544,7 @@
     const lk = sym === 'SPCX' ? lockupEvents().find((e) => e.quarter && e.quarter === E.next?.quarter) : null;
     card('searnings', {
       title: `${S.short} 실적`, sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc(sym), info: INFO.searnings,
-      body: `${nextEarnHtml(E.next, lk ? `<p class="note">⚠️ 실적 발표 2거래일 뒤 <b>보호예수 최대 ${unit(lk.shares)}주</b>가 풀려요(${esc(lk.label)}).</p>` : '')}
+      body: `${nextEarnHtml(E.next, lk ? `<p class="note">⚠️ 실적 발표 2거래일 뒤 <b>보호예수 최대 ${unit(lk.shares)}주</b>가 풀려요(${esc(lk.label)}).</p>` : '', sym)}
         ${last ? `<div class="ns-grid er-grid">
           <div><span>매출</span><b>${usdS2(last.revenue)}</b><small>전년 같은 분기 대비 ${sp(yoy)} · 전분기 ${sp(qoq)}</small></div>
           <div><span>매출총이익률</span><b>${g != null ? pctPlain(g) : '–'}</b><small>${g != null && gPrev != null ? `전분기 ${pctPlain(gPrev)} → <span class="${cls(g - gPrev)}">${pp(g - gPrev, 1)}</span>` : '매출 − 매출원가'}</small></div>
@@ -5961,6 +6158,7 @@
       if (state.booting) { state.booting = false; busyBar(false); }
       renderAll();
       if (kind === 'boot') bootSlow();
+      if (kind === 'boot' && /^#move=/.test(location.hash)) { const code = decodeURIComponent(location.hash.slice(6)); try { history.replaceState(null, '', location.pathname + location.search); } catch {} openMove('recv', code); }
       if (kind !== 'light') setTimeout(prefetchStocks, 1500);
       if (kind === 'manual') {
         const now = new Date(), t = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
@@ -6272,6 +6470,22 @@
     const txrm = ev.target.closest('[data-txrm]');
     if (txrm) { txDraft.splice(+txrm.dataset.txrm, 1); paintTxList(); return; }
     if (ev.target.closest('#d-import')) { importFireToDiv(); return; }
+    const vb = ev.target.closest('[data-vote]');
+    if (vb) { const [k, v] = vb.dataset.vote.split('|'); castVote(k, +v); return; }
+    const mo = ev.target.closest('[data-moveopen]');
+    if (mo) { ev.preventDefault(); openMove(mo.dataset.moveopen); return; }
+    if (ev.target.closest('[data-sinceclose]')) { visit.closed = visit.cur.t; saveVisit(true); const el = document.getElementById('c-since'); if (el) el.hidden = true; return; }
+    const sgo = ev.target.closest('[data-sincego]');
+    if (sgo) {
+      const [sym, kind] = sgo.dataset.sincego.split(':');
+      if (WATCH.includes(sym) && state.stock !== sym) setStock(sym);
+      if (kind === 'stock') { document.getElementById('stock-switch')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      showView(sym === 'CRCL' ? kind : 's' + kind); window.scrollTo({ top: 0 });
+      return;
+    }
+    const mss = ev.target.closest('[data-msshare]');
+    if (mss) { const m = +mss.dataset.msshare; openShare('fire', mss, { title: m >= 100 ? (EN ? '🎊 FIRE goal reached!' : '🎊 퇴사 목표 달성!') : (EN ? `🎉 ${m}% to FIRE!` : `🎉 퇴사 목표 ${m}% 달성`) }); document.querySelector('.ms-sheet')?.remove(); return; }
+    if (ev.target.closest('[data-msclose]') || ev.target.classList?.contains('ms-sheet')) { document.querySelector('.ms-sheet')?.remove(); return; }
     const hio = ev.target.closest('[data-hiopen]');
     if (hio) { openHoldImport(hio.dataset.hiopen, hio, hio.dataset.himode0); return; }
     if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: fireTickerOrder().find((k) => !fireRows.some((r) => r.ticker === k)) || 'CRCA' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
