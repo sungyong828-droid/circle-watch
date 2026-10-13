@@ -11,11 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
-- 📥 **보유 종목을 한 번에 넣기**: 증권 앱 '보유 종목(잔고)' 화면 캡처나 CSV 파일을 고르면 종목·수량·평단을 읽어서 퇴사까지·배당금에 함께 반영해요. 읽은 값은 반영 전에 확인하고 고칠 수 있고, 사진·파일은 이 기기 안에서만 읽어요.
+- 📥 **보유 종목을 한 번에 넣기**: 증권 앱 '보유 종목(잔고)' 화면 캡처나 CSV 파일을 고르면 종목·수량·평단을 읽어서 퇴사까지·배당금에 함께 반영해요. CSV를 직접 만들 때는 종목·수량·평균단가 세 칸이면 되고, 종목 칸에는 티커·종목코드·종목명 중 하나만 넣으면 돼요. 읽은 값은 반영 전에 확인하고 고칠 수 있고, 사진·파일은 이 기기 안에서만 읽어요.
 - 🔍 관심 종목에 없는 종목도 **검색해서 바로 보유 종목으로** 넣을 수 있어요(미국·한국 모두).
 <!-- internal --> assets/hold-import.js(버튼 누를 때만 import) · 한글 OCR 데이터 assets/ocr/lang/kor.traineddata.gz(1.6MB, @tesseract.js-data/kor 4.0.0_best_int) · 거래 내역이 있는 배당 종목은 차이만큼 오늘 거래를 더함 · 사용 비트 'hold'.
 <!-- EN
-- Import holdings at once: pick a screenshot of your broker's holdings screen or a CSV file, and shares and average cost fill in for both Road to FIRE and Dividends. Review before applying; files are read on your device only.
+- Import holdings at once: pick a screenshot of your broker's holdings screen or a CSV file, and shares and average cost fill in for both Road to FIRE and Dividends. A homemade CSV needs just stock, shares and average cost, where stock can be a ticker, Korean code or name. Review before applying; files are read on your device only.
 - Search any US or Korean stock and add it to your holdings, even if it isn't in your watchlist.
 -->
 

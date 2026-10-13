@@ -3115,9 +3115,9 @@
   async function openHoldImport(from, btn, mode) {
     if (btn) btn.disabled = true;
     try {
-      const m = await import('./hold-import.js?v=6');
+      const m = await import('./hold-import.js?v=9');
       m.openHoldImport({
-        EN, esc, toast, TICKER_RE, krTk, resolveTicker, search: holdSearch, held: holdNow, nameOf: holdName, apply: applyHoldImport,
+        EN, esc, toast, TICKER_RE, krTk, resolveTicker, krName, search: holdSearch, held: holdNow, nameOf: holdName, apply: applyHoldImport,
         fx: async () => { if (!state.quote?.fx?.rate) await loadQuote().catch(() => {}); return state.quote?.fx?.rate || null; },
         markUse: () => markUse('hold'), hasFire: !!fireCfg, hasDiv: !!divCfg,
         knownNames: () => Object.entries(FIRE_TICKERS).map(([t, l]) => [t, [...String(l).split(' · '), STOCK_INFO[t]?.name || ''].filter((x) => /[가-힣]/.test(x))]).filter(([, ns]) => ns.length),

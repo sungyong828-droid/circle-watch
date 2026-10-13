@@ -85,6 +85,7 @@ export function parseTable(text) {
     }
     return { rows: out, noHeader: true };
   }
+  let blank = 0;
   const H = R[hi], idx = (role) => cols.map((c, i) => (c === role ? i : -1)).filter((i) => i >= 0);
   const qi = idx('qty')[0], ti = idx('ticker')[0], ni = idx('name')[0], ci = idx('cur')[0], mi = idx('market')[0];
   const avgs = idx('avg').map((i) => ({ i, c: curHint(H[i]) })), costs = idx('cost').map((i) => ({ i, c: curHint(H[i]) }));
@@ -92,7 +93,8 @@ export function parseTable(text) {
   for (const r of R.slice(hi + 1)) {
     const sh = num(r[qi]);
     const nm = ni != null ? r[ni] : '', tk = ti != null ? r[ti] : '';
-    if (!(sh > 0) || (!nm && !tk) || SKIP_ROW.test(nm || tk)) continue;
+    if (sh > 0 && !nm && !tk) { blank++; continue; } // 수량은 있는데 종목 칸이 빈 줄
+    if (!(sh > 0) || SKIP_ROW.test(nm || tk)) continue;
     const rowCur = curOfCell(r[ci]) || curOfCell(r[mi]);
     const p = {};
     const put = (list, f) => { for (const { i, c } of list) { const v = num(r[i]); if (v != null && v > 0) { const k = c === 'nat' && rowCur ? rowCur : c; p[k] ??= f(v, i); } } };
@@ -101,9 +103,9 @@ export function parseTable(text) {
     if (!Object.keys(p).length && vals.length && profs.length) {
       for (const { i, c } of vals) { const v = num(r[i]), pr = profs.find((x) => x.c === c) || profs[0], g = num(r[pr.i]); if (v > 0 && g != null && v - g > 0) { const k = c === 'nat' && rowCur ? rowCur : c; p[k] ??= (v - g) / sh; } }
     }
-    out.push({ raw: cleanName(nm || tk), tick: tickOf(tk) || tickOf(nm), sh, p, warn: !Object.keys(p).length });
+    out.push({ raw: cleanName(nm || tk), tick: tickOf(String(tk).toUpperCase()) || tickOf(nm), sh, p, warn: !Object.keys(p).length });
   }
-  return { rows: out, noHeader: false };
+  return { rows: out, noHeader: false, blank };
 }
 
 // ---------------------------------------------------------------- 캡처(글자 읽기 결과) → 종목·수량·평단
@@ -362,7 +364,11 @@ async function finishRows(list) {
   const q = [...out];
   await Promise.all([0, 1, 2].map(async () => { while (q.length) await resolveRow(q.shift()); }));
   lastFx = fx;
-  for (const r of out) { if (r.t && (!r.name || r.name.toUpperCase() === r.t)) r.name = C.nameOf(r.t); settle(r, fx); }
+  for (const r of out) {
+    if (r.t && C.krTk(r.t) && (!r.name || /^\d{6}$/.test(r.name))) r.name = (await C.krName?.(r.t).catch(() => null)) || r.name; // 종목코드만 적은 줄 → 회사 이름
+    if (r.t && (!r.name || r.name.toUpperCase() === r.t)) r.name = C.nameOf(r.t);
+    settle(r, fx);
+  }
   return out;
 }
 
@@ -387,7 +393,8 @@ function rowHtml(r) {
 }
 function srcHtml() {
   if (mode === 'csv') {
-    return `<p class="note">${L('증권사 앱·홈페이지의 <b>잔고(보유 종목)</b>를 CSV로 내려받아 골라 주세요. 종목명(또는 티커)·수량·평균 단가 칸을 알아서 찾아요. 엑셀 파일(.xlsx)은 <b>다른 이름으로 저장 → CSV</b>로 바꿔 주세요.', 'Export your holdings as CSV from your broker and pick the file. Symbol/name, quantity and average cost columns are detected automatically. Save .xlsx files as CSV first.')}</p>
+    return `<p class="note">${L('증권사 앱·홈페이지의 <b>잔고(보유 종목)</b>를 CSV로 내려받아 골라 주세요. 종목·수량·평균 단가 칸을 알아서 찾아요. 엑셀 파일(.xlsx)은 <b>다른 이름으로 저장 → CSV</b>로 바꿔 주세요.', 'Export your holdings as CSV from your broker and pick the file. Stock, quantity and average cost columns are detected automatically. Save .xlsx files as CSV first.')}</p>
+      <div class="note hi-tip">${L(`<b>직접 만들 때는 종목·수량·평균단가 세 칸이면 돼요</b><ul><li>종목 칸에는 <span>티커(TSLA)</span> · <span>종목코드(005930)</span> · <span>종목명(삼성전자)</span> 중 <b>하나만</b></li><li>종목명은 증권 앱에 보이는 이름 그대로</li><li>티커·종목명 칸을 따로 두면 둘 중 하나만 채워도 돼요</li></ul>`, `<b>Making your own? Three columns: stock, shares, avg cost</b><ul><li>Stock: <span>ticker (TSLA)</span> · <span>Korean code (005930)</span> · <span>company name</span> — <b>any one</b></li><li>Write names as your broker app shows them</li><li>Separate ticker/name columns work with either filled in</li></ul>`)}</div>
       <div class="hi-pick"><label class="btn-primary oc-pick">${L('CSV 파일 고르기', 'Choose CSV file')}<input type="file" id="hi-csv" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden></label><button type="button" class="btn-ghost sm" data-hitpl="1">${L('빈 양식 받기', 'Get template')}</button></div>
       <details class="hi-paste"><summary>${L('표를 복사해서 붙여넣기', 'Paste a table instead')}</summary>
         <textarea id="hi-text" rows="4" placeholder="${L('엑셀·구글 시트에서 종목·수량·평단 칸을 복사해 붙여넣어 주세요', 'Paste name/quantity/average cost cells from a spreadsheet')}"></textarea>
@@ -465,8 +472,11 @@ async function readCsvFile(f) {
 }
 async function readText(text) {
   status(L('읽는 중…', 'Reading…'));
-  const { rows: R, noHeader } = parseTable(text);
-  addRows(await finishRows(R), noHeader ? L('제목 줄이 없어 첫 숫자를 수량, 둘째를 평단으로 읽었어요', 'No header row: first number = shares, second = average cost') : '');
+  const { rows: R, noHeader, blank } = parseTable(text);
+  addRows(await finishRows(R), [
+    noHeader ? L('제목 줄이 없어 첫 숫자를 수량, 둘째를 평단으로 읽었어요', 'No header row: first number = shares, second = average cost') : '',
+    blank ? L(`<span class="warn">티커·종목명이 모두 빈 ${blank}줄은 건너뛰었어요</span>`, `<span class="warn">Skipped ${blank} rows with no ticker or name</span>`) : '',
+  ].filter(Boolean).join(' · '));
 }
 async function readShots(files) {
   status(L('글자 읽기 엔진 준비 중…', 'Preparing text reader…'));
@@ -506,7 +516,7 @@ function pickResult(sym, name) {
   if (inp) { inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(() => inp.focus({ preventScroll: true }), 250); }
 }
 function template() {
-  const csv = '﻿티커,종목명,수량,평균단가\nTSLA,테슬라,10,245.30\nSCHD,슈왑 미국 배당주,50,27.10\n005930,삼성전자,20,71500\n';
+  const csv = '﻿종목,수량,평균단가\nTSLA,10,245.30\n005930,20,71500\n리얼티인컴,30,56.20\n';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   a.download = 'fire-portfolio-holdings.csv';
