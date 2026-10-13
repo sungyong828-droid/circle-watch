@@ -2097,7 +2097,19 @@ window.__I18N_EN = {
 "💰 내 배당금": "💰 My dividends",
 "🧮 포트폴리오 짜보기": "🧮 Plan a portfolio",
 "배당금 보기": "Dividend views",
-"이미지로 공유": "Share as image"
+"이미지로 공유": "Share as image",
+"📥 CSV·캡처·검색으로 한 번에 넣기": "📥 Import via CSV, screenshot or search",
+"증권 앱 보유 종목 화면이나 CSV 파일로 수량·평단을 채워요": "Fill shares and average cost from your broker app or a CSV file",
+"📥 한 번에 넣기 → 🔍 검색": "📥 Import → 🔍 Search",
+"목록에 없는 종목은 위": "For stocks not on the list, use",
+"에서 찾아 넣을 수 있어요.": "above.",
+"🔍 다른 종목 검색해서 넣기": "🔍 Search other stocks",
+"🔍 종목 검색해서 넣기": "🔍 Search stocks",
+": 기본 종목과 관심 종목은 목록에서 고르고, 그 밖의 미국·한국 종목은 ": ": pick built-in and watchlist stocks from the list; find any other US or Korean stock with ",
+"으로 찾아 넣어요. ": ". ",
+"📥 한 번에 넣기": "📥 Import",
+"로 증권 앱 보유 종목 캡처나 CSV 파일에서 수량·평단을 한꺼번에 채울 수도 있어요(사진·파일은 이 기기 안에서만 읽어요).": " to fill shares and average cost from a broker screenshot or CSV file at once (read on this device only).",
+"🔍 검색": "🔍 Search"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

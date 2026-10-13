@@ -253,7 +253,7 @@
     fire: `
       <p>보유한 주식의 <b>현재 원화 평가금액 ÷ 목표 금액</b>으로 퇴사(경제적 자유) 목표까지 얼마나 왔는지 보여줍니다.</p>
       <ul>
-        <li><b>보유 종목</b>: 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)에, 홈의 <b>+ 추가·편집</b>에서 관심 종목으로 추가한 종목도 골라 함께 넣을 수 있어요. 관심 종목에서 빼면 여기 선택 목록에서도 빠져요(이미 저장한 보유 정보는 지우기 전까지 그대로 계산돼요).</li>
+        <li><b>보유 종목</b>: 기본 종목과 관심 종목은 목록에서 고르고, 그 밖의 미국·한국 종목은 <b>🔍 검색</b>으로 찾아 넣어요. <b>📥 한 번에 넣기</b>로 증권 앱 보유 종목 캡처나 CSV 파일에서 수량·평단을 한꺼번에 채울 수도 있어요(사진·파일은 이 기기 안에서만 읽어요).</li>
         <li><b>평가금액</b> = 보유 수량 × 실시간 주가(Nasdaq, 장전·장중·장후 포함) × 실시간 원·달러 환율.</li>
         <li><b>평가손익</b>: 매수 금액(수량 × 평균 단가)과 비교. 평균 매수 환율을 입력하지 않으면 현재 환율로 환산합니다.</li>
         <li><b>목표 달성 가격</b>: 지금 환율이 그대로일 때 목표 금액이 되는 주가.</li>
@@ -2214,9 +2214,11 @@
   const krTk = (s) => /^[0-9A-Z]{6}\.(KS|KQ)$/.test(String(s || ''));
   const I18N_KEEP = (window.__i18nKeepSet ||= new Set()); // 영어 보기에서 그대로 둘 한국 종목 이름
   const keepName = (n) => { if (n && /[가-힣]/.test(n)) I18N_KEEP.add(String(n)); return n; };
+  // 보유 종목 선택지 이름: 미국 'TSLA · 테슬라', 한국 '삼성전자 · 005930'
+  const fireLabel = (t, n) => (!n || n === t ? t : krTk(t) ? `${keepName(n)} · ${t.slice(0, 6)}` : `${t} · ${n}`);
   for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (TICKER_RE.test(sym)) FIRE_TICKERS[sym] ||= krTk(sym) ? `${m?.name || sym} · ${sym.slice(0, 6)}` : `${sym} · ${m?.name || sym}`;
   // 관심 종목에서 뺐어도 보유 정보에 남아 있는 종목은 계속 고를 수 있게
-  for (const p of readJSON(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= p.ticker;
+  for (const p of readJSON(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= fireLabel(p.ticker, p.n);
   // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지 기본 종목. 관심 종목에서 뺀 종목은 목록에서 빠진다
   // (keep: 이미 그 종목으로 저장된 행은 값이 바뀌지 않도록 그 행에만 남긴다)
   const fireName = (t) => (krTk(t) ? keepName(STOCK_INFO[t]?.short || state.divData?.[t]?.d?.name || (FIRE_TICKERS[t] || t).split(' · ')[0].replace(/\.K[SQ]$/, '')) : t);
@@ -2354,7 +2356,7 @@
   }
 
   const fireSaved = (k) => !!fireCfg?.positions.some((p) => p.ticker === k);
-  const fireTickerOptions = (sel) => fireTickerOrder(fireSaved(sel) ? sel : null).map((k) => `<option value="${esc(k)}" ${sel === k ? 'selected' : ''}>${esc(FIRE_TICKERS[k])}${firePicked(k) ? '' : ' (관심 종목에서 뺌)'}</option>`).join('');
+  const fireTickerOptions = (sel) => fireTickerOrder(fireSaved(sel) ? sel : null).map((k) => `<option value="${esc(k)}" ${sel === k ? 'selected' : ''}>${esc(FIRE_TICKERS[k])}${firePicked(k) || fireSaved(k) ? '' : ' (관심 종목에서 뺌)'}</option>`).join('');
   // 화면을 연 채로 관심 종목을 추가하면 입력 중인 값은 그대로 두고 선택지만 새로
   function refreshFireTickers() {
     for (const s of document.querySelectorAll('#f-rows .f-ticker')) { const v = s.value; s.innerHTML = fireTickerOptions(v); if ([...s.options].some((o) => o.value === v)) s.value = v; }
@@ -2373,10 +2375,10 @@
     return `<details class="fire-set" ${open ? 'open' : ''}>
       <summary>${fireCfg ? '보유 정보 수정' : '보유 정보 입력'}</summary>
       <form id="fire-form" autocomplete="off">
+        ${holdImportBtn('fire')}
         <div class="f-rows-h"><span>보유 종목</span><small>수량 · 평균 단가(달러)</small></div>
         <div id="f-rows">${fireRows.map(fireRowHtml).join('')}</div>
-        <button type="button" class="btn-ghost f-add" id="f-add">+ 종목 추가</button>
-        <p class="note f-hint">목록에 없는 종목은 홈의 <b>+ 추가·편집</b>에서 관심 종목으로 추가하면 여기서도 고를 수 있어요.</p>
+        <div class="d-btns"><button type="button" class="btn-ghost f-add" id="f-add">+ 종목 추가</button><button type="button" class="btn-ghost f-add" data-hiopen="fire" data-himode0="search">🔍 다른 종목 검색해서 넣기</button></div>
         <label>목표 금액(원)<input id="f-goal" inputmode="numeric" value="${F.goal ?? 1.5e9}" required><small id="f-goal-hint">${wonFull(F.goal ?? 1.5e9)}</small></label>
         <label>평균 매수 환율(원, 선택)<input id="f-fx" inputmode="decimal" value="${F.buyFx ?? ''}" placeholder="비우면 현재 환율로 손익 계산"></label>
         <label class="chk"><input type="checkbox" id="f-tax" ${F.afterTax ? 'checked' : ''}> 세후 기준으로 계산 (해외주식 양도세 22%, 연 250만원 공제)</label>
@@ -2887,10 +2889,11 @@
     el.innerHTML = `<details class="fire-set" ${divCfg ? '' : 'open'}>
       <summary>${divCfg ? '배당 종목 수정' : '배당 종목 입력'}</summary>
       <form id="div-form" autocomplete="off">
+        ${holdImportBtn('div')}
         <div class="f-rows-h"><span>보유 종목</span><small>티커 · 수량 · 평단($) · 거래 내역</small></div>
         <div id="d-rows">${divRows.map(divRowHtml).join('')}</div>
         <datalist id="d-tickers">${tickers.map((t) => `<option value="${esc(t)}">`).join('')}</datalist>
-        <div class="d-btns"><button type="button" class="btn-ghost f-add" id="d-add">+ 종목 추가</button>${fireCfg ? '<button type="button" class="btn-ghost f-add" id="d-import">🔥 보유 종목 불러오기</button>' : ''}</div>
+        <div class="d-btns"><button type="button" class="btn-ghost f-add" id="d-add">+ 종목 추가</button><button type="button" class="btn-ghost f-add" data-hiopen="div" data-himode0="search">🔍 종목 검색해서 넣기</button>${fireCfg ? '<button type="button" class="btn-ghost f-add" id="d-import">🔥 보유 종목 불러오기</button>' : ''}</div>
         <p class="note"><b>거래 내역은 선택</b>이에요. <b>📅 거래 내역</b>을 누르면 증권 앱 거래 화면 <b>사진으로 한 번에</b> 넣거나 캘린더로 직접 넣을 수 있어요. 거래 내역을 넣으면 그날들 이후 실제로 받은 배당금까지 계산하고 수량·평단도 자동으로 채워져요. 비워 두면 오늘 산 것으로 보고 앞으로 받을 배당금만 계산해요.</p>
         <label>배당 세금<select id="d-tax"><option value="0.15" ${!divCfg || divCfg.tax === 0.15 ? 'selected' : ''}>세후 — 미국 원천징수 15% 뺀 금액(실제 입금액)</option><option value="0" ${divCfg?.tax === 0 ? 'selected' : ''}>세전 — 세금 빼기 전 금액</option></select></label>
         <div class="fire-btns"><button type="submit" class="btn-primary">저장</button>${divCfg ? `<button type="button" id="d-del" class="btn-ghost">${divConfirmDelete ? '정말 삭제' : '이 기기에서 삭제'}</button>` : ''}</div>
@@ -3086,6 +3089,93 @@
     divRows = [...have, ...add];
     paintRows();
     toast('🔥 보유 종목을 불러왔어요 · 거래 내역은 넣어도 되고 비워도 돼요');
+  }
+
+  // ---- 보유 종목 한 번에 넣기(CSV · 증권 앱 캡처 · 검색) → 퇴사까지·배당금의 수량·평단
+  // 화면·읽기 코드는 assets/hold-import.js — 버튼을 누를 때만 받아서 첫 로딩에는 영향이 없다
+  function holdImportBtn(from) {
+    return `<button type="button" class="hi-open" data-hiopen="${from}"><b>📥 CSV·캡처·검색으로 한 번에 넣기</b><small>증권 앱 보유 종목 화면이나 CSV 파일로 수량·평단을 채워요</small></button>`;
+  }
+  async function holdSearch(q) {
+    q = String(q || '').trim();
+    if (!q) return [];
+    const R = /[가-힣ㄱ-ㅎ]/.test(q) || /^\d/.test(q) ? await krUsSearch(q) : (await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(q)}`, 10000).catch(() => null))?.results || [];
+    return R.filter((r) => TICKER_RE.test(r.symbol || '')).map((r) => (r.code
+      ? { symbol: r.symbol, title: r.name, sub: `${r.etf ? 'ETF' : r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${r.code}`, label: r.name, name: r.name }
+      : { symbol: r.symbol, title: r.symbol, sub: [r.kr && r.kr !== r.name && !EN ? r.kr : '', r.name, r.asset === 'ETF' ? 'ETF' : ''].filter(Boolean).join(' · '), label: (!EN && r.kr) || r.name || r.symbol, name: r.name, kr: r.kr }));
+  }
+  function holdNow(t) {
+    const f = fireCfg?.positions.find((p) => p.ticker === t), d = divCfg?.hold.find((h) => h.t === t);
+    const one = (x) => `${fmtSh(x.sh)}${EN ? ' sh' : '주'} · ${EN ? 'avg' : '평단'} ${pxS(t, x.avg)}`;
+    const F = f && one({ sh: f.shares, avg: f.avg }), D = d && one(d);
+    if (F && D && F === D) return F;
+    return [F && `${EN ? 'FIRE' : '퇴사까지'} ${F}`, D && `${EN ? 'Dividends' : '배당금'} ${D}`].filter(Boolean).join(' / ');
+  }
+  const holdName = (t) => (krTk(t) ? fireName(t) : STOCK_INFO[t]?.name || (FIRE_TICKERS[t] || '').split(' · ')[1] || t);
+  async function openHoldImport(from, btn, mode) {
+    if (btn) btn.disabled = true;
+    try {
+      const m = await import('./hold-import.js?v=6');
+      m.openHoldImport({
+        EN, esc, toast, TICKER_RE, krTk, resolveTicker, search: holdSearch, held: holdNow, nameOf: holdName, apply: applyHoldImport,
+        fx: async () => { if (!state.quote?.fx?.rate) await loadQuote().catch(() => {}); return state.quote?.fx?.rate || null; },
+        markUse: () => markUse('hold'), hasFire: !!fireCfg, hasDiv: !!divCfg,
+        knownNames: () => Object.entries(FIRE_TICKERS).map(([t, l]) => [t, [...String(l).split(' · '), STOCK_INFO[t]?.name || ''].filter((x) => /[가-힣]/.test(x))]).filter(([, ns]) => ns.length),
+        known: () => new Set([...WATCH, ...BUILTIN, ...FIRE_BASE, ...(fireCfg?.positions || []).map((p) => p.ticker), ...(divCfg?.hold || []).map((h) => h.t)]),
+      }, { from, mode });
+    } catch (e) { console.error(e); toast(EN ? 'Could not open the import screen' : '불러오기 화면을 열지 못했어요', true); }
+    finally { if (btn) btn.disabled = false; }
+  }
+  // list: [{ t, name, sh, avg }] (평단: 미국 종목 달러 · 한국 종목 원) · replace면 저장된 종목을 이 목록으로 바꾼다
+  function applyHoldImport(list, { fire, div, replace }) {
+    const done = [];
+    let newFire = false, txAdj = 0;
+    if (fire) {
+      for (const r of list) FIRE_TICKERS[r.t] ||= fireLabel(r.t, r.name);
+      const base = replace || !fireCfg ? [] : fireCfg.positions.map((p) => ({ ...p }));
+      for (const r of list) {
+        const p = base.find((x) => x.ticker === r.t), n = r.name && r.name !== r.t ? { n: r.name } : {};
+        if (p) Object.assign(p, { shares: r.sh, avg: r.avg }, n); else base.push({ ticker: r.t, shares: r.sh, avg: r.avg, ...n });
+      }
+      newFire = !fireCfg;
+      fireCfg = normFire({ ...(fireCfg || { goal: 1.5e9, buyFx: null, afterTax: false }), positions: base });
+      writeJSON(FIRE_KEY, fireCfg);
+      fireSim = null; fireConfirmDelete = false;
+      renderFireSet();
+      // 받는 중인 시세에는 새 종목이 없을 수 있어서, 그게 끝난 뒤 새 종목까지 다시 받는다
+      Promise.resolve(quoteInflight).catch(() => {}).then(loadQuote).then(() => { renderFire(); renderSummary(); renderHomeFire(); }).catch(() => renderFire());
+      renderFire(); renderSummary();
+      markUse('fireSet');
+      done.push(EN ? 'FIRE' : '퇴사까지');
+    }
+    if (div) {
+      const today = isoToday(), base = replace || !divCfg ? [] : divCfg.hold.map((h) => ({ ...h, trades: h.trades?.map((x) => ({ ...x })) }));
+      for (const r of list) {
+        const i = base.findIndex((h) => h.t === r.t);
+        if (i < 0) { base.push({ t: r.t, sh: r.sh, avg: r.avg, d: today }); continue; }
+        const h = base[i];
+        if (!h.trades?.length) { base[i] = { ...h, sh: r.sh, avg: r.avg }; continue; }
+        // 거래 내역이 있는 종목: 지난 기록(받은 배당 계산)은 그대로 두고, 차이만큼 오늘 매수·매도를 더한다
+        const H = holdFromTrades(h.trades), diff = Math.round((r.sh - H.sh) * 10000) / 10000;
+        if (Math.abs(diff) < 1e-4) continue;
+        const px = diff > 0 ? (r.sh * r.avg - H.sh * H.avg) / diff : r.avg;
+        if (px > 0) { h.trades.push({ d: today, sh: Math.abs(diff), price: Math.round(px * 10000) / 10000, ...(diff < 0 ? { sell: true } : {}) }); Object.assign(h, holdFromTrades(h.trades)); }
+        else base[i] = { t: r.t, sh: r.sh, avg: r.avg, d: h.trades.map((x) => x.d).sort()[0] };
+        txAdj++;
+      }
+      divCfg = normDiv({ hold: base, tax: divCfg?.tax ?? 0.15 });
+      writeJSON(DIV_KEY, divCfg);
+      divConfirmDelete = false;
+      renderDivSet(); renderDiv();
+      if (!state.quote) loadQuote().then(renderDiv).catch(() => {});
+      loadDividends(true).catch(() => {});
+      markUse('divSet');
+      done.push(EN ? 'dividends' : '배당금');
+    }
+    renderHomeFire();
+    toast(EN
+      ? `✓ ${list.length} holdings saved to ${done.join(' & ')}${newFire ? ' · set your goal in Road to FIRE' : ''}`
+      : `✓ ${list.length}종목을 ${done.join('·')}에 반영했어요${newFire ? ' · 목표 금액은 퇴사까지에서 정해 주세요' : ''}${txAdj ? ` · 거래 내역이 있는 ${txAdj}종목은 차이만큼 오늘 거래로 더했어요` : ''}`);
   }
 
   // ---------------------------------------------------------------- 💼 성과급 계산기 (Fire · 세 번째 탭)
@@ -3524,7 +3614,8 @@
       const m = (merged[r.ticker] ||= { ticker: r.ticker, shares: 0, cost: 0 });
       m.shares += r.shares; m.cost += r.shares * r.avg;
     }
-    const positions = Object.values(merged).map((m) => ({ ticker: m.ticker, shares: m.shares, avg: m.cost / m.shares }));
+    const nameOf = (t) => fireCfg?.positions.find((p) => p.ticker === t)?.n;
+    const positions = Object.values(merged).map((m) => ({ ticker: m.ticker, shares: m.shares, avg: m.cost / m.shares, ...(nameOf(m.ticker) ? { n: nameOf(m.ticker) } : {}) }));
     fireCfg = { positions, goal, buyFx: fx > 0 ? fx : null, afterTax: document.getElementById('f-tax')?.checked || false };
     writeJSON(FIRE_KEY, fireCfg);
     fireSim = null;
@@ -6181,6 +6272,8 @@
     const txrm = ev.target.closest('[data-txrm]');
     if (txrm) { txDraft.splice(+txrm.dataset.txrm, 1); paintTxList(); return; }
     if (ev.target.closest('#d-import')) { importFireToDiv(); return; }
+    const hio = ev.target.closest('[data-hiopen]');
+    if (hio) { openHoldImport(hio.dataset.hiopen, hio, hio.dataset.himode0); return; }
     if (ev.target.closest('#f-add')) { fireRows = readFireRows(); fireRows.push({ ticker: fireTickerOrder().find((k) => !fireRows.some((r) => r.ticker === k)) || 'CRCA' }); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
     const rmBtn = ev.target.closest('[data-rm]');
     if (rmBtn) { fireRows = readFireRows(); fireRows.splice(+rmBtn.dataset.rm, 1); document.getElementById('f-rows').innerHTML = fireRows.map(fireRowHtml).join(''); return; }
@@ -6242,7 +6335,7 @@
   // 순서는 functions/api/admin/stats.js 의 USE_BITS 와 같아야 한다
   function markUse(name) {
     try {
-      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr', 'sns'];
+      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr', 'sns', 'hold'];
       const i = BITS.indexOf(name);
       if (i < 0 || !IS_PROD) return;
       const U = (window.__fpUse ||= { day: '', sent: 0, pend: 0, t: null });
