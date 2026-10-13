@@ -97,7 +97,7 @@ function bodyHtml() {
   }
   if (got) {
     const sum = C.summary(got.data);
-    return `<p class="note">${L(`${new Date(got.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}에 보낸 정보예요.`, `Sent ${new Date(got.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`)}</p>
+    return `<p class="note">${L(`${new Date(got.at).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}에 보낸 정보예요.`, `Sent ${new Date(got.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`)}</p>
       <ul class="mv-sum">${sum.map((x) => `<li>${esc(x)}</li>`).join('') || `<li>${L('설정', 'Settings')}</li>`}</ul>
       <p class="note warn">⚠ ${L('이 기기에 이미 있던 같은 정보(보유 종목·관심 종목 등)는 받은 내용으로 바뀌어요.', 'Matching info already on this device will be replaced.')}</p>
       <button type="button" class="btn-primary oc-add" data-mvapply="1">${L('이 기기에 넣기', 'Put it on this device')}</button>`;

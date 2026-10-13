@@ -11,6 +11,18 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 👋 **다시 들어오면 홈 맨 위에 '지난 방문 이후 바뀐 것'**: 퇴사까지 평가금액 변화, 많이 움직인 내 종목, 들어온 배당, 새 공시, 이번 주 실적 발표·배당 입금 일정을 한눈에 보여줘요.
+- 🎉 **퇴사 목표 달성 축하**: 진행률이 5%·10%·20%…100%를 넘으면 축하 화면이 뜨고, 바로 이미지로 공유할 수 있어요.
+- 🗳️ **실적 예측 투표**: 실적 발표 전에 '예상보다 좋을까?'에 익명으로 투표하고, 발표 뒤 실제 결과와 내 예측이 맞았는지 보여줘요.
+- 🔄 **다른 기기로 옮기기**: 보유 종목·배당 종목·관심 종목을 짧은 코드나 QR로 새 폰·PC에 옮길 수 있어요. 코드로 암호화해서 10분만 보관하고, 받으면 바로 지워요.
+<!-- internal --> 홈 c-since(cw.visit, 3시간 쉬면 새 방문) · cw.fireMile · /api/vote·/api/move(D1 votes·moves, stats/migrate-5.sql, 테스트 주소 투표는 't:' 키) · assets/move.js(AES-GCM, qrcode-generator@1.4.4 jsdelivr) · _middleware POST 허용 추가.
+<!-- EN
+- Welcome back: the top of Home shows what changed since your last visit — FIRE value, your biggest movers, dividends paid, new filings and this week's earnings and payouts.
+- Milestone celebrations when your FIRE progress passes 5%, 10%, 20%… with one-tap image sharing.
+- Earnings prediction poll: vote anonymously before a report and see the result and whether you called it.
+- Move to another device: copy your holdings, dividend stocks and watchlist to a new phone or PC with a short code or QR (encrypted, kept 10 minutes).
+-->
+
 ## v2026.10.13-1 — 2026-10-13
 
 [이 버전 보기](https://3c530804.my-fire-portfolio.pages.dev) · 커밋 `6e41971`

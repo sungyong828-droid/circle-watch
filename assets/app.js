@@ -3213,7 +3213,7 @@
   async function openMove(tab, code) {
     if (!SITE_API) { toast(EN ? 'Available on the live site' : '실제 사이트에서 쓸 수 있어요', true); return; }
     try {
-      const m = await import('./move.js?v=1');
+      const m = await import('./move.js?v=2');
       m.openMove({
         EN, esc, toast, api: SITE_API, keys: MOVE_KEYS,
         summary: (data) => {
