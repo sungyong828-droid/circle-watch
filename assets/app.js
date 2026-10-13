@@ -15,6 +15,7 @@
   window.addEventListener('unhandledrejection', (e) => reportErr('promise: ' + (e.reason?.message || e.reason)));
   const DATA_URL = ON_PAGES ? '/api/data' : 'data/latest.json';
   const SITE_API = ON_PAGES ? '/api' : null; // 이 사이트 서버(Pages Functions)에만 있는 기능: 투표·기기 옮기기
+  const MOVE_CODE = (location.hash.match(/^#move=([A-Za-z0-9-]{10,14})$/) || [])[1] || null; // QR로 열었을 때(화면 이동 전에 읽어 둔다)
   const NEWS_API = ON_PAGES ? '/api' : 'https://circle-watch-news.sungyong828.workers.dev';
   const DATA_FALLBACK = 'https://sungyong828-droid.github.io/circle-watch/data/latest.json'; // /api/data가 막혔을 때만
   // 예전 주소(yongs-portfolio.pages.dev/move)에서 넘어온 이 기기의 데이터(보유 정보·관심 종목·키워드·설정)를 받는다.
@@ -6158,7 +6159,7 @@
       if (state.booting) { state.booting = false; busyBar(false); }
       renderAll();
       if (kind === 'boot') bootSlow();
-      if (kind === 'boot' && /^#move=/.test(location.hash)) { const code = decodeURIComponent(location.hash.slice(6)); try { history.replaceState(null, '', location.pathname + location.search); } catch {} openMove('recv', code); }
+      if (kind === 'boot' && MOVE_CODE) openMove('recv', MOVE_CODE);
       if (kind !== 'light') setTimeout(prefetchStocks, 1500);
       if (kind === 'manual') {
         const now = new Date(), t = [now.getHours(), now.getMinutes(), now.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
