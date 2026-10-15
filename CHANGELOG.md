@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.10.15-1 — 2026-10-15
+
+[이 버전 보기](https://e0f542f2.my-fire-portfolio.pages.dev) · 커밋 `2bc3645`
+
 - 🔧 새로고침할 때 '일부 항목 실패'가 뜨던 문제를 고쳤어요(USDC·USYC 발행량 기록).
 <!-- internal --> DefiLlama stablecoincharts?stablecoin=237(USYC)이 빈 응답 → /api/series 전체 502. /stablecoin/{id} tokens로 대신 받고, EURC·USYC 실패는 빈 기록으로 처리.
 <!-- EN
