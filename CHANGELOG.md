@@ -15,19 +15,16 @@
 
 [이 버전 보기](https://beabfbad.my-fire-portfolio.pages.dev) · 커밋 `fc2b517`
 
-- 📅 '이번 주 일정'이 하루에 한 번(그날 처음 들어왔을 때) 떠요. 월요일에 봤어도 금요일에 다시 확인할 수 있어요.
-<!-- EN
-- "This week" schedule now shows once a day, so you see it again later in the week.
--->
+<!-- internal --> 이번 주 일정: 한 주 한 번 → 하루 한 번(cw.schedDay). 사용자 안내는 v2026.10.15-2 항목에 합침.
 
 ## v2026.10.15-2 — 2026-10-15
 
 [이 버전 보기](https://d6b964ac.my-fire-portfolio.pages.dev) · 커밋 `1eaa865`
 
-- 📅 홈 맨 위에 **이번 주 일정**: CPI·PPI·FOMC 금리 결정·고용보고서 같은 주요 경제지표(한국 시간)와 내 종목 실적 발표·배당 입금일을 날짜별로 보여줘요. 한 주에 처음 들어왔을 때만 떠요(토·일에는 다음 주 일정). 대신 '다시 오셨네요' 알림은 뺐어요.
+- 📅 홈 맨 위에 **이번 주 일정**: CPI·PPI·FOMC 금리 결정·고용보고서 같은 주요 경제지표(한국 시간)와 내 종목 실적 발표·배당 입금일을 날짜별로 보여줘요. 하루에 한 번(그날 처음 들어왔을 때) 떠요(토·일에는 다음 주 일정). 대신 '다시 오셨네요' 알림은 뺐어요.
 <!-- internal --> /api/calendar(네이버 증권 marketCalendars events/search, economicIndicators, CAL_PICK 화이트리스트) · cw.schedWeek · since 카드 제거(방문 기록은 주간 리포트용으로 유지).
 <!-- EN
-- This week on Home: key economic releases (CPI, PPI, FOMC, jobs report — Korea time) plus your stocks' earnings and dividend dates, shown on your first visit each week. The "welcome back" card is gone.
+- This week on Home: key economic releases (CPI, PPI, FOMC, jobs report — Korea time) plus your stocks' earnings and dividend dates, shown once a day. The "welcome back" card is gone.
 -->
 
 ## v2026.10.15-1 — 2026-10-15
