@@ -2624,14 +2624,15 @@
 
 
   // ---------------------------------------------------------------- 📅 이번 주 일정(홈 맨 위): 경제지표(CPI·PPI·FOMC…) · 내 종목 실적 · 배당 입금
-  // 한 주에 처음 들어왔을 때만 보여 준다(그 주에 다시 들어오면 안 보임). 토·일에는 다음 주 일정을 보여 준다
+  // 하루에 한 번(그날 처음 들어왔을 때) 보여 준다. 토·일에는 다음 주 일정을 보여 준다
   const SCHED_W = (() => {
     const d = new Date(Date.now() + 9 * 3600000), wd = d.getUTCDay(), next = wd === 6 || wd === 0;
     d.setUTCDate(d.getUTCDate() - ((wd + 6) % 7) + (next ? 7 : 0));
     const from = d.toISOString().slice(0, 10);
     return { from, to: new Date(Date.parse(from + 'T12:00:00Z') + 6 * 86400000).toISOString().slice(0, 10), next };
   })();
-  const schedShow = DEMO || loadPref('schedWeek', '') !== SCHED_W.from;
+  const SCHED_DAY = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); // 한국 날짜
+  const schedShow = DEMO || loadPref('schedDay', '') !== SCHED_DAY;
   let schedClosed = false, schedMarked = false, schedLoading = null;
   state.sched = readJSON('cw.schedCache', null);
   if (state.sched?.from !== SCHED_W.from) state.sched = null;
@@ -2664,10 +2665,10 @@
     const html = `<div class="sc-head"><div><h3>📅 ${SCHED_W.next ? (EN ? 'Next week' : '다음 주 일정') : (EN ? 'This week' : '이번 주 일정')}</h3><p class="sub">${+from.slice(5, 7)}/${+from.slice(8)} ~ ${+to.slice(5, 7)}/${+to.slice(8)} · ${EN ? 'Korea time' : '한국 시간'}</p></div><button type="button" class="sc-x" data-schedclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
       <div class="sd-days">${Object.keys(days).sort().map((d) => `<div class="sd-day${d < today ? ' past' : ''}${d === today ? ' today' : ''}"><div class="sd-dh"><b>${+d.slice(5, 7)}/${+d.slice(8)}</b><span>${wdName(d)}</span>${d === today ? `<em>${EN ? 'Today' : '오늘'}</em>` : ''}</div>
         <ul>${days[d].sort((a, b) => (a.t < b.t ? -1 : 1)).map((x) => `<li class="w${x.w}"><span class="sd-t">${esc(x.t)}</span>${x.html}</li>`).join('')}</ul></div>`).join('')}</div>
-      <p class="note sd-note">${EN ? 'CPI · PPI = inflation, FOMC = US rate decision. Stocks often swing on these days. Shown on your first visit each week.' : 'CPI·PPI는 물가, FOMC는 미국 금리 결정이에요. 발표 날엔 주가가 크게 움직일 수 있어요. 이 카드는 한 주에 처음 들어왔을 때만 보여요.'}</p>`;
+      <p class="note sd-note">${EN ? 'CPI · PPI = inflation, FOMC = US rate decision. Stocks often swing on these days. Shown once a day.' : 'CPI·PPI는 물가, FOMC는 미국 금리 결정이에요. 발표 날엔 주가가 크게 움직일 수 있어요. 이 카드는 하루에 한 번 보여요.'}</p>`;
     if (el.innerHTML !== html) el.innerHTML = html;
     el.hidden = false;
-    if (!schedMarked && !DEMO) { schedMarked = true; savePref('schedWeek', SCHED_W.from); } // 이번 주에 한 번 봤으면 다음 방문부터 안 보임
+    if (!schedMarked && !DEMO) { schedMarked = true; savePref('schedDay', SCHED_DAY); } // 오늘 한 번 봤으면 오늘은 다시 안 보임(내일 또 보임)
   }
 
   // ---------------------------------------------------------------- 방문 기록(이 기기에만)

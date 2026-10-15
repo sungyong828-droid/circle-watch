@@ -11,6 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📅 '이번 주 일정'이 하루에 한 번(그날 처음 들어왔을 때) 떠요. 월요일에 봤어도 금요일에 다시 확인할 수 있어요.
+<!-- EN
+- "This week" schedule now shows once a day, so you see it again later in the week.
+-->
+
 ## v2026.10.15-2 — 2026-10-15
 
 [이 버전 보기](https://d6b964ac.my-fire-portfolio.pages.dev) · 커밋 `1eaa865`
