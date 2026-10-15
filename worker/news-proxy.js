@@ -1413,12 +1413,24 @@ export async function handleSeries(url, cache, cors, ctx) {
   if (!res) {
     try {
       const start = Date.UTC(2025, 5, 1) / 1000;
+      const opt = { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(12000) };
+      const pick = (L, f) => (Array.isArray(L) ? L : []).map((p) => [Number(p.date), Object.values(f(p) || {})[0] || 0]).filter(([t, v]) => t >= start && v > 0);
+      // 1) 전체 체인 합계 기록 2) 비어 있으면(목록에서 빠진 USYC 등) 종목 상세의 기록으로
       const get = async (id) => {
-        const r = await fetch(`https://stablecoins.llama.fi/stablecoincharts/all?stablecoin=${id}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(12000) });
-        if (!r.ok) throw new Error('llama ' + r.status);
-        return (await r.json()).map((p) => [Number(p.date), Object.values(p.totalCirculating || {})[0] || 0]).filter(([t]) => t >= start);
+        try {
+          const r = await fetch(`https://stablecoins.llama.fi/stablecoincharts/all?stablecoin=${id}`, opt);
+          const t = r.ok ? await r.text() : '';
+          const L = t ? pick(JSON.parse(t), (p) => p.totalCirculating) : [];
+          if (L.length) return L;
+        } catch {}
+        const r2 = await fetch(`https://stablecoins.llama.fi/stablecoin/${id}`, opt);
+        if (!r2.ok) throw new Error('llama ' + r2.status);
+        return pick((await r2.json()).tokens, (p) => p.circulating);
       };
-      const [usdc, eurc, usyc] = await Promise.all([get(2), get(50), get(237)]);
+      // USDC가 핵심 — EURC·USYC는 실패해도 빈 기록으로 두고 나머지를 보여준다
+      const soft = (p) => p.catch(() => []);
+      const [usdc, eurc, usyc] = await Promise.all([get(2), soft(get(50)), soft(get(237))]);
+      if (!usdc.length) throw new Error('llama: no USDC data');
       res = new Response(JSON.stringify({ at: new Date().toISOString(), usdc, eurc, usyc }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=1800' } });
       ctx.waitUntil(cache.put(key, res.clone()));
     } catch (e) {
