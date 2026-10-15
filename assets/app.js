@@ -2649,7 +2649,7 @@
     if (!el) return;
     if (!schedShow || schedClosed) { el.hidden = true; return; }
     const { from, to } = SCHED_W, today = isoToday(), items = [];
-    for (const e of state.sched?.events || []) items.push({ d: e.d, t: e.t, w: e.w, html: `<span class="sd-ic" aria-hidden="true">${e.n === 'KR' ? '🇰🇷' : '🇺🇸'}</span><span class="sd-nm"><b>${esc(EN ? SCHED_EN[e.k] || e.k : e.k)}</b>${e.v ? `<small>${e.done ? (EN ? 'actual' : '발표') : (EN ? 'prev' : '이전')} ${esc(e.v)}</small>` : ''}</span>` });
+    for (const e of state.sched?.events || []) items.push({ d: e.d, t: e.t, w: e.w, html: `<span class="sd-ic sd-flag">${e.n === 'KR' ? (EN ? 'KR' : '한국') : (EN ? 'US' : '미국')}</span><span class="sd-nm"><b>${esc(EN ? SCHED_EN[e.k] || e.k : e.k)}</b>${e.v ? `<small>${e.done ? (EN ? 'actual' : '발표') : (EN ? 'prev' : '이전')} ${esc(e.v)}</small>` : ''}</span>` });
     for (const sym of mySyms()) {
       if (isKR(sym) || !STOCK_INFO[sym]) continue;
       const N = earnOf(sym)?.next;
@@ -2661,10 +2661,10 @@
     const days = {};
     for (const x of items) (days[x.d] ||= []).push(x);
     const wdName = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString(LOC, { weekday: 'short' });
-    const html = `<div class="sc-head"><div><h3>📅 ${SCHED_W.next ? (EN ? 'Next week' : '다음 주 일정') : (EN ? 'This week' : '이번 주 일정')}</h3><p class="sub">${+from.slice(5, 7)}/${+from.slice(8)} ~ ${+to.slice(5, 7)}/${+to.slice(8)} · ${EN ? 'Korea time · shown on your first visit of the week' : '한국 시간 · 한 주에 처음 들어왔을 때만 보여요'}</p></div><button type="button" class="sc-x" data-schedclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
+    const html = `<div class="sc-head"><div><h3>📅 ${SCHED_W.next ? (EN ? 'Next week' : '다음 주 일정') : (EN ? 'This week' : '이번 주 일정')}</h3><p class="sub">${+from.slice(5, 7)}/${+from.slice(8)} ~ ${+to.slice(5, 7)}/${+to.slice(8)} · ${EN ? 'Korea time' : '한국 시간'}</p></div><button type="button" class="sc-x" data-schedclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
       <div class="sd-days">${Object.keys(days).sort().map((d) => `<div class="sd-day${d < today ? ' past' : ''}${d === today ? ' today' : ''}"><div class="sd-dh"><b>${+d.slice(5, 7)}/${+d.slice(8)}</b><span>${wdName(d)}</span>${d === today ? `<em>${EN ? 'Today' : '오늘'}</em>` : ''}</div>
         <ul>${days[d].sort((a, b) => (a.t < b.t ? -1 : 1)).map((x) => `<li class="w${x.w}"><span class="sd-t">${esc(x.t)}</span>${x.html}</li>`).join('')}</ul></div>`).join('')}</div>
-      <p class="note sd-note">${EN ? 'CPI · PPI = inflation, FOMC = US rate decision. Stocks often swing on these days.' : 'CPI·PPI는 물가, FOMC는 미국 금리 결정이에요. 발표 날엔 주가가 크게 움직일 수 있어요.'}</p>`;
+      <p class="note sd-note">${EN ? 'CPI · PPI = inflation, FOMC = US rate decision. Stocks often swing on these days. Shown on your first visit each week.' : 'CPI·PPI는 물가, FOMC는 미국 금리 결정이에요. 발표 날엔 주가가 크게 움직일 수 있어요. 이 카드는 한 주에 처음 들어왔을 때만 보여요.'}</p>`;
     if (el.innerHTML !== html) el.innerHTML = html;
     el.hidden = false;
     if (!schedMarked && !DEMO) { schedMarked = true; savePref('schedWeek', SCHED_W.from); } // 이번 주에 한 번 봤으면 다음 방문부터 안 보임
