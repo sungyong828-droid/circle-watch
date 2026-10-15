@@ -2622,7 +2622,55 @@
     el.hidden = false;
   }
 
-  // ---------------------------------------------------------------- 👋 지난번 들어온 뒤 바뀐 것 (홈 맨 위)
+
+  // ---------------------------------------------------------------- 📅 이번 주 일정(홈 맨 위): 경제지표(CPI·PPI·FOMC…) · 내 종목 실적 · 배당 입금
+  // 한 주에 처음 들어왔을 때만 보여 준다(그 주에 다시 들어오면 안 보임). 토·일에는 다음 주 일정을 보여 준다
+  const SCHED_W = (() => {
+    const d = new Date(Date.now() + 9 * 3600000), wd = d.getUTCDay(), next = wd === 6 || wd === 0;
+    d.setUTCDate(d.getUTCDate() - ((wd + 6) % 7) + (next ? 7 : 0));
+    const from = d.toISOString().slice(0, 10);
+    return { from, to: new Date(Date.parse(from + 'T12:00:00Z') + 6 * 86400000).toISOString().slice(0, 10), next };
+  })();
+  const schedShow = DEMO || loadPref('schedWeek', '') !== SCHED_W.from;
+  let schedClosed = false, schedMarked = false, schedLoading = null;
+  state.sched = readJSON('cw.schedCache', null);
+  if (state.sched?.from !== SCHED_W.from) state.sched = null;
+  function loadSched() {
+    if (!schedShow || schedLoading) return schedLoading;
+    if (state.sched && Date.now() - Date.parse(state.sched.got || 0) < 3 * 3600000) return Promise.resolve(state.sched);
+    schedLoading = getJ(`${NEWS_API}/calendar?from=${SCHED_W.from}&to=${SCHED_W.to}`, 12000)
+      .then((j) => { if (Array.isArray(j?.events)) { state.sched = { ...j, from: SCHED_W.from, got: new Date().toISOString() }; writeJSON('cw.schedCache', state.sched); } })
+      .catch(() => {}).finally(() => { schedLoading = null; renderSched(); });
+    return schedLoading;
+  }
+  const SCHED_EN = { 'FOMC 금리 결정': 'FOMC rate decision', 'CPI(소비자물가)': 'CPI (inflation)', 'PPI(생산자물가)': 'PPI (producer prices)', '고용보고서(비농업 고용)': 'Jobs report (payrolls)', 'PCE 물가': 'PCE inflation', 'GDP 성장률': 'GDP', '소매판매': 'Retail sales', 'ISM 제조업 지수': 'ISM manufacturing', '실업수당 청구': 'Jobless claims', '한국은행 금리 결정': 'Bank of Korea rate decision', '한국 소비자물가': 'Korea CPI', '한국 수출': 'Korea exports' };
+  function renderSched() {
+    const el = document.getElementById('c-sched');
+    if (!el) return;
+    if (!schedShow || schedClosed) { el.hidden = true; return; }
+    const { from, to } = SCHED_W, today = isoToday(), items = [];
+    for (const e of state.sched?.events || []) items.push({ d: e.d, t: e.t, w: e.w, html: `<span class="sd-ic" aria-hidden="true">${e.n === 'KR' ? '🇰🇷' : '🇺🇸'}</span><span class="sd-nm"><b>${esc(EN ? SCHED_EN[e.k] || e.k : e.k)}</b>${e.v ? `<small>${e.done ? (EN ? 'actual' : '발표') : (EN ? 'prev' : '이전')} ${esc(e.v)}</small>` : ''}</span>` });
+    for (const sym of mySyms()) {
+      if (isKR(sym) || !STOCK_INFO[sym]) continue;
+      const N = earnOf(sym)?.next;
+      if (N?.date && N.date >= from && N.date <= to) items.push({ d: N.date, t: EN ? 'US date' : '미국 날짜', w: 2, html: `<span class="sd-ic" aria-hidden="true">📊</span><button type="button" class="sd-nm sd-go" data-sincego="${esc(sym)}:earn"><b>${esc(nameOfSym(sym))} ${EN ? 'earnings' : '실적 발표'}</b><small>${N.consensus != null ? `${EN ? 'est. EPS' : '예상 EPS'} $${N.consensus.toFixed(2)}` : ''}</small></button>` });
+    }
+    const c = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
+    if (c) for (const x of divCalendar(c)) if (x.pay >= from && x.pay <= to) items.push({ d: x.pay, t: '', w: 1, html: `<span class="sd-ic" aria-hidden="true">💰</span><button type="button" class="sd-nm sd-go" data-ftabgo="div"><b>${esc(fireName(x.sym))} ${EN ? 'dividend paid' : '배당 입금'}</b><small>${usd2(x.net)}${x.declared ? '' : (EN ? ' · est.' : ' · 예상')}</small></button>` });
+    if (!items.length) { el.hidden = true; return; }
+    const days = {};
+    for (const x of items) (days[x.d] ||= []).push(x);
+    const wdName = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString(LOC, { weekday: 'short' });
+    const html = `<div class="sc-head"><div><h3>📅 ${SCHED_W.next ? (EN ? 'Next week' : '다음 주 일정') : (EN ? 'This week' : '이번 주 일정')}</h3><p class="sub">${+from.slice(5, 7)}/${+from.slice(8)} ~ ${+to.slice(5, 7)}/${+to.slice(8)} · ${EN ? 'Korea time · shown on your first visit of the week' : '한국 시간 · 한 주에 처음 들어왔을 때만 보여요'}</p></div><button type="button" class="sc-x" data-schedclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
+      <div class="sd-days">${Object.keys(days).sort().map((d) => `<div class="sd-day${d < today ? ' past' : ''}${d === today ? ' today' : ''}"><div class="sd-dh"><b>${+d.slice(5, 7)}/${+d.slice(8)}</b><span>${wdName(d)}</span>${d === today ? `<em>${EN ? 'Today' : '오늘'}</em>` : ''}</div>
+        <ul>${days[d].sort((a, b) => (a.t < b.t ? -1 : 1)).map((x) => `<li class="w${x.w}"><span class="sd-t">${esc(x.t)}</span>${x.html}</li>`).join('')}</ul></div>`).join('')}</div>
+      <p class="note sd-note">${EN ? 'CPI · PPI = inflation, FOMC = US rate decision. Stocks often swing on these days.' : 'CPI·PPI는 물가, FOMC는 미국 금리 결정이에요. 발표 날엔 주가가 크게 움직일 수 있어요.'}</p>`;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    el.hidden = false;
+    if (!schedMarked && !DEMO) { schedMarked = true; savePref('schedWeek', SCHED_W.from); } // 이번 주에 한 번 봤으면 다음 방문부터 안 보임
+  }
+
+  // ---------------------------------------------------------------- 방문 기록(이 기기에만)
   // 이 기기에만 기록: 3시간 넘게 쉬었다 오면 새 방문으로 보고, 지난 방문 때 마지막으로 본 값(평가금액·주가)과 비교한다
   const VISIT_KEY = 'cw.visit', VISIT_GAP = 3 * 3600000;
   const visit = (() => {
@@ -2645,11 +2693,8 @@
   const mySyms = () => [...new Set([...WATCH, ...(fireCfg?.positions || []).map((p) => p.ticker), ...(divCfg?.hold || []).map((h) => h.t)])];
   const pxOf = (sym) => { try { return (isKR(sym) ? state.krq?.[sym]?.price : null) ?? (STOCK_INFO[sym] ? stockPx(sym)?.price : null) ?? state.quote?.[sym]?.price ?? null; } catch { return null; } };
   const nameOfSym = (sym) => (STOCK_INFO[sym] ? symLabel(sym) : fireName(sym));
-  const agoTxt = (ms) => { const h = Math.max(1, Math.round((Date.now() - ms) / 3600000)); return h < 24 ? (EN ? `${h}h ago` : `${h}시간 전`) : (EN ? `${Math.round(h / 24)}d ago` : `${Math.round(h / 24)}일 전`); };
-  const kstIso = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10);
+  // 방문 기록(주간 리포트용 가격 · 목표가 확인) + 이번 주 일정 카드 — 홈이 갱신될 때마다(3초에 한 번)
   function renderSince(fc) {
-    const el = document.getElementById('c-since');
-    if (!el) return;
     const now = Date.now();
     if (now - sinceAt < 3000) return;
     sinceAt = now;
@@ -2666,52 +2711,7 @@
     if (now - pxDaySavedAt > 60000) { pxDaySavedAt = now; recordPxDay(V.px); }
     checkTargets();
     try { renderWeek(fc); } catch (e) { console.error(e); }
-    const rows = [];
-    const row = (icon, head, small) => `<li><span class="sc-i" aria-hidden="true">${icon}</span><div><b>${head}</b>${small ? `<small>${small}</small>` : ''}</div></li>`;
-    // 0) 목표가 도달(지난 3일)
-    const hits = Object.entries(targets).filter(([, T]) => T.hit && now - T.hit < 3 * 86400000);
-    if (hits.length) rows.push(`<li><span class="sc-i" aria-hidden="true">🎯</span><div><b>${EN ? 'Target price reached' : '목표가에 도달했어요'}</b><div class="sc-chips">${hits.map(([sym, T]) => `<button type="button" class="sc-chip" data-sincego="${esc(sym)}:stock"><span>${esc(nameOfSym(sym))}</span><b>${pxS(sym, T.p)}</b></button>`).join('')}</div></div></li>`);
-    if (!P?.v || visit.closed === visit.cur.t) {
-      if (!rows.length || visit.closed === visit.cur.t) { el.hidden = true; return; }
-    }
-    // 1) 퇴사까지 평가금액
-    if (fc && P?.v?.fire > 0) {
-      const d = fc.basis - P.v.fire, dp = P.v.prog != null ? fc.progress - P.v.prog : 0;
-      if (Math.abs(d) >= 10000) rows.push(row('🔥', `${EN ? 'Road to FIRE' : '퇴사까지'} <span class="${cls(d)}">${signed(d, wonFull)}</span>`,
-        `${EN ? 'now' : '지금'} ${wonFull(fc.basis)} · ${EN ? 'progress' : '진행률'} ${(fc.progress * 100).toFixed(1)}%${Math.abs(dp) >= 0.0005 ? ` (<span class="${cls(dp)}">${dp > 0 ? '+' : ''}${(dp * 100).toFixed(1)}%p</span>)` : ''}`));
-    }
-    // 2) 내 종목 주가: 많이 움직인 순서로 4개
-    const mv = !P?.v ? [] : mySyms().map((sym) => { const a = P.v.px?.[sym], b = V.px[sym]; return a > 0 && b > 0 ? { sym, r: b / a - 1 } : null; })
-      .filter((x) => x && Math.abs(x.r) >= 0.005).sort((a, b) => Math.abs(b.r) - Math.abs(a.r)).slice(0, 4);
-    if (mv.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📈</span><div><b>${EN ? 'My stocks since then' : '그동안 내 종목 주가'}</b><div class="sc-chips">${mv.map((x) => `<button type="button" class="sc-chip" data-sincego="${esc(x.sym)}:stock"><span>${esc(nameOfSym(x.sym))}</span><b class="${cls(x.r)}">${pct(x.r, 1)}</b></button>`).join('')}</div></div></li>`);
-    // 3) 들어온 배당
-    const c = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
-    if (c && !c.missing?.length && P?.v) {
-      const from = kstIso(P.seen || P.t), got = c.received.filter((r) => r.pay > from && r.pay <= isoToday());
-      if (got.length) rows.push(row('💰', `${EN ? 'Dividends paid' : '배당이 들어왔어요'} <span class="up">${usd2(got.reduce((a, r) => a + r.gross, 0) * (1 - c.tax))}</span>`, [...new Set(got.map((r) => fireName(r.sym)))].map(esc).join(' · ')));
-    }
-    // 4) 새 공시(지난 방문 날짜 다음 날부터 제출된 것)
-    const from = P?.v ? kstIso(P.seen || P.t) : '9999', fl = [];
-    for (const sym of WATCH) {
-      if (isKR(sym)) continue;
-      const N = NEWS_UI[sym]?.getN?.();
-      const n = (N?.filings || []).filter((f) => f.d > from).length;
-      if (n) fl.push({ sym, n });
-    }
-    if (fl.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📄</span><div><b>${EN ? `New SEC filings ${fl.reduce((a, x) => a + x.n, 0)}` : `새 공시 ${fl.reduce((a, x) => a + x.n, 0)}건`}</b><div class="sc-chips">${fl.map((x) => `<button type="button" class="sc-chip" data-sincego="${esc(x.sym)}:news"><span>${esc(nameOfSym(x.sym))}</span><b>${x.n}</b></button>`).join('')}</div></div></li>`);
-    // 5) 7일 안 일정: 실적 발표 · 배당 입금
-    const soon = [];
-    for (const sym of WATCH) {
-      if (isKR(sym)) continue;
-      const N = earnOf(sym)?.next, d = N?.date ? dday(N.date) : null;
-      if (d != null && d >= 0 && d <= 7) soon.push({ d, html: `<button type="button" class="sc-chip" data-sincego="${esc(sym)}:earn"><span>${esc(nameOfSym(sym))} ${EN ? 'earnings' : '실적'}</span><b>${d === 0 ? (EN ? 'today' : '오늘') : `D-${d}`}</b></button>` });
-    }
-    if (c) for (const x of divCalendar(c)) { const d = daysBetween(isoToday(), x.pay); if (d >= 0 && d <= 7) soon.push({ d, html: `<button type="button" class="sc-chip" data-ftabgo="div"><span>${esc(fireName(x.sym))} ${EN ? 'dividend' : '배당'}</span><b>${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}</b></button>` }); }
-    if (soon.length) rows.push(`<li><span class="sc-i" aria-hidden="true">📅</span><div><b>${EN ? 'Coming up this week' : '이번 주 일정'}</b><div class="sc-chips">${soon.sort((a, b) => a.d - b.d).slice(0, 6).map((x) => x.html).join('')}</div></div></li>`);
-    if (!rows.length) { el.hidden = true; return; }
-    const html = `<div class="sc-head"><div><h3>${P?.v ? `👋 ${EN ? 'Welcome back' : '다시 오셨네요'}` : `🔔 ${EN ? 'Alerts' : '알림'}`}</h3><p class="sub">${P?.v ? (EN ? `What changed since your visit ${agoTxt(P.seen || P.t)}` : `${agoTxt(P.seen || P.t)} 방문 이후 바뀐 것`) : (EN ? 'Updates for you' : '알려 드릴 소식')}</p></div><button type="button" class="sc-x" data-sinceclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div><ul class="sc-list">${rows.join('')}</ul>`;
-    if (el.innerHTML !== html) el.innerHTML = html;
-    el.hidden = false;
+    try { renderSched(); } catch (e) { console.error(e); }
   }
 
   // ---------------------------------------------------------------- 🎉 퇴사 목표 달성 축하(5·10·20…100%) — 처음 넣었을 때·목표를 바꿨을 때는 조용히 지금 위치만 기록
@@ -6938,7 +6938,7 @@
     if (vb) { const [k, v] = vb.dataset.vote.split('|'); castVote(k, +v); return; }
     const mo = ev.target.closest('[data-moveopen]');
     if (mo) { ev.preventDefault(); openMove(mo.dataset.moveopen); return; }
-    if (ev.target.closest('[data-sinceclose]')) { visit.closed = visit.cur.t; saveVisit(true); const el = document.getElementById('c-since'); if (el) el.hidden = true; return; }
+    if (ev.target.closest('[data-schedclose]')) { schedClosed = true; renderSched(); return; }
     const sgo = ev.target.closest('[data-sincego]');
     if (sgo) {
       const [sym, kind] = sgo.dataset.sincego.split(':');
@@ -7108,6 +7108,7 @@
   applyHomeLayout();
   state.flowRange = loadPref('flowRange', '3y');
   try { renderFlowCard(); } catch (e) { console.error(e); }
+  setTimeout(loadSched, 1200);
   setTimeout(() => loadFlow().then(() => { renderFlowCard(); if (state.view === 'flow') renderFlowView(); }).catch(() => {}), 1800);
   renderStockSwitch();
   updateFireChip();

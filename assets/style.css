@@ -1788,3 +1788,23 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .fl-dl dt { margin-top: 8px; font-size: 14px; font-weight: 800; color: var(--ink); }
 .fl-dl dd { margin: 0; font-size: 13px; line-height: 1.7; color: var(--ink-2); }
 @media (max-width: 380px) { .fl-grid b { font-size: 14.5px; } .fl-grid > div { padding: 8px; } }
+
+/* 📅 이번 주 일정 */
+.sd-days { display: grid; gap: 8px; margin-top: 12px; }
+.sd-day { padding: 10px 12px; border-radius: 12px; background: var(--surface); }
+.sd-day.past { opacity: 0.6; }
+.sd-day.today { box-shadow: inset 0 0 0 1px rgba(91, 141, 239, 0.55); }
+.sd-dh { display: flex; align-items: baseline; gap: 6px; font-size: 13px; color: var(--muted); }
+.sd-dh b { font: 700 14px var(--mono); color: var(--ink); }
+.sd-dh em { margin-left: auto; padding: 1px 8px; border-radius: 8px; background: rgba(91, 141, 239, 0.2); color: var(--ink); font-style: normal; font-size: 11.5px; font-weight: 700; }
+.sd-day ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.sd-day li { display: grid; grid-template-columns: 52px 22px minmax(0, 1fr); align-items: start; gap: 6px; font-size: 13.5px; }
+.sd-t { font: 600 12px var(--mono); color: var(--muted); padding-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-ic { line-height: 1.35; }
+.sd-nm { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; }
+.sd-nm b { font-size: 13.5px; }
+.sd-nm small { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.sd-go { cursor: pointer; }
+.sd-go b { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.sd-day li.w3 b { color: var(--c-orange, #f2994a); }
+.sd-note { margin-top: 10px !important; font-size: 12px; }

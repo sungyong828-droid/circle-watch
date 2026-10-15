@@ -1140,6 +1140,49 @@ export async function handleFlow(url, cache, cors, ctx) {
   return swr(cache, ctx, `${url.origin}/flow?v=1`, { freshSec: 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildFlow()) });
 }
 
+// ---------------------------------------------------------------- 이번 주 경제 일정(네이버 증권 '증시 캘린더' · 한국 시간): 시장을 크게 움직이는 지표만 골라 짧은 이름으로
+// k: 화면에 쓰는 이름(같은 날 같은 이름은 하나로 — CPI 전월·전년 등). 값은 발표 전이면 '이전', 발표 후면 '발표'
+const CAL_PICK = [
+  ['USA', /^기준금리|중앙은행 기준금리/, 'FOMC 금리 결정', 3],
+  ['USA', /^소비자물가지수\(CPI\) 전년/, 'CPI(소비자물가)', 3],
+  ['USA', /^생산자물가지수\(PPI\)/, 'PPI(생산자물가)', 2],
+  ['USA', /^비농업고용/, '고용보고서(비농업 고용)', 3],
+  ['USA', /^근원 소비지출물가지수.*전년|^소비지출물가지수.*전년|^근원 소비지출물가지수/, 'PCE 물가', 2],
+  ['USA', /GDP|국내총생산/, 'GDP 성장률', 2],
+  ['USA', /^소매판매 전월대비$/, '소매판매', 2],
+  ['USA', /^ISM 제조업/, 'ISM 제조업 지수', 1],
+  ['USA', /^신규 실업수당청구건수$/, '실업수당 청구', 1],
+  ['KOR', /기준금리/, '한국은행 금리 결정', 3],
+  ['KOR', /^소비자물가지수\(CPI\) 전년/, '한국 소비자물가', 2],
+  ['KOR', /^수출 전년대비$/, '한국 수출', 1],
+];
+export async function buildCalendar(from, to) {
+  const r = await fetch('https://stock.naver.com/api/marketCalendars/v1/events/search', {
+    method: 'POST', headers: { 'user-agent': BROWSER_UA, accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ codes: [], from, to, myStocksOnly: false, category: 'economicIndicators' }), signal: AbortSignal.timeout(10000),
+  });
+  if (!r.ok) throw new Error('calendar ' + r.status);
+  const j = await r.json(), out = [], seen = new Set();
+  for (const g of j.dateGroups || []) for (const e of g.events || []) {
+    const P = CAL_PICK.find(([n, re]) => n === e.nationType && re.test(e.title || ''));
+    if (!P) continue;
+    const key = `${g.date}|${P[2]}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const info = Object.fromEntries((e.information || []).map((i) => [i.label, i.value ?? i.change?.value ?? null]));
+    const done = info['발표'] && info['발표'] !== '-';
+    out.push({ d: g.date, t: (String(e.subtitle || '').match(/^(\d{1,2}:\d{2})/) || [])[1] || '', n: e.nationType === 'KOR' ? 'KR' : 'US', k: P[2], w: P[3], v: done ? info['발표'] : info['이전'] || null, done: !!done, title: e.title });
+  }
+  out.sort((a, b) => (a.d + a.t < b.d + b.t ? -1 : 1));
+  return { at: new Date().toISOString(), from, to, events: out };
+}
+export async function handleCalendar(url, cache, cors, ctx) {
+  const from = url.searchParams.get('from') || '', to = url.searchParams.get('to') || '';
+  const ok = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x);
+  if (!ok(from) || !ok(to) || to < from || (Date.parse(to) - Date.parse(from)) / 86400000 > 14) return json({ error: 'bad range' }, cors, 400);
+  return swr(cache, ctx, `${url.origin}/calendar?from=${from}&to=${to}&v=1`, { freshSec: 3 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildCalendar(from, to)) });
+}
+
 // ---------------------------------------------------------------- 종목 검색 (종목 추가 화면)
 // 영문: Nasdaq 자동완성. 한글(테슬라·엔비디아…): 네이버 증권 자동완성에서 미국 종목만 골라 영문 이름을 붙인다
 // 네이버에 한글 이름이 없는 미국 ETF는 흔히 부르는 별명으로 찾는다
@@ -1680,7 +1723,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo', '/flow'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo', '/flow', '/calendar'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
@@ -1702,6 +1745,7 @@ export default {
     if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
     if (url.pathname === '/feargreed') return handleFearGreed(url, cache, cors, ctx);
     if (url.pathname === '/flow') return handleFlow(url, cache, cors, ctx);
+    if (url.pathname === '/calendar') return handleCalendar(url, cache, cors, ctx);
     if (url.pathname === '/krquote') return handleKrQuote(url, cache, cors, ctx);
     if (url.pathname === '/krinfo') return handleKrInfo(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);

@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📅 홈 맨 위에 **이번 주 일정**: CPI·PPI·FOMC 금리 결정·고용보고서 같은 주요 경제지표(한국 시간)와 내 종목 실적 발표·배당 입금일을 날짜별로 보여줘요. 한 주에 처음 들어왔을 때만 떠요(토·일에는 다음 주 일정). 대신 '다시 오셨네요' 알림은 뺐어요.
+<!-- internal --> /api/calendar(네이버 증권 marketCalendars events/search, economicIndicators, CAL_PICK 화이트리스트) · cw.schedWeek · since 카드 제거(방문 기록은 주간 리포트용으로 유지).
+<!-- EN
+- This week on Home: key economic releases (CPI, PPI, FOMC, jobs report — Korea time) plus your stocks' earnings and dividend dates, shown on your first visit each week. The "welcome back" card is gone.
+-->
+
 ## v2026.10.15-1 — 2026-10-15
 
 [이 버전 보기](https://e0f542f2.my-fire-portfolio.pages.dev) · 커밋 `2bc3645`
