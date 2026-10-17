@@ -1845,3 +1845,38 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .es-box ul { margin: 6px 0 4px; padding-left: 18px; font-size: 13.5px; line-height: 1.7; }
 .es-box small { font-size: 11.5px; color: var(--muted); }
 .es-box.loading small { display: block; margin-top: 4px; }
+
+/* 배당금 보기 3개 */
+.div-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.div-tabs button { font-size: 13px; white-space: nowrap; }
+/* 📈 적립식 */
+.gr-picks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+.gr-picks .chip-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg, #0d1117); }
+.gr-t input { width: 92px; height: 32px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: 600 13px var(--sans); text-transform: uppercase; }
+.gr-in { margin-top: 10px; }
+.gr-chk { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.gr-chk label.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); }
+.gr-chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+.gr-info { margin: 12px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.gr-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.gr-sum > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.gr-sum span { font-size: 12px; color: var(--muted); } .gr-sum b { font: 700 18px var(--mono); } .gr-sum small { font-size: 11.5px; color: var(--ink-2); }
+.gr-chart { margin-top: 10px; }
+.gr-mk { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+.gr-mk li { display: grid; gap: 1px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 12px; }
+.gr-mk b { font-size: 12.5px; } .gr-mk span { font: 700 13px var(--mono); } .gr-mk small { color: var(--ink-2); }
+/* 🧮 ETF 세금 비교 */
+.et-in { margin-top: 10px; }
+.et-opts { display: grid; gap: 8px; margin-top: 10px; }
+.et-opts label.chk { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+.et-opts input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+.et-age { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.et-age select { height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: 600 13px var(--sans); }
+.et-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.et-list li { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.et-list li.best { box-shadow: inset 0 0 0 1px rgba(63, 191, 127, 0.55); background: rgba(63, 191, 127, 0.08); }
+.et-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.et-h b { font-size: 14px; } .et-h em { font-style: normal; font-size: 11.5px; font-weight: 800; padding: 1px 8px; border-radius: 8px; background: rgba(63, 191, 127, 0.25); color: var(--ink); }
+.et-v { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; } .et-v b { font: 700 17px var(--mono); } .et-v small { font-size: 12px; }
+.et-r { font-size: 11.5px; color: var(--ink-2); line-height: 1.5; }
+.kr-next { margin: 10px 0; }

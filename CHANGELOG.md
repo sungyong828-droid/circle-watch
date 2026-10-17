@@ -11,6 +11,18 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📈 **적립식 배당 시뮬레이터**(Fire · 배당금 · 📈 적립식): 매달 같은 종목을 사 모으면 N년 뒤 평가금액과 한 달 배당이 얼마인지 그래프로 보여줘요. 배당 성장률은 그 종목의 실제 최근 5년 기록으로 자동 계산하고, 배당 재투자·세후, 월배당 100만원 넘는 시점까지 알려줘요.
+- 🧮 **미국 ETF 세금 비교**(Fire · 🧾 세금): 같은 S&P500 ETF를 미국 직투·국내 상장·ISA·연금저축으로 샀을 때 세금을 떼고 남는 돈을 나란히 비교해요. 양도세 탭 이름이 '세금'으로 바뀌었어요.
+- 🇰🇷 **한국 종목 실적·배당 일정**: 이번 주 일정에 내 한국 종목의 실적 발표일과 배당 일정이 함께 나오고, 한국 종목 실적 카드에 다음 실적 발표일(D-day)이 보여요.
+- 🔍 검색으로 바로 볼 수 있는 '미국 ETF 세금 비교'·'적립식 배당 시뮬레이터' 페이지를 열었어요.
+<!-- internal --> /calendar?kr=&macro=0(네이버 earnings·dividends, ≤41일, 캐시 v=2) · cw.grow·cw.etax(기기 옮기기 포함) · #grow·#etftax 주소 · /etf-tax·/grow 소개 페이지.
+<!-- EN
+- Monthly investing simulator (FIRE · Dividends · Monthly): value and monthly dividends N years out, with dividend growth from the stock's actual 5-year record, reinvestment, after-tax, and when monthly dividends pass ₩1M.
+- US ETF tax comparison (FIRE · Tax): what you keep after tax buying the same S&P 500 ETF in the US, as a Korea-listed ETF, in an ISA or in a pension account.
+- Korean stocks: earnings and dividend dates in This week's schedule, and the next earnings date on Korean earnings cards.
+- New public pages: US ETF tax comparison and the monthly investing simulator.
+-->
+
 ## v2026.10.17-2 — 2026-10-17
 
 [이 버전 보기](https://87d09c76.my-fire-portfolio.pages.dev) · 커밋 `cb4b1ed`

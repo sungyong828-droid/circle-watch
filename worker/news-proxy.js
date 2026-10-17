@@ -1199,14 +1199,30 @@ const CAL_PICK = [
   ['KOR', /^소비자물가지수\(CPI\) 전년/, '한국 소비자물가', 2],
   ['KOR', /^수출 전년대비$/, '한국 수출', 1],
 ];
-export async function buildCalendar(from, to) {
+const calSearch = async (body) => {
   const r = await fetch('https://stock.naver.com/api/marketCalendars/v1/events/search', {
     method: 'POST', headers: { 'user-agent': BROWSER_UA, accept: 'application/json', 'content-type': 'application/json' },
-    body: JSON.stringify({ codes: [], from, to, myStocksOnly: false, category: 'economicIndicators' }), signal: AbortSignal.timeout(10000),
+    body: JSON.stringify(body), signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error('calendar ' + r.status);
-  const j = await r.json(), out = [], seen = new Set();
-  for (const g of j.dateGroups || []) for (const e of g.events || []) {
+  return r.json();
+};
+// kr: 한국 종목 코드(6자리) — 그 종목들의 실적 발표·배당(배당락·지급) 일정도 함께. macro=false면 경제지표는 빼고 종목 일정만
+export async function buildCalendar(from, to, kr = [], macro = true) {
+  const codes = kr.map((c) => ({ productType: 'domestic', itemCode: c }));
+  const [j, ke, kd] = await Promise.all([
+    macro ? calSearch({ codes: [], from, to, myStocksOnly: false, category: 'economicIndicators' }) : { dateGroups: [] },
+    codes.length ? calSearch({ codes, from, to, myStocksOnly: true, category: 'earnings' }).catch(() => null) : null,
+    codes.length ? calSearch({ codes, from, to, myStocksOnly: true, category: 'dividends' }).catch(() => null) : null,
+  ]);
+  const out = [], seen = new Set();
+  for (const [J, kind] of [[ke, 'earn'], [kd, 'div']]) for (const g of J?.dateGroups || []) for (const e of g.events || []) {
+    const code = e.productKey?.itemCode;
+    if (!/^\d{6}$/.test(code || '')) continue;
+    const amt = (e.information || []).find((i) => /배당금/.test(i.label || ''))?.value || null;
+    out.push({ d: g.date, t: '', n: 'KR', k: e.title || '', w: kind === 'earn' ? 2 : 1, v: amt, done: false, title: e.eventName || '', code, kind });
+  }
+  for (const g of j?.dateGroups || []) for (const e of g.events || []) {
     const P = CAL_PICK.find(([n, re]) => n === e.nationType && re.test(e.title || ''));
     if (!P) continue;
     const key = `${g.date}|${P[2]}`;
@@ -1221,9 +1237,11 @@ export async function buildCalendar(from, to) {
 }
 export async function handleCalendar(url, cache, cors, ctx) {
   const from = url.searchParams.get('from') || '', to = url.searchParams.get('to') || '';
+  const kr = [...new Set(String(url.searchParams.get('kr') || '').split(',').filter((c) => /^\d{6}$/.test(c)))].sort().slice(0, 30);
+  const macro = url.searchParams.get('macro') !== '0';
   const ok = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x);
-  if (!ok(from) || !ok(to) || to < from || (Date.parse(to) - Date.parse(from)) / 86400000 > 14) return json({ error: 'bad range' }, cors, 400);
-  return swr(cache, ctx, `${url.origin}/calendar?from=${from}&to=${to}&v=1`, { freshSec: 3 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildCalendar(from, to)) });
+  if (!ok(from) || !ok(to) || to < from || (Date.parse(to) - Date.parse(from)) / 86400000 > 41) return json({ error: 'bad range' }, cors, 400);
+  return swr(cache, ctx, `${url.origin}/calendar?from=${from}&to=${to}&kr=${kr.join(',')}&m=${macro ? 1 : 0}&v=2`, { freshSec: 3 * 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildCalendar(from, to, kr, macro)) });
 }
 
 // ---------------------------------------------------------------- 종목 검색 (종목 추가 화면)

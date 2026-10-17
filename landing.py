@@ -543,6 +543,68 @@ def portfolio_page():
     return page('portfolio', title, desc, body, [app_ld('Fire Portfolio 배당 포트폴리오 계산기', 'portfolio', desc), faq_ld(SIM_FAQ)], og='og-dividend.png?v=1')
 
 
+ETAX_FAQ = [
+    ('미국 ETF는 직접 사는 게 유리한가요, 국내 상장 ETF가 유리한가요?', '팔 때 이익이 클수록 미국 직투가 유리해지기 쉬워요. 직투는 1년에 250만원까지 양도소득이 비과세이고 넘는 부분만 22%(분리과세)인데, 국내 상장 해외 ETF는 이익 전부에 15.4%가 붙고 금융소득 2천만원을 넘으면 종합과세에 합쳐져요. 반대로 금액이 작으면 15.4%가 22%보다 낮아 국내 상장이 나을 수 있어요. 금액·기간을 넣어 직접 비교해 보세요.'),
+    ('ISA로 미국 ETF를 사면 뭐가 좋나요?', 'ISA에서는 국내 상장 해외 ETF(TIGER·KODEX·ACE 미국S&P500 등)를 살 수 있고, 3년 이상 유지하면 계좌 전체 이익에서 200만원(서민형 400만원)까지 비과세, 넘는 부분은 9.9% 분리과세예요. 1년에 2천만원, 총 1억원까지 넣을 수 있어요. 미국 거래소 ETF(VOO 등)는 ISA에서 살 수 없어요.'),
+    ('연금저축으로 S&P500 ETF를 사면 세금이 어떻게 되나요?', '1년에 600만원까지 넣은 돈의 13.2%(총급여 5,500만원 이하는 16.5%)를 연말정산 때 돌려받아요. 운용 중에는 세금이 없고, 55세 이후 연금으로 받을 때 나이에 따라 5.5~3.3%의 연금소득세만 내요. 다만 55세 전에 빼면 기타소득세 16.5%가 붙어요.'),
+    ('배당(분배금) 세금은 어떻게 다른가요?', '미국 직투는 배당에서 미국 세금 15%가 먼저 빠지고, 국내 상장 ETF 분배금은 15.4%가 빠져요. ISA·연금저축 안에서는 배당세 없이 그대로 다시 굴릴 수 있어요(과세 이연).'),
+    ('이 계산을 그대로 믿어도 되나요?', '같은 지수·같은 수익률로 가정한 단순 비교예요. 수수료·환율·추적 오차, 금융소득종합과세, 건강보험료, 세법 개정은 반영하지 않았어요. 방향을 잡는 참고용이고 세무 조언이 아니에요.'),
+]
+GROW_FAQ = [
+    ('적립식 배당 시뮬레이터는 무엇을 계산하나요?', '처음 넣는 돈과 매달 넣을 돈, 기간을 넣으면 한 종목을 매달 사 모았을 때 몇 년 뒤 평가금액과 한 달 배당금이 얼마가 되는지 계산해요. 배당을 다시 사는(재투자) 경우와 그냥 받는 경우를 비교할 수 있어요.'),
+    ('배당 성장률은 어떻게 정하나요?', '그 종목의 실제 배당 기록에서 최근 5년 동안 배당이 1년에 몇 %씩 늘었는지 자동으로 계산해 넣어요. 직접 바꿔서 보수적으로 계산할 수도 있어요.'),
+    ('월배당 100만원은 언제쯤 가능할까요?', '결과에 "몇 년 차에 월배당 100만원을 넘어요"라고 알려 줘요. SCHD·JEPI·O·삼성전자처럼 종목을 바꿔 가며 비교해 보세요.'),
+]
+
+
+def etftax_page():
+    title = '미국 ETF 세금 비교 계산기 — 직투 VOO vs 국내 상장 vs ISA vs 연금저축'
+    desc = '같은 S&P500 ETF를 미국 직투(VOO)·국내 상장(TIGER·KODEX)·ISA·연금저축으로 샀을 때 세금을 떼고 남는 돈을 나란히 비교해요. 양도세 22%·배당소득세 15.4%·ISA 비과세·연금 세액공제까지. 무료·가입 없음.'
+    go = './?ref=page-etf-tax#etftax'
+    body = f"""<section class="lp-hero">
+  <h1>미국 ETF 세금 비교 계산기<br>어디서 사야 세금이 적을까?</h1>
+  <p class="lp-lead">S&amp;P500 ETF를 사려는데 VOO를 직접 살지, TIGER 미국S&amp;P500 같은 국내 상장 ETF를 살지, ISA나 연금저축에서 살지 헷갈리죠. 1년에 넣을 돈과 기간만 넣으면 계좌마다 세금을 떼고 남는 돈을 나란히 보여줘요.</p>
+  <a class="lp-cta" href="{go}">🧮 세금 비교해 보기 →</a>
+  <p class="lp-sub">무료 · 회원가입 없음 · 입력값은 내 기기에만 저장</p>
+</section>
+<section class="lp-sec"><h2>비교하는 4가지 방법</h2>{feat_list([
+        ('🇺🇸 미국 직투(VOO·SPY·IVV)', '배당은 미국 세금 15%. 팔 때 1년 이익 250만원까지 비과세, 넘는 부분 22%.'),
+        ('🇰🇷 국내 상장 ETF(TIGER·KODEX·ACE)', '분배금·매매차익 모두 배당소득세 15.4%.'),
+        ('📦 ISA 계좌', '3년 이상 유지하면 이익 200만원(서민형 400만원) 비과세, 넘는 부분 9.9%. 연 2천만원·총 1억원 한도.'),
+        ('🏦 연금저축', '연 600만원까지 13.2%(총급여 5,500만원 이하 16.5%) 세액공제. 55세 이후 연금으로 받으면 5.5~3.3%.'),
+    ])}</section>
+<section class="lp-sec"><h2>쓰는 방법</h2><ol class="lp-steps">
+  <li>대시보드에서 <b>🔥 Fire → 🧾 세금</b>을 열어요.</li>
+  <li>1년에 넣을 돈, 기간, 예상 수익률·배당률을 넣어요(기본값: 600만원 · 10년 · 8% · 1.3%).</li>
+  <li>4가지 방법의 세후 금액·낸 세금·세액공제가 나오고, 가장 유리한 곳을 표시해요.</li>
+</ol></section>
+{faq_html(ETAX_FAQ)}
+<section class="lp-sec lp-end"><a class="lp-cta" href="{go}">🧮 미국 ETF 세금 비교하기 →</a><p class="lp-note"><a href="grow">적립식 배당 시뮬레이터 →</a> · <a href="portfolio">배당 포트폴리오 계산기 →</a></p></section>"""
+    return page('etf-tax', title, desc, body, [app_ld('Fire Portfolio 미국 ETF 세금 비교 계산기', 'etf-tax', desc), faq_ld(ETAX_FAQ)])
+
+
+def grow_page():
+    title = '적립식 배당 시뮬레이터 — 매달 SCHD를 사면 10년 뒤 월배당은?'
+    desc = '처음 투자금과 매달 적립금, 기간을 넣으면 SCHD·JEPI·O·삼성전자 같은 배당주를 매달 사 모았을 때 몇 년 뒤 평가금액과 한 달 배당금(세후)을 계산해요. 실제 배당 성장률·배당 재투자 반영. 무료·가입 없음.'
+    go = './?ref=page-grow#grow'
+    body = f"""<section class="lp-hero">
+  <h1>적립식 배당 시뮬레이터<br>매달 사 모으면 월배당은 얼마?</h1>
+  <p class="lp-lead">"매달 50만원씩 SCHD를 사면 10년 뒤 한 달에 배당을 얼마 받을까?" 그 종목의 실제 배당 기록으로 배당이 늘어나는 속도를 계산해서, 평가금액과 월배당이 해마다 어떻게 커지는지 그래프로 보여줘요.</p>
+  <a class="lp-cta" href="{go}">📈 시뮬레이션 해보기 →</a>
+  <p class="lp-sub">무료 · 회원가입 없음 · 입력값은 내 기기에만 저장</p>
+</section>
+<section class="lp-sec"><h2>계산해 주는 것</h2>{feat_list([
+        ('N년 뒤 평가금액', '넣은 돈과 비교한 평가금액, 해마다 어떻게 커지는지 그래프.'),
+        ('한 달 배당(세후)', '미국 15%, 국내 15.4% 배당세를 뺀 월배당과 그동안 받은 배당 합계.'),
+        ('실제 배당 성장률', '최근 5년 배당 기록으로 자동 계산. 직접 바꿀 수도 있어요.'),
+        ('배당 재투자', '받은 배당으로 다시 사는 경우와 그냥 받는 경우 비교.'),
+        ('🎯 월배당 100만원 시점', '몇 년 차에 월배당 100만원을 넘는지.'),
+    ])}</section>
+{faq_html(GROW_FAQ)}
+<section class="lp-sec lp-end"><a class="lp-cta" href="{go}">📈 적립식 배당 시뮬레이터 열기 →</a><p class="lp-note"><a href="etf-tax">미국 ETF 세금 비교 →</a> · <a href="portfolio">배당 포트폴리오 계산기 →</a></p></section>"""
+    return page('grow', title, desc, body, [app_ld('Fire Portfolio 적립식 배당 시뮬레이터', 'grow', desc), faq_ld(GROW_FAQ)], og='og-dividend.png?v=1')
+
+
 def rss():
     """업데이트 소식 RSS 2.0(네이버 서치어드바이저 RSS 제출용) — 날짜별 한 항목"""
     import email.utils, datetime as _dt
@@ -728,7 +790,7 @@ def biz_page(B, all_biz):
     return page(B['slug'], title, desc, body, ld)
 
 def build(dist):
-    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'bonus': bonus_page(), 'portfolio': portfolio_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
+    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'bonus': bonus_page(), 'portfolio': portfolio_page(), 'etf-tax': etftax_page(), 'grow': grow_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
     biz = load_biz()
     out.update({B['slug']: biz_page(B, biz) for B in biz})
     for slug, text in out.items():

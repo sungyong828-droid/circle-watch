@@ -2648,6 +2648,169 @@
   }
   const usT = (m) => (m == null ? '–' : EN ? `$${(m / 1e6).toFixed(2)}T` : `${(m / 1e6).toFixed(2)}조 달러`);
 
+
+  // ---------------------------------------------------------------- 📈 적립식 배당 시뮬레이터(배당금 · 세 번째 보기)
+  // 매달 같은 돈으로 한 종목을 사 모으면 N년 뒤 평가금액·월배당이 얼마인지. 배당 성장률은 그 종목의 실제 배당 기록(최근 5년)으로 자동 계산
+  const GROW_KEY = 'cw.grow';
+  let growCfg = Object.assign({ t: 'SCHD', start: 1000, monthly: 50, years: 10, drip: true, gP: 6, gD: null, tax: true }, readJSON(GROW_KEY, {}) || {});
+  state.growData = {};
+  function growInfo(t) {
+    const D = state.growData[t];
+    if (!D?.events?.length || !(D.price > 0)) return null;
+    const now = Date.now(), y = (k) => D.events.filter((e) => { const a = (now - Date.parse(e.ex)) / 86400000; return a >= k * 365 && a < (k + 1) * 365; }).reduce((s2, e) => s2 + e.amt, 0);
+    const ttm = y(0), y5 = y(5), y3 = y(3);
+    const cagr = y5 > 0 ? (ttm / y5) ** (1 / 5) - 1 : y3 > 0 ? (ttm / y3) ** (1 / 3) - 1 : null;
+    const n = D.events.filter((e) => (now - Date.parse(e.ex)) / 86400000 < 365).length;
+    return { ttm, price: D.price, yld: ttm / D.price, cagr: cagr == null ? null : Math.max(-0.05, Math.min(0.15, cagr)), n, kr: krTk(t), name: D.name };
+  }
+  function growCalc() {
+    const I = growInfo(growCfg.t), fx = state.quote?.fx?.rate;
+    if (!I || (!I.kr && !fx)) return null;
+    const won = (v) => (I.kr ? v : v / fx); // 만원 → 종목 통화
+    const gP = (+growCfg.gP || 0) / 100, gD = growCfg.gD == null || growCfg.gD === '' ? (I.cagr ?? 0.05) : (+growCfg.gD || 0) / 100;
+    const tax = growCfg.tax ? (I.kr ? 0.154 : 0.15) : 0, years = Math.max(1, Math.min(40, Math.round(+growCfg.years || 10)));
+    let p = I.price, D = I.ttm, sh = won((+growCfg.start || 0) * 1e4) / p, cash = 0, inv = (+growCfg.start || 0) * 1e4, cum = 0, hit100 = null;
+    const rows = [{ y: 0, inv, val: sh * p, mon: sh * D / 12 * (1 - tax), cum: 0 }];
+    for (let m = 1; m <= years * 12; m++) {
+      const add = (+growCfg.monthly || 0) * 1e4; sh += won(add) / p; inv += add;
+      const net = sh * D / 12 * (1 - tax);
+      cum += net; if (growCfg.drip) sh += net / p; else cash += net;
+      p *= (1 + gP) ** (1 / 12);
+      if (m % 12 === 0) {
+        D *= 1 + gD;
+        const toW = (v) => (I.kr ? v : v * fx), mon = toW(sh * D / 12 * (1 - tax));
+        if (hit100 == null && mon >= 1e6) hit100 = m / 12;
+        rows.push({ y: m / 12, inv, val: toW(sh * p + cash), mon, cum: toW(cum) });
+      }
+    }
+    return { I, rows, last: rows.at(-1), gD, gP, tax, hit100, years };
+  }
+  function renderGrow() {
+    const el = document.getElementById('c-grow');
+    if (!el) return;
+    const t = growCfg.t, I = growInfo(t);
+    if (!state.growData[t] && !state.growData[t + ':loading']) {
+      state.growData[t + ':loading'] = true;
+      getJ(`${NEWS_API}/dividends?s=${encodeURIComponent(t)}`, 15000).then((j) => { if (!j.error) state.growData[t] = j; }).catch(() => {}).finally(() => { delete state.growData[t + ':loading']; renderGrow(); });
+    }
+    if (!state.quote) loadQuote().then(renderGrow).catch(() => {});
+    const R = growCalc(), L = R?.last;
+    const picks = ['SCHD', 'JEPI', 'O', 'VOO', 'QQQ', 'KO', 'SCHD', '005930.KS'].filter((x, i, a) => a.indexOf(x) === i);
+    card('grow', {
+      title: EN ? '📈 Monthly investing simulator' : '📈 적립식 배당 시뮬레이터', sub: EN ? 'Buy the same stock every month → value and monthly dividends N years later' : '매달 같은 종목을 사 모으면 N년 뒤 평가금액·월배당은?',
+      easy: EN ? 'Enter how much you put in each month. We project the value and the monthly dividend, using the stock’s real dividend history for growth. Assumptions, not a forecast.' : '매달 넣을 돈을 정하면, 그 종목의 실제 배당 기록으로 배당이 늘어나는 속도를 계산해서 몇 년 뒤 평가금액과 한 달 배당을 보여줘요. 가정에 따른 계산이지 예측이 아니에요.',
+      body: `<div class="gr-picks">${picks.map((x) => `<button type="button" class="chip-btn sm" data-growt="${esc(x)}" aria-pressed="${x === t}">${esc(krTk(x) ? fireName(x) || x.slice(0, 6) : x)}</button>`).join('')}<label class="gr-t"><input id="gr-t" value="${esc(krTk(t) ? '' : t)}" placeholder="${EN ? 'Other ticker' : '다른 티커'}" autocapitalize="characters" maxlength="12"></label></div>
+        <div class="bn-grid gr-in">
+          <label class="bn-f"><span>${EN ? 'Start with' : '처음 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="start" value="${esc(String(growCfg.start))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
+          <label class="bn-f"><span>${EN ? 'Every month' : '매달 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="monthly" value="${esc(String(growCfg.monthly))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
+          <label class="bn-f"><span>${EN ? 'Years' : '기간'}</span><div class="bn-in"><input inputmode="numeric" data-grow="years" value="${esc(String(growCfg.years))}"><em>${EN ? 'yrs' : '년'}</em></div></label>
+          <label class="bn-f"><span>${EN ? 'Price growth / yr' : '주가 상승률(연)'}</span><div class="bn-in"><input inputmode="decimal" data-grow="gP" value="${esc(String(growCfg.gP))}"><em>%</em></div></label>
+          <label class="bn-f"><span>${EN ? 'Dividend growth / yr' : '배당 성장률(연)'}</span><div class="bn-in"><input inputmode="decimal" data-grow="gD" value="${esc(growCfg.gD == null ? '' : String(growCfg.gD))}" placeholder="${I?.cagr != null ? (I.cagr * 100).toFixed(1) : '5'}"><em>%</em></div><small>${I?.cagr != null ? (EN ? `blank = last 5y actual ${(I.cagr * 100).toFixed(1)}%` : `비우면 최근 5년 실제 ${(I.cagr * 100).toFixed(1)}%`) : ''}</small></label>
+          <div class="gr-chk"><label class="chk"><input type="checkbox" data-grow="drip" ${growCfg.drip ? 'checked' : ''}> ${EN ? 'Reinvest dividends' : '배당 다시 사기(재투자)'}</label><label class="chk"><input type="checkbox" data-grow="tax" ${growCfg.tax ? 'checked' : ''}> ${EN ? 'After tax' : '세후(배당세 뺌)'}</label></div>
+        </div>
+        <div id="gr-out">${growOutHtml(R)}</div>`,
+    });
+    if (R) drawGrow(R);
+  }
+  function growOutHtml(R) {
+    if (!R) return `<p class="skeleton">${EN ? 'Loading dividend history…' : '배당 기록 불러오는 중…'}</p>`;
+    const L = R.last, I = R.I, mk = [5, 10, 20, 30].filter((y) => y < R.years).map((y) => R.rows.find((r) => r.y === y)).filter(Boolean);
+    return `<p class="gr-info">${esc(I.kr ? fireName(growCfg.t) : growCfg.t)} · ${EN ? 'yield' : '배당률'} ${pctPlain(I.yld, 2)} · ${EN ? `${I.n} payouts/yr` : `1년 ${I.n}회 배당`} · ${EN ? 'div growth' : '배당 성장'} ${pctPlain(R.gD, 1)}</p>
+      <div class="gr-sum">
+        <div><span>${R.years}${EN ? 'y later · value' : '년 뒤 평가금액'}</span><b>${wonFull(L.val)}</b><small>${EN ? 'invested' : '넣은 돈'} ${wonFull(L.inv)}</small></div>
+        <div><span>${EN ? 'Monthly dividend' : '한 달 배당'}${R.tax ? (EN ? ' (after tax)' : '(세후)') : ''}</span><b class="up">${wonFull(L.mon)}</b><small>${EN ? 'total received' : '그동안 받은 배당'} ${wonFull(L.cum)}</small></div>
+      </div>
+      <div class="chart gr-chart"><canvas id="cv-grow" role="img" aria-label="${EN ? 'Projection' : '적립식 시뮬레이션'}"></canvas></div>
+      ${mk.length ? `<ul class="gr-mk">${mk.map((r) => `<li><b>${r.y}${EN ? 'y' : '년'}</b><span>${wonFull(r.val)}</span><small>${EN ? 'monthly div' : '월배당'} ${wonFull(r.mon)}</small></li>`).join('')}</ul>` : ''}
+      <p class="note">${R.hit100 != null ? (EN ? `🎯 Monthly dividend passes ₩1M in year ${R.hit100}. ` : `🎯 ${R.hit100}년 차에 월배당 100만원을 넘어요. `) : ''}${EN ? 'Assumes constant price and dividend growth and today’s exchange rate. Past dividends don’t guarantee future ones.' : '주가·배당이 매년 같은 비율로 오르고 환율은 지금 그대로라고 가정했어요. 과거 배당이 미래를 보장하지 않아요.'}</p>`;
+  }
+  function drawGrow(R) {
+    const labels = R.rows.map((r) => r.y);
+    draw('grow', { type: 'line', data: { labels, datasets: [
+      lineDs(EN ? 'Value' : '평가금액', R.rows.map((r) => r.val), C.teal || '#3fbf7f', { fill: 'start', backgroundColor: areaFill(C.teal || '#3fbf7f') }),
+      lineDs(EN ? 'Invested' : '넣은 돈', R.rows.map((r) => r.inv), C.muted, { borderDash: [5, 4], borderWidth: 1.5 }),
+      lineDs(EN ? 'Monthly dividend' : '월배당', R.rows.map((r) => r.mon), C.orange, { yAxisID: 'y1', borderWidth: 2 }),
+    ] }, options: { interaction, plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 2, font: { size: 11 } } }, tooltip: tooltip((it) => `${labels[it.dataIndex]}${EN ? 'y' : '년'}`, (v) => wonFull(v)) },
+      scales: { x: axisX(labels, (y) => `${y}${EN ? 'y' : '년'}`, 6), y: axisY((v) => manwon(v)), y1: { ...axisY((v) => manwon(v)), position: 'left', grid: { display: false } } } } });
+  }
+
+  // ---------------------------------------------------------------- 🧮 미국 ETF 세금 비교(세금 탭): 미국 직투 · 국내 상장 · ISA · 연금저축
+  // 같은 지수(S&P500)를 같은 수익률로 산다고 보고, 계좌별 세금 규칙만 다르게 적용해 세후 결과를 나란히
+  const ETAX_KEY = 'cw.etax';
+  let etaxCfg = Object.assign({ yearly: 600, years: 10, g: 8, y: 1.3, low: true, age: 'u70', isa: 'gen' }, readJSON(ETAX_KEY, {}) || {});
+  function etaxCalc() {
+    const C = (+etaxCfg.yearly || 0) * 1e4, N = Math.max(1, Math.min(40, Math.round(+etaxCfg.years || 10))), g = (+etaxCfg.g || 0) / 100, y = (+etaxCfg.y || 0) / 100;
+    // 한 계좌 시뮬레이션: divTax(배당에 매년), final(v, basis, contrib) → 마지막 세금
+    const run = (contribOf, divTax, finalTax) => {
+      let V = 0, B = 0, paid = 0, put = 0;
+      for (let k = 0; k < N; k++) { const c = contribOf(k); V += c; B += c; put += c; const d = V * y, dt = d * divTax; paid += dt; V = V * (1 + g) + d - dt; B += d - dt; }
+      const ft = Math.max(0, finalTax(V, B, put)); paid += ft;
+      return { V: V - ft, paid, put };
+    };
+    const direct = run(() => C, 0.15, (V, B) => (V - B - 2.5e6) * 0.22);
+    const kr = run(() => C, 0.154, (V, B) => (V - B) * 0.154);
+    // ISA: 연 2천만·총 1억 한도, 넘는 돈은 일반 국내 상장 계좌로
+    const isaCap = (k) => Math.max(0, Math.min(C, 2e7, 1e8 - Math.min(C, 2e7) * k));
+    const isaFree = etaxCfg.isa === 'low' ? 4e6 : 2e6;
+    const isaA = run(isaCap, 0, (V, B, put) => (V - put - isaFree) * 0.099), isaB = run((k) => C - isaCap(k), 0.154, (V, B) => (V - B) * 0.154);
+    const isa = { V: isaA.V + isaB.V, paid: isaA.paid + isaB.paid, put: isaA.put + isaB.put, over: C > 2e7 || C * N > 1e8, short: N < 3 };
+    // 연금저축: 연 1,800만 납입 한도(세액공제는 600만까지) · 받을 때 연금소득세 · 세액공제는 매년 돌려받음(재투자 안 함)
+    const penCap = Math.min(C, 1.8e7), credRate = etaxCfg.low ? 0.165 : 0.132, penRate = { u70: 0.055, u80: 0.044, o80: 0.033 }[etaxCfg.age] || 0.055;
+    const penA = run(() => penCap, 0, (V, B, put) => { const credited = Math.min(penCap, 6e6) * N; return (V - (put - credited)) * penRate; }), penB = run(() => C - penCap, 0.154, (V, B) => (V - B) * 0.154);
+    const credit = Math.min(penCap, 6e6) * credRate * N;
+    const pen = { V: penA.V + penB.V, paid: penA.paid + penB.paid, put: penA.put + penB.put, credit };
+    const list = [
+      ['direct', EN ? 'US-listed (e.g. VOO)' : '미국 직투(VOO 등)', direct, EN ? '15% US tax on dividends · 22% on gains over ₩2.5M when you sell' : '배당 15%(미국) · 팔 때 이익 250만원 넘는 부분 22%'],
+      ['kr', EN ? 'Korea-listed ETF' : '국내 상장 ETF(TIGER·KODEX 등)', kr, EN ? '15.4% on distributions and on gains' : '분배금·매매차익 모두 15.4%(배당소득세)'],
+      ['isa', EN ? 'ISA account' : 'ISA 계좌(국내 상장 ETF)', isa, EN ? `No tax until maturity; ₩${etaxCfg.isa === 'low' ? '4' : '2'}M tax-free then 9.9%` : `만기(3년 이상)까지 세금 없음 · 이익 ${etaxCfg.isa === 'low' ? '400' : '200'}만원 비과세, 넘는 부분 9.9%`],
+      ['pen', EN ? 'Pension savings' : '연금저축(국내 상장 ETF)', pen, EN ? `Tax credit ${pctPlain(credRate, 1)} on up to ₩6M/yr · ${pctPlain(penRate, 1)} when you draw after 55` : `연 600만원까지 세액공제 ${pctPlain(credRate, 1)} · 55세 이후 연금으로 받을 때 ${pctPlain(penRate, 1)}`],
+    ].map(([k, name, r, rule]) => ({ k, name, rule, final: r.V + (r.credit || 0), tax: r.paid, credit: r.credit || 0, put: r.put, x: r }));
+    const best = list.reduce((a, b) => (b.final > a.final ? b : a));
+    return { list, best, N, C, isa, put: C * N };
+  }
+  function etaxOutHtml() {
+    const T = etaxCalc(), base = T.list[0].final;
+    return `<ul class="et-list">${T.list.map((r) => `<li class="${r === T.best ? 'best' : ''}"><div class="et-h"><b>${esc(r.name)}</b>${r === T.best ? `<em>${EN ? 'Best' : '가장 유리'}</em>` : ''}</div>
+        <div class="et-v"><b>${wonFull(r.final)}</b>${r.k !== 'direct' ? `<small class="${cls(r.final - base)}">${EN ? 'vs US-listed' : '직투보다'} ${signed(r.final - base, wonFull)}</small>` : ''}</div>
+        <small class="et-r">${esc(r.rule)} · ${EN ? 'tax' : '세금'} ${wonFull(r.tax)}${r.credit ? ` · ${EN ? 'credits' : '세액공제'} +${wonFull(r.credit)}` : ''}</small></li>`).join('')}</ul>
+      ${T.isa.over ? `<p class="note">${EN ? 'ISA limits: ₩20M a year, ₩100M total — the excess is counted as a regular Korea-listed account.' : 'ISA 한도(연 2천만원·총 1억원)를 넘는 돈은 일반 국내 상장 계좌로 계산했어요.'}</p>` : ''}
+      ${T.isa.short ? `<p class="note">${EN ? 'ISA needs at least 3 years to get the tax benefit.' : 'ISA는 3년 이상 유지해야 비과세 혜택을 받아요.'}</p>` : ''}
+      <p class="note">${EN ? `Total invested ${wonFull(T.put)}. Same index return for all; fees, FX and the ₩20M financial-income threshold are ignored. Pension money is locked until 55 (early withdrawal is taxed 16.5%). Not tax advice.` : `모두 같은 지수·같은 수익률로 가정했고, 총 넣은 돈은 ${wonFull(T.put)}이에요. 수수료·환율, 금융소득 2천만원 초과 종합과세는 뺐어요. 연금저축은 55세 전에 빼면 16.5%가 붙어요. 직투는 매년 250만원씩 나눠 익절하면 세금을 더 줄일 수 있어요. 세무 조언이 아니에요.`}</p>`;
+  }
+  function renderEtfTax() {
+    if (!document.getElementById('c-etftax')) return;
+    const f = (k, label, unit, mode = 'decimal') => `<label class="bn-f"><span>${label}</span><div class="bn-in"><input inputmode="${mode}" data-etax="${k}" value="${esc(String(etaxCfg[k]))}"><em>${unit}</em></div></label>`;
+    card('etftax', {
+      title: EN ? '🧮 US ETF tax: which account wins?' : '🧮 미국 ETF 세금 비교 — 어디서 사야 유리할까', sub: EN ? 'US-listed vs Korea-listed vs ISA vs pension' : '미국 직투 vs 국내 상장 vs ISA vs 연금저축 · 같은 S&P500 기준',
+      easy: EN ? 'The same S&P 500 fund is taxed differently depending on where you buy it. Enter how much you invest a year and for how long to compare what you keep after tax.' : '같은 S&P500 ETF라도 어디서(어떤 계좌로) 사느냐에 따라 세금이 달라요. 1년에 넣을 돈과 기간을 넣으면 세금을 떼고 남는 돈을 나란히 비교해요.',
+      body: `<div class="bn-grid et-in">${f('yearly', EN ? 'Invest per year' : '1년에 넣는 돈', EN ? '×10k ₩' : '만원', 'numeric')}${f('years', EN ? 'Years' : '기간', EN ? 'yrs' : '년', 'numeric')}${f('g', EN ? 'Price growth / yr' : '주가 상승률(연)', '%')}${f('y', EN ? 'Dividend yield' : '배당률', '%')}</div>
+        <div class="et-opts">
+          <label class="chk"><input type="checkbox" data-etax="low" ${etaxCfg.low ? 'checked' : ''}> ${EN ? 'Salary ≤ ₩55M (16.5% pension credit)' : '총급여 5,500만원 이하(연금 세액공제 16.5%)'}</label>
+          <label class="chk"><input type="checkbox" data-etax="isa" ${etaxCfg.isa === 'low' ? 'checked' : ''}> ${EN ? 'ISA low-income type (₩4M tax-free)' : 'ISA 서민형(400만원 비과세)'}</label>
+          <label class="et-age"><span>${EN ? 'Pension tax by age' : '연금 받을 나이'}</span><select data-etax="age">${[['u70', EN ? 'Under 70 · 5.5%' : '70세 미만 · 5.5%'], ['u80', EN ? '70–79 · 4.4%' : '70~79세 · 4.4%'], ['o80', EN ? '80+ · 3.3%' : '80세 이상 · 3.3%']].map(([k, l]) => `<option value="${k}" ${etaxCfg.age === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        </div>
+        <div id="et-out">${etaxOutHtml()}</div>`,
+    });
+  }
+
+  // ---------------------------------------------------------------- 🇰🇷 한국 종목 다음 실적 발표일(네이버 증권 캘린더, 앞으로 6주)
+  state.krNext = {};
+  function krNextEarn(sym) {
+    const code = sym.slice(0, 6), X = state.krNext[code];
+    if (!X) {
+      state.krNext[code] = { loading: true };
+      const from = isoToday(), to = addDays(from, 41);
+      getJ(`${NEWS_API}/calendar?from=${from}&to=${to}&kr=${code}&macro=0`, 12000)
+        .then((j) => { state.krNext[code] = { e: (j.events || []).find((e) => e.kind === 'earn' && e.code === code) || null }; if (state.stock === sym) renderKrEarn(sym); })
+        .catch(() => { state.krNext[code] = { e: null }; });
+      return '';
+    }
+    const e = X.e;
+    if (!e) return '';
+    const dd = daysBetween(isoToday(), e.d);
+    return `<div class="er-next kr-next"><div class="er-next-h"><span>${EN ? 'Next earnings' : '다음 실적 발표'}</span><span class="tone neu">${EN ? 'scheduled' : '예정'}</span></div><div class="er-next-d"><b>${krDate(e.d)}</b><span class="er-dday">${dd > 0 ? `D-${dd}` : dd === 0 ? 'D-DAY' : ''}</span></div><div class="er-next-m">${esc(e.k)} · ${EN ? 'Naver Securities calendar' : '네이버 증권 증시 캘린더'}</div></div>`;
+  }
+
   // ---------------------------------------------------------------- 🎯 목표가: 종목 주가 카드에서 정해 두면, 도달했을 때 알려 주고 홈 '바뀐 것'에 보여 준다(이 기기에만 저장)
   const TGT_KEY = 'cw.targets';
   let targets = DEMO ? { CRCL: { p: 120, dir: 'up', at: Date.now() }, JOBY: { p: 8, dir: 'up', at: Date.now() } } : readJSON(TGT_KEY, {}) || {};
@@ -2767,7 +2930,8 @@
   function loadSched() {
     if (!schedShow || schedLoading) return schedLoading;
     if (state.sched && Date.now() - Date.parse(state.sched.got || 0) < 3 * 3600000) return Promise.resolve(state.sched);
-    schedLoading = getJ(`${NEWS_API}/calendar?from=${SCHED_W.from}&to=${SCHED_W.to}`, 12000)
+    const krc = mySyms().filter(isKR).map((x) => x.slice(0, 6)).slice(0, 30).join(',');
+    schedLoading = getJ(`${NEWS_API}/calendar?from=${SCHED_W.from}&to=${SCHED_W.to}${krc ? `&kr=${krc}` : ''}`, 12000)
       .then((j) => { if (Array.isArray(j?.events)) { state.sched = { ...j, from: SCHED_W.from, got: new Date().toISOString() }; writeJSON('cw.schedCache', state.sched); } })
       .catch(() => {}).finally(() => { schedLoading = null; renderSched(); });
     return schedLoading;
@@ -2778,7 +2942,11 @@
     if (!el) return;
     if (!schedShow || schedClosed) { el.hidden = true; return; }
     const { from, to } = SCHED_W, today = isoToday(), items = [];
-    for (const e of state.sched?.events || []) items.push({ d: e.d, t: e.t, w: e.w, html: `<span class="sd-ic sd-flag">${e.n === 'KR' ? (EN ? 'KR' : '한국') : (EN ? 'US' : '미국')}</span><span class="sd-nm"><b>${esc(EN ? SCHED_EN[e.k] || e.k : e.k)}</b>${e.v ? `<small>${e.done ? (EN ? 'actual' : '발표') : (EN ? 'prev' : '이전')} ${esc(e.v)}</small>` : ''}</span>` });
+    for (const e of (state.sched?.events || []).filter((x) => x.kind)) { // 한국 종목 실적·배당(네이버)
+      const sym = mySyms().find((x) => isKR(x) && x.startsWith(e.code));
+      items.push({ d: e.d, t: '', w: e.w, html: `<span class="sd-ic" aria-hidden="true">${e.kind === 'earn' ? '📊' : '💰'}</span><button type="button" class="sd-nm sd-go" ${sym ? `data-sincego="${esc(sym)}:earn"` : ''}><b>${esc(e.k)}</b>${e.v ? `<small>${EN ? 'per share' : '주당'} ${esc(e.v)}</small>` : ''}</button>` });
+    }
+    for (const e of (state.sched?.events || []).filter((x) => !x.kind)) items.push({ d: e.d, t: e.t, w: e.w, html: `<span class="sd-ic sd-flag">${e.n === 'KR' ? (EN ? 'KR' : '한국') : (EN ? 'US' : '미국')}</span><span class="sd-nm"><b>${esc(EN ? SCHED_EN[e.k] || e.k : e.k)}</b>${e.v ? `<small>${e.done ? (EN ? 'actual' : '발표') : (EN ? 'prev' : '이전')} ${esc(e.v)}</small>` : ''}</span>` });
     for (const sym of mySyms()) {
       if (isKR(sym) || !STOCK_INFO[sym]) continue;
       const N = earnOf(sym)?.next;
@@ -3251,7 +3419,7 @@
   // Fire 화면 위 탭: 퇴사까지 / 배당금 — 카드의 data-pane으로 보이기·숨기기(선택은 이 기기에 기억)
   state.fireTab = ['div', 'bonus'].includes(loadPref('fireTab', 'fire')) ? loadPref('fireTab', 'fire') : 'fire';
   state.divSub = loadPref('divSub', 'mine') === 'sim' ? 'sim' : 'mine'; // 배당금 탭 안: 내 배당금 · 포트폴리오 짜보기
-  const setDivSub = (v) => { state.divSub = v === 'sim' ? 'sim' : 'mine'; savePref('divSub', state.divSub); };
+  const setDivSub = (v) => { state.divSub = ['sim', 'grow'].includes(v) ? v : 'mine'; savePref('divSub', state.divSub); };
   function applyFireTab() {
     for (const b of document.querySelectorAll('[data-ftab]')) b.setAttribute('aria-selected', String(b.dataset.ftab === state.fireTab));
     for (const el of document.querySelectorAll('#view-fire [data-pane]')) el.classList.toggle('pane-off', el.dataset.pane !== state.fireTab);
@@ -3682,7 +3850,7 @@
   }
 
   // ---- 🔄 다른 기기로 옮기기 — assets/move.js(누를 때만 받음). 코드로 암호화해 10분만 서버에 두고, 받으면 바로 지운다
-  const MOVE_KEYS = ['cw.fire', 'cw.fireHist', 'cw.div', 'cw.divSim', 'cw.watch', 'cw.life', 'cw.bonus', 'cw.kw', 'cw.votes', 'cw.fireMile', 'cw.targets', 'cw.homeLayout', 'cw.pxDay', 'cw.tax'];
+  const MOVE_KEYS = ['cw.fire', 'cw.fireHist', 'cw.div', 'cw.divSim', 'cw.watch', 'cw.life', 'cw.bonus', 'cw.kw', 'cw.votes', 'cw.fireMile', 'cw.targets', 'cw.homeLayout', 'cw.pxDay', 'cw.tax', 'cw.grow', 'cw.etax'];
   function moveBtn() { return SITE_API ? `<button type="button" class="move-open" data-moveopen="send">🔄 ${EN ? 'Move to another device' : '다른 기기로 옮기기'}<small>${EN ? 'Phone ↔ PC with a short code' : '폰 ↔ PC, 짧은 코드로'}</small></button>` : ''; }
   async function openMove(tab, code) {
     if (DEMO) { toast(EN ? 'Turn off the sample view first' : '예시 화면을 끈 뒤에 써 주세요', true); return; }
@@ -6345,7 +6513,7 @@
     card('searnings', {
       title: `${esc(ttlName(sym))}분기 실적`, sub: '연결 기준 · 단위 억원(조) · 네이버 증권(FnGuide)',
       easy: '분기마다 회사가 얼마를 팔고(매출액) 얼마를 남겼는지(영업이익·순이익)예요. (예상)은 아직 발표 전이라 증권사 예상치 평균(컨센서스)이에요.',
-      body: `<div class="div-scroll"><table class="div-tbl kr-earn"><thead><tr><th>분기</th><th>매출액</th><th>영업이익</th><th>이익률</th><th>순이익</th></tr></thead><tbody>
+      body: `${krNextEarn(sym)}<div class="div-scroll"><table class="div-tbl kr-earn"><thead><tr><th>분기</th><th>매출액</th><th>영업이익</th><th>이익률</th><th>순이익</th></tr></thead><tbody>
         ${F.periods.map((pd, i) => `<tr${pd.cns ? ' class="kr-cns"' : ''}><td>${esc(pd.title.replace(/\.$/, ''))}${pd.cns ? '<small>예상</small>' : ''}</td><td>${cell('매출액', pd.key, eok)}${growth('매출액', pd.key, i)}</td><td>${cell('영업이익', pd.key, (v) => `<span class="${cls(v)}">${eok(v)}</span>`)}</td><td>${cell('영업이익률', pd.key, (v) => v.toFixed(1) + '%')}</td><td>${cell('당기순이익', pd.key, eok)}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="note">작은 숫자는 1년 전 같은 분기 대비. 한국 종목은 실적 발표일 자동 알림(실적 당일 모드)은 아직 없어요.</p>`,
@@ -6795,7 +6963,7 @@
     flushCharts();
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
     fireLoop(v === 'fire' || isOther());
-    if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); renderTax(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
+    if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); renderTax(); renderEtfTax(); if (state.divSub === 'grow') renderGrow(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
     if (v === 'flow') { renderFlowView(); loadFlow().then(() => { renderFlowView(); renderFlowCard(); }).catch(() => {}); }
@@ -6950,7 +7118,9 @@
     const scb = ev.target.closest('[data-sharecard]');
     if (scb) { openShare(scb.dataset.sharecard, scb); return; }
     const dsb = ev.target.closest('[data-dsub]');
-    if (dsb) { setDivSub(dsb.dataset.dsub); applyFireTab(); if (state.divSub === 'sim') renderDivSim(); else renderDiv(); markUse(state.divSub === 'sim' ? 'divsim' : 'div'); return; }
+    if (dsb) { setDivSub(dsb.dataset.dsub); applyFireTab(); if (state.divSub === 'sim') renderDivSim(); else if (state.divSub === 'grow') renderGrow(); else renderDiv(); markUse(state.divSub === 'sim' ? 'divsim' : 'div'); return; }
+    const grt = ev.target.closest('[data-growt]');
+    if (grt) { growCfg.t = grt.dataset.growt; growCfg.gD = null; writeJSON(GROW_KEY, growCfg); renderGrow(); return; }
     const mc = ev.target.closest('.more-close');
     if (mc) { const d = mc.closest('details.more'); if (d) { d.open = false; const y = d.getBoundingClientRect().top; if (y < 70) window.scrollBy({ top: y - 90 }); } return; }
     const sr = ev.target.closest('[data-srange]');
@@ -6983,7 +7153,7 @@
     const fg = ev.target.closest('[data-ftabgo]');
     if (fg) { state.fireTab = fg.dataset.ftabgo; savePref('fireTab', state.fireTab); showView('fire'); window.scrollTo({ top: 0 }); return; }
     const ft = ev.target.closest('[data-ftab]');
-    if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); renderDivSim(); loadDividends().catch(() => {}); } if (state.fireTab === 'bonus') renderBonus(); if (state.fireTab === 'tax') renderTax(); window.scrollTo({ top: 0 }); return; }
+    if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); renderDivSim(); loadDividends().catch(() => {}); } if (state.fireTab === 'bonus') renderBonus(); if (state.fireTab === 'tax') { renderTax(); renderEtfTax(); } if (state.fireTab === 'div' && state.divSub === 'grow') renderGrow(); window.scrollTo({ top: 0 }); return; }
     // 성과급 계산기
     const bco = ev.target.closest('[data-bnco]');
     if (bco) { readBonusForm(); bonusCfg.co = bco.dataset.bnco; writeJSON(BONUS_KEY, bonusCfg); renderBonus(); return; }
@@ -7273,7 +7443,12 @@
   updateFireChip();
   {
     let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0;
-    if (v0 === 'tax') { state.fireTab = 'tax'; savePref('fireTab', 'tax'); v0 = 'fire'; }
+    if (v0 === 'tax' || v0 === 'etftax') { // /etf-tax 소개 페이지에서 바로 열기
+      state.fireTab = 'tax'; savePref('fireTab', 'tax');
+      if (v0 === 'etftax') setTimeout(() => document.getElementById('c-etftax')?.scrollIntoView({ block: 'start' }), 600);
+      v0 = 'fire';
+    }
+    if (v0 === 'grow') { state.fireTab = 'div'; savePref('fireTab', 'div'); setDivSub('grow'); v0 = 'fire'; }
     if (['dividend', 'quit', 'bonus', 'portfolio'].includes(v0)) { // 소개 페이지(/dividend · /fire · /bonus · /portfolio)에서 바로 열기
       state.fireTab = v0 === 'quit' ? 'fire' : v0 === 'bonus' ? 'bonus' : 'div'; savePref('fireTab', state.fireTab);
       if (v0 === 'portfolio' || v0 === 'dividend') setDivSub(v0 === 'portfolio' ? 'sim' : 'mine');
@@ -7316,9 +7491,18 @@
     if (ev.key === 'Enter' && ev.target?.id === 'fd-name') saveFolder();
   });
   document.addEventListener('input', (ev) => {
+    const gi = ev.target.dataset?.grow;
+    if (gi && ev.target.type !== 'checkbox') { growCfg[gi] = ev.target.value === '' && gi === 'gD' ? null : ev.target.value; writeJSON(GROW_KEY, growCfg); const R = growCalc(), o = document.getElementById('gr-out'); if (o) { o.innerHTML = growOutHtml(R); if (R) drawGrow(R); } return; }
+    const ei = ev.target.dataset?.etax;
+    if (ei && ev.target.type !== 'checkbox' && ev.target.tagName !== 'SELECT') { etaxCfg[ei] = ev.target.value; writeJSON(ETAX_KEY, etaxCfg); const o = document.getElementById('et-out'); if (o) o.innerHTML = etaxOutHtml(); return; }
     if (ev.target.id === 'tax-gain' || ev.target.id === 'tax-loss') { taxCfg[ev.target.id === 'tax-gain' ? 'gain' : 'loss'] = ev.target.value; writeJSON(TAX_KEY, taxCfg); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); }
   });
   document.addEventListener('change', (ev) => {
+    const gc = ev.target.dataset?.grow;
+    if (gc && ev.target.type === 'checkbox') { growCfg[gc] = ev.target.checked; writeJSON(GROW_KEY, growCfg); const R = growCalc(), o = document.getElementById('gr-out'); if (o) { o.innerHTML = growOutHtml(R); if (R) drawGrow(R); } return; }
+    if (ev.target.id === 'gr-t') { (async () => { const v = await resolveTicker(ev.target.value); if (TICKER_RE.test(v)) { growCfg.t = v; growCfg.gD = null; writeJSON(GROW_KEY, growCfg); renderGrow(); } else toast(EN ? 'Ticker not found' : '종목을 찾지 못했어요', true); })(); return; }
+    const ec = ev.target.dataset?.etax;
+    if (ec && (ev.target.type === 'checkbox' || ev.target.tagName === 'SELECT')) { etaxCfg[ec] = ec === 'isa' ? (ev.target.checked ? 'low' : 'gen') : ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; writeJSON(ETAX_KEY, etaxCfg); const o = document.getElementById('et-out'); if (o) o.innerHTML = etaxOutHtml(); return; }
     const heo = ev.target.closest?.('[data-heon]');
     if (heo) { const L = homeLayout(), k = heo.dataset.heon; L.off = heo.checked ? L.off.filter((x) => x !== k) : [...new Set([...L.off, k])]; saveHomeLayout(L); return; }
     if (ev.target.dataset?.hetabs) { const L = homeLayout(); L.tabs = ev.target.checked; saveHomeLayout(L); return; }
