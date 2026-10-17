@@ -5189,7 +5189,7 @@
     .replace(/Market Perform|Mkt Perform/gi, '시장 수익률').replace(/Sector Perform/gi, '업종 수익률').replace(/Equal-?Weight/gi, '비중 유지').replace(/Sector Weight/gi, '업종 비중').replace(/Sector Outperform/gi, '업종 상회').replace(/Sector Underperform/gi, '업종 하회').replace(/Speculative Buy/gi, '투기적 매수').replace(/Long-Term Buy/gi, '장기 매수').replace(/Peer Perform/gi, '동종 수익률')
     .replace(/Neutral/gi, '중립').replace(/\bHold\b/gi, '보유').replace(/Underperform/gi, '시장 하회').replace(/Underweight/gi, '비중 축소').replace(/Strong Sell/gi, '강력 매도').replace(/\bSell\b/gi, '매도')
     .replace(/Positive/gi, '긍정').replace(/Negative/gi, '부정');
-  const ACTION_KO = { Initiated: ['신규', 'neu'], Upgrade: ['상향', 'pos'], Downgrade: ['하향', 'neg'], Reiterated: ['유지', 'neu'], Resumed: ['재개', 'neu'], 'Target Raised': ['목표↑', 'pos'], 'Target Lowered': ['목표↓', 'neg'] };
+  const ACTION_KO = { Initiated: ['신규', 'neu'], Upgrade: ['상향', 'pos'], Downgrade: ['하향', 'neg'], Reiterated: ['유지', 'neu'], Resumed: ['재개', 'neu'], 'Target Raised': ['목표↑', 'pos'], 'Target Lowered': ['목표↓', 'neg'], 'Target Set': ['목표가', 'neu'] };
   const lastTarget = (t) => { const m = String(t || '').match(/\$([\d,.]+)\s*$/); return m ? +m[1].replace(/,/g, '') : null; };
   const nowRating = (r) => String(r || '').split('→').pop().trim();
   // 증권사마다 가장 최근 의견 하나(1년 이내)
@@ -5211,7 +5211,7 @@
         <div class="h-chg">${tg ? `<b>${esc(b.target.replace(/\s*→\s*/, '→'))}</b><small class="${cls(up)}">${up != null ? pct(up, 0) : ''}</small>` : '<small>목표가 없음</small>'}</div></li>`;
     }).join('');
     return `<div class="mini-h er-h br-h"><span>${showAll ? '의견 변경 기록(최근순)' : '증권사별 최근 의견'}</span><button type="button" class="chip-btn sm" data-brokers="${sym}">${showAll ? '증권사별로 보기' : '전체 기록 보기'}</button></div>
-      <ul class="h-list br-list">${rows}</ul><p class="note">출처: Finviz. 목표가 옆 %는 현재가 대비. "A→B"는 이번에 바꾼 의견·목표가예요.</p>`;
+      <ul class="h-list br-list">${rows}</ul><p class="note">출처: ${esc(state.analyst?.[sym]?.street?.brokerSrc || 'Finviz')}. 목표가 옆 %는 현재가 대비. "A→B"는 이번에 바꾼 의견·목표가예요. '목표↑·목표↓'는 의견은 그대로 두고 목표가만 바꾼 거예요.</p>`;
   }
 
   // ---------------------------------------------------------------- 옵션 시장 심리 (CBOE 지연 시세)

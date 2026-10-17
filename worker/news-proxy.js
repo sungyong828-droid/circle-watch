@@ -948,7 +948,31 @@ export async function buildAnalyst(sym) {
 }
 // Finviz: 증권사별 의견·목표가 변경 이력, 실적 발표 시각(장 전 BMO·장 후 AMC), 분기별 EPS·매출 실적과 예상
 const RATING_MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+// MarketBeat 의견 변경 기록(목표가 상향·하향·유지까지 — Finviz 무료 화면은 등급 변경만 나온다)
+// 표 한 줄: 날짜 · 증권사 · 애널리스트 · 행동 · 의견 · 목표가 · 현재가 대비. 거래소는 주소가 알아서 맞춰 준다(NASDAQ → NYSE 등)
+const MB_ACTION = { 'Boost Target': 'Target Raised', 'Lower Target': 'Target Lowered', 'Reiterated Rating': 'Reiterated', Upgrade: 'Upgrade', Downgrade: 'Downgrade', 'Initiated Coverage': 'Initiated', 'Resumed Coverage': 'Resumed' };
+const MB_SKIP = /Weiss Ratings|Wall Street Zen/i; // 사람 애널리스트가 아닌 자동 등급
+export async function buildMarketBeat(sym) {
+  const r = await fetch(`https://www.marketbeat.com/stocks/NASDAQ/${sym}/forecast/`, { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(9000) });
+  if (!r.ok) throw new Error('marketbeat ' + r.status);
+  const t = await r.text(), out = [];
+  const txt = (h) => decodeXml(h.replace(/<[^>]+>/g, ' ')).replace(/&#x279D;|➝/g, '→').replace(/&[a-z#0-9]+;/g, ' ').replace(/\s+/g, ' ').trim();
+  for (const m of t.matchAll(/<tr><td data-sort-value="(\d{8})\d*">[\d/]+<\/td><td data-clean="([^"|]*)\|[^"]*"([\s\S]*?)<\/tr>/g)) {
+    const firm = decodeXml(m[2]).trim();
+    if (!firm || MB_SKIP.test(firm)) continue;
+    const td = [...m[3].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((x) => txt(x[1]));
+    const [act, rating, target] = [td[1] || '', td[2] || '', (td[3] || '').replace(/\.00\b/g, '').replace(/\s*→\s*/, ' → ')];
+    let action = MB_ACTION[act];
+    if (!action) { // 'Set Target' 등: 의견이 바뀌었으면 상향·하향, 아니면 목표가 방향
+      const tg = target.match(/\$([\d,.]+)\s*→\s*\$([\d,.]+)/);
+      action = tg ? (+tg[2].replace(/,/g, '') >= +tg[1].replace(/,/g, '') ? 'Target Raised' : 'Target Lowered') : /\$/.test(target) ? 'Target Set' : 'Reiterated';
+    }
+    out.push({ d: `${m[1].slice(0, 4)}-${m[1].slice(4, 6)}-${m[1].slice(6, 8)}`, action, firm: firm.replace(/^The /, '').replace(/ Group$| & Company LLC$| Company$/, ''), rating, target, src: 'MarketBeat' });
+  }
+  return out;
+}
 export async function buildStreet(sym) {
+  const mbP = buildMarketBeat(sym).catch(() => []);
   const r = await fetch(`https://finviz.com/quote.ashx?t=${sym}&p=d`, { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(9000) });
   if (!r.ok) throw new Error('finviz ' + r.status);
   const t = await r.text();
@@ -968,12 +992,15 @@ export async function buildStreet(sym) {
   const earn = snap('Earnings'); // "Nov 03 AMC"
   const quarters = [...t.matchAll(/\{"dateTimestamp":(\d+),"eventType":"chartEvent\/earnings"[^{}]*\}/g)].map((m) => { try { return JSON.parse(m[0]); } catch { return null; } }).filter(Boolean)
     .map((e) => ({ at: e.dateTimestamp * 1000, period: e.fiscalPeriod, eps: e.epsActual ?? null, epsEst: e.epsEstimate ?? null, sales: e.salesActual != null ? e.salesActual * 1e6 : null, salesEst: e.salesEstimate != null ? e.salesEstimate * 1e6 : null }));
-  return { brokers: brokers.slice(0, 40), earnings: earn, earningsTime: /AMC/.test(earn || '') ? 'AMC' : /BMO/.test(earn || '') ? 'BMO' : null, epsNextQ: snap('EPS next Q'), recom: snap('Recom'), quarters };
+  // 두 곳을 합친다: MarketBeat(목표가 변경까지) 우선 + 같은 날 같은 증권사가 없으면 Finviz 것도
+  const mb = await mbP, key = (b) => `${b.d}|${String(b.firm).toLowerCase().split(/[\s,&.]+/)[0]}`, have = new Set(mb.map(key));
+  const merged = [...mb, ...brokers.filter((b) => !have.has(key(b)))].sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));
+  return { brokers: merged.slice(0, 40), brokerSrc: mb.length ? 'MarketBeat · Finviz' : 'Finviz', earnings: earn, earningsTime: /AMC/.test(earn || '') ? 'AMC' : /BMO/.test(earn || '') ? 'BMO' : null, epsNextQ: snap('EPS next Q'), recom: snap('Recom'), quarters };
 }
 export async function handleAnalyst(url, cache, cors, ctx) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/analyst?s=${sym}&v=4`, {
+  return swr(cache, ctx, `${url.origin}/analyst?s=${sym}&v=5`, {
     freshSec: url.searchParams.has('live') ? 300 : 3 * 3600, keepSec: 7 * 86400, maxStaleSec: 12 * 3600, cors,
     build: async () => {
       const [a, st] = await Promise.allSettled([buildAnalyst(sym), buildStreet(sym)]);
