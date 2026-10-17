@@ -2256,7 +2256,7 @@
       return sessionStorage.getItem('cw.demo') === '1';
     } catch { return false; }
   })();
-  const DEMO_BLOCK = new Set(['cw.fire', 'cw.fireHist', 'cw.div', 'cw.fireMile', 'cw.visit', 'cw.pxDay', 'cw.targets', 'cw.votes']);
+  const DEMO_BLOCK = new Set(['cw.fire', 'cw.fireHist', 'cw.div', 'cw.fireMile', 'cw.visit', 'cw.pxDay', 'cw.targets', 'cw.votes', 'cw.acct', 'cw.fininc', 'cw.rebal']);
   const DEMO_FIRE = { positions: [{ ticker: 'CRCL', shares: 400, avg: 72, n: '서클 인터넷 그룹' }, { ticker: 'JOBY', shares: 3000, avg: 6.2, n: '조비 에비에이션' }, { ticker: 'SCHD', shares: 800, avg: 26.5, n: 'Schwab US Dividend Equity ETF' }, { ticker: '005930.KS', shares: 150, avg: 62000, n: '삼성전자' }], goal: 1e9, buyFx: 1350, afterTax: false };
   const DEMO_DIV = { hold: [{ t: 'SCHD', sh: 800, avg: 26.5, d: '2024-03-04' }, { t: 'O', sh: 300, avg: 54, d: '2024-06-03' }, { t: 'JEPI', sh: 400, avg: 55, d: '2025-01-13' }, { t: 'KO', sh: 100, avg: 60, d: '2024-09-03' }], tax: 0.15 };
   const writeJSON = (k, v) => { if (DEMO && DEMO_BLOCK.has(k)) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -2688,7 +2688,9 @@
     const D = state.growData[t];
     if (!D || D.error || !(D.price > 0)) return null;
     const ev2 = D.events || [], now = Date.now(), y = (k) => ev2.filter((e) => { const a = (now - Date.parse(e.ex)) / 86400000; return a >= k * 365 && a < (k + 1) * 365; }).reduce((s2, e) => s2 + e.amt, 0);
-    const ttm = y(0), y5 = y(5), y3 = y(3);
+    // 비교할 해의 배당 기록이 1년 내내 있어야(상장 첫해처럼 일부만 있으면 성장률이 부풀려진다) 그 해를 기준으로 쓴다
+    const first = ev2.length ? Math.min(...ev2.map((e) => Date.parse(e.ex))) : now, full = (k) => (now - first) / 86400000 >= (k + 1) * 365 - 45;
+    const ttm = y(0), y5 = full(5) ? y(5) : 0, y3 = full(3) ? y(3) : 0;
     const cagr = ttm > 0 && y5 > 0 ? (ttm / y5) ** (1 / 5) - 1 : ttm > 0 && y3 > 0 ? (ttm / y3) ** (1 / 3) - 1 : null;
     const n = ev2.filter((e) => (now - Date.parse(e.ex)) / 86400000 < 365).length;
     return { ttm, price: D.price, yld: ttm / D.price, cagr: cagr == null ? null : Math.max(-0.05, Math.min(0.15, cagr)), n, kr: krTk(t) };
@@ -2948,7 +2950,7 @@
         <div><span>${EN ? 'Refund so far' : '지금까지 돌려받을 세금'}</span><b class="up">${wonFull(A.refund)}</b><small>${EN ? 'credit' : '세액공제'} ${pctPlain(A.rate, 1)}</small></div>
         <div><span>${EN ? 'If you fill the rest' : '한도를 다 채우면 더'}</span><b>${A.more > 0 ? '+' + wonFull(A.more) : '–'}</b><small>${A.more > 0 ? (EN ? `${A.morePen ? `pension +${man(A.morePen)}` : ''}${A.morePen && A.moreIrp ? ' · ' : ''}${A.moreIrp ? `IRP +${man(A.moreIrp)}` : ''}` : `${A.morePen ? `연금저축 +${man(A.morePen)}` : ''}${A.morePen && A.moreIrp ? ' · ' : ''}${A.moreIrp ? `IRP +${man(A.moreIrp)}` : ''}`) : (EN ? 'All filled 🎉' : '다 채웠어요 🎉')}</small></div>
       </div>
-      <p class="note">${A.dd >= 0 ? `⏰ ${EN ? `Contributions count for this year until ${krDate(yearEndBiz())} (D-${A.dd}). Transfers on the last day can be late, so leave a few days.` : `올해 공제를 받으려면 ${krDate(yearEndBiz())}(D-${A.dd})까지 넣어야 해요. 마지막 날은 이체가 몰리니 며칠 여유 있게 넣으세요.`} ` : ''}${EN ? 'Moving a matured ISA into a pension adds a 10% credit (up to ₩3M). Credit rate follows the salary option in the tax comparison below.' : 'ISA 만기 자금을 연금계좌로 옮기면 옮긴 돈의 10%(최대 300만원)를 추가로 공제받아요. 공제율은 아래 세금 비교의 총급여 선택을 따라가요.'}</p>`;
+      <p class="note">${A.dd >= 0 ? `⏰ ${EN ? `Contributions count for this year until ${krDate(yearEndBiz())} (D-${A.dd}). Transfers on the last day can be late, so leave a few days.` : `올해 공제를 받으려면 ${krDate(yearEndBiz())}까지 넣어야 해요(D-${A.dd}). 마지막 날은 이체가 몰리니 며칠 여유 있게 넣으세요.`} ` : ''}${EN ? 'Moving a matured ISA into a pension adds a 10% credit (up to ₩3M). Credit rate follows the salary option in the tax comparison below.' : 'ISA 만기 자금을 연금계좌로 옮기면 옮긴 돈의 10%(최대 300만원)를 추가로 공제받아요. 공제율은 아래 세금 비교의 총급여 선택을 따라가요.'}</p>`;
   }
   function renderAcct() {
     if (!document.getElementById('c-acct')) return;

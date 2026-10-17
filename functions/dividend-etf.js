@@ -27,7 +27,8 @@ const FAQ = [
 ];
 function stat(j, kr) {
   const ev = j?.events || [], now = Date.now(), y = (k) => ev.filter((e) => { const a = (now - Date.parse(e.ex)) / 86400000; return a >= k * 365 && a < (k + 1) * 365; }).reduce((s, e) => s + e.amt, 0);
-  const ttm = y(0), n = ev.filter((e) => (now - Date.parse(e.ex)) / 86400000 < 365).length, y5 = y(5), y3 = y(3);
+  const first = ev.length ? Math.min(...ev.map((e) => Date.parse(e.ex))) : now, full = (k) => (now - first) / 86400000 >= (k + 1) * 365 - 45; // 기준 해 기록이 1년 내내 있어야
+  const ttm = y(0), n = ev.filter((e) => (now - Date.parse(e.ex)) / 86400000 < 365).length, y5 = full(5) ? y(5) : 0, y3 = full(3) ? y(3) : 0;
   const [base, yrs] = y5 > 0 ? [y5, 5] : y3 > 0 ? [y3, 3] : [0, 0];
   const price = j?.price;
   if (!(price > 0)) return null;
