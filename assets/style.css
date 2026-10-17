@@ -1889,3 +1889,37 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .gr-mix li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 12.5px; }
 .gr-mix b { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .gr-mix span { font: 700 12.5px var(--mono); color: var(--ink-2); } .gr-mix small { flex-basis: 100%; color: var(--ink-2); }
 .gr-row .sim-nm small.gr-meta { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; }
+
+/* 🔗 링크 공유 버튼 */
+.link-btn { display: flex; width: 100%; justify-content: center; margin-top: 12px; }
+.link-btn + .share-card-btn { margin-top: 8px; }
+/* 🏦 절세 계좌 한도 */
+.ac-in { margin-top: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ac-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.ac-list li { display: grid; gap: 5px; }
+.ac-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; } .ac-h b { font-size: 13.5px; } .ac-h span { font: 600 12.5px var(--mono); color: var(--ink-2); }
+.ac-list small { font-size: 12px; color: var(--ink-2); line-height: 1.45; }
+.ac-bar { height: 8px; border-radius: 6px; background: var(--surface-2); overflow: hidden; } .ac-bar i { display: block; height: 100%; border-radius: 6px; background: #3fbf7f; }
+.ac-sum { margin-top: 12px; }
+/* 💸 금융소득 게이지 */
+.fi-in { margin-top: 10px; }
+.fi-gauge { margin-top: 12px; }
+.fi-bar { position: relative; height: 12px; border-radius: 8px; background: var(--surface-2); overflow: visible; }
+.fi-bar i { display: block; height: 100%; border-radius: 8px; background: #3fbf7f; }
+.fi-gauge.warm .fi-bar i { background: #f2994a; } .fi-gauge.hot .fi-bar i { background: #f04452; }
+.fi-bar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--muted); opacity: 0.6; }
+.fi-num { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; } .fi-num b { font: 700 19px var(--mono); } .fi-num span { font-size: 12.5px; color: var(--muted); }
+.fi-msg { margin: 6px 0 0; font-size: 13px; line-height: 1.5; }
+.fi-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.fi-list li { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); } .fi-list span { color: var(--ink-2); } .fi-list b { font-family: var(--mono); }
+/* ⚖️ 리밸런싱 */
+.rb-in { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.rb-row { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 2px 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); }
+.rb-row b { font-size: 13.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rb-row small { grid-row: 2; font-size: 11.5px; color: var(--ink-2); }
+.rb-row .bn-in { grid-row: 1 / 3; grid-column: 2; width: 78px; } .rb-row .bn-in input { width: 100%; }
+.rb-cash { margin-top: 10px; }
+.rb-buy { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.rb-buy li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 10px 12px; border-radius: 12px; background: rgba(63, 191, 127, 0.1); box-shadow: inset 0 0 0 1px rgba(63, 191, 127, 0.35); }
+.rb-buy b { flex: 1 1 auto; font-size: 13.5px; } .rb-buy span { font: 800 16px var(--mono); } .rb-buy small { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
+.rb-tbl td.up { color: #3fbf7f; }
+@media (max-width: 400px) { .ac-in { grid-template-columns: 1fr 1fr; } }

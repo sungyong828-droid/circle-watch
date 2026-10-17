@@ -9,7 +9,7 @@ import landing
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 key = open(os.path.join(ROOT, 'indexnow.key'), encoding='utf-8').read().strip()
-urls = [landing.SITE] + [landing.SITE + s for s in ['about', 'dividend', 'fire', 'bonus', 'portfolio', 'etf-tax', 'grow', 'stablecoin', 'daily', 'calendar', 'money-flow', 'updates', 'en', *landing.STOCKS, *[B['slug'] for B in landing.load_biz()]]]
+urls = [landing.SITE] + [landing.SITE + s for s in ['about', 'dividend', 'fire', 'bonus', 'portfolio', 'etf-tax', 'grow', 'stablecoin', 'daily', 'calendar', 'money-flow', 'dividend-etf', 'updates', 'en', *landing.STOCKS, *[B['slug'] for B in landing.load_biz()]]]
 body = json.dumps({'host': 'my-fire-portfolio.pages.dev', 'key': key, 'keyLocation': f'{landing.SITE}{key}.txt', 'urlList': urls}).encode()
 for ep in ['https://api.indexnow.org/indexnow', 'https://searchadvisor.naver.com/indexnow']:
     req = urllib.request.Request(ep, data=body, headers={'Content-Type': 'application/json; charset=utf-8'}, method='POST')

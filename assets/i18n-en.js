@@ -2122,7 +2122,8 @@ window.__I18N_EN = {
 "🧮 포트폴리오": "🧮 Portfolio",
 "🧾 세금": "🧾 Tax",
 "적립식 배당 시뮬레이터": "Monthly investing simulator",
-"미국 ETF 세금 비교": "US ETF tax comparison"
+"미국 ETF 세금 비교": "US ETF tax comparison",
+"배당 ETF 비교": "Dividend ETF comparison"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

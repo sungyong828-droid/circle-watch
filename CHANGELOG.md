@@ -11,6 +11,22 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🏦 **절세 계좌 한도 트래커**(Fire · 🧾 세금): 올해 ISA·연금저축·IRP에 넣은 돈을 적으면 남은 한도와, 연말까지 채우면 연말정산에서 더 돌려받는 세금, 마감 D-day를 보여줘요.
+- 💸 **금융소득 2천만원 게이지**(Fire · 🧾 세금): 올해 받은·받을 배당(세전)과 이자를 더해 종합과세 기준까지 얼마나 남았는지 보여줘요. 배당금 탭의 보유 종목이 자동으로 들어가요.
+- ⚖️ **리밸런싱 도우미**(Fire · 퇴사까지): 목표 비중과 이번 달 넣을 돈을 정하면 어떤 종목을 몇 주 사야 비중이 맞는지 알려줘요. 팔지 않고 사기만 해서 맞춰요.
+- 🔗 **계산 조건 링크 공유**: 적립식 시뮬레이터·미국 ETF 세금 비교의 조건을 링크 하나로 보내면 받은 사람도 같은 조건으로 열어 볼 수 있어요. 세금 비교 결과는 이미지로도 공유돼요.
+- 🔍 검색으로 바로 볼 수 있는 '배당 ETF 비교' 페이지를 열었어요(SCHD·JEPI·JEPQ·TIGER 미국배당다우존스 등 배당률·월배당 매일 갱신).
+- ⚡ 앱 파일을 줄여 첫 화면이 조금 더 빨리 떠요.
+<!-- internal --> build.py esbuild minify(dist/assets *.js·*.css, npx 캐시의 esbuild, 없으면 건너뜀) · functions/dividend-etf.js(/api/dividends, 6시간 캐시) · cw.acct·cw.fininc·cw.rebal(기기 옮기기 포함) · #grow&g= / #etftax&e= 링크.
+<!-- EN
+- Tax-saving account limits (FIRE · Tax): ISA, pension and IRP contributions this year, limit left, extra refund if you fill it, and the year-end deadline.
+- ₩20M financial income gauge (FIRE · Tax): this year's dividends (before tax) and interest against the comprehensive-tax threshold.
+- Rebalancing helper (FIRE): set target weights and this month's money to see which stocks to buy and how many shares — no selling.
+- Share calculator inputs as a link (monthly investing simulator and US ETF tax comparison); the tax comparison can also be shared as an image.
+- New public page: dividend ETF comparison (SCHD, JEPI, JEPQ, Korea-listed US dividend ETFs), updated daily.
+- Smaller app files for a faster first load.
+-->
+
 ## v2026.10.17-3 — 2026-10-17
 
 [이 버전 보기](https://3ee62549.my-fire-portfolio.pages.dev) · 커밋 `00ca079`

@@ -46,7 +46,7 @@ import datetime
 import landing
 slugs = landing.build(DIST)
 today = datetime.date.today().isoformat()
-urls = [('', '1.0')] + [(s, '0.8') for s in slugs if s != 'feedback'] + [('daily', '0.8'), ('stablecoin', '0.9'), ('calendar', '0.8'), ('money-flow', '0.8')]  # 문의 페이지는 검색에 안 내보냄 · /daily 는 서버 페이지
+urls = [('', '1.0')] + [(s, '0.8') for s in slugs if s != 'feedback'] + [('daily', '0.8'), ('stablecoin', '0.9'), ('calendar', '0.8'), ('money-flow', '0.8'), ('dividend-etf', '0.8')]  # 문의 페이지는 검색에 안 내보냄 · /daily 는 서버 페이지
 # /daily 서버 페이지(functions/daily)가 쓰는 틀
 import json as _djson
 with open(os.path.join(ROOT, 'worker', 'daily-tpl.js'), 'w', encoding='utf-8') as _f:
@@ -106,6 +106,22 @@ with open(os.path.join(ROOT, 'worker', 'site-headers.js'), 'w', encoding='utf-8'
     f.write('// 자동 생성(build.py) — _headers 의 "/*" 보안 헤더. functions/index.js 가 첫 화면 응답에 붙인다.\n')
     f.write("export const PROD_HOST = 'my-fire-portfolio.pages.dev';\n")
     f.write('export const SITE_HEADERS = ' + _json.dumps(hdrs, ensure_ascii=False, indent=2) + ';\n')
+
+# 화면 파일 줄이기(esbuild minify): 주석·공백·긴 변수 이름을 줄여 첫 로딩을 가볍게. esbuild가 없으면 건너뛴다(원본 그대로 배포)
+def _esbuild():
+    import glob
+    c = glob.glob(os.path.join(os.environ.get('LOCALAPPDATA', ''), 'npm-cache', '_npx', '*', 'node_modules', 'esbuild', 'bin', 'esbuild'))
+    return max(c, key=os.path.getmtime) if c else None
+_esb = _esbuild()
+_min = [os.path.join(DIST, 'assets', f) for f in sorted(os.listdir(os.path.join(DIST, 'assets'))) if f.endswith(('.js', '.css'))]
+if _esb and _min:
+    _before = sum(os.path.getsize(f) for f in _min)
+    r = subprocess.run(['node', _esb, *_min, '--minify', '--charset=utf8', '--log-level=warning', '--allow-overwrite', '--outdir=' + os.path.join(DIST, 'assets')], capture_output=True, text=True, encoding='utf-8')
+    if r.returncode != 0:
+        sys.exit('minify 실패: ' + (r.stderr or r.stdout)[:2000])
+    print(f'minify: {_before // 1024} KB → {sum(os.path.getsize(f) for f in _min) // 1024} KB')
+else:
+    print('minify 건너뜀(esbuild 없음)')
 
 # 최종 확인: dist 어디에도 개인 식별자가 남아 있으면 배포하지 않는다
 leaks = []
