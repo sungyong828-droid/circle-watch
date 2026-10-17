@@ -1544,6 +1544,20 @@
           W.divGot?.length && { label: EN ? 'Dividends this week' : '이번 주 받은 배당', value: usd2(W.divNet), money: true },
         ].filter(Boolean).slice(0, 4) };
     }
+    if (kind === 'grow') {
+      const R = growCalc();
+      if (!R) return null;
+      const L = R.last, mix = R.P.map((h) => `${h.name} ${Math.round(h.k * 100)}%`).join(' · ');
+      return { kind, tag, title: EN ? '📈 Monthly investing plan' : '📈 적립식 배당 시뮬레이션', bar: L.val > 0 ? Math.min(1, L.inv / L.val) : null,
+        hero: { label: EN ? `Monthly dividend in ${R.years} years${growCfg.tax ? ' (after tax)' : ''}` : `${R.years}년 뒤 한 달 배당${growCfg.tax ? '(세후)' : ''}`, value: wonFull(L.mon), money: true,
+          alt: { label: EN ? 'Value vs invested' : '넣은 돈 대비 평가금액', value: `${(L.val / L.inv).toFixed(2)}${EN ? 'x' : '배'}`, money: false } },
+        lines: [
+          { label: EN ? 'Stocks' : '종목 구성', value: mix.length > 34 ? `${R.P.map((h) => h.name).slice(0, 4).join('·')}${R.P.length > 4 ? ` +${R.P.length - 4}` : ''}` : mix, money: false },
+          { label: EN ? 'Every month' : '매달 넣는 돈', value: wonFull((+growCfg.monthly || 0) * 1e4), money: true },
+          { label: EN ? `Value after ${R.years}y` : `${R.years}년 뒤 평가금액`, value: wonFull(L.val), money: true },
+          R.hit100 != null ? { label: EN ? '₩1M monthly dividend' : '월배당 100만원', value: EN ? `Year ${R.hit100}` : `${R.hit100}년 차`, money: false } : { label: EN ? 'Dividend growth' : '배당 성장(연)', value: pctPlain(R.gD, 1), money: false },
+        ] };
+    }
     if (kind === 'bonus') {
       const R = bonusCalc();
       if (!R.ready) return null;
@@ -2650,62 +2664,128 @@
 
 
   // ---------------------------------------------------------------- 📈 적립식 배당 시뮬레이터(배당금 · 세 번째 보기)
-  // 매달 같은 돈으로 한 종목을 사 모으면 N년 뒤 평가금액·월배당이 얼마인지. 배당 성장률은 그 종목의 실제 배당 기록(최근 5년)으로 자동 계산
-  const GROW_KEY = 'cw.grow';
-  let growCfg = Object.assign({ t: 'SCHD', start: 1000, monthly: 50, years: 10, drip: true, gP: 6, gD: null, tax: true }, readJSON(GROW_KEY, {}) || {});
+  // 여러 종목을 비중대로 매달 사 모으면 N년 뒤 평가금액·월배당이 얼마인지. 종목마다 실제 배당 기록(최근 5년)으로 배당 성장률을 따로 계산해 각각 굴린 뒤 더한다
+  const GROW_KEY = 'cw.grow', GROW_MAX = 10;
+  const GROW_PICKS = ['SCHD', 'JEPI', 'O', 'VOO', 'QQQ', 'KO', '005930.KS'];
+  let growCfg = Object.assign({ rows: [{ t: 'SCHD', w: 50 }, { t: 'JEPI', w: 30 }, { t: 'O', w: 20 }], start: 1000, monthly: 50, years: 10, drip: true, gP: 6, gD: null, tax: true }, readJSON(GROW_KEY, {}) || {});
+  if (!Array.isArray(growCfg.rows)) growCfg.rows = [];
+  if (growCfg.t) { if (!growCfg.rows.length) growCfg.rows = [{ t: growCfg.t, w: 100 }]; delete growCfg.t; } // 예전(한 종목) 설정 옮기기
   state.growData = {};
+  let growSearchOpen = false, growResults = [], growSearchTimer = null;
+  const growSave = () => writeJSON(GROW_KEY, growCfg);
+  const growName = (r) => (krTk(r.t) ? (EN ? (r.t === '005930.KS' ? 'Samsung' : r.t.slice(0, 6)) : r.n || state.growData[r.t]?.name || fireName(r.t) || r.t.slice(0, 6)) : r.t);
   function growInfo(t) {
     const D = state.growData[t];
-    if (!D?.events?.length || !(D.price > 0)) return null;
-    const now = Date.now(), y = (k) => D.events.filter((e) => { const a = (now - Date.parse(e.ex)) / 86400000; return a >= k * 365 && a < (k + 1) * 365; }).reduce((s2, e) => s2 + e.amt, 0);
+    if (!D || D.error || !(D.price > 0)) return null;
+    const ev2 = D.events || [], now = Date.now(), y = (k) => ev2.filter((e) => { const a = (now - Date.parse(e.ex)) / 86400000; return a >= k * 365 && a < (k + 1) * 365; }).reduce((s2, e) => s2 + e.amt, 0);
     const ttm = y(0), y5 = y(5), y3 = y(3);
-    const cagr = y5 > 0 ? (ttm / y5) ** (1 / 5) - 1 : y3 > 0 ? (ttm / y3) ** (1 / 3) - 1 : null;
-    const n = D.events.filter((e) => (now - Date.parse(e.ex)) / 86400000 < 365).length;
-    return { ttm, price: D.price, yld: ttm / D.price, cagr: cagr == null ? null : Math.max(-0.05, Math.min(0.15, cagr)), n, kr: krTk(t), name: D.name };
+    const cagr = ttm > 0 && y5 > 0 ? (ttm / y5) ** (1 / 5) - 1 : ttm > 0 && y3 > 0 ? (ttm / y3) ** (1 / 3) - 1 : null;
+    const n = ev2.filter((e) => (now - Date.parse(e.ex)) / 86400000 < 365).length;
+    return { ttm, price: D.price, yld: ttm / D.price, cagr: cagr == null ? null : Math.max(-0.05, Math.min(0.15, cagr)), n, kr: krTk(t) };
+  }
+  function growLoad() {
+    for (const r of growCfg.rows) {
+      const t = r.t;
+      if (state.growData[t] || state.growData[t + ':loading']) continue;
+      state.growData[t + ':loading'] = true;
+      getJ(`${NEWS_API}/dividends?s=${encodeURIComponent(t)}`, 15000)
+        .then((j) => { state.growData[t] = j.error ? { error: true } : j; })
+        .catch(() => { state.growData[t] = { error: true }; })
+        .finally(() => { delete state.growData[t + ':loading']; if (!growCfg.rows.some((x) => state.growData[x.t + ':loading'])) renderGrow(); });
+    }
   }
   function growCalc() {
-    const I = growInfo(growCfg.t), fx = state.quote?.fx?.rate;
-    if (!I || (!I.kr && !fx)) return null;
-    const won = (v) => (I.kr ? v : v / fx); // 만원 → 종목 통화
-    const gP = (+growCfg.gP || 0) / 100, gD = growCfg.gD == null || growCfg.gD === '' ? (I.cagr ?? 0.05) : (+growCfg.gD || 0) / 100;
-    const tax = growCfg.tax ? (I.kr ? 0.154 : 0.15) : 0, years = Math.max(1, Math.min(40, Math.round(+growCfg.years || 10)));
-    let p = I.price, D = I.ttm, sh = won((+growCfg.start || 0) * 1e4) / p, cash = 0, inv = (+growCfg.start || 0) * 1e4, cum = 0, hit100 = null;
-    const rows = [{ y: 0, inv, val: sh * p, mon: sh * D / 12 * (1 - tax), cum: 0 }];
+    const fx = state.quote?.fx?.rate, rows = growCfg.rows.filter((r) => r.t);
+    if (!rows.length || rows.some((r) => state.growData[r.t + ':loading'] || !state.growData[r.t])) return null;
+    const H = rows.map((r) => ({ r, I: growInfo(r.t) })).filter((h) => h.I && (h.I.kr || fx));
+    const wSum = H.reduce((a, h) => a + Math.max(0, +h.r.w || 0), 0);
+    if (!H.length || !(wSum > 0)) return null;
+    const gP = (+growCfg.gP || 0) / 100, over = growCfg.gD == null || growCfg.gD === '' ? null : (+growCfg.gD || 0) / 100;
+    const years = Math.max(1, Math.min(40, Math.round(+growCfg.years || 10))), start = (+growCfg.start || 0) * 1e4, add = (+growCfg.monthly || 0) * 1e4;
+    const P = H.map(({ r, I }) => {
+      const k = Math.max(0, +r.w || 0) / wSum, toCur = (v) => (I.kr ? v : v / fx), toW = (v) => (I.kr ? v : v * fx);
+      return { t: r.t, name: growName(r), k, I, toCur, toW, p: I.price, D: I.ttm, gD: over ?? I.cagr ?? 0.05, tax: growCfg.tax ? (I.kr ? 0.154 : 0.15) : 0, sh: toCur(start * k) / I.price, cash: 0, cum: 0 };
+    });
+    const snap = (y, inv) => ({ y, inv, val: P.reduce((a, h) => a + h.toW(h.sh * h.p + h.cash), 0), mon: P.reduce((a, h) => a + h.toW(h.sh * h.D / 12 * (1 - h.tax)), 0), cum: P.reduce((a, h) => a + h.toW(h.cum), 0) });
+    let inv = start, hit100 = null;
+    const out = [snap(0, inv)];
     for (let m = 1; m <= years * 12; m++) {
-      const add = (+growCfg.monthly || 0) * 1e4; sh += won(add) / p; inv += add;
-      const net = sh * D / 12 * (1 - tax);
-      cum += net; if (growCfg.drip) sh += net / p; else cash += net;
-      p *= (1 + gP) ** (1 / 12);
+      inv += add;
+      for (const h of P) {
+        h.sh += h.toCur(add * h.k) / h.p;
+        const net = h.sh * h.D / 12 * (1 - h.tax);
+        h.cum += net; if (growCfg.drip) h.sh += net / h.p; else h.cash += net;
+        h.p *= (1 + gP) ** (1 / 12);
+      }
       if (m % 12 === 0) {
-        D *= 1 + gD;
-        const toW = (v) => (I.kr ? v : v * fx), mon = toW(sh * D / 12 * (1 - tax));
-        if (hit100 == null && mon >= 1e6) hit100 = m / 12;
-        rows.push({ y: m / 12, inv, val: toW(sh * p + cash), mon, cum: toW(cum) });
+        for (const h of P) h.D *= 1 + h.gD;
+        const S = snap(m / 12, inv);
+        if (hit100 == null && S.mon >= 1e6) hit100 = m / 12;
+        out.push(S);
       }
     }
-    return { I, rows, last: rows.at(-1), gD, gP, tax, hit100, years };
+    const yld = P.reduce((a, h) => a + h.k * h.I.yld, 0), gD = P.reduce((a, h) => a + h.k * h.gD, 0);
+    return { P, rows: out, last: out.at(-1), yld, gD, gP, hit100, years, skipped: rows.filter((r) => !H.some((h) => h.r === r)).map(growName) };
+  }
+  function growWeightHtml() {
+    const t = Math.round(growCfg.rows.reduce((a, r) => a + (+r.w || 0), 0));
+    if (!growCfg.rows.length) return '';
+    if (t === 100) return `<span class="ok">✓ ${EN ? 'Weights total 100%' : '비중 합계 100%'}</span>`;
+    return `<span class="warn">${EN ? `Weights total ${t}%` : `비중 합계 ${t}%`}</span> <small>${EN ? 'Scaled to 100% in the calculation' : '계산할 때 비율대로 100%에 맞춰요'}</small>`;
+  }
+  function growRowsHtml() {
+    return growCfg.rows.map((r, i) => {
+      const I = growInfo(r.t), D = state.growData[r.t], kr = krTk(r.t), nm = growName(r);
+      const meta = D?.error ? `<small class="warn">${EN ? 'No data' : '자료를 못 받았어요'}</small>` : I ? `<small>${EN ? 'yield' : '배당률'} ${pctPlain(I.yld, 1)}${I.cagr != null ? ` · ${EN ? '5y div growth' : '5년 배당 성장'} ${pctPlain(I.cagr, 1)}` : I.ttm ? '' : ` · ${EN ? 'no dividend' : '배당 없음'}`}</small>` : `<small>${EN ? 'Loading…' : '불러오는 중…'}</small>`;
+      return `<div class="sim-row gr-row" data-t="${esc(r.t)}"><div class="sim-tw">${logoPath(r.t) ? `<img class="sim-logo" src="${logoPath(r.t)}" alt="" width="26" height="26" loading="lazy">` : `<span class="sim-logo ws-letter">${esc(String(nm || '?')[0])}</span>`}<div class="sim-nm"><b>${esc(nm)}</b>${kr ? `<small>${r.t.slice(0, 6)}</small>` : ''}${meta}</div></div><div class="bn-in"><input class="gr-w" data-growi="${i}" inputmode="numeric" maxlength="3" value="${esc(String(r.w ?? ''))}" aria-label="${esc(nm)} ${EN ? 'weight' : '비중'}"><em>%</em></div><button type="button" class="f-rm" data-growrm="${i}" aria-label="${EN ? 'Remove' : '이 종목 빼기'}">×</button></div>`;
+    }).join('');
+  }
+  function growResHtml() {
+    const q = document.getElementById('gr-q')?.value.trim() || '';
+    if (!q) return `<li class="empty">${EN ? 'Search by ticker or company name' : '미국은 티커나 회사명(리얼티인컴), 한국은 종목명이나 종목코드로 찾아요'}</li>`;
+    if (growResults === null) return `<li class="empty">${EN ? 'Searching…' : '검색 중…'}</li>`;
+    const have = new Set(growCfg.rows.map((r) => r.t));
+    return growResults.filter((r) => TICKER_RE.test(r.symbol)).slice(0, 12).map((r) => { const kr = krTk(r.symbol), nm = r.name || r.symbol; return `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((kr ? nm : r.symbol) || '?')[0])}</span>`}<div class="ws-name"><b>${esc(kr ? nm : r.symbol)}</b><small>${esc(kr ? `${r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${r.symbol.slice(0, 6)}${r.etf ? ' · ETF' : ''}` : r.kr && !EN && r.kr !== nm ? `${r.kr} · ${nm}` : nm)}</small></div>${have.has(r.symbol) ? `<em class="sim-added">✓ ${EN ? 'Added' : '추가됨'}</em>` : `<button type="button" class="ws-btn add" data-growres="${esc(r.symbol)}" data-n="${esc(kr ? nm : '')}">+ ${EN ? 'Add' : '추가'}</button>`}</li>`; }).join('') || `<li class="empty">${EN ? 'No matches' : '찾는 종목이 없어요'}</li>`;
+  }
+  function growSearch(q) {
+    clearTimeout(growSearchTimer);
+    const paint = () => { const el = document.getElementById('gr-res'); if (el) el.innerHTML = growResHtml(); };
+    if (!q.trim()) { growResults = []; paint(); return; }
+    growSearchTimer = setTimeout(async () => {
+      growResults = null; paint();
+      const r = await findSyms(q);
+      if ((document.getElementById('gr-q')?.value || '') !== q) return;
+      growResults = r; paint();
+    }, 250);
+  }
+  function growAdd(t, n) {
+    if (!TICKER_RE.test(t) || growCfg.rows.some((r) => r.t === t)) return;
+    if (growCfg.rows.length >= GROW_MAX) { toast(EN ? `Up to ${GROW_MAX} stocks` : `종목은 ${GROW_MAX}개까지 넣을 수 있어요`, true); return; }
+    const left = 100 - growCfg.rows.reduce((a, r) => a + (+r.w || 0), 0);
+    growCfg.rows.push({ t, w: left > 0 ? left : Math.round(100 / (growCfg.rows.length + 1)), ...(n ? { n } : {}) });
+    growSave();
   }
   function renderGrow() {
     const el = document.getElementById('c-grow');
     if (!el) return;
-    const t = growCfg.t, I = growInfo(t);
-    if (!state.growData[t] && !state.growData[t + ':loading']) {
-      state.growData[t + ':loading'] = true;
-      getJ(`${NEWS_API}/dividends?s=${encodeURIComponent(t)}`, 15000).then((j) => { if (!j.error) state.growData[t] = j; }).catch(() => {}).finally(() => { delete state.growData[t + ':loading']; renderGrow(); });
-    }
+    growLoad();
     if (!state.quote) loadQuote().then(renderGrow).catch(() => {});
-    const R = growCalc(), L = R?.last;
-    const picks = ['SCHD', 'JEPI', 'O', 'VOO', 'QQQ', 'KO', 'SCHD', '005930.KS'].filter((x, i, a) => a.indexOf(x) === i);
+    const R = growCalc(), have = new Set(growCfg.rows.map((r) => r.t));
     card('grow', {
-      title: EN ? '📈 Monthly investing simulator' : '📈 적립식 배당 시뮬레이터', sub: EN ? 'Buy the same stock every month → value and monthly dividends N years later' : '매달 같은 종목을 사 모으면 N년 뒤 평가금액·월배당은?',
-      easy: EN ? 'Enter how much you put in each month. We project the value and the monthly dividend, using the stock’s real dividend history for growth. Assumptions, not a forecast.' : '매달 넣을 돈을 정하면, 그 종목의 실제 배당 기록으로 배당이 늘어나는 속도를 계산해서 몇 년 뒤 평가금액과 한 달 배당을 보여줘요. 가정에 따른 계산이지 예측이 아니에요.',
-      body: `<div class="gr-picks">${picks.map((x) => `<button type="button" class="chip-btn sm" data-growt="${esc(x)}" aria-pressed="${x === t}">${esc(krTk(x) ? (EN ? (x === "005930.KS" ? "Samsung" : x.slice(0, 6)) : fireName(x) || x.slice(0, 6)) : x)}</button>`).join('')}<label class="gr-t"><input id="gr-t" value="${esc(krTk(t) || picks.includes(t) ? '' : t)}" placeholder="${EN ? 'Other ticker' : '다른 티커'}" autocapitalize="characters" maxlength="12"></label></div>
+      title: EN ? '📈 Monthly investing simulator' : '📈 적립식 배당 시뮬레이터', sub: EN ? 'Buy a mix of stocks every month → value and monthly dividends N years later' : '여러 종목을 비중대로 매달 사 모으면 N년 뒤 평가금액·월배당은?',
+      easy: EN ? 'Pick stocks and weights, then how much you put in each month. Each stock grows its dividend at its own real 5-year pace. Assumptions, not a forecast.' : '종목과 비중, 매달 넣을 돈을 정하면 종목마다 실제 배당 기록으로 배당이 늘어나는 속도를 따로 계산해서, 몇 년 뒤 평가금액과 한 달 배당을 보여줘요. 가정에 따른 계산이지 예측이 아니에요.',
+      share: R ? 'grow' : null,
+      body: `<div class="gr-picks" role="group" aria-label="${EN ? 'Quick add' : '빠르게 넣기'}">${GROW_PICKS.map((x) => `<button type="button" class="chip-btn sm" data-growpick="${esc(x)}" aria-pressed="${have.has(x)}">${have.has(x) ? '✓ ' : '+ '}${esc(growName({ t: x }))}</button>`).join('')}</div>
+        <div class="sim-rows gr-rows" id="gr-rows">${growRowsHtml()}</div>
+        ${growSearchOpen ? `<div class="sim-search"><div class="ws-search sim-q"><input id="gr-q" type="search" placeholder="${EN ? 'Ticker or name (e.g. SCHD, Realty Income)' : '티커나 종목명 (예: SCHD, 리얼티인컴, 삼성전자)'}" aria-label="${EN ? 'Search stocks' : '종목 검색'}" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button type="button" class="sim-qx" data-growclose="1" aria-label="${EN ? 'Close search' : '검색 닫기'}">×</button></div><ul class="ws-list sim-res" id="gr-res">${growResHtml()}</ul></div>` : ''}
+        <p class="sim-wsum" id="gr-wsum">${growWeightHtml()}</p>
+        <div class="sim-act"><button type="button" class="btn-ghost sm" data-growadd="1" aria-pressed="${growSearchOpen}">🔍 ${EN ? 'Find & add' : '종목 찾아 추가'}</button><button type="button" class="btn-ghost sm" data-groweq="1"${growCfg.rows.length > 1 ? '' : ' disabled'}>${EN ? 'Equal weights' : '비중 똑같이'}</button></div>
         <div class="bn-grid gr-in">
           <label class="bn-f"><span>${EN ? 'Start with' : '처음 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="start" value="${esc(String(growCfg.start))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
           <label class="bn-f"><span>${EN ? 'Every month' : '매달 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="monthly" value="${esc(String(growCfg.monthly))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
           <label class="bn-f"><span>${EN ? 'Years' : '기간'}</span><div class="bn-in"><input inputmode="numeric" data-grow="years" value="${esc(String(growCfg.years))}"><em>${EN ? 'yrs' : '년'}</em></div></label>
           <label class="bn-f"><span>${EN ? 'Price growth / yr' : '주가 상승률(연)'}</span><div class="bn-in"><input inputmode="decimal" data-grow="gP" value="${esc(String(growCfg.gP))}"><em>%</em></div></label>
-          <label class="bn-f"><span>${EN ? 'Dividend growth / yr' : '배당 성장률(연)'}</span><div class="bn-in"><input inputmode="decimal" data-grow="gD" value="${esc(growCfg.gD == null ? '' : String(growCfg.gD))}" placeholder="${I?.cagr != null ? (I.cagr * 100).toFixed(1) : '5'}"><em>%</em></div><small>${I?.cagr != null ? (EN ? `blank = last 5y actual ${(I.cagr * 100).toFixed(1)}%` : `비우면 최근 5년 실제 ${(I.cagr * 100).toFixed(1)}%`) : ''}</small></label>
+          <label class="bn-f gr-gd"><span>${EN ? 'Dividend growth / yr' : '배당 성장률(연)'}</span><div class="bn-in"><input inputmode="decimal" data-grow="gD" value="${esc(growCfg.gD == null ? '' : String(growCfg.gD))}" placeholder="${EN ? 'auto' : '자동'}"><em>%</em></div><small>${EN ? 'Blank = each stock’s own 5-year record' : '비우면 종목마다 최근 5년 실제 기록으로'}</small></label>
           <div class="gr-chk"><label class="chk"><input type="checkbox" data-grow="drip" ${growCfg.drip ? 'checked' : ''}> ${EN ? 'Reinvest dividends' : '배당 다시 사기(재투자)'}</label><label class="chk"><input type="checkbox" data-grow="tax" ${growCfg.tax ? 'checked' : ''}> ${EN ? 'After tax' : '세후(배당세 뺌)'}</label></div>
         </div>
         <div id="gr-out">${growOutHtml(R)}</div>`,
@@ -2713,16 +2793,26 @@
     if (R) drawGrow(R);
   }
   function growOutHtml(R) {
-    if (!R) return `<p class="skeleton">${EN ? 'Loading dividend history…' : '배당 기록 불러오는 중…'}</p>`;
-    const L = R.last, I = R.I, mk = [5, 10, 20, 30].filter((y) => y < R.years).map((y) => R.rows.find((r) => r.y === y)).filter(Boolean);
-    return `<p class="gr-info">${esc(I.kr && !EN ? fireName(growCfg.t) : growCfg.t)} · ${EN ? 'yield' : '배당률'} ${pctPlain(I.yld, 2)} · ${EN ? `${I.n} payouts/yr` : `1년 ${I.n}회 배당`} · ${EN ? 'div growth' : '배당 성장'} ${pctPlain(R.gD, 1)}</p>
+    if (!growCfg.rows.length) return `<p class="note">${EN ? 'Add at least one stock.' : '종목을 하나 이상 넣어 주세요.'}</p>`;
+    if (!R) return growCfg.rows.some((r) => !state.growData[r.t] || state.growData[r.t + ':loading']) ? `<p class="skeleton">${EN ? 'Loading dividend history…' : '배당 기록 불러오는 중…'}</p>` : `<p class="note">${EN ? 'Set weights above 0%.' : '비중을 0%보다 크게 넣어 주세요.'}</p>`;
+    const L = R.last, mk = [5, 10, 20, 30].filter((y) => y < R.years).map((y) => R.rows.find((r) => r.y === y)).filter(Boolean);
+    return `<p class="gr-info">${EN ? 'Portfolio yield' : '포트폴리오 배당률'} ${pctPlain(R.yld, 2)} · ${EN ? 'dividend growth' : '배당 성장'} ${pctPlain(R.gD, 1)}${EN ? '/yr (weighted)' : '/년(비중 평균)'}</p>
+      ${R.skipped.length ? `<p class="note warn">${esc(R.skipped.join(', '))} ${EN ? 'left out (no data)' : '— 자료를 못 받아 빼고 계산했어요'}</p>` : ''}
       <div class="gr-sum">
         <div><span>${R.years}${EN ? 'y later · value' : '년 뒤 평가금액'}</span><b>${wonFull(L.val)}</b><small>${EN ? 'invested' : '넣은 돈'} ${wonFull(L.inv)}</small></div>
-        <div><span>${EN ? 'Monthly dividend' : '한 달 배당'}${R.tax ? (EN ? ' (after tax)' : '(세후)') : ''}</span><b class="up">${wonFull(L.mon)}</b><small>${EN ? 'total received' : '그동안 받은 배당'} ${wonFull(L.cum)}</small></div>
+        <div><span>${EN ? 'Monthly dividend' : '한 달 배당'}${growCfg.tax ? (EN ? ' (after tax)' : '(세후)') : ''}</span><b class="up">${wonFull(L.mon)}</b><small>${EN ? 'total received' : '그동안 받은 배당'} ${wonFull(L.cum)}</small></div>
       </div>
       <div class="chart gr-chart"><canvas id="cv-grow" role="img" aria-label="${EN ? 'Projection' : '적립식 시뮬레이션'}"></canvas></div>
       ${mk.length ? `<ul class="gr-mk">${mk.map((r) => `<li><b>${r.y}${EN ? 'y' : '년'}</b><span>${wonFull(r.val)}</span><small>${EN ? 'monthly div' : '월배당'} ${wonFull(r.mon)}</small></li>`).join('')}</ul>` : ''}
+      ${R.P.length > 1 ? `<ul class="gr-mix">${R.P.map((h) => `<li><b>${esc(h.name)}</b><span>${pctPlain(h.k, 0)}</span><small>${EN ? 'monthly div' : '월배당'} ${wonFull(h.toW(h.sh * h.D / 12 * (1 - h.tax)))}</small></li>`).join('')}</ul>` : ''}
       <p class="note">${R.hit100 != null ? (EN ? `🎯 Monthly dividend passes ₩1M in year ${R.hit100}. ` : `🎯 ${R.hit100}년 차에 월배당 100만원을 넘어요. `) : ''}${EN ? 'Assumes constant price and dividend growth and today’s exchange rate. Past dividends don’t guarantee future ones.' : '주가·배당이 매년 같은 비율로 오르고 환율은 지금 그대로라고 가정했어요. 과거 배당이 미래를 보장하지 않아요.'}</p>`;
+  }
+  function growRefresh() {
+    const R = growCalc(), o = document.getElementById('gr-out'), w = document.getElementById('gr-wsum');
+    if (w) w.innerHTML = growWeightHtml();
+    if (o) { o.innerHTML = growOutHtml(R); if (R) drawGrow(R); }
+    const b = document.querySelector('#c-grow .share-card-btn');
+    if (b) b.hidden = !R;
   }
   function drawGrow(R) {
     const labels = R.rows.map((r) => r.y);
@@ -7119,8 +7209,15 @@
     if (scb) { openShare(scb.dataset.sharecard, scb); return; }
     const dsb = ev.target.closest('[data-dsub]');
     if (dsb) { setDivSub(dsb.dataset.dsub); applyFireTab(); if (state.divSub === 'sim') renderDivSim(); else if (state.divSub === 'grow') renderGrow(); else renderDiv(); markUse(state.divSub === 'sim' ? 'divsim' : 'div'); return; }
-    const grt = ev.target.closest('[data-growt]');
-    if (grt) { growCfg.t = grt.dataset.growt; growCfg.gD = null; writeJSON(GROW_KEY, growCfg); renderGrow(); return; }
+    const gpk = ev.target.closest('[data-growpick]');
+    if (gpk) { const t = gpk.dataset.growpick, i = growCfg.rows.findIndex((r) => r.t === t); if (i >= 0) growCfg.rows.splice(i, 1); else growAdd(t); growSave(); renderGrow(); return; }
+    const grm = ev.target.closest('[data-growrm]');
+    if (grm) { growCfg.rows.splice(+grm.dataset.growrm, 1); growSave(); renderGrow(); return; }
+    const grs = ev.target.closest('[data-growres]');
+    if (grs) { growAdd(grs.dataset.growres, grs.dataset.n || ''); growSearchOpen = false; growResults = []; renderGrow(); return; }
+    if (ev.target.closest('[data-growadd]')) { growSearchOpen = !growSearchOpen; growResults = []; renderGrow(); document.getElementById('gr-q')?.focus(); return; }
+    if (ev.target.closest('[data-growclose]')) { growSearchOpen = false; renderGrow(); return; }
+    if (ev.target.closest('[data-groweq]')) { const n = growCfg.rows.length, b = Math.floor(100 / n); growCfg.rows.forEach((r, i) => { r.w = b + (i < 100 - b * n ? 1 : 0); }); growSave(); renderGrow(); return; }
     const mc = ev.target.closest('.more-close');
     if (mc) { const d = mc.closest('details.more'); if (d) { d.open = false; const y = d.getBoundingClientRect().top; if (y < 70) window.scrollBy({ top: y - 90 }); } return; }
     const sr = ev.target.closest('[data-srange]');
@@ -7491,16 +7588,18 @@
     if (ev.key === 'Enter' && ev.target?.id === 'fd-name') saveFolder();
   });
   document.addEventListener('input', (ev) => {
+    if (ev.target.id === 'gr-q') { growSearch(ev.target.value); return; }
+    const gw = ev.target.dataset?.growi;
+    if (gw != null) { const r = growCfg.rows[+gw]; if (r) { r.w = ev.target.value.replace(/[^0-9]/g, ''); growSave(); growRefresh(); } return; }
     const gi = ev.target.dataset?.grow;
-    if (gi && ev.target.type !== 'checkbox') { growCfg[gi] = ev.target.value === '' && gi === 'gD' ? null : ev.target.value; writeJSON(GROW_KEY, growCfg); const R = growCalc(), o = document.getElementById('gr-out'); if (o) { o.innerHTML = growOutHtml(R); if (R) drawGrow(R); } return; }
+    if (gi && ev.target.type !== 'checkbox') { growCfg[gi] = ev.target.value === '' && gi === 'gD' ? null : ev.target.value; growSave(); growRefresh(); return; }
     const ei = ev.target.dataset?.etax;
     if (ei && ev.target.type !== 'checkbox' && ev.target.tagName !== 'SELECT') { etaxCfg[ei] = ev.target.value; writeJSON(ETAX_KEY, etaxCfg); const o = document.getElementById('et-out'); if (o) o.innerHTML = etaxOutHtml(); return; }
     if (ev.target.id === 'tax-gain' || ev.target.id === 'tax-loss') { taxCfg[ev.target.id === 'tax-gain' ? 'gain' : 'loss'] = ev.target.value; writeJSON(TAX_KEY, taxCfg); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); }
   });
   document.addEventListener('change', (ev) => {
     const gc = ev.target.dataset?.grow;
-    if (gc && ev.target.type === 'checkbox') { growCfg[gc] = ev.target.checked; writeJSON(GROW_KEY, growCfg); const R = growCalc(), o = document.getElementById('gr-out'); if (o) { o.innerHTML = growOutHtml(R); if (R) drawGrow(R); } return; }
-    if (ev.target.id === 'gr-t') { (async () => { const v = await resolveTicker(ev.target.value); if (TICKER_RE.test(v)) { growCfg.t = v; growCfg.gD = null; writeJSON(GROW_KEY, growCfg); renderGrow(); } else toast(EN ? 'Ticker not found' : '종목을 찾지 못했어요', true); })(); return; }
+    if (gc && ev.target.type === 'checkbox') { growCfg[gc] = ev.target.checked; growSave(); growRefresh(); return; }
     const ec = ev.target.dataset?.etax;
     if (ec && (ev.target.type === 'checkbox' || ev.target.tagName === 'SELECT')) { etaxCfg[ec] = ec === 'isa' ? (ev.target.checked ? 'low' : 'gen') : ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value; writeJSON(ETAX_KEY, etaxCfg); const o = document.getElementById('et-out'); if (o) o.innerHTML = etaxOutHtml(); return; }
     const heo = ev.target.closest?.('[data-heon]');
