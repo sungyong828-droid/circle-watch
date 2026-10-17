@@ -22,7 +22,7 @@ os.makedirs(os.path.join(DIST, 'data'))
 for f in ['index.html', 'admin.html', '_headers', 'robots.txt']:
     shutil.copy(os.path.join(ROOT, f), os.path.join(DIST, f))
 shutil.copytree(os.path.join(ROOT, 'assets'), os.path.join(DIST, 'assets'))
-for f in ['faa-joby.json', 'spcx-facts.json', 'tem-kpis.json']:
+for f in ['faa-joby.json', 'spcx-facts.json', 'tem-kpis.json', 'us-margin.json']:
     shutil.copy(os.path.join(ROOT, 'data', f), os.path.join(DIST, 'data', f))
 # 종목별 사업 현황(data/biz/*.json) — app.js의 BIZ_KEYS와 파일 목록이 같아야 화면에 나온다
 shutil.copytree(os.path.join(ROOT, 'data', 'biz'), os.path.join(DIST, 'data', 'biz'))
@@ -46,7 +46,7 @@ import datetime
 import landing
 slugs = landing.build(DIST)
 today = datetime.date.today().isoformat()
-urls = [('', '1.0')] + [(s, '0.8') for s in slugs if s != 'feedback'] + [('daily', '0.8'), ('stablecoin', '0.9')]  # 문의 페이지는 검색에 안 내보냄 · /daily 는 서버 페이지
+urls = [('', '1.0')] + [(s, '0.8') for s in slugs if s != 'feedback'] + [('daily', '0.8'), ('stablecoin', '0.9'), ('calendar', '0.8'), ('money-flow', '0.8')]  # 문의 페이지는 검색에 안 내보냄 · /daily 는 서버 페이지
 # /daily 서버 페이지(functions/daily)가 쓰는 틀
 import json as _djson
 with open(os.path.join(ROOT, 'worker', 'daily-tpl.js'), 'w', encoding='utf-8') as _f:

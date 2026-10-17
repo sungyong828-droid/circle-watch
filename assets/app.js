@@ -2456,6 +2456,7 @@
           <div><span>${EN ? 'Debt ÷ cash' : '빚투 비율'}</span><b>${(c.ratio * 100).toFixed(1)}%</b><small>${EN ? 'avg' : '평균'} ${(c.ratioAvg * 100).toFixed(0)}%</small></div>
         </div>
         ${I ? `<p class="fl-inv">${EN ? 'Today' : '오늘'} ${invLine(I, EN ? 'KOSPI' : '코스피')}</p>` : ''}
+        ${(() => { const US = usMarginStat(); if (!US) { loadUsMargin()?.then(renderFlowCard); return ''; } return `<p class="fl-inv"><span class="fl-inv-k">🇺🇸 ${EN ? 'US margin debt' : '미국 신용잔고'}</span><span><b>${usT(US.L[1])}</b> · ${US.L[0].replace('-', '.')}</span><span class="${US.ath ? 'up' : ''}">${US.ath ? (EN ? 'record high' : '사상 최고') : `${EN ? 'vs record' : '최고 대비'} ${pct(US.L[1] / US.prevMax[1] - 1, 0)}`}</span></p>`; })()}
         <button type="button" class="link-btn" data-go="flow">${EN ? 'What it means · charts' : '무슨 뜻인지 · 차트 자세히 보기'}${chevron}</button>`,
     });
   }
@@ -2504,6 +2505,19 @@
     const ratioR = R.map((r) => (r[2] / r[1]) * 100);
     flowChart('flowratio', R, [lineDs(EN ? 'Ratio' : '빚투 비율', ratioR, C.orange, { borderWidth: 2 }), lineDs(EN ? 'Average' : '평균', R.map(() => c.ratioAvg * 100), C.muted, { borderWidth: 1.2, borderDash: [5, 4] })], (v) => v.toFixed(0) + '%', (v) => (+v).toFixed(1) + '%');
     const IK = F.inv?.KOSPI, IQ = F.inv?.KOSDAQ;
+    const US = usMarginStat();
+    if (!US) loadUsMargin()?.then(() => { if (state.view === 'flow') renderFlowView(); renderFlowCard(); });
+    if (US) {
+      const UR = US.U.filter((x) => x[0] >= '2015-01');
+      card('flowus', {
+        title: EN ? '🇺🇸 US margin debt (FINRA)' : '🇺🇸 미국 신용잔고 — 미국판 빚투', sub: `${usT(US.L[1])} · ${US.L[0].replace('-', '.')} · ${US.ath ? (EN ? 'record high' : '사상 최고') : `${EN ? 'vs record' : '최고 대비'} ${pct(US.L[1] / US.prevMax[1] - 1, 0)}`}${US.yoy != null ? ` · ${EN ? '1Y' : '1년'} ${pct(US.yoy, 0)}` : ''}`,
+        body: `<div class="chart"><canvas id="cv-flowus" role="img" aria-label="${EN ? 'US margin debt' : '미국 신용잔고'}"></canvas></div>
+          <div class="fl-explain"><b>💡 ${EN ? 'What is it?' : '이게 뭐예요?'}</b><p>${EN ? 'Money US investors borrowed from brokers (FINRA, monthly, about 3 weeks late). Past record highs in 2000, 2007 and 2021 were followed by corrections — a classic overheating gauge.' : '미국 투자자들이 증권사에서 빌린 돈의 합계예요(FINRA, 매달 약 3주 늦게 발표). 2000년·2007년·2021년처럼 사상 최고치를 크게 넘어선 뒤 조정이 온 적이 많아서 대표적인 과열 지표로 봐요.'}${US.vs21 != null ? (EN ? ` Now ${pct(US.vs21, 0)} vs the 2021 peak.` : ` 지금은 2021년 고점보다 ${pct(US.vs21, 0)} 수준이에요.`) : ''}</p></div>`,
+      });
+      const labels = UR.map((x) => Date.parse(x[0] + '-15T12:00:00Z') / 1000);
+      draw('flowus', { type: 'line', data: { labels, datasets: [lineDs(EN ? 'Margin debt' : '신용잔고', UR.map((x) => x[1]), C.orange, { fill: 'start', backgroundColor: areaFill(C.orange) })] },
+        options: { interaction, plugins: { ...noLegend, tooltip: tooltip((it) => UR[it.dataIndex][0].replace('-', '.'), (v) => usT(v)) }, scales: { x: axisX(labels, (t) => `'${String(new Date(t * 1000).getUTCFullYear()).slice(2)}`, 6), y: axisY((v) => (EN ? `$${(v / 1e6).toFixed(1)}T` : `${(v / 1e6).toFixed(1)}조$`)) } } });
+    }
     card('flowinv', {
       title: EN ? '👥 Who bought today' : '👥 오늘 누가 샀을까 — 투자자별 순매수', sub: IK ? `${IK.d.slice(4, 6)}/${IK.d.slice(6)} · ${EN ? 'KRW, net buy' : '순매수 금액'}` : '',
       body: `${IK || IQ ? `<div class="fl-invs">${IK ? `<p>${invLine(IK, EN ? 'KOSPI' : '코스피')}</p>` : ''}${IQ ? `<p>${invLine(IQ, EN ? 'KOSDAQ' : '코스닥')}</p>` : ''}</div>` : `<p class="note">${EN ? 'No data yet today.' : '아직 오늘 자료가 없어요.'}</p>`}
@@ -2519,6 +2533,119 @@
       </dl><p class="note">${EN ? 'Source: Korea Financial Investment Association data via Naver Securities (published with a one-day lag). Not investment advice.' : '자료: 금융투자협회 집계(네이버 증권), 하루 늦게 발표돼요. 투자 조언이 아니에요.'}</p>`,
     });
   }
+
+
+  // ---------------------------------------------------------------- 🥧 내 포트폴리오 비중 · 환율 효과(퇴사까지 화면)
+  // 종목별 평가금액 비중 도넛 + 한 종목 쏠림 경고. 미국 종목 손익을 '주가로 번 돈'과 '환율로 번 돈'으로 나눈다(평균 매수 환율이 있을 때)
+  const MIX_COLORS = ['#f2994a', '#5b8def', '#3fbf7f', '#c86bf2', '#f5c542', '#f04452', '#3ec6d6', '#9aa4b2'];
+  function renderFireMix(c) {
+    const el = document.getElementById('c-firemix');
+    if (!el) return;
+    if (!c || c.rows.length < 1) { el.hidden = true; return; }
+    el.hidden = false;
+    const fx = c.fx, rows = c.rows.map((r) => ({ t: r.ticker, kr: r.kr, krw: r.valueUsd * fx })).sort((a, b) => b.krw - a.krw), tot = rows.reduce((a, r) => a + r.krw, 0) || 1;
+    const top = rows[0], topShare = top.krw / tot;
+    const us = c.rows.filter((r) => !r.kr), bfx = c.F.buyFx;
+    const stockFx = bfx ? us.reduce((a, r) => a + r.shares * (r.px - r.avg) * bfx, 0) : null, fxFx = bfx ? us.reduce((a, r) => a + r.shares * r.px * (fx - bfx), 0) : null;
+    const name = (t) => (krTk(t) ? fireName(t) : t);
+    card('firemix', {
+      title: EN ? '🥧 Portfolio mix · FX effect' : '🥧 내 포트폴리오 비중 · 환율 효과', sub: EN ? `${rows.length} holdings · by current value (KRW)` : `${rows.length}종목 · 지금 평가금액(원화) 기준`,
+      easy: EN ? 'Shows how much of your money sits in each stock, and splits your US-stock gain into what came from the stock price and what came from the exchange rate.' : '내 돈이 종목별로 얼마씩 들어 있는지, 그리고 미국 주식에서 번(잃은) 돈이 주가 때문인지 환율 때문인지 나눠서 보여줘요.',
+      body: `<div class="mx-wrap"><div class="chart mx-chart"><canvas id="cv-firemix" role="img" aria-label="${EN ? 'Holdings mix' : '종목 비중'}"></canvas></div>
+        <ul class="mx-list">${rows.map((r, i) => `<li><i style="background:${MIX_COLORS[i % MIX_COLORS.length]}"></i><b>${esc(name(r.t))}</b><span>${pctPlain(r.krw / tot, 0)}</span><small>${wonFull(r.krw)}</small></li>`).join('')}</ul></div>
+        ${topShare >= 0.5 && rows.length > 1 ? `<p class="mx-warn">⚠ ${EN ? `${esc(name(top.t))} is ${pctPlain(topShare, 0)} of your portfolio — if it falls 30%, your total drops about ${pctPlain(topShare * 0.3, 0)}.` : `${esc(name(top.t))} 비중이 ${pctPlain(topShare, 0)}예요. 이 종목이 30% 빠지면 전체가 약 ${pctPlain(topShare * 0.3, 0)} 빠져요.`}</p>` : ''}
+        ${us.length ? (bfx ? `<div class="mx-fx"><div><span>${EN ? 'From stock prices' : '주가로 번 돈'}</span><b class="${cls(stockFx)}">${signed(stockFx, wonFull)}</b><small>${EN ? 'at your average buy FX' : '평균 매수 환율 기준'}</small></div><div><span>${EN ? 'From the exchange rate' : '환율로 번 돈'}</span><b class="${cls(fxFx)}">${signed(fxFx, wonFull)}</b><small>${EN ? `₩${nf(0).format(bfx)} → ₩${nf(0).format(fx)}` : `${nf(0).format(bfx)}원 → ${nf(0).format(fx)}원`}</small></div></div>`
+          : `<p class="note">💱 ${EN ? 'Enter your average buy exchange rate in the holdings form below to split gains into stock vs. FX.' : '아래 보유 정보에 <b>평균 매수 환율</b>을 넣으면 미국 주식 손익을 \'주가로 번 돈\'과 \'환율로 번 돈\'으로 나눠 보여드려요.'}</p>`) : ''}`,
+    });
+    draw('firemix', { type: 'doughnut', data: { labels: rows.map((r) => name(r.t)), datasets: [{ data: rows.map((r) => r.krw), backgroundColor: rows.map((_, i) => MIX_COLORS[i % MIX_COLORS.length]), borderWidth: 0 }] },
+      options: { cutout: '62%', plugins: { ...noLegend, tooltip: { callbacks: { label: (it) => ` ${it.label}: ${pctPlain(it.raw / tot, 1)} · ${wonFull(it.raw)}` } } } } });
+  }
+
+  // ---------------------------------------------------------------- 🧾 해외주식 양도세 절세 계산기(Fire · 네 번째 탭)
+  // 올해 판 종목의 이익·손실(직접 입력) + 퇴사까지 보유 종목의 평가손익 → 예상 세금, 공제 250만원을 다 쓰는 익절, 손실 종목 매도 효과
+  const TAX_KEY = 'cw.tax', TAX_DED = 2.5e6, TAX_RATE = 0.22;
+  let taxCfg = Object.assign({ gain: '', loss: '' }, readJSON(TAX_KEY, {}) || {});
+  function taxDeadline() { // 올해 매도 마감(미국 결제 T+1): 12/31이 평일이면 12/30, 아니면 그 전 마지막 평일의 하루 전 평일
+    const y = new Date().getFullYear(); let d = new Date(Date.UTC(y, 11, 31));
+    const back = () => { do { d = new Date(d.getTime() - 86400000); } while ([0, 6].includes(d.getUTCDay())); };
+    while ([0, 6].includes(d.getUTCDay())) d = new Date(d.getTime() - 86400000);
+    back();
+    return d.toISOString().slice(0, 10);
+  }
+  function taxCalc() {
+    const g = (parseFloat(String(taxCfg.gain).replace(/[,\s]/g, '')) || 0) * 1e4, l = (parseFloat(String(taxCfg.loss).replace(/[,\s]/g, '')) || 0) * 1e4;
+    const real = g - l, taxable = Math.max(0, real - TAX_DED), tax = taxable * TAX_RATE, room = Math.max(0, TAX_DED - Math.max(0, real));
+    const c = fireCfg ? (() => { try { return fireCalc(); } catch { return null; } })() : null;
+    const pos = (c?.rows || []).filter((r) => !r.kr).map((r) => { const bfx = c.F.buyFx || c.fx, per = r.px * c.fx - r.avg * bfx; return { t: r.ticker, sh: r.shares, per, un: per * r.shares }; });
+    let left = room;
+    const gains = pos.filter((x) => x.un > 0).sort((a, b) => b.un - a.un).map((x) => { const n = left > 0 && x.per > 0 ? Math.min(x.sh, Math.floor(left / x.per * 10000) / 10000) : 0; const amt = n * x.per; left -= amt; return { ...x, n, amt }; }).filter((x) => x.n > 0);
+    const losses = pos.filter((x) => x.un < 0).sort((a, b) => a.un - b.un).map((x) => ({ ...x, cut: Math.min(-x.un, taxable) * TAX_RATE }));
+    return { g, l, real, taxable, tax, room, gains, losses, pos, noFx: c && !c.F.buyFx, hasFire: !!c };
+  }
+  function taxOutHtml() {
+    const T = taxCalc(), dl = taxDeadline(), dd = daysBetween(isoToday(), dl);
+    const sh = (n) => nf(n % 1 ? 2 : 0).format(n);
+    return `<div class="tx-sum2">
+        <div><span>${EN ? 'Net realized this year' : '올해 실현 손익(통산)'}</span><b class="${cls(T.real)}">${signed(T.real, wonFull)}</b><small>${EN ? 'gains − losses' : '이익 − 손실'}</small></div>
+        <div><span>${EN ? 'Estimated tax' : '예상 양도세'}</span><b>${wonFull(T.tax)}</b><small>${EN ? `(net − ₩2.5M) × 22%` : '(손익 − 250만원) × 22%'}</small></div>
+      </div>
+      ${T.room > 0 ? `<div class="tx-tip ok"><b>💡 ${EN ? `You can still realize ${wonFull(T.room)} of gains tax-free this year` : `올해 ${wonFull(T.room)}까지는 이익을 실현해도 세금이 없어요`}</b>
+        <p>${EN ? 'Selling a winner and buying it back raises your cost basis, so you owe less tax when you finally sell.' : '오른 종목을 이만큼 팔고 바로 다시 사면(익절 후 재매수) 평단이 올라가서, 나중에 팔 때 낼 세금이 줄어요.'}</p>
+        ${T.gains.length ? `<ul>${T.gains.map((x) => `<li><b>${esc(x.t)}</b> ${sh(x.n)}${EN ? ' sh' : '주'} ${EN ? 'sell & rebuy' : '팔고 다시 사기'} → <span class="up">${EN ? 'realize' : '이익'} ${wonFull(x.amt)}</span></li>`).join('')}</ul>` : T.hasFire ? `<p class="note">${EN ? 'None of your holdings is in profit right now.' : '지금 이익 중인 보유 종목이 없어요.'}</p>` : ''}</div>` : ''}
+      ${T.taxable > 0 && T.losses.length ? `<div class="tx-tip"><b>✂️ ${EN ? 'Losses can cut this year’s tax' : '손실 종목을 팔면 올해 세금이 줄어요'}</b>
+        <ul>${T.losses.map((x) => `<li><b>${esc(x.t)}</b> ${EN ? 'unrealized' : '평가손실'} <span class="down">${wonFull(x.un)}</span> → ${EN ? 'tax' : '세금'} <b class="up">−${wonFull(x.cut)}</b></li>`).join('')}</ul>
+        <p class="note">${EN ? 'Korea has no 30-day wash-sale rule like the US, so you can buy back right away — but check with your broker or a tax advisor.' : '국내 세법엔 미국 같은 30일 재매수 제한이 없어서 팔고 바로 다시 사도 손실로 인정돼요(증권사·세무사 확인 권장).'}</p></div>` : ''}
+      ${!T.hasFire ? `<p class="note">${EN ? 'Add your holdings in Road to FIRE to see stock-by-stock suggestions.' : '퇴사까지에 보유 종목을 넣으면 종목별로 얼마나 팔면 되는지 계산해 드려요.'}</p>` : T.noFx ? `<p class="note">${EN ? 'Using today’s FX for your cost — enter your average buy FX in Road to FIRE for exact numbers.' : '매수 환율을 몰라 지금 환율로 계산했어요. 퇴사까지에 평균 매수 환율을 넣으면 더 정확해요(양도세는 매수·매도 때 환율로 계산해요).'}</p>` : ''}
+      <div class="tx-dl"><b>⏰ ${EN ? 'Sell by' : '올해 매도 마감'} ${+dl.slice(5, 7)}/${+dl.slice(8)}${EN ? ' (US time)' : '(미국 시간)'}${dd >= 0 ? ` · D-${dd}` : ''}</b><small>${EN ? 'US trades settle T+1; sales settling in the new year count for next year. Confirm with your broker. File in May.' : '미국 주식은 결제일(T+1) 기준이라 이날까지 팔아야 올해 손익으로 잡혀요. 증권사 공지를 꼭 확인하세요. 신고는 다음 해 5월이고, 증권사 신고 대행을 쓰면 편해요.'}</small></div>`;
+  }
+  function renderTax() {
+    const el = document.getElementById('c-tax');
+    if (!el) return;
+    card('tax', {
+      title: EN ? '🧾 Overseas stock capital gains tax' : '🧾 해외주식 양도세 절세 계산기', sub: EN ? 'Korea · ₩2.5M yearly deduction · 22%' : '연 250만원 공제 · 22%(지방세 포함) · 추정',
+      easy: EN ? 'Gains from selling US stocks are taxed 22% above ₩2.5M a year, netted against losses. See how much you can realize tax-free and how selling losers cuts the tax.' : '미국 주식을 팔아 번 돈은 1년에 250만원까지는 세금이 없고, 넘는 부분에 22%가 붙어요. 같은 해 손실과 합쳐서 계산해요. 올해 세금 없이 얼마나 익절할 수 있는지, 손실 종목을 팔면 세금이 얼마나 줄어드는지 보여줘요.',
+      body: `<div class="bn-grid tx-in">
+          <label class="bn-f"><span>${EN ? 'Gains already realized this year' : '올해 이미 판 종목의 이익'}</span><div class="bn-in"><input inputmode="numeric" id="tax-gain" value="${esc(String(taxCfg.gain))}" placeholder="0"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
+          <label class="bn-f"><span>${EN ? 'Losses already realized this year' : '올해 이미 판 종목의 손실'}</span><div class="bn-in"><input inputmode="numeric" id="tax-loss" value="${esc(String(taxCfg.loss))}" placeholder="0"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
+        </div>
+        <div id="tax-out">${taxOutHtml()}</div>
+        <p class="note">${EN ? 'Estimate only — fees and the exact FX on trade dates change the result. Korean-listed stocks (non-major holders) aren’t taxed and are excluded. Not tax advice.' : '추정치예요. 수수료·거래일 환율에 따라 달라져요. 국내 상장주식(대주주 아님)은 양도세가 없어 뺐어요. 세무 조언이 아니에요. 입력값은 이 기기에만 저장돼요.'}</p>`,
+    });
+  }
+
+  // ---------------------------------------------------------------- 🤖 실적 발표 AI 3줄 요약(발표 뒤 10일) — 서버가 종목·분기마다 한 번 만들어 둔다
+  state.earnsum = {};
+  function earnSumBlock(sym) {
+    if (isKR(sym)) return '';
+    const E = earnOf(sym), last = (E?.quarters || []).at(-1);
+    if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 10) return '';
+    const S = state.earnsum[sym];
+    if (!S || (S.pending && Date.now() - S.t > 20000) || (S.q && S.q !== last.end)) {
+      state.earnsum[sym] = { ...(S || {}), t: Date.now(), loading: true };
+      getJ(`${NEWS_API}/earnsum?s=${sym}`, 25000).then((j) => { state.earnsum[sym] = { ...j, t: Date.now() }; for (const el of document.querySelectorAll(`.es-box[data-es="${CSS.escape(sym)}"]`)) el.outerHTML = earnSumBlock(sym); }).catch(() => { state.earnsum[sym] = { none: true, t: Date.now() }; });
+    }
+    const X = state.earnsum[sym];
+    if (X?.lines?.length) return `<div class="es-box" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'} · ${qLabelLong(X.q)}</b><ul>${X.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${EN ? 'Written by AI from the reported numbers and news around the release — may contain mistakes.' : '실적 숫자와 발표 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</small></div>`;
+    if (X?.none) return `<div class="es-box" data-es="${esc(sym)}" hidden></div>`;
+    return `<div class="es-box loading" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'}</b><small>${EN ? 'Writing the summary…' : '요약을 만드는 중…'}</small></div>`;
+  }
+
+  // ---------------------------------------------------------------- 🇺🇸 미국 신용잔고(FINRA, 월별) — 예전 기록은 사이트 파일, 최근 12개월은 서버(/flow)
+  let usMarginP = null;
+  // 한 번만 받는다(실패해도 다시 그리기를 반복하지 않게) — 받은 뒤에만 then으로 다시 그린다
+  const loadUsMargin = () => (usMarginP ? null : (usMarginP = fetch('data/us-margin.json', { cache: 'force-cache' }).then((r) => r.json()).then((j) => { state.usMargin = j.rows || []; }).catch(() => { state.usMargin = []; })));
+  function usMarginSeries() {
+    const m = new Map([...(state.usMargin || []), ...(state.flow?.us || [])].map((x) => [x[0], x]));
+    return [...m.values()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  }
+  function usMarginStat() {
+    const U = usMarginSeries();
+    if (U.length < 13) return null;
+    const L = U.at(-1), prevMax = U.slice(0, -1).reduce((a, x) => (x[1] > a[1] ? x : a), U[0]), y = U.find((x) => x[0] === `${+L[0].slice(0, 4) - 1}${L[0].slice(4)}`);
+    const p21 = U.filter((x) => x[0] >= '2021-01' && x[0] <= '2021-12').reduce((a, x) => (x[1] > a[1] ? x : a), ['', 0]);
+    return { U, L, ath: L[1] >= prevMax[1], prevMax, yoy: y ? L[1] / y[1] - 1 : null, vs21: p21[1] ? L[1] / p21[1] - 1 : null };
+  }
+  const usT = (m) => (m == null ? '–' : EN ? `$${(m / 1e6).toFixed(2)}T` : `${(m / 1e6).toFixed(2)}조 달러`);
 
   // ---------------------------------------------------------------- 🎯 목표가: 종목 주가 카드에서 정해 두면, 도달했을 때 알려 주고 홈 '바뀐 것'에 보여 준다(이 기기에만 저장)
   const TGT_KEY = 'cw.targets';
@@ -2834,7 +2961,7 @@
     const c = fireCalc();
     if (!fireCfg) {
       card('fire', { title: '퇴사까지', sub: '내 보유 주식으로 목표 금액까지 진행률', info: INFO.fire, body: `<p class="fire-empty">아래에 보유 종목·수량·평균 단가를 입력하면 실시간 시세와 환율로 <b>퇴사까지 몇 %</b>인지 계산해요. 기본 종목(CRCA·CRCL·JOBY·SPCX·TEM)은 물론, 관심 종목으로 직접 추가한 종목도 함께 넣을 수 있어요.</p>` });
-      ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; });
+      ['c-fire-sim', 'c-fire-hist', 'c-firemix'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = true; });
       return;
     }
     ['c-fire-sim', 'c-fire-hist'].forEach((id) => { const e = document.getElementById(id); if (e) e.hidden = false; });
@@ -2879,6 +3006,7 @@
     });
     // 슬라이더를 끄는 중이면 시뮬레이터는 다시 그리지 않는다
     if (document.activeElement?.id !== 'sim-range') renderFireSim(c);
+    try { renderFireMix(c); } catch (e) { console.error(e); }
     renderFireHist();
   }
 
@@ -3551,7 +3679,7 @@
   }
 
   // ---- 🔄 다른 기기로 옮기기 — assets/move.js(누를 때만 받음). 코드로 암호화해 10분만 서버에 두고, 받으면 바로 지운다
-  const MOVE_KEYS = ['cw.fire', 'cw.fireHist', 'cw.div', 'cw.divSim', 'cw.watch', 'cw.life', 'cw.bonus', 'cw.kw', 'cw.votes', 'cw.fireMile', 'cw.targets', 'cw.homeLayout', 'cw.pxDay'];
+  const MOVE_KEYS = ['cw.fire', 'cw.fireHist', 'cw.div', 'cw.divSim', 'cw.watch', 'cw.life', 'cw.bonus', 'cw.kw', 'cw.votes', 'cw.fireMile', 'cw.targets', 'cw.homeLayout', 'cw.pxDay', 'cw.tax'];
   function moveBtn() { return SITE_API ? `<button type="button" class="move-open" data-moveopen="send">🔄 ${EN ? 'Move to another device' : '다른 기기로 옮기기'}<small>${EN ? 'Phone ↔ PC with a short code' : '폰 ↔ PC, 짧은 코드로'}</small></button>` : ''; }
   async function openMove(tab, code) {
     if (DEMO) { toast(EN ? 'Turn off the sample view first' : '예시 화면을 끈 뒤에 써 주세요', true); return; }
@@ -4162,7 +4290,7 @@
       title: '서클 실적',
       sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc('CRCL'),
       info: INFO.earnings,
-      body: `${nextHtml}${voteBlock('CRCL')}${tiles}
+      body: `${earnSumBlock('CRCL')}${nextHtml}${voteBlock('CRCL')}${tiles}
         <div class="mini-h er-h">분기 매출 구성</div>
         <div class="chart"><canvas id="cv-er-rev" role="img" aria-label="분기별 매출"></canvas></div>
         <div class="legend"><span><i style="background:${C.blue}"></i>준비금 이자수익</span><span><i style="background:${C.teal}"></i>기타 매출</span></div>
@@ -5395,7 +5523,7 @@
         </div>
         ${k8 ? `<a class="faa-notice good" href="${safeUrl(k8.url)}" target="_blank" rel="noopener">📄 실적 발표 공시(8-K, ${md(isoToTs(k8.d))}) 원문 보기 →</a>` : ''}
         ${news.length ? `<div class="mini-h er-h">실적 관련 소식</div><ul class="nl faa-nl">${news.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
-        <p class="ed-check">✅ 이어서 볼 것: ${EARN_CHECK[sym] || '가이던스와 컨퍼런스콜 내용'}</p>${voteBlock(sym)}`,
+        ${earnSumBlock(sym)}<p class="ed-check">✅ 이어서 볼 것: ${EARN_CHECK[sym] || '가이던스와 컨퍼런스콜 내용'}</p>${voteBlock(sym)}`,
     });
   }
 
@@ -5914,9 +6042,9 @@
     return last && burn > 0 ? { liq: last.liquidity, end: last.end, burn, quarters: last.liquidity / burn } : null;
   }
   function nextEarnHtml(N, extra = '', sym) {
-    if (!N?.date) return sym ? voteBlock(sym) : '';
+    if (!N?.date) return sym ? earnSumBlock(sym) + voteBlock(sym) : '';
     const dd = dday(N.date);
-    return `
+    return `${sym ? earnSumBlock(sym) : ''}
       <div class="er-next">
         <div class="er-next-h"><span>다음 실적 발표</span>${N.estimated ? '<span class="tone neu">예상일</span>' : '<span class="tone pos">확정</span>'}</div>${N.confirmedBy ? `<a class="er-src" href="${safeUrl(N.confirmedBy.url)}" target="_blank" rel="noopener">📢 ${+N.confirmedBy.on.slice(5, 7)}/${+N.confirmedBy.on.slice(8)} 회사 발표로 확정 · ${esc(N.confirmedBy.title.slice(0, 80))}</a>` : ''}
         <div class="er-next-d"><b>${krDate(N.date)}</b><span class="er-dday">${dd > 0 ? `D-${dd}` : dd === 0 ? 'D-DAY' : '발표 완료'}</span></div>
@@ -6664,7 +6792,7 @@
     flushCharts();
     for (const c of Object.values(charts)) if (c.canvas?.closest('.view')?.dataset.view === v) c.resize();
     fireLoop(v === 'fire' || isOther());
-    if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
+    if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); renderTax(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
     if (v === 'flow') { renderFlowView(); loadFlow().then(() => { renderFlowView(); renderFlowCard(); }).catch(() => {}); }
@@ -6852,7 +6980,7 @@
     const fg = ev.target.closest('[data-ftabgo]');
     if (fg) { state.fireTab = fg.dataset.ftabgo; savePref('fireTab', state.fireTab); showView('fire'); window.scrollTo({ top: 0 }); return; }
     const ft = ev.target.closest('[data-ftab]');
-    if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); renderDivSim(); loadDividends().catch(() => {}); } if (state.fireTab === 'bonus') renderBonus(); window.scrollTo({ top: 0 }); return; }
+    if (ft) { state.fireTab = ft.dataset.ftab; savePref('fireTab', state.fireTab); applyFireTab(); if (state.fireTab === 'div') { renderDiv(); renderDivSim(); loadDividends().catch(() => {}); } if (state.fireTab === 'bonus') renderBonus(); if (state.fireTab === 'tax') renderTax(); window.scrollTo({ top: 0 }); return; }
     // 성과급 계산기
     const bco = ev.target.closest('[data-bnco]');
     if (bco) { readBonusForm(); bonusCfg.co = bco.dataset.bnco; writeJSON(BONUS_KEY, bonusCfg); renderBonus(); return; }
@@ -7142,6 +7270,7 @@
   updateFireChip();
   {
     let v0 = location.hash.slice(1).split('&')[0] || loadPref('view', 'home'); v0 = OLD_VIEWS[v0] || v0;
+    if (v0 === 'tax') { state.fireTab = 'tax'; savePref('fireTab', 'tax'); v0 = 'fire'; }
     if (['dividend', 'quit', 'bonus', 'portfolio'].includes(v0)) { // 소개 페이지(/dividend · /fire · /bonus · /portfolio)에서 바로 열기
       state.fireTab = v0 === 'quit' ? 'fire' : v0 === 'bonus' ? 'bonus' : 'div'; savePref('fireTab', state.fireTab);
       if (v0 === 'portfolio' || v0 === 'dividend') setDivSub(v0 === 'portfolio' ? 'sim' : 'mine');
@@ -7182,6 +7311,9 @@
     if (ev.key === 'Escape') { closeWatchSheet(); closeTxSheet(); closeFolderSheet(); closeHomeEdit(); }
     if (ev.key === 'Enter' && ev.target?.id === 'tgt-in') { const b = document.querySelector('[data-tgtsave]'); if (b) saveTgt(b.dataset.tgtsave); }
     if (ev.key === 'Enter' && ev.target?.id === 'fd-name') saveFolder();
+  });
+  document.addEventListener('input', (ev) => {
+    if (ev.target.id === 'tax-gain' || ev.target.id === 'tax-loss') { taxCfg[ev.target.id === 'tax-gain' ? 'gain' : 'loss'] = ev.target.value; writeJSON(TAX_KEY, taxCfg); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); }
   });
   document.addEventListener('change', (ev) => {
     const heo = ev.target.closest?.('[data-heon]');

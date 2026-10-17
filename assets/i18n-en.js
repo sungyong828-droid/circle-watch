@@ -2114,7 +2114,10 @@ window.__I18N_EN = {
 "🧩 홈 화면 편집": "🧩 Customize Home",
 "순서 바꾸기·숨기기": "reorder · hide",
 "모두 보기": "Show all",
-"💸 시장 자금 동향": "💸 Market money flow"
+"💸 시장 자금 동향": "💸 Market money flow",
+"🧾 양도세": "🧾 Tax",
+"이번 주 경제 일정": "This week's economic calendar",
+"빚투 지표": "Margin debt gauge"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
