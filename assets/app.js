@@ -2736,7 +2736,7 @@
   function growRowsHtml() {
     return growCfg.rows.map((r, i) => {
       const I = growInfo(r.t), D = state.growData[r.t], kr = krTk(r.t), nm = growName(r);
-      const meta = D?.error ? `<small class="warn">${EN ? 'No data' : '자료를 못 받았어요'}</small>` : I ? `<small>${EN ? 'yield' : '배당률'} ${pctPlain(I.yld, 1)}${I.cagr != null ? ` · ${EN ? '5y div growth' : '5년 배당 성장'} ${pctPlain(I.cagr, 1)}` : I.ttm ? '' : ` · ${EN ? 'no dividend' : '배당 없음'}`}</small>` : `<small>${EN ? 'Loading…' : '불러오는 중…'}</small>`;
+      const meta = D?.error ? `<small class="warn">${EN ? 'No data' : '자료를 못 받았어요'}</small>` : I ? `<small class="gr-meta">${EN ? 'yield' : '배당률'} ${pctPlain(I.yld, 1)} · ${!I.ttm ? (EN ? 'no dividend' : '배당 없음') : I.cagr != null ? `${EN ? 'growth' : '성장'} ${pctPlain(I.cagr, 1)}${EN ? '/yr' : '/년'}` : (EN ? 'growth 5% assumed' : '성장 5% 가정')}</small>` : `<small>${EN ? 'Loading…' : '불러오는 중…'}</small>`;
       return `<div class="sim-row gr-row" data-t="${esc(r.t)}"><div class="sim-tw">${logoPath(r.t) ? `<img class="sim-logo" src="${logoPath(r.t)}" alt="" width="26" height="26" loading="lazy">` : `<span class="sim-logo ws-letter">${esc(String(nm || '?')[0])}</span>`}<div class="sim-nm"><b>${esc(nm)}</b>${kr ? `<small>${r.t.slice(0, 6)}</small>` : ''}${meta}</div></div><div class="bn-in"><input class="gr-w" data-growi="${i}" inputmode="numeric" maxlength="3" value="${esc(String(r.w ?? ''))}" aria-label="${esc(nm)} ${EN ? 'weight' : '비중'}"><em>%</em></div><button type="button" class="f-rm" data-growrm="${i}" aria-label="${EN ? 'Remove' : '이 종목 빼기'}">×</button></div>`;
     }).join('');
   }
@@ -2761,8 +2761,12 @@
   function growAdd(t, n) {
     if (!TICKER_RE.test(t) || growCfg.rows.some((r) => r.t === t)) return;
     if (growCfg.rows.length >= GROW_MAX) { toast(EN ? `Up to ${GROW_MAX} stocks` : `종목은 ${GROW_MAX}개까지 넣을 수 있어요`, true); return; }
-    const left = 100 - growCfg.rows.reduce((a, r) => a + (+r.w || 0), 0);
-    growCfg.rows.push({ t, w: left > 0 ? left : Math.round(100 / (growCfg.rows.length + 1)), ...(n ? { n } : {}) });
+    // 새 종목은 1/n 비중, 나머지는 원래 비율대로 줄여 합계 100%를 맞춘다
+    const nw = Math.round(100 / (growCfg.rows.length + 1)), tot = growCfg.rows.reduce((a, r) => a + (+r.w || 0), 0);
+    if (tot > 0) { for (const r of growCfg.rows) r.w = Math.round(((+r.w || 0) / tot) * (100 - nw)); }
+    growCfg.rows.push({ t, w: growCfg.rows.length ? nw : 100, ...(n ? { n } : {}) });
+    const gap = 100 - growCfg.rows.reduce((a, r) => a + (+r.w || 0), 0);
+    if (gap && growCfg.rows.length > 1) { const big = growCfg.rows.reduce((a, r) => ((+r.w || 0) > (+a.w || 0) ? r : a)); big.w = (+big.w || 0) + gap; }
     growSave();
   }
   function renderGrow() {
