@@ -3008,6 +3008,8 @@
     // 슬라이더를 끄는 중이면 시뮬레이터는 다시 그리지 않는다
     if (document.activeElement?.id !== 'sim-range') renderFireSim(c);
     try { renderFireMix(c); } catch (e) { console.error(e); }
+    // 양도세 탭: 시세가 들어오면 보유 종목별 계산을 다시(입력 중엔 건드리지 않음)
+    if (state.fireTab === 'tax' && !document.activeElement?.closest?.('#c-tax')) { const o = document.getElementById('tax-out'); if (o) { const h = taxOutHtml(); if (o.innerHTML !== h) o.innerHTML = h; } }
     renderFireHist();
   }
 
