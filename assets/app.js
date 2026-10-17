@@ -2456,7 +2456,7 @@
           <div><span>${EN ? 'Debt ÷ cash' : '빚투 비율'}</span><b>${(c.ratio * 100).toFixed(1)}%</b><small>${EN ? 'avg' : '평균'} ${(c.ratioAvg * 100).toFixed(0)}%</small></div>
         </div>
         ${I ? `<p class="fl-inv">${EN ? 'Today' : '오늘'} ${invLine(I, EN ? 'KOSPI' : '코스피')}</p>` : ''}
-        ${(() => { const US = usMarginStat(); if (!US) { loadUsMargin()?.then(renderFlowCard); return ''; } return `<p class="fl-inv"><span class="fl-inv-k">🇺🇸 ${EN ? 'US margin debt' : '미국 신용잔고'}</span><span><b>${usT(US.L[1])}</b> · ${US.L[0].replace('-', '.')}</span><span class="${US.ath ? 'up' : ''}">${US.ath ? (EN ? 'record high' : '사상 최고') : `${EN ? 'vs record' : '최고 대비'} ${pct(US.L[1] / US.prevMax[1] - 1, 0)}`}</span></p>`; })()}
+        ${(() => { const US = usMarginStat(); if (!US) { loadUsMargin()?.then(renderFlowCard); return ''; } return `<p class="fl-inv"><span class="fl-inv-k">💳 ${EN ? 'US margin debt' : '미국 신용잔고'}</span><span><b>${usT(US.L[1])}</b> · ${US.L[0].replace('-', '.')}</span><span class="${US.ath ? 'up' : ''}">${US.ath ? (EN ? 'record high' : '사상 최고') : `${EN ? 'vs record' : '최고 대비'} ${pct(US.L[1] / US.prevMax[1] - 1, 0)}`}</span></p>`; })()}
         <button type="button" class="link-btn" data-go="flow">${EN ? 'What it means · charts' : '무슨 뜻인지 · 차트 자세히 보기'}${chevron}</button>`,
     });
   }
@@ -2510,7 +2510,7 @@
     if (US) {
       const UR = US.U.filter((x) => x[0] >= '2015-01');
       card('flowus', {
-        title: EN ? '🇺🇸 US margin debt (FINRA)' : '🇺🇸 미국 신용잔고 — 미국판 빚투', sub: `${usT(US.L[1])} · ${US.L[0].replace('-', '.')} · ${US.ath ? (EN ? 'record high' : '사상 최고') : `${EN ? 'vs record' : '최고 대비'} ${pct(US.L[1] / US.prevMax[1] - 1, 0)}`}${US.yoy != null ? ` · ${EN ? '1Y' : '1년'} ${pct(US.yoy, 0)}` : ''}`,
+        title: EN ? '💳 US margin debt (FINRA)' : '💳 미국 신용잔고 — 미국판 빚투', sub: `${usT(US.L[1])} · ${US.L[0].replace('-', '.')} · ${US.ath ? (EN ? 'record high' : '사상 최고') : `${EN ? 'vs record' : '최고 대비'} ${pct(US.L[1] / US.prevMax[1] - 1, 0)}`}${US.yoy != null ? ` · ${EN ? '1Y' : '1년'} ${pct(US.yoy, 0)}` : ''}`,
         body: `<div class="chart"><canvas id="cv-flowus" role="img" aria-label="${EN ? 'US margin debt' : '미국 신용잔고'}"></canvas></div>
           <div class="fl-explain"><b>💡 ${EN ? 'What is it?' : '이게 뭐예요?'}</b><p>${EN ? 'Money US investors borrowed from brokers (FINRA, monthly, about 3 weeks late). Past record highs in 2000, 2007 and 2021 were followed by corrections — a classic overheating gauge.' : '미국 투자자들이 증권사에서 빌린 돈의 합계예요(FINRA, 매달 약 3주 늦게 발표). 2000년·2007년·2021년처럼 사상 최고치를 크게 넘어선 뒤 조정이 온 적이 많아서 대표적인 과열 지표로 봐요.'}${US.vs21 != null ? (EN ? ` Now ${pct(US.vs21, 0)} vs the 2021 peak.` : ` 지금은 2021년 고점보다 ${pct(US.vs21, 0)} 수준이에요.`) : ''}</p></div>`,
       });
