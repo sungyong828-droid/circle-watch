@@ -471,7 +471,7 @@ async function circleSupply(url, cache, cors, ctx) {
 // ---------------------------------------------------------------- 서버 캐시: 오래된 값이라도 바로 주고 뒤에서 새로 받기
 // freshSec 안이면 그대로, keepSec 안이면 저장된 값을 즉시 돌려주고 뒤에서 갱신(사용자는 기다리지 않음).
 // 저장된 값이 없으면 cold()(예: KV에 보관한 사본)를 먼저 주고 뒤에서 만들고, 그것도 없을 때만 만들 때까지 기다린다.
-async function swr(cache, ctx, keyUrl, { freshSec, keepSec, build, cors, cold }) {
+async function swr(cache, ctx, keyUrl, { freshSec, keepSec, build, cors, cold, maxStaleSec, waitMs = 9000 }) {
   const key = new Request(keyUrl);
   const hit = await cache.match(key);
   const age = hit ? (Date.now() - Number(hit.headers.get('x-built') || 0)) / 1000 : Infinity;
@@ -490,7 +490,11 @@ async function swr(cache, ctx, keyUrl, { freshSec, keepSec, build, cors, cold })
   };
   let res;
   if (hit && age < freshSec) res = hit;
-  else if (hit && age < keepSec) { res = hit; await background(); }
+  else if (hit && maxStaleSec && age >= maxStaleSec && age < keepSec) {
+    // 하루 넘게 아무도 안 본 뒤처럼 너무 오래된 값: 기다렸다가 새 값으로(못 받으면 저장된 값)
+    res = await Promise.race([make(), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), waitMs))]).catch(() => null);
+    if (!res) { res = hit; await background(); }
+  } else if (hit && age < keepSec) { res = hit; await background(); }
   else {
     const c = cold ? await cold().catch(() => null) : null;
     if (c) { res = new Response(c, { headers: { 'content-type': 'application/json; charset=utf-8' } }); await background(); }
@@ -970,7 +974,7 @@ export async function handleAnalyst(url, cache, cors, ctx) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   return swr(cache, ctx, `${url.origin}/analyst?s=${sym}&v=4`, {
-    freshSec: url.searchParams.has('live') ? 300 : 3 * 3600, keepSec: 7 * 86400, cors,
+    freshSec: url.searchParams.has('live') ? 300 : 3 * 3600, keepSec: 7 * 86400, maxStaleSec: 12 * 3600, cors,
     build: async () => {
       const [a, st] = await Promise.allSettled([buildAnalyst(sym), buildStreet(sym)]);
       if (a.status !== 'fulfilled' && st.status !== 'fulfilled') throw new Error('애널리스트 자료를 받지 못했습니다');
@@ -987,7 +991,9 @@ export function optionsSummary(d, earnDate) {
     const m = String(o.option).match(/^[A-Z.]+?(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/);
     if (!m) continue;
     const mid = o.bid > 0 && o.ask > 0 ? (o.bid + o.ask) / 2 : o.last_trade_price || 0;
-    rows.push({ exp: `20${m[1]}-${m[2]}-${m[3]}`, type: m[4], k: +m[5] / 1000, mid, iv: o.iv || 0, oi: o.open_interest || 0, vol: o.volume || 0 });
+    const exp = `20${m[1]}-${m[2]}-${m[3]}`;
+    if (Date.parse(exp + 'T21:00:00Z') <= Date.now()) continue; // 만기 지남(미국 동부 장 마감 뒤)
+    rows.push({ exp, type: m[4], k: +m[5] / 1000, mid, iv: o.iv || 0, oi: o.open_interest || 0, vol: o.volume || 0 });
   }
   if (!rows.length || !spot) throw new Error('옵션 자료 없음');
   const sum = (f) => rows.reduce((a, r) => a + f(r), 0);
@@ -1034,11 +1040,12 @@ export async function handleOptions(url, cache, cors, ctx) {
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   const e = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('e') || '') ? url.searchParams.get('e') : '';
   return swr(cache, ctx, `${url.origin}/options?s=${sym}&e=${e}&v=1`, {
-    freshSec: 900, keepSec: 86400, cors,
+    freshSec: 900, keepSec: 86400, maxStaleSec: 3 * 3600, cors,
     build: async () => {
-      const r = await fetch(`https://cdn.cboe.com/api/global/delayed_quotes/options/${sym}.json`, { headers: { 'user-agent': BROWSER_UA }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
+      const r = await fetch(`https://cdn-api.cboe.com/api/global/delayed_quotes/options/${sym}.json`, { headers: { 'user-agent': BROWSER_UA }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
       if (!r.ok) throw new Error(r.status === 403 || r.status === 404 ? '이 종목은 상장 옵션이 없어요' : 'cboe ' + r.status);
-      return JSON.stringify(optionsSummary((await r.json()).data, e));
+      const J = await r.json();
+      return JSON.stringify({ ...optionsSummary(J.data, e), src: J.timestamp || null }); // src: CBOE 자료 시각(미국 동부)
     },
   });
 }

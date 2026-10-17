@@ -3329,6 +3329,7 @@
     writeJSON(DIV_KEY, divCfg);
     divConfirmDelete = false;
     toast('✓ 이 기기에 저장했어요 · 배당 내역 불러오는 중');
+    syncHeldToWatch();
     renderDivSet(); renderDiv();
     if (!state.quote) loadQuote().then(renderDiv).catch(() => {});
     loadDividends(true).catch(() => {});
@@ -3607,6 +3608,7 @@
   }
   // list: [{ t, name, sh, avg }] (평단: 미국 종목 달러 · 한국 종목 원) · replace면 저장된 종목을 이 목록으로 바꾼다
   function applyHoldImport(list, { fire, div, replace }) {
+    setTimeout(() => syncHeldToWatch(), 0);
     const done = [];
     let newFire = false, txAdj = 0;
     if (fire) {
@@ -4100,6 +4102,7 @@
     fireSim = null;
     fireConfirmDelete = false;
     toast('✓ 이 기기에 저장했어요');
+    syncHeldToWatch();
     renderFireSet();
     // 새로 넣은 종목의 시세가 아직 없으면 바로 다시 받는다
     if (!state.quote || positions.some((p) => state.quote[p.ticker]?.price == null)) loadQuote().then(() => { renderFire(); renderSummary(); }).catch(() => renderFire());
@@ -4596,6 +4599,27 @@
     const el = document.getElementById('stock-switch'), b = el?.querySelector('.ss[aria-selected="true"]');
     if (!b || !el.classList.contains('ss-row')) return;
     if (b.offsetLeft < el.scrollLeft || b.offsetLeft + b.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollLeft = Math.max(0, b.offsetLeft - 24);
+  }
+  // 보유 종목(퇴사까지·배당금)은 내 종목에도 자동으로 넣는다('보유' 폴더에 보이게, 예: CRCA)
+  // 한 번 넣은 종목은 기억해 두고, 사용자가 내 종목에서 빼면 다시 넣지 않는다
+  function syncHeldToWatch(boot) {
+    if (DEMO) return;
+    const done = new Set(readJSON('cw.heldAdded', []) || []), add = [];
+    for (const t of heldSet()) {
+      if (WATCH.includes(t) || done.has(t) || !SYM_OK.test(t)) continue;
+      if (!BUILTIN.includes(t)) {
+        const lab = String(FIRE_TICKERS[t] || '').split(' · '), nm = (krTk(t) ? lab[0] : lab[1]) || t;
+        watchCfg.custom[t] = { name: nm, exchange: krTk(t) ? (t.endsWith('.KQ') ? 'KOSDAQ' : 'KOSPI') : '' };
+        registerStock(t);
+      }
+      WATCH.push(t); done.add(t); add.push(t);
+    }
+    if (!add.length) return;
+    writeJSON('cw.heldAdded', [...done]);
+    saveWatch();
+    if (boot) { for (const t of add) liveSubscribe(t); return; } // 처음 그릴 때는 이어지는 시작 과정이 시세·자료를 받는다
+    const sw = document.getElementById('stock-switch'); if (sw) sw.dataset.built = '';
+    for (const t of add) afterWatchChange(t);
   }
   let fdEdit = null, fdConfirm = false;
   function openFolderSheet(id) {
@@ -5127,7 +5151,7 @@
     const H = (A.history || []).filter((h) => h.target);
     const first = H[0];
     card(id, {
-      title, sub: `${S.short} · 증권사 ${n}곳 · ${V.src === 'Nasdaq' ? 'Nasdaq 집계' : '증권사별 최근 목표가로 계산'}`, info: INFO.analyst,
+      title, sub: `${S.short} · 증권사 ${n}곳 · ${V.src === 'Nasdaq' ? 'Nasdaq 집계' : '증권사별 최근 목표가로 계산'}${A.at ? ` · ${asOf(A.at)}` : ''}`, info: INFO.analyst,
       body: `<div class="an-head"><span class="tone ${V.tone}">${V.label}</span>${V.cons ? `<span class="an-cons">종합 의견 <b>${esc(V.cons)}</b></span>` : ''}</div>
         <div class="an-bar" role="img" aria-label="매수 ${T.buy} 보유 ${T.hold} 매도 ${T.sell}">
           ${T.buy ? `<i class="b" style="width:${w('buy')}%"><b>매수 ${T.buy}</b></i>` : ''}${T.hold ? `<i class="h" style="width:${w('hold')}%"><b>보유 ${T.hold}</b></i>` : ''}${T.sell ? `<i class="s" style="width:${w('sell')}%"><b>매도 ${T.sell}</b></i>` : ''}
@@ -5195,6 +5219,8 @@
     if (!O?.pcVol && O?.pcVol !== 0) return ['neu', '자료 부족'];
     return O.pcVol < 0.7 ? ['pos', '상승 베팅 우세'] : O.pcVol > 1.0 ? ['neg', '하락 대비 우세'] : ['neu', '균형'];
   }
+  // 자료를 받은 시각(이 기기 시간) — '10/17 15:30 기준'
+  const asOf = (iso) => { const t = Date.parse(iso || ''); if (!t) return ''; const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}${EN ? '' : ' 기준'}`; };
   function renderOptions(sym = state.stock, id = sym === 'CRCL' ? 'options' : 'soptions') {
     if (!document.getElementById('c-' + id)) return;
     const O = state.options?.[sym], S = STOCK_INFO[sym], title = '옵션 시장 심리';
@@ -5203,7 +5229,7 @@
     const mv = (x, lbl) => (x ? `<div><span>${lbl}</span><b>±${(x.move * 100).toFixed(1)}%</b><small>${md(isoToTs(x.exp))} 만기(${x.days}일) · ${price(sp0 * (1 - x.move))}~${price(sp0 * (1 + x.move))}</small></div>` : '');
     const strikes = (L, t) => L.map((r) => `<span class="op-k ${t}" title="${md(isoToTs(r.exp))} 만기 · 미결제 ${unit(r.oi)}계약">$${r.k % 1 ? r.k.toFixed(1) : r.k}<small>${unit(r.oi)} · ${md(isoToTs(r.exp))}</small></span>`).join('');
     card(id, {
-      title, sub: `${S.short} · CBOE 옵션 시세(약 15분 지연) · 기준가 ${price(sp0)}`, info: INFO.options,
+      title, sub: `${S.short} · CBOE 옵션 시세(약 15분 지연) · 기준가 ${price(sp0)}${O.at ? ` · ${asOf(O.at)}` : ''}`, info: INFO.options,
       body: `<div class="an-head"><span class="tone ${tone}">${label}</span><span class="an-cons">풋/콜 거래량 비율 <b>${O.pcVol != null ? O.pcVol.toFixed(2) : '–'}</b></span></div>
         <div class="ns-grid er-grid">
           <div><span>내재변동성(IV30)</span><b>${O.iv30 != null ? O.iv30.toFixed(1) + '%' : '–'}</b><small>앞으로 30일 연간 변동성 예상${O.iv30Chg ? ` · 전일 ${O.iv30Chg > 0 ? '+' : ''}${O.iv30Chg.toFixed(1)}%p` : ''}</small></div>
@@ -7106,6 +7132,7 @@
   document.getElementById('home-crcl').hidden = isOther();
   document.getElementById('home-stock').hidden = !isOther();
   renderDemoBar();
+  syncHeldToWatch(true);
   applyHomeLayout();
   state.flowRange = loadPref('flowRange', '3y');
   try { renderFlowCard(); } catch (e) { console.error(e); }

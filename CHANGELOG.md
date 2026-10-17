@@ -11,6 +11,14 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🔧 퇴사까지·배당금에 넣은 종목(예: CRCA)이 내 종목 '보유' 폴더에 바로 보여요.
+- 🔧 옵션 시장 심리·애널리스트 의견이 하루 지난 값으로 보이던 문제를 고쳤어요. 이미 만기된 옵션은 빼고 계산하고, 카드에 언제 기준 자료인지도 표시해요.
+<!-- internal --> swr maxStaleSec(옵션 3h·애널리스트 12h: 오래된 값이면 최대 9초 기다려 새로 받음) · CBOE cdn-api.cboe.com 직접(307 리다이렉트) · 만기(21:00Z) 지난 옵션 제외 · cw.heldAdded.
+<!-- EN
+- Stocks in your FIRE / dividend holdings (e.g. CRCA) now appear in the Holdings folder.
+- Options sentiment and analyst views no longer show day-old data; expired options are excluded and each card shows when it was updated.
+-->
+
 ## v2026.10.15-3 — 2026-10-15
 
 [이 버전 보기](https://beabfbad.my-fire-portfolio.pages.dev) · 커밋 `fc2b517`
