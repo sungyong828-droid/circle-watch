@@ -2699,7 +2699,7 @@
     card('grow', {
       title: EN ? '📈 Monthly investing simulator' : '📈 적립식 배당 시뮬레이터', sub: EN ? 'Buy the same stock every month → value and monthly dividends N years later' : '매달 같은 종목을 사 모으면 N년 뒤 평가금액·월배당은?',
       easy: EN ? 'Enter how much you put in each month. We project the value and the monthly dividend, using the stock’s real dividend history for growth. Assumptions, not a forecast.' : '매달 넣을 돈을 정하면, 그 종목의 실제 배당 기록으로 배당이 늘어나는 속도를 계산해서 몇 년 뒤 평가금액과 한 달 배당을 보여줘요. 가정에 따른 계산이지 예측이 아니에요.',
-      body: `<div class="gr-picks">${picks.map((x) => `<button type="button" class="chip-btn sm" data-growt="${esc(x)}" aria-pressed="${x === t}">${esc(krTk(x) ? fireName(x) || x.slice(0, 6) : x)}</button>`).join('')}<label class="gr-t"><input id="gr-t" value="${esc(krTk(t) ? '' : t)}" placeholder="${EN ? 'Other ticker' : '다른 티커'}" autocapitalize="characters" maxlength="12"></label></div>
+      body: `<div class="gr-picks">${picks.map((x) => `<button type="button" class="chip-btn sm" data-growt="${esc(x)}" aria-pressed="${x === t}">${esc(krTk(x) ? fireName(x) || x.slice(0, 6) : x)}</button>`).join('')}<label class="gr-t"><input id="gr-t" value="${esc(krTk(t) || picks.includes(t) ? '' : t)}" placeholder="${EN ? 'Other ticker' : '다른 티커'}" autocapitalize="characters" maxlength="12"></label></div>
         <div class="bn-grid gr-in">
           <label class="bn-f"><span>${EN ? 'Start with' : '처음 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="start" value="${esc(String(growCfg.start))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
           <label class="bn-f"><span>${EN ? 'Every month' : '매달 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="monthly" value="${esc(String(growCfg.monthly))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
@@ -3015,7 +3015,7 @@
   const MILE_KEY = 'cw.fireMile', MILES = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   let mileShown = false;
   function checkMilestone(c) {
-    if (!c || !fireCfg || mileShown || !(c.progress >= 0)) return;
+    if (DEMO || !c || !fireCfg || mileShown || !(c.progress >= 0)) return; // 예시 포트폴리오에선 축하 창 없음
     const hit = MILES.filter((m) => c.progress * 100 >= m).at(-1) || 0, M = readJSON(MILE_KEY, null);
     if (!M || M.goal !== fireCfg.goal) { writeJSON(MILE_KEY, { m: hit, goal: fireCfg.goal }); return; }
     if (hit <= M.m) return;
