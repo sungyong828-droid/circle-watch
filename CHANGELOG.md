@@ -15,7 +15,7 @@
 - 🥧 **내 포트폴리오 비중·환율 효과**: 퇴사까지 화면에 종목별 비중 도넛과 한 종목 쏠림 경고, 미국 주식 손익을 '주가로 번 돈'과 '환율로 번 돈'으로 나눠 보여줘요.
 - 🤖 **실적 발표 AI 3줄 요약**: 실적이 나오면 매출·EPS 예상 대비, 회사 전망, 볼 점을 AI가 3줄로 정리해 실적 카드에 보여줘요(발표 뒤 10일).
 - 🇺🇸 **미국 신용잔고**: 시장 자금 동향에 미국판 빚투 지표(FINRA, 1997년부터)를 더했어요.
-- 🔍 검색으로 바로 볼 수 있는 [이번 주 경제 일정](/calendar)·[빚투 지표](/money-flow) 페이지를 열었어요.
+- 🔍 검색으로 바로 볼 수 있는 '이번 주 경제 일정'·'빚투 지표' 페이지를 열었어요(사이트 맨 아래 링크).
 <!-- internal --> /api/earnsum(KV earnsum:SYM:Q, 근거 부족 시 2시간) · /calendar·/money-flow Pages 함수 · data/us-margin.json + /flow us(FINRA 페이지 12개월) · cw.tax.
 <!-- EN
 - Capital gains tax planner (FIRE · Tax tab): estimated tax, how much to realize tax-free within the ₩2.5M deduction, savings from selling losers, and this year's sell-by date.
