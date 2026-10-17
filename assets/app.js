@@ -2699,7 +2699,7 @@
     card('grow', {
       title: EN ? '📈 Monthly investing simulator' : '📈 적립식 배당 시뮬레이터', sub: EN ? 'Buy the same stock every month → value and monthly dividends N years later' : '매달 같은 종목을 사 모으면 N년 뒤 평가금액·월배당은?',
       easy: EN ? 'Enter how much you put in each month. We project the value and the monthly dividend, using the stock’s real dividend history for growth. Assumptions, not a forecast.' : '매달 넣을 돈을 정하면, 그 종목의 실제 배당 기록으로 배당이 늘어나는 속도를 계산해서 몇 년 뒤 평가금액과 한 달 배당을 보여줘요. 가정에 따른 계산이지 예측이 아니에요.',
-      body: `<div class="gr-picks">${picks.map((x) => `<button type="button" class="chip-btn sm" data-growt="${esc(x)}" aria-pressed="${x === t}">${esc(krTk(x) ? fireName(x) || x.slice(0, 6) : x)}</button>`).join('')}<label class="gr-t"><input id="gr-t" value="${esc(krTk(t) || picks.includes(t) ? '' : t)}" placeholder="${EN ? 'Other ticker' : '다른 티커'}" autocapitalize="characters" maxlength="12"></label></div>
+      body: `<div class="gr-picks">${picks.map((x) => `<button type="button" class="chip-btn sm" data-growt="${esc(x)}" aria-pressed="${x === t}">${esc(krTk(x) ? (EN ? (x === "005930.KS" ? "Samsung" : x.slice(0, 6)) : fireName(x) || x.slice(0, 6)) : x)}</button>`).join('')}<label class="gr-t"><input id="gr-t" value="${esc(krTk(t) || picks.includes(t) ? '' : t)}" placeholder="${EN ? 'Other ticker' : '다른 티커'}" autocapitalize="characters" maxlength="12"></label></div>
         <div class="bn-grid gr-in">
           <label class="bn-f"><span>${EN ? 'Start with' : '처음 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="start" value="${esc(String(growCfg.start))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
           <label class="bn-f"><span>${EN ? 'Every month' : '매달 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" data-grow="monthly" value="${esc(String(growCfg.monthly))}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
@@ -2715,7 +2715,7 @@
   function growOutHtml(R) {
     if (!R) return `<p class="skeleton">${EN ? 'Loading dividend history…' : '배당 기록 불러오는 중…'}</p>`;
     const L = R.last, I = R.I, mk = [5, 10, 20, 30].filter((y) => y < R.years).map((y) => R.rows.find((r) => r.y === y)).filter(Boolean);
-    return `<p class="gr-info">${esc(I.kr ? fireName(growCfg.t) : growCfg.t)} · ${EN ? 'yield' : '배당률'} ${pctPlain(I.yld, 2)} · ${EN ? `${I.n} payouts/yr` : `1년 ${I.n}회 배당`} · ${EN ? 'div growth' : '배당 성장'} ${pctPlain(R.gD, 1)}</p>
+    return `<p class="gr-info">${esc(I.kr && !EN ? fireName(growCfg.t) : growCfg.t)} · ${EN ? 'yield' : '배당률'} ${pctPlain(I.yld, 2)} · ${EN ? `${I.n} payouts/yr` : `1년 ${I.n}회 배당`} · ${EN ? 'div growth' : '배당 성장'} ${pctPlain(R.gD, 1)}</p>
       <div class="gr-sum">
         <div><span>${R.years}${EN ? 'y later · value' : '년 뒤 평가금액'}</span><b>${wonFull(L.val)}</b><small>${EN ? 'invested' : '넣은 돈'} ${wonFull(L.inv)}</small></div>
         <div><span>${EN ? 'Monthly dividend' : '한 달 배당'}${R.tax ? (EN ? ' (after tax)' : '(세후)') : ''}</span><b class="up">${wonFull(L.mon)}</b><small>${EN ? 'total received' : '그동안 받은 배당'} ${wonFull(L.cum)}</small></div>
