@@ -2617,7 +2617,8 @@
   state.earnsum = {};
   function earnSumBlock(sym) {
     if (isKR(sym)) return '';
-    const E = earnOf(sym), last = (E?.quarters || []).at(-1);
+    const E = earnOf(sym), qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((y) => y.reported);
+    const last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
     if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 10) return '';
     const S = state.earnsum[sym];
     if (!S || (S.pending && Date.now() - S.t > 20000) || (S.q && S.q !== last.end)) {

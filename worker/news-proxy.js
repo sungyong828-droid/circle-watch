@@ -1645,7 +1645,9 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   const E = await (async () => { try { const r = await cache.match(new Request(`${url.origin}/earnings?s=${sym}&v=swr3`)); if (r) return await r.json(); } catch {} return buildEarnings(sym).catch(() => null); })();
-  const last = (E?.quarters || []).at(-1);
+  // 발표 직후에는 EPS 서프라이즈(Nasdaq)가 재무제표보다 먼저 들어온다 → 더 최근 것을 기준 분기로
+  const qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((x) => x.reported);
+  const last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
   if (!last?.reportedOn || Date.now() - Date.parse(last.reportedOn + 'T00:00:00Z') > 10 * 86400000) return json({ none: true }, cors);
   const key = `earnsum:${sym}:${last.end}`;
   const kept = env?.SUMS ? await env.SUMS.get(key, 'json').catch(() => null) : null;
@@ -1656,10 +1658,14 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   ctx.waitUntil(cache.put(lock, new Response('1', { headers: { 'cache-control': 'public, max-age=90' } })));
   const sur = (E.surprises || []).find((x) => x.end === last.end);
   const ya = (E.quarters || []).find((x) => x.end === `${+last.end.slice(0, 4) - 1}${last.end.slice(4)}`);
+  const Q = (E.quarters || []).find((x) => x.end === last.end) || {};
+  // 매출: 재무제표가 아직이면 Finviz(애널리스트 캐시)의 발표 매출·예상 매출
+  let fv = null;
+  try { const r = await cache.match(new Request(`${url.origin}/analyst?s=${sym}&v=5`)); const A = r ? await r.json() : null; fv = (A?.street?.quarters || []).filter((x) => x.sales != null && Math.abs(x.at - Date.parse(last.reportedOn + 'T12:00:00Z')) < 5 * 86400000).at(-1) || null; } catch {}
   const news = (await newsFor(sym, url.origin, cache, env)).filter((n) => /earn|result|quarter|revenue|guidance|EPS|실적|분기|매출|가이던스/i.test(n.title || '')).slice(0, 6);
   const usd = (v) => (v == null ? '모름' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(2)}B` : `$${(v / 1e6).toFixed(0)}M`);
   const user = [`종목: ${sym} · ${last.end} 분기 실적(발표 ${last.reportedOn})`,
-    `매출 ${usd(last.revenue)}${ya?.revenue ? ` (1년 전 ${usd(ya.revenue)})` : ''} · 순이익 ${usd(last.netIncome)}`,
+    `매출 ${usd(Q.revenue ?? fv?.sales)}${fv?.salesEst ? ` (시장 예상 ${usd(fv.salesEst)})` : ''}${ya?.revenue ? ` · 1년 전 ${usd(ya.revenue)}` : ''}${Q.netIncome != null ? ` · 순이익 ${usd(Q.netIncome)}` : ''}`,
     sur ? `EPS 실제 $${sur.eps} · 시장 예상 $${sur.consensus} (${sur.eps >= sur.consensus ? '상회' : '하회'})` : 'EPS 예상치 없음',
     news.length ? '관련 뉴스:\n' + news.map((n) => `- ${n.title}${n.sum ? ' — ' + n.sum : ''}`).join('\n') : '관련 뉴스 없음'].join('\n');
   try {
