@@ -1548,7 +1548,7 @@
       const R = growCalc();
       if (!R) return null;
       const L = R.last, mix = R.P.map((h) => `${h.name} ${Math.round(h.k * 100)}%`).join(' · ');
-      return { kind, tag, title: EN ? '📈 Monthly investing plan' : '📈 적립식 배당 시뮬레이션', bar: L.val > 0 ? Math.min(1, L.inv / L.val) : null,
+      return { kind, tag, title: EN ? '📈 Monthly investing plan' : '📈 적립식 배당 시뮬레이션', bar: null,
         hero: { label: EN ? `Monthly dividend in ${R.years} years${growCfg.tax ? ' (after tax)' : ''}` : `${R.years}년 뒤 한 달 배당${growCfg.tax ? '(세후)' : ''}`, value: wonFull(L.mon), money: true,
           alt: { label: EN ? 'Value vs invested' : '넣은 돈 대비 평가금액', value: `${(L.val / L.inv).toFixed(2)}${EN ? 'x' : '배'}`, money: false } },
         lines: [
