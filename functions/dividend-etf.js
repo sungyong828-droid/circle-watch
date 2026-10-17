@@ -42,7 +42,7 @@ const freq = (n) => (n >= 10 ? '월배당' : n >= 3 ? '분기' : n >= 1 ? `연 $
 export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url), host = url.hostname;
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-  const cache = caches.default, key = new Request(`${url.origin}/dividend-etf-page?v=1&d=${today}`);
+  const cache = caches.default, key = new Request(`${url.origin}/dividend-etf-page?v=2&d=${today}`);
   const hit = await cache.match(key);
   if (hit) return respond(await hit.text(), 200, host, 1800);
   const syms = GROUPS.flatMap((g) => g[2].map((x) => x[0]));
@@ -51,17 +51,17 @@ export async function onRequestGet({ request, waitUntil }) {
   const ok = Object.values(S).filter(Boolean).length;
   const go = '/?ref=page-dividend-etf#grow';
   const px = (s, v) => (s.endsWith('.KS') ? `${Math.round(v).toLocaleString('ko-KR')}원` : `$${v.toFixed(2)}`);
-  const tbl = (rows) => `<div class="dl-tbl-wrap"><table class="dl-tbl"><thead><tr><th>ETF</th><th>배당률</th><th>배당 주기</th><th>배당 성장(연)</th><th>1천만원 → 월배당(세후)</th></tr></thead><tbody>
-    ${rows.map(([s, n]) => { const x = S[s]; return `<tr><td><b>${esc(s.endsWith('.KS') ? n : s)}</b><small>${esc(s.endsWith('.KS') ? s.slice(0, 6) : n)}${x ? ` · ${px(s, x.price)}` : ''}</small></td><td>${x ? pctP(x.yld, 2) : '–'}</td><td>${x ? freq(x.n) : '–'}</td><td>${x?.growth != null ? `${pctP(x.growth)}<small>${x.yrs}년 평균</small>` : '–'}</td><td><b>${x ? won(x.mon) : '–'}</b></td></tr>`; }).join('')}
+  const tbl = (rows) => `<div class="dl-tbl-wrap"><table class="dl-tbl"><thead><tr><th>ETF</th><th>배당률</th><th>배당 성장</th><th>1천만원이면<br>월배당(세후)</th></tr></thead><tbody>
+    ${rows.map(([s, n]) => { const x = S[s], kr = s.endsWith('.KS'); return `<tr><td><b>${esc(kr ? n : s)}</b><small>${esc(kr ? s.slice(0, 6) : n)}</small>${x ? `<small>${freq(x.n)} · ${px(s, x.price)}</small>` : ''}</td><td>${x ? pctP(x.yld, 2) : '–'}</td><td>${x?.growth != null ? `${pctP(x.growth)}<small>${x.yrs}년 평균</small>` : '–<small>기록 짧음</small>'}</td><td><b>${x ? won(x.mon) : '–'}</b></td></tr>`; }).join('')}
   </tbody></table></div>`;
   const rank = syms.filter((s) => S[s]).sort((a, b) => S[b].yld - S[a].yld);
-  const growTop = syms.filter((s) => S[s]?.growth != null).sort((a, b) => S[b].growth - S[a].growth)[0];
+  const growTop = GROUPS[0][2].map((x) => x[0]).filter((s) => S[s]?.growth != null).sort((a, b) => S[b].growth - S[a].growth)[0]; // 커버드콜은 분배금이 들쭉날쭉해 '배당 성장'으로 소개하지 않는다
   const nameOf = (s) => GROUPS.flatMap((g) => g[2]).find((x) => x[0] === s)?.[1] || s;
   const short = (s) => (s.endsWith('.KS') ? nameOf(s) : s);
   const body = `<section class="lp-hero">
   <p class="dl-when">${krDay(today)} 기준 · 매일 갱신 · 최근 1년 실제 배당</p>
   <h1>배당 ETF 비교 — SCHD·JEPI·JEPQ vs 국내 상장 미국배당다우존스</h1>
-  <p class="lp-lead">많이 찾는 미국·국내 배당 ETF의 배당률, 배당 주기, 배당 성장률과 1천만원을 넣으면 매달 받는 배당(세후)을 한 표로 정리했어요.${rank.length ? ` 지금 배당률이 가장 높은 건 ${esc(short(rank[0]))}(${pctP(S[rank[0]].yld, 2)})${growTop ? `, 배당이 가장 빨리 늘고 있는 건 ${esc(short(growTop))}(연 ${pctP(S[growTop].growth)})` : ''}이에요.` : ''}</p>
+  <p class="lp-lead">많이 찾는 미국·국내 배당 ETF의 배당률, 배당 주기, 배당 성장률과 1천만원을 넣으면 매달 받는 배당(세후)을 한 표로 정리했어요.${rank.length ? ` 지금 배당률이 가장 높은 건 ${esc(short(rank[0]))}(${pctP(S[rank[0]].yld, 2)})${growTop ? `, 배당 성장 ETF 중 배당이 가장 빨리 늘고 있는 건 ${esc(short(growTop))}(연 ${pctP(S[growTop].growth)})` : ''}이에요.` : ''}</p>
   <p style="margin-top:14px"><a class="lp-cta" href="${go}">📈 섞어서 적립식으로 계산해 보기 →</a></p>
 </section>
 ${GROUPS.map(([h, d, rows]) => `<section class="lp-sec"><h2>${esc(h)}</h2><p class="lp-note">${esc(d)}</p>${tbl(rows.map(([s, n]) => [s, n]))}<ul class="dl-news">${rows.map(([s, n, about]) => `<li><b>${esc(s.endsWith('.KS') ? n : `${s} · ${n}`)}</b> <small>${esc(about)}</small></li>`).join('')}</ul></section>`).join('\n')}
