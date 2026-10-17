@@ -2578,7 +2578,7 @@
     const c = fireCfg ? (() => { try { return fireCalc(); } catch { return null; } })() : null;
     const pos = (c?.rows || []).filter((r) => !r.kr).map((r) => { const bfx = c.F.buyFx || c.fx, per = r.px * c.fx - r.avg * bfx; return { t: r.ticker, sh: r.shares, per, un: per * r.shares }; });
     let left = room;
-    const gains = pos.filter((x) => x.un > 0).sort((a, b) => b.un - a.un).map((x) => { const n = left > 0 && x.per > 0 ? Math.min(x.sh, Math.floor(left / x.per * 10000) / 10000) : 0; const amt = n * x.per; left -= amt; return { ...x, n, amt }; }).filter((x) => x.n > 0);
+    const gains = pos.filter((x) => x.un > 0).sort((a, b) => b.un - a.un).map((x) => { const n = left > 0 && x.per > 0 ? Math.min(Math.floor(x.sh), Math.floor(left / x.per)) : 0; const amt = n * x.per; left -= amt; return { ...x, n, amt }; }).filter((x) => x.n > 0);
     const losses = pos.filter((x) => x.un < 0).sort((a, b) => a.un - b.un).map((x) => ({ ...x, cut: Math.min(-x.un, taxable) * TAX_RATE }));
     return { g, l, real, taxable, tax, room, gains, losses, pos, noFx: c && !c.F.buyFx, hasFire: !!c };
   }
@@ -2587,7 +2587,7 @@
     const sh = (n) => nf(n % 1 ? 2 : 0).format(n);
     return `<div class="tx-sum2">
         <div><span>${EN ? 'Net realized this year' : '올해 실현 손익(통산)'}</span><b class="${cls(T.real)}">${signed(T.real, wonFull)}</b><small>${EN ? 'gains − losses' : '이익 − 손실'}</small></div>
-        <div><span>${EN ? 'Estimated tax' : '예상 양도세'}</span><b>${wonFull(T.tax)}</b><small>${EN ? `(net − ₩2.5M) × 22%` : '(손익 − 250만원) × 22%'}</small></div>
+        <div><span>${EN ? 'Estimated tax' : '예상 양도세'}</span><b>${T.tax > 0 ? wonFull(T.tax) : (EN ? 'None' : '없음')}</b><small>${EN ? `(net − ₩2.5M) × 22%` : '(손익 − 250만원) × 22%'}</small></div>
       </div>
       ${T.room > 0 ? `<div class="tx-tip ok"><b>💡 ${EN ? `You can still realize ${wonFull(T.room)} of gains tax-free this year` : `올해 ${wonFull(T.room)}까지는 이익을 실현해도 세금이 없어요`}</b>
         <p>${EN ? 'Selling a winner and buying it back raises your cost basis, so you owe less tax when you finally sell.' : '오른 종목을 이만큼 팔고 바로 다시 사면(익절 후 재매수) 평단이 올라가서, 나중에 팔 때 낼 세금이 줄어요.'}</p>
