@@ -1725,12 +1725,13 @@ async function cikOf(sym, cache, origin) {
 }
 // 최근 공시 목록(SEC submissions, 30분 캐시)
 async function secRecent(cik, cache, origin) {
-  const key = new Request(`${origin}/secrecent?c=${cik}&v=1`);
+  const key = new Request(`${origin}/secrecent?c=${cik}&v=2`);
   const hit = await cache.match(key);
   if (hit) return hit.json();
   const r = (await secGet(`https://data.sec.gov/submissions/CIK${cik}.json`)).filings.recent;
   const list = [];
-  for (let k = 0; k < Math.min(120, r.form.length); k++) {
+  // 임원 지분 신고(Form 4) 같은 공시가 많아 목록 전체에서 고른다(최대 60건)
+  for (let k = 0; k < r.form.length && list.length < 60; k++) {
     if (!FS_FORMS.test(r.form[k])) continue;
     list.push({ acc: r.accessionNumber[k].replace(/-/g, ''), form: r.form[k], d: r.filingDate[k], doc: r.primaryDocument[k], items: r.items[k] || '' });
   }
