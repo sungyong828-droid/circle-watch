@@ -1786,18 +1786,21 @@ export async function handleFileSum(url, cache, cors, ctx, env) {
   if (!pick.length) return json({ none: true }, cors);
   const keys = pick.map((f) => `filesum2:${sym}:${f.acc}`);
   const kept = env?.SUMS ? await Promise.all(keys.map((k) => env.SUMS.get(k, 'json').catch(() => null))) : pick.map(() => null);
-  // 아직 요약이 없는 가장 최근 공시 하나만 이번 요청에서 만든다(나머지는 화면이 다시 부를 때)
-  const todo = pick.findIndex((f, i) => !kept[i]?.lines?.length);
-  if (todo >= 0 && env?.AI && env?.SUMS && (await aiLock(cache, url.origin, keys[todo])) && (STOCKS.includes(sym) || (await takeAiBudget(1)))) {
-    const f = pick[todo];
-    try {
-      const body = await filingBody(cik, f);
-      if (body.length > 200) {
+  // 아직 요약이 없는 최근 공시를 이번 요청에서 두 개까지 만든다(나머지는 화면이 다시 부를 때).
+  // KV는 저장 직후 잠깐 옛 값이 보일 수 있어서, 다른 요청이 만들고 있는(잠긴) 공시는 건너뛴다.
+  const todo = [];
+  if (env?.AI && env?.SUMS) for (let i = 0; i < pick.length && todo.length < 2; i++) if (!kept[i]?.lines?.length && (await aiLock(cache, url.origin, keys[i]))) todo.push(i);
+  if (todo.length && (STOCKS.includes(sym) || (await takeAiBudget(todo.length)))) {
+    await Promise.all(todo.map(async (i) => {
+      const f = pick[i];
+      try {
+        const body = await filingBody(cik, f);
+        if (body.length < 200) return;
         const items = f.items.split(',').map((x) => ITEM_KO[x.trim()]).filter(Boolean).join(', ');
         const lines = aiLines(await aiLine(env, FILESUM_SYS, `회사: ${COMPANY[sym] || sym} (${sym})\n공시: ${f.form}${items ? ` (${items})` : ''} · 제출일 ${f.d}\n원문:\n${body}`, 420));
-        if (lines.length >= 2) { kept[todo] = { lines, at: new Date().toISOString() }; ctx.waitUntil(env.SUMS.put(keys[todo], JSON.stringify(kept[todo]), { expirationTtl: 200 * 86400 })); }
-      }
-    } catch {}
+        if (lines.length >= 2) { kept[i] = { lines, at: new Date().toISOString() }; ctx.waitUntil(env.SUMS.put(keys[i], JSON.stringify(kept[i]), { expirationTtl: 200 * 86400 })); }
+      } catch {}
+    }));
   }
   const out = pick.map((f, i) => {
     const it = f.items.split(',').map((x) => x.trim()).filter((x) => ITEM_KO[x] && x !== '9.01');
