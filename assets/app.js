@@ -5125,11 +5125,22 @@
     nav.classList.add('tb2');
     nav.style.setProperty('--tabs', rest.length);
     nav.style.setProperty('--sc', S.color || 'var(--accent)');
-    // Home | 구분선 | [종목 로고·이름 ⇄](누르면 종목 바꾸기) · 그 종목의 탭들 — 모두 같은 높이의 탭, 종목 묶음 위에만 종목 색 줄
-    const inStock = rest.some(([v]) => v === state.view);
-    nav.classList.toggle('tb-on', inStock);
-    nav.innerHTML = `${btn(tabs[0])}<i class="tb-div" aria-hidden="true"></i><div class="tb-grp"><button type="button" class="tb-sym" data-stocksheet="1" aria-label="${EN ? `${nm} — change stock` : `${nm} — 종목 바꾸기`}"><span class="tb-lg">${logoOf(sym) ? `<img src="${logoOf(sym)}" alt="" width="22" height="22">` : `<em class="tb-letter">${esc((S.mark || nm)[0])}</em>`}<i aria-hidden="true">⇄</i></span><span><b>${esc(nm)}</b></span></button>${rest.map(btn).join('')}</div>`;
+    // 아래 탭 = [지금 보는 종목 줄(이름·가격 · 바꾸기)] + [Home · 차트 · 실적 · 뉴스 …] — 이미지 없이 글자로만(로고가 없거나 늦게 떠도 깨지지 않게)
+    nav.classList.add('tb3');
+    nav.classList.remove('tb2');
+    nav.style.setProperty('--tabs', tabs.length);
+    nav.style.setProperty('--sc', /^#|^rgb/.test(S.color || '') ? S.color : 'var(--accent)');
+    const full = isKR(sym) ? S.name || sym : `${sym === 'CRCA' ? 'CRCL' : sym}${S.short && S.short !== sym ? ` · ${S.short}` : ''}`;
+    nav.innerHTML = `<button type="button" class="tb-now" data-stocksheet="1" aria-label="${EN ? `Stock screens: ${esc(full)} — change stock` : `종목 화면: ${esc(full)} — 종목 바꾸기`}"><i class="tb-dot" aria-hidden="true"></i><span class="tb-cap">${EN ? 'Viewing' : '지금 종목'}</span><b class="tb-nm">${esc(full)}</b><span class="tb-px" id="tb-px"></span><span class="tb-sw">${EN ? 'Change' : '바꾸기'} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></span></button><div class="tb-row">${tabs.map(([v, label, ic]) => btn([v, v === 'home' ? label : short([v, label, ic])[1], ic])).join('')}</div>`;
+    updateTbNow();
     updateNewsBadge();
+  }
+  function updateTbNow() {
+    const el = document.getElementById('tb-px');
+    if (!el) return;
+    const p = stockPx(state.stock);
+    const html = p?.price != null ? `${pxS(state.stock, p.price)} <em class="${cls(p.pct)}">${p.pct != null ? pct(p.pct, 1) : ''}</em>` : '';
+    if (el.innerHTML !== html) el.innerHTML = html;
   }
   const viewAllowed = (v) => v === 'fire' || v === 'flow' || v === 'mkt' || TAB_SETS[state.stock].some(([t]) => t === v);
 
@@ -5259,6 +5270,7 @@
       el.dataset.built = key;
       requestAnimationFrame(ssScrollToActive);
     }
+    updateTbNow();
     for (const btn of el.querySelectorAll('.ss[data-stock]')) {
       const sym = btn.dataset.stock, p = stockPx(sym);
       const ed = btn.querySelector('.ss-ed'); if (ed) ed.hidden = !earnDay(sym);
@@ -5311,7 +5323,7 @@
     window.scrollTo({ top: 0 });
   }
   // 홈에서 종목을 고르면 아래 종목 묶음을 잠깐 반짝여 '여기가 이 종목 화면'임을 알려준다
-  function pulseTabGroup() { const g = document.querySelector('.tabbar .tb-grp'); if (!g) return; g.classList.remove('tb-pulse'); void g.offsetWidth; g.classList.add('tb-pulse'); }
+  function pulseTabGroup() { const g = document.querySelector('.tabbar .tb-now'); if (!g) return; g.classList.remove('tb-pulse'); void g.offsetWidth; g.classList.add('tb-pulse'); }
 
   // ---------------------------------------------------------------- 종목: 시세 · 차트
   const SRANGES = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '1y': '1년' };
@@ -7330,7 +7342,7 @@
     state.view = v;
     document.querySelectorAll('.view').forEach((el) => { el.hidden = el.dataset.view !== v; });
     document.querySelectorAll('[data-tab]').forEach((b) => (b.dataset.tab === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
-    document.getElementById('tabbar')?.classList.toggle('tb-on', !!document.querySelector(`.tb-grp [data-tab="${v}"]`));
+    document.getElementById('tabbar')?.classList.toggle('tb-on', v !== 'home' && !!document.querySelector(`.tb-row [data-tab="${v}"]`));
     document.getElementById('view-title').textContent = viewTitle(v);
     try { history.replaceState(null, '', '#' + v); } catch {}
     savePref('view', v);
