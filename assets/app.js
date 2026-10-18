@@ -4056,7 +4056,7 @@
 
   // ---- 🧩 홈 화면 편집: 홈 구역 순서·숨기기, 아래 탭의 USDC·Arc 숨기기(이 기기에 저장)
   const HOME_SECTIONS = [
-    ['fire', () => (EN ? '🔥 FIRE · Dividends · Tax' : '🔥 퇴사까지·배당금·세금'), ['home-fire']],
+    ['fire', () => (EN ? '🔥 My money' : '🔥 내 돈 요약'), ['home-fire'], () => (EN ? 'FIRE · Dividends · Tax' : '퇴사까지 · 배당금 · 세금')],
     ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
     ['market', () => (EN ? '📊 Market' : '📊 시장'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow'], () => (EN ? 'Overview · Fear & Greed · Money flow' : '개요 · 공포탐욕 · 자금 동향')],
   ];
