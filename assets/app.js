@@ -5128,7 +5128,7 @@
     // Home | 구분선 | [종목 로고·이름 ⇄](누르면 종목 바꾸기) · 그 종목의 탭들 — 모두 같은 높이의 탭, 종목 묶음 위에만 종목 색 줄
     const inStock = rest.some(([v]) => v === state.view);
     nav.classList.toggle('tb-on', inStock);
-    nav.innerHTML = `${btn(tabs[0])}<i class="tb-div" aria-hidden="true"></i><div class="tb-grp"><button type="button" class="tb-sym" data-stocksheet="1" aria-label="${EN ? `${nm} — change stock` : `${nm} — 종목 바꾸기`}">${logoOf(sym) ? `<img src="${logoOf(sym)}" alt="" width="22" height="22">` : `<em class="tb-letter">${esc((S.mark || nm)[0])}</em>`}<span><b>${esc(nm)}</b><i aria-hidden="true">⇄</i></span></button>${rest.map(btn).join('')}</div>`;
+    nav.innerHTML = `${btn(tabs[0])}<i class="tb-div" aria-hidden="true"></i><div class="tb-grp"><button type="button" class="tb-sym" data-stocksheet="1" aria-label="${EN ? `${nm} — change stock` : `${nm} — 종목 바꾸기`}"><span class="tb-lg">${logoOf(sym) ? `<img src="${logoOf(sym)}" alt="" width="22" height="22">` : `<em class="tb-letter">${esc((S.mark || nm)[0])}</em>`}<i aria-hidden="true">⇄</i></span><span><b>${esc(nm)}</b></span></button>${rest.map(btn).join('')}</div>`;
     updateNewsBadge();
   }
   const viewAllowed = (v) => v === 'fire' || v === 'flow' || v === 'mkt' || TAB_SETS[state.stock].some(([t]) => t === v);
