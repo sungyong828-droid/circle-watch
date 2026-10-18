@@ -182,7 +182,14 @@ def deploy(target):
     if target == 'prod':
         tested = open(MARK, encoding='utf-8').read().strip() if os.path.exists(MARK) else ''
         if tested != ver and '--yes' not in sys.argv:
-            ans = input(f'테스트 환경에 마지막으로 올린 버전({tested or "없음"})과 지금({ver})이 달라요. 그래도 실제 사이트에 배포할까요? [y/N] ')
+            msg = f'테스트 환경에 마지막으로 올린 버전({tested or "없음"})과 지금({ver})이 달라요.'
+            # 디스코드·자동 실행처럼 키보드 입력을 받을 수 없으면 묻지 않고 멈춘다(예전엔 EOFError로 죽었음)
+            if not sys.stdin or not sys.stdin.isatty():
+                sys.exit(msg + ' 먼저 "python deploy.py test"로 올려 확인하거나, 사용자가 이 버전 배포를 확인했다면 --yes 를 붙여 다시 실행하세요.')
+            try:
+                ans = input(msg + ' 그래도 실제 사이트에 배포할까요? [y/N] ')
+            except EOFError:
+                ans = ''
             if ans.strip().lower() != 'y':
                 sys.exit('취소했어요.')
     branch = 'main' if target == 'prod' else 'test'

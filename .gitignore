@@ -8,3 +8,5 @@ dist/
 promo/
 .env.local
 tools/cache/
+__pycache__/
+*.pyc
