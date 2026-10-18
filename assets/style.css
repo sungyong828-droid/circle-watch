@@ -2034,3 +2034,7 @@ body { padding-bottom: calc(var(--tabbar-h) + var(--tbnow-h) + 22px + env(safe-a
 button > .ic, a > .ic { vertical-align: -0.22em; }
 .ic-tri { display: inline-block; width: 0.7em; height: 0.6em; margin-right: 0.35em; vertical-align: 0.02em; clip-path: polygon(50% 0, 100% 100%, 0 100%); background: var(--up, #f04452); }
 .ic-tri.down { clip-path: polygon(0 0, 100% 0, 50% 100%); background: var(--down, #3b82f6); }
+.fire-tabs button, .div-tabs button, .mk-tabs button { display: inline-flex; align-items: center; justify-content: center; }
+.fire-tabs button > .ic:first-child, .div-tabs button > .ic:first-child, .mk-tabs button > .ic:first-child { vertical-align: 0; }
+.hf-l { display: flex; align-items: center; }
+.hf-l > .ic:first-child { vertical-align: 0; }
