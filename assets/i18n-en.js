@@ -1394,7 +1394,7 @@ window.__I18N_EN = {
 "서클·조비·스페이스X·템퍼스 실시간 주가·캔들 차트, 뉴스 AI 요약, 공매도·기관·애널리스트까지 휴대폰 한 화면에. 무료·가입 없음.": "Real-time prices, candle charts, AI news summaries, short interest, institutions and analysts for Circle, Joby, SpaceX and Tempus on one phone screen. Free, no sign-up.",
 "소개 페이지": "About pages",
 "스페이스X(SPCX)": "SpaceX (SPCX)",
-"우측 상단 새로고침(↻)을 누르면 모든 데이터를 지금 시각 기준으로 다시 불러와요. 가만히 두어도 5분마다(주가·환율은 더 자주) 자동으로 업데이트돼요. 🟢 표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.": "Tap refresh (↻) at the top right to reload everything as of now. Left alone, it updates every 5 minutes (prices and FX more often). 🟢 marks live values. A personal monitoring tool, not investment advice.",
+"우측 상단 새로고침(↻)을 누르면 모든 데이터를 지금 시각 기준으로 다시 불러와요. 가만히 두어도 5분마다(주가·환율은 더 자주) 자동으로 업데이트돼요. 🟢 표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.": "Tap refresh (↻) at the top right to reload all data now. It also updates automatically every 5 minutes (prices and FX more often). 🟢 marks live values. For personal monitoring, not investment advice.",
 "조비(JOBY)": "Joby (JOBY)",
 "종목 선택": "Select stock",
 "종목 추가·삭제·순서 바꾸기": "Add, remove or reorder stocks",
@@ -2125,7 +2125,11 @@ window.__I18N_EN = {
 "미국 ETF 세금 비교": "US ETF tax comparison",
 "배당 ETF 비교": "Dividend ETF comparison",
 "양도세·절세 계좌": "Gains tax · accounts",
-"지수·환율 차트": "Index & FX chart"
+"지수·환율 차트": "Index & FX chart",
+"스테이블코인 한눈에": "Stablecoins at a glance",
+"배당 포트폴리오 계산기": "Dividend portfolio calculator",
+"우측 상단 새로고침(↻)을 누르면 모든 데이터를 지금 시각 기준으로 다시 불러와요. 가만히 두어도 5분마다(주가·환율은 더 자주) 자동으로 업데이트돼요.": "Tap refresh (↻) at the top right to reload all data now. It also updates automatically every 5 minutes (prices and FX more often).",
+"표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.": "marks live values. For personal monitoring, not investment advice."
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
