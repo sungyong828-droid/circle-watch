@@ -1869,7 +1869,7 @@ async function promiseUpdates(sym, base, acc, url, cache, ctx, env) {
   // 지난 실적 발표 이후 전부 본다(최신 발표 직전에 이미 이룬 일을 AI가 '새 약속'으로 잘못 넣는 경우도 바로잡게)
   try { pr = (await nasdaqPressReleases(sym, 50)).filter((n) => n.t.slice(0, 10) > base.prev.d).slice(0, 40); } catch { return { ...base, checking: true }; }
   if (!pr.length || !env?.AI || !env?.SUMS) return { ...base, checked: base.cur.d };
-  const last = [pr[0].t.slice(0, 10), base.cur.d].sort().at(-1), key = `promupd2:${sym}:${acc}:${last}:${pr.length}`;
+  const last = [pr[0].t.slice(0, 10), base.cur.d].sort().at(-1), key = `promupd3:${sym}:${acc}:${last}:${pr.length}`;
   const kept = await env.SUMS.get(key, 'json').catch(() => null);
   const apply = (U) => ({ ...base, checked: last, items: base.items.map((x, i) => { const u = U.find((y) => y.i === i); return u ? { ...x, upd: u } : x; }) });
   if (kept) return apply(kept);
@@ -1880,7 +1880,7 @@ async function promiseUpdates(sym, base, acc, url, cache, ctx, env) {
     const s = String(r?.response ?? r?.choices?.[0]?.message?.content ?? '').replace(/<think>[\s\S]*?<\/think>/g, '');
     const arr = s.includes('[') ? JSON.parse(s.slice(s.indexOf('['), s.lastIndexOf(']') + 1)) : [];
     const U = (Array.isArray(arr) ? arr : []).map((x) => ({ x, n: pr.find((p) => p.title === String(x?.title || '').trim()) }))
-      .filter(({ x, n }) => n && Number.isInteger(x.i) && base.items[x.i] && ['done', 'late'].includes(x.status))
+      .filter(({ x, n }) => n && Number.isInteger(x.i) && base.items[x.i] && ['done', 'late'].includes(x.status) && (base.items[x.i].status !== 'new' || n.t.slice(0, 10) > base.cur.d)) // 새 약속은 최신 발표 뒤 보도자료로만
       .map(({ x, n }) => ({ i: x.i, status: x.status, d: n.t.slice(0, 10), title: n.title, url: n.url }));
     ctx.waitUntil(env.SUMS.put(key, JSON.stringify(U), { expirationTtl: 150 * 86400 }));
     return apply(U);
