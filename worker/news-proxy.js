@@ -1442,7 +1442,8 @@ export async function checkFacts(env, force = false) {
           .sort((a, b) => /99[._-]?2/.test(b) - /99[._-]?2/.test(a)); // 주주서한(99.2)부터
         let got = null, url = names[0] ? base + names[0] : base;
         for (const nm of names.slice(0, 3)) { const p = parseFaaChart(await secGet(base + nm, 'text')); if (p) { got = p; url = base + nm; break; } }
-        out.faa = { ...(got || {}), ok: !!got, acc, filed: r.filingDate[i], url };
+        // 첨부(99.x)가 없는 2.02 공시(예: 2026-02-02 예비 실적)는 주주서한이 아니라 건너뛴다 — 이전 값 유지
+        if (got || names.length) out.faa = { ...(got || {}), ok: !!got, acc, filed: r.filingDate[i], url };
       }
     }
     delete out.faaErr;

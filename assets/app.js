@@ -200,7 +200,14 @@
         <li><b>맥스 페인</b>: 만기 때 옵션 매수자들이 가장 많이 잃는 가격. 만기 무렵 주가가 이 근처로 끌린다는 속설이 있어요(참고용).</li>
         <li><b>미결제가 많이 쌓인 가격</b>: 콜이 많으면 저항, 풋이 많으면 지지로 보는 경우가 많아요.</li>
       </ul>`,
-    earnday: `
+    earnday: EN ? `
+      <p>This card appears only from <b>the day before to the day of</b> an earnings release and for <b>36 hours</b> after it.</p>
+      <ul>
+        <li><b>Before</b>: release time (KST), countdown, EPS estimate, the move implied by options, and how often recent quarters beat.</li>
+        <li><b>After</b>: actual vs expected EPS and revenue, price reaction, the earnings 8-K, plus earnings news with AI summaries.</li>
+        <li>During this window, earnings, analyst and news data refresh <b>every minute</b> (the server updates every 2–5 min).</li>
+      </ul>
+      <p>Release time is from Finviz (BMO = before open, AMC = after close). Until the company confirms the date, it's an estimate and may change.</p>` : `
       <p>실적 발표 <b>전날~당일</b>과 발표 후 <b>36시간</b> 동안만 나타나는 카드예요.</p>
       <ul>
         <li><b>발표 전</b>: 발표 시각(한국시간), 남은 시간, 예상 EPS, 옵션이 예상하는 실적 반응 폭, 최근 분기 예상 상회 횟수.</li>
@@ -4721,7 +4728,7 @@
 
   // ---------------------------------------------------------------- 서클 실적 (뉴스 탭 상단)
   const qLabel = (end) => { const [y, m] = end.split('-'); return `'${y.slice(2)} ${Math.ceil(+m / 3)}Q`; };
-  const qLabelLong = (end) => { const [y, m] = end.split('-'); return `${y}년 ${Math.ceil(+m / 3)}분기`; };
+  const qLabelLong = (end) => { const [y, m] = end.split('-'); return EN ? `Q${Math.ceil(+m / 3)} ${y}` : `${y}년 ${Math.ceil(+m / 3)}분기`; };
   const dday = (iso) => Math.ceil((Date.parse(iso + 'T00:00:00') - new Date(new Date().toDateString()).getTime()) / 86400000);
   const krDate = (iso) => { const d = new Date(iso + 'T00:00:00'); if (EN) return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`; };
   const usdS = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
@@ -6075,13 +6082,14 @@
       const sur = (D.E.surprises || []).slice(0, 4);
       const beats = sur.filter((x) => x.eps >= x.consensus).length;
       card(id, {
-        title: `🔔 ${S.short} 실적 발표 ${dday(N.date) <= 0 ? '오늘' : dday(N.date) === 1 ? '내일' : `D-${dday(N.date)}`}`, sub: `${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}미국 ${krDate(N.date)}${D.time ? ` · ${D.time === 'BMO' ? '장 시작 전' : '장 마감 후'}` : ' · 시각 미정'}`, info: INFO.earnday,
+        title: EN ? `🔔 ${S.short} earnings ${dday(N.date) <= 0 ? 'today' : dday(N.date) === 1 ? 'tomorrow' : `D-${dday(N.date)}`}` : `🔔 ${S.short} 실적 발표 ${dday(N.date) <= 0 ? '오늘' : dday(N.date) === 1 ? '내일' : `D-${dday(N.date)}`}`,
+        sub: EN ? `${N.quarter ? qLabelLong(N.quarter) + ' earnings · ' : ''}US ${krDate(N.date)} · ${D.time ? (D.time === 'BMO' ? 'before open' : 'after close') : 'time TBD'}` : `${N.quarter ? qLabelLong(N.quarter) + ' 실적 · ' : ''}미국 ${krDate(N.date)}${D.time ? ` · ${D.time === 'BMO' ? '장 시작 전' : '장 마감 후'}` : ' · 시각 미정'}`, info: INFO.earnday,
         body: `${kst ? `<div class="ed-time"><b>한국시간 ${esc(kst)}경</b>${left > 0 ? `<span>${Math.floor(left / 3600000)}시간 ${Math.floor((left % 3600000) / 60000)}분 남음</span>` : '<span>곧 발표</span>'}</div>` : ''}
           <div class="ns-grid er-grid">
-            <div><span>예상 EPS</span><b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b><small>${N.low != null ? `범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}` : ''}${N.analysts ? ` · ${N.analysts}명` : ''}</small></div>
+            <div><span>예상 EPS</span><b>${N.consensus != null ? '$' + N.consensus.toFixed(2) : '–'}</b><small>${N.low != null ? `범위 $${N.low.toFixed(2)}~$${N.high.toFixed(2)}` : ''}${N.analysts ? (EN ? ` · ${N.analysts} analysts` : ` · ${N.analysts}명`) : ''}</small></div>
             <div><span>작년 같은 분기</span><b>${N.lastYearEps != null ? '$' + N.lastYearEps.toFixed(2) : '–'}</b><small>EPS</small></div>
             <div><span>옵션이 보는 변동폭</span><b>${O?.earn ? '±' + (O.earn.move * 100).toFixed(1) + '%' : '–'}</b><small>${O?.earn ? `${price(O.spot * (1 - O.earn.move))} ~ ${price(O.spot * (1 + O.earn.move))}` : '옵션 자료 없음'}</small></div>
-            <div><span>최근 ${sur.length}분기 예상 상회</span><b>${sur.length ? `${beats}/${sur.length}` : '–'}</b><small>EPS 기준</small></div>
+            <div><span>${EN ? `Beat in last ${sur.length} qtrs` : `최근 ${sur.length}분기 예상 상회`}</span><b>${sur.length ? `${beats}/${sur.length}` : '–'}</b><small>EPS 기준</small></div>
           </div>
           <p class="ed-check">✅ 볼 것: ${EARN_CHECK[sym] || '매출·EPS가 예상보다 높은지, 다음 분기 가이던스'}</p>${voteBlock(sym)}`,
       });
@@ -6098,7 +6106,7 @@
     const EN_RE = /earnings|results|quarter|revenue|guidance|EPS|실적|분기|매출|어닝/i;
     const news = newsItems(sym).filter((i) => i.kind !== 'filing' && EN_RE.test(i.title) && Date.now() - i.t < 2 * 86400000).slice(0, 4);
     card(id, {
-      title: `📊 ${S.short} 실적 발표 결과`, sub: `${q ? qLabelLong(q.end) : ''} · 발표 ${D.repMs ? new Date(D.repMs).toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}`, info: INFO.earnday,
+      title: EN ? `📊 ${S.short} earnings results` : `📊 ${S.short} 실적 발표 결과`, sub: `${q ? qLabelLong(q.end) : ''} · ${EN ? 'released' : '발표'} ${D.repMs ? new Date(D.repMs).toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}`, info: INFO.earnday,
       body: `<div class="ns-grid er-grid">
           <div><span>EPS</span><b class="${cls(epsS)}">${eps != null ? '$' + (+eps).toFixed(2) : '–'}</b><small>${epsEst != null ? `예상 $${(+epsEst).toFixed(2)} · ` : ''}${epsS != null ? `<span class="${cls(epsS)}">${epsS >= 0 ? '예상 상회' : '예상 하회'} ${pct(epsS, 0)}</span>` : ''}</small></div>
           <div><span>매출</span><b class="${cls(salesS)}">${fq?.sales ? usd(fq.sales) : usdS2(q?.revenue)}</b><small>${fq?.salesEst ? `예상 ${usd(fq.salesEst)} · <span class="${cls(salesS)}">${salesS >= 0 ? '상회' : '하회'} ${pct(salesS, 1)}</span>` : ''}</small></div>

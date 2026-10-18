@@ -13,8 +13,11 @@
 
 - 📅 **퇴사 예상 달성일**: '진행률 기록'이 14일 넘게 쌓이면 최근 기록의 속도로 "지금 속도면 ○○년 ○월쯤"을 보여 줘요. 퇴사까지 카드 위쪽에도 한 줄로 나와요(주가에 따라 크게 달라지는 어림값이에요).
 <!-- internal --> fireEta(): 최근 180일 평가금액(v) 로그 회귀 → 오늘 값에서 목표까지 일수, 현재 목표 금액 기준 · 하락 추세·50년 초과는 날짜 숨김.
+- 🔔 **조비 실적(11/4 예상) 준비**: 조비가 주주서한 없이 짧은 실적 공시만 내도 FAA 인증 단계 % 자동 반영이 멈추지 않게 고쳤어요. 영어 화면의 실적 발표 카드·분기 이름(Q3 2026)도 자연스럽게 다듬었어요.
+<!-- internal --> worker checkFacts: 99.x 첨부 없는 2.02 8-K는 faa 덮어쓰지 않음(2026-02-02 사례) — 워커 배포 필요 · parseFaaChart 과거 5개 서한 통과 확인 · qLabelLong EN · INFO.earnday EN.
 <!-- EN
 - Estimated FIRE date: once 'Progress history' has 14+ days, it shows "At this pace: ~Mar 2029" from your recent pace, also as a line on the FIRE card (a rough estimate that swings with stock prices).
+- Earnings prep for Joby: FAA certification stage % keeps auto-updating even if a short earnings filing comes without a shareholder letter. The English earnings-day card and quarter names (Q3 2026) read naturally now.
 -->
 
 ## v2026.10.18-2 — 2026-10-18
