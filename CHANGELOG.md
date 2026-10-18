@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📅 **퇴사 예상 달성일**: '진행률 기록'이 14일 넘게 쌓이면 최근 기록의 속도로 "지금 속도면 ○○년 ○월쯤"을 보여 줘요. 퇴사까지 카드 위쪽에도 한 줄로 나와요(주가에 따라 크게 달라지는 어림값이에요).
+<!-- internal --> fireEta(): 최근 180일 평가금액(v) 로그 회귀 → 오늘 값에서 목표까지 일수, 현재 목표 금액 기준 · 하락 추세·50년 초과는 날짜 숨김.
+<!-- EN
+- Estimated FIRE date: once 'Progress history' has 14+ days, it shows "At this pace: ~Mar 2029" from your recent pace, also as a line on the FIRE card (a rough estimate that swings with stock prices).
+-->
+
 ## v2026.10.18-2 — 2026-10-18
 
 [이 버전 보기](https://a3c12836.my-fire-portfolio.pages.dev) · 커밋 `81225bb`

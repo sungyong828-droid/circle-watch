@@ -3416,6 +3416,7 @@
         <div class="fire-hero">
           <div class="fire-pct"><span id="fire-pct">${(pctDone * 100).toFixed(1)}</span><small>%</small></div>
           <div class="fire-remain">목표까지 <b>${(Math.max(0, 1 - pctDone) * 100).toFixed(1)}%</b> 남음 · <b>${wonFull(Math.max(0, c.remainKrw))}</b> 부족</div>
+          ${fireEtaHtml(fireEta(fireHist, F.goal), true)}
           <div class="fire-bar" role="progressbar" aria-valuenow="${Math.round(pctDone * 100)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${Math.min(100, pctDone * 100)}%"></span>${marks}</div>
           <div class="fire-scale"><span>₩0</span><span>${won(F.goal * 0.5)}</span><span>${won(F.goal)}</span></div>
         </div>
@@ -3470,13 +3471,40 @@
     });
   }
 
+  // 예상 달성일 — 최근 180일 평가금액 기록의 로그 추세(복리 속도)로, 오늘 값에서 목표까지 남은 기간을 어림한다
+  function fireEta(H, goal) {
+    const today = isoToday(), R = H.filter((r) => r.v > 0 && daysBetween(r.d, today) <= 180);
+    if (R.length && R.at(-1).v >= goal) return { done: true };
+    if (R.length < 5 || daysBetween(R[0].d, R.at(-1).d) < 14) return { wait: true };
+    const xs = R.map((r) => daysBetween(R[0].d, r.d)), ys = R.map((r) => Math.log(r.v)), n = R.length;
+    const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+    let sxy = 0, sxx = 0;
+    for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+    const k = sxy / sxx, yr = Math.exp(k * 365) - 1, span = xs.at(-1);
+    if (!(k > 0)) return { down: true, yr, span };
+    const days = Math.log(goal / R.at(-1).v) / k;
+    return { days, date: addDays(R.at(-1).d, Math.round(days)), yr, span };
+  }
+  function fireEtaHtml(E, short) {
+    if (!E || E.wait) return short ? '' : `<p class="note fire-eta-wait">${EN ? 'An estimated FIRE date appears once you have 14+ days of records.' : '기록이 14일 넘게 쌓이면 예상 달성일이 보여요.'}</p>`;
+    if (E.done) return short ? '' : `<div class="fire-eta"><span>${EN ? 'Goal' : '목표'}</span><b>${EN ? 'Reached 🎊' : '달성 🎊'}</b></div>`;
+    const basis = EN ? `last ${E.span} days, ${pct(E.yr, 0)}/yr pace` : `최근 ${E.span}일 기록 · 연 ${pct(E.yr, 0)} 속도`;
+    if (E.down) return short ? '' : `<div class="fire-eta"><span>${EN ? 'At this pace' : '지금 속도면'}</span><b>${EN ? 'No estimate' : '예상 어려움'}</b><small>${basis} — ${EN ? 'the trend is down, so no date is shown.' : '줄어드는 추세라 날짜를 계산하지 않았어요.'}</small></div>`;
+    const m = Math.max(1, Math.round(E.days / 30.44)), Y = Math.floor(m / 12), M = m % 12;
+    const far = m > 600, [yy, mm] = E.date.split('-').map(Number);
+    const when = far ? (EN ? '50+ years' : '50년 넘게') : EN ? `~${new Date(Date.UTC(yy, mm - 1, 15)).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })}` : `${yy}년 ${mm}월쯤`;
+    const dur = EN ? [Y && `${Y} yr`, M && `${M} mo`].filter(Boolean).join(' ') : [Y && `${Y}년`, M && `${M}개월`].filter(Boolean).join(' ');
+    if (short) return far ? '' : `<div class="fire-eta-line">${EN ? `At this pace: <b>${when}</b> (${dur})` : `지금 속도면 <b>${when}</b> 달성 (${dur} 뒤)`}</div>`;
+    return `<div class="fire-eta"><span>${EN ? 'At this pace' : '지금 속도면'}</span><b>${when}</b><small>${far ? '' : `${EN ? 'in about' : '약'} ${dur} · `}${basis} · ${EN ? 'swings a lot with stock prices' : '주가에 따라 크게 달라져요'}</small></div>`;
+  }
+
   function renderFireHist() {
     const H = fireHist;
     card('fire-hist', {
       title: '진행률 기록', sub: '이 기기에서 하루 한 번(마지막 값) 기록 · 최대 400일', info: '',
       body: H.length < 2
         ? `<p class="note" style="margin-top:12px">기록이 쌓이는 중이에요. 내일부터 추이 그래프가 보여요. (오늘 ${H[0] ? (H[0].p * 100).toFixed(1) + '%' : '–'})</p>`
-        : `<div class="chart short"><canvas id="cv-fire-hist" role="img" aria-label="퇴사 진행률 기록"></canvas></div>`,
+        : `${fireCfg ? fireEtaHtml(fireEta(H, fireCfg.goal)) : ''}<div class="chart short"><canvas id="cv-fire-hist" role="img" aria-label="퇴사 진행률 기록"></canvas></div>`,
     });
     if (H.length < 2) return;
     const labels = H.map((r) => Date.parse(r.d + 'T12:00:00') / 1000);
