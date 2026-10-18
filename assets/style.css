@@ -2040,3 +2040,6 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .hf-l > .ic:first-child { vertical-align: 0; }
 .fire-tabs button { flex-direction: column; gap: 4px; padding-top: 8px; padding-bottom: 8px; white-space: nowrap; line-height: 1.2; }
 .fire-tabs button > .ic:first-child { margin-right: 0; width: 26px; height: 26px; padding: 5px; }
+.ic-flag { display: inline-block; font: 800 0.62em/1 var(--sans, sans-serif); font-style: normal; letter-spacing: 0.02em; padding: 0.28em 0.4em; margin-right: 0.4em; border-radius: 0.4em; vertical-align: 0.15em; color: #aab3c0; background: rgba(170, 179, 192, 0.14); }
+.fire-tabs button { height: auto; min-height: 58px; }
+.tabbar.tb3 .tb-row button span { overflow: visible; text-overflow: clip; max-width: none; }

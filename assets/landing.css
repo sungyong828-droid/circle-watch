@@ -158,3 +158,4 @@ body.lp { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
 button > .ic, a > .ic { vertical-align: -0.22em; }
 .ic-tri { display: inline-block; width: 0.7em; height: 0.6em; margin-right: 0.35em; vertical-align: 0.02em; clip-path: polygon(50% 0, 100% 100%, 0 100%); background: var(--up, #f04452); }
 .ic-tri.down { clip-path: polygon(0 0, 100% 0, 50% 100%); background: var(--down, #3b82f6); }
+.ic-flag { display: inline-block; font: 800 0.62em/1 var(--sans, sans-serif); font-style: normal; letter-spacing: 0.02em; padding: 0.28em 0.4em; margin-right: 0.4em; border-radius: 0.4em; vertical-align: 0.15em; color: #aab3c0; background: rgba(170, 179, 192, 0.14); }
