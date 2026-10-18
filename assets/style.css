@@ -2003,3 +2003,10 @@ body { padding-bottom: calc(var(--tabbar-h) + var(--tbnow-h) + 22px + env(safe-a
 .tb-sw { gap: 4px; padding: 6px 10px 6px 14px; font-size: 12.5px; border: 1px solid var(--line); }
 .tabbar .tb-sw svg { width: 15px; height: 15px; }
 .tabbar .tb-now { padding: 0 10px 0 14px; }
+/* 홈 화면 편집: 이름 길이·보이기/숨김 글자와 상관없이 칸 위치 고정 */
+.he-list li { grid-template-columns: minmax(0, 1fr) 84px 36px 36px; min-height: 52px; }
+.he-nm { display: grid; gap: 1px; }
+.he-nm b { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.he-nm small { font-size: 11.5px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.he-sw { width: 84px; justify-content: flex-start; }
+.he-sw span { display: inline-block; min-width: 3.2em; }

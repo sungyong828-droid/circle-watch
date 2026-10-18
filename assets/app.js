@@ -4058,7 +4058,7 @@
   const HOME_SECTIONS = [
     ['fire', () => (EN ? '🔥 FIRE · Dividends · Tax' : '🔥 퇴사까지·배당금·세금'), ['home-fire']],
     ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
-    ['market', () => (EN ? '📊 Market (overview · fear & greed · money flow)' : '📊 시장(개요·공포탐욕·자금 동향)'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow']],
+    ['market', () => (EN ? '📊 Market' : '📊 시장'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow'], () => (EN ? 'Overview · Fear & Greed · Money flow' : '개요 · 공포탐욕 · 자금 동향')],
   ];
   const DEFAULT_ORDER = ['fire', 'market', 'stocks'];
   // 휴대폰 홈: 시장 개요·공포탐욕·자금 동향을 탭 하나로(넓은 화면은 셋 다 보임)
@@ -4100,7 +4100,7 @@
     el.innerHTML = `<div class="sheet-bg" data-heclose="1"></div><div class="sheet-panel he-panel">
       <div class="sheet-h"><b>🧩 ${EN ? 'Customize Home' : '홈 화면 편집'}</b><button type="button" class="ws-btn" data-heclose="1">${EN ? 'Done' : '완료'}</button></div>
       <p class="note">${EN ? 'Reorder or hide sections. Saved on this device.' : '자주 보는 건 위로, 안 보는 건 숨겨요. 이 기기에 저장돼요.'}</p>
-      <ul class="he-list">${L.order.map((k, i) => { const S = HOME_SECTIONS.find((x) => x[0] === k), on = !L.off.includes(k); return `<li class="${on ? '' : 'off'}"><span class="he-nm">${S[1]()}</span>
+      <ul class="he-list">${L.order.map((k, i) => { const S = HOME_SECTIONS.find((x) => x[0] === k), on = !L.off.includes(k); return `<li class="${on ? '' : 'off'}"><span class="he-nm"><b>${S[1]()}</b>${S[3] ? `<small>${S[3]()}</small>` : ''}</span>
         <label class="he-sw"><input type="checkbox" data-heon="${k}" ${on ? 'checked' : ''}><span>${on ? (EN ? 'Shown' : '보이기') : (EN ? 'Hidden' : '숨김')}</span></label>
         <button type="button" class="ws-btn" data-hemove="${k}:-1" aria-label="${EN ? 'Move up' : '위로'}" ${i === 0 ? 'disabled' : ''}>▲</button><button type="button" class="ws-btn" data-hemove="${k}:1" aria-label="${EN ? 'Move down' : '아래로'}" ${i === L.order.length - 1 ? 'disabled' : ''}>▼</button></li>`; }).join('')}</ul>
       <button type="button" class="btn-ghost he-reset" data-hereset="1">↺ ${EN ? 'Reset to default' : '처음 상태로'}</button>
