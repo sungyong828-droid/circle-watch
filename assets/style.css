@@ -1960,23 +1960,23 @@ button.mk-t:active { background: var(--surface-2); }
 .tx-pl { border-radius: 10px; } .tx-pl button { padding: 0 14px; font-size: 13.5px; font-weight: 700; border-radius: 8px; }
 .tx-pl button[data-taxpl="gain"][aria-pressed="true"] { color: #f04452; } .tx-pl button[data-taxpl="loss"][aria-pressed="true"] { color: #3b82f6; }
 .tx-help { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
-/* ===== 아래 탭: Home | 지금 고른 종목 묶음 ===== */
-:root { --tabbar-h: 64px; }
-.tabbar.tb2 { display: flex; align-items: stretch; gap: 6px; padding-top: 5px; }
-.tabbar.tb2 > button[data-tab="home"] { flex: 0 0 62px; height: var(--tabbar-h); position: relative; }
-.tb-grp { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; border-radius: 16px; background: color-mix(in srgb, var(--sc) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sc) 32%, transparent); }
-.tb-sym { display: flex; align-items: center; justify-content: center; gap: 5px; height: 20px; margin-top: 3px; padding: 0 8px; border: 0; background: transparent; color: var(--ink); font: 800 11px var(--sans); cursor: pointer; min-width: 0; }
-.tb-sym img { width: 14px; height: 14px; border-radius: 4px; flex: none; }
-.tb-sym b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
-.tb-sym span { font-weight: 600; color: var(--muted); white-space: nowrap; }
-.tb-sym i { font-style: normal; font-size: 11px; color: var(--muted); padding: 0 5px; border-radius: 6px; background: color-mix(in srgb, var(--sc) 18%, transparent); }
-.tb-tabs { display: grid; grid-template-columns: repeat(var(--tabs, 4), minmax(0, 1fr)); }
-.tabbar.tb2 .tb-tabs button { height: calc(var(--tabbar-h) - 23px); gap: 2px; position: relative; }
-.tabbar.tb2 .tb-tabs svg { width: 21px; height: 21px; }
-.tabbar.tb2 .tb-tabs button span { font-size: 10.5px; }
-.tabbar.tb2 .tb-tabs button[aria-current="page"]::before { top: 1px; width: 44px; height: 26px; border-radius: 13px; }
-.tb-grp.tb-pulse { animation: tbPulse 1.2s ease-out 1; }
-@keyframes tbPulse { 0% { box-shadow: inset 0 0 0 1px var(--sc), 0 0 0 0 color-mix(in srgb, var(--sc) 60%, transparent); } 70% { box-shadow: inset 0 0 0 1px var(--sc), 0 0 0 10px transparent; } 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sc) 32%, transparent), 0 0 0 0 transparent; } }
+/* ===== 아래 탭: Home | 종목(로고·이름 ⇄) · 그 종목 탭들 — 같은 높이, 종목 묶음 위에만 종목 색 줄 ===== */
+.tabbar.tb2 { display: grid; grid-template-columns: 58px 1px minmax(0, 1fr); align-items: stretch; gap: 0; }
+.tb-div { align-self: center; width: 1px; height: 34px; background: var(--line); }
+.tb-grp { position: relative; display: grid; grid-template-columns: 1.15fr repeat(var(--tabs, 4), minmax(0, 1fr)); min-width: 0; }
+.tb-grp::before { content: ''; position: absolute; top: -5px; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: var(--sc); opacity: 0.35; transition: opacity 0.2s; }
+.tabbar.tb-on .tb-grp::before { opacity: 1; }
+.tabbar .tb-sym { position: relative; flex-direction: column; height: var(--tabbar-h); gap: 3px; min-width: 0; padding: 0 2px; color: var(--ink); }
+.tabbar .tb-sym::before { display: none; }
+.tb-sym img, .tb-letter { width: 23px; height: 23px; border-radius: 7px; flex: none; }
+.tb-letter { display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--sc) 30%, var(--surface-2)); color: var(--ink); }
+.tb-sym > span { display: flex; align-items: center; gap: 2px; max-width: 100%; min-width: 0; font-size: 10.5px; font-weight: 800; }
+.tb-sym b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-sym i { font-style: normal; font-size: 10px; color: var(--sc); flex: none; }
+.tabbar.tb2 .tb-grp > button[data-tab] { height: var(--tabbar-h); }
+.tabbar.tb2 .tb-grp > button[data-tab] span { font-size: 10.5px; }
+.tb-grp.tb-pulse::before { animation: tbPulse 1.2s ease-out 1; }
+@keyframes tbPulse { 0%, 60% { opacity: 1; height: 3px; } 100% { opacity: 0.35; height: 2px; } }
 @media (min-width: 900px) { .tabbar.tb2 { width: min(640px, 100%); } }
 /* 종목 바꾸기 시트 */
 .sw-note { margin: 0 0 10px; }
@@ -1986,8 +1986,7 @@ button.mk-t:active { background: var(--surface-2); }
 .sw-row img { border-radius: 7px; } .sw-row .ss-letter { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: var(--surface); font-style: normal; font-weight: 800; }
 .sw-row span { display: grid; min-width: 0; } .sw-row b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sw-row small { font-size: 11.5px; color: var(--muted); }
 .sw-row em { font: 700 12.5px var(--mono); font-style: normal; }
-.tabbar .tb-sym { flex-direction: row; height: 20px; gap: 5px; font-size: 11px; font-weight: 800; color: var(--ink); }
-.tabbar .tb-sym::before { display: none; }
 .mkc-rg { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; }
 .mkc-rg button { padding: 6px 0; white-space: nowrap; }
 .mkc-back { border: 0; background: transparent; color: var(--ink-2); font: 600 13px var(--sans); padding: 2px 0 8px; cursor: pointer; }
+.tabbar.tb2 .tb-grp > button[aria-current="page"]::before { width: min(44px, 88%); }

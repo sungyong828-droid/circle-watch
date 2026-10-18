@@ -5125,7 +5125,10 @@
     nav.classList.add('tb2');
     nav.style.setProperty('--tabs', rest.length);
     nav.style.setProperty('--sc', S.color || 'var(--accent)');
-    nav.innerHTML = `${btn(tabs[0])}<div class="tb-grp"><button type="button" class="tb-sym" data-stocksheet="1" aria-label="${EN ? `${nm} screens — change stock` : `${nm} 종목 화면 — 종목 바꾸기`}">${logoOf(sym) ? `<img src="${logoOf(sym)}" alt="" width="14" height="14">` : ''}<b>${esc(nm)}</b><span>${EN ? 'screens' : '종목 화면'}</span><i aria-hidden="true">⇄</i></button><div class="tb-tabs">${rest.map(btn).join('')}</div></div>`;
+    // Home | 구분선 | [종목 로고·이름 ⇄](누르면 종목 바꾸기) · 그 종목의 탭들 — 모두 같은 높이의 탭, 종목 묶음 위에만 종목 색 줄
+    const inStock = rest.some(([v]) => v === state.view);
+    nav.classList.toggle('tb-on', inStock);
+    nav.innerHTML = `${btn(tabs[0])}<i class="tb-div" aria-hidden="true"></i><div class="tb-grp"><button type="button" class="tb-sym" data-stocksheet="1" aria-label="${EN ? `${nm} — change stock` : `${nm} — 종목 바꾸기`}">${logoOf(sym) ? `<img src="${logoOf(sym)}" alt="" width="22" height="22">` : `<em class="tb-letter">${esc((S.mark || nm)[0])}</em>`}<span><b>${esc(nm)}</b><i aria-hidden="true">⇄</i></span></button>${rest.map(btn).join('')}</div>`;
     updateNewsBadge();
   }
   const viewAllowed = (v) => v === 'fire' || v === 'flow' || v === 'mkt' || TAB_SETS[state.stock].some(([t]) => t === v);
@@ -5619,14 +5622,18 @@
   const mkFmt = (sym, v) => (v == null ? '–' : sym === 'KRW=X' ? `${nf(1).format(v)}${EN ? '' : '원'}` : sym === '^TNX' ? v.toFixed(2) + '%' : sym === 'EWY' ? '$' + v.toFixed(2) : sym === 'BTC-USD' ? '$' + nf(0).format(v) : nf(v >= 1000 ? 0 : 2).format(v));
   function mkSlice(points, r) {
     if (!points?.length) return [];
-    if (r === '5y') return points;
+    if (r === '5y') { // 5년은 월봉으로 묶는다(주봉 260개는 너무 가늘다)
+      const M = new Map();
+      for (const p of points) { const d = new Date(p[0]), k = d.getFullYear() * 12 + d.getMonth(), m = M.get(k); if (!m) M.set(k, [p[0], p[1], p[2] ?? p[1], p[3] ?? p[1], p[4] ?? p[1], p[5] || 0]); else { m[1] = p[1]; m[3] = Math.max(m[3], p[3] ?? p[1]); m[4] = Math.min(m[4], p[4] ?? p[1]); m[5] += p[5] || 0; } }
+      return [...M.values()];
+    }
     if (r === '1d') { // 마지막 거래 구간: 3시간 넘게 비는 곳에서 끊는다(24시간 거래는 최근 24시간)
       const last = points.at(-1)[0]; let i = points.length - 1;
       while (i > 0 && points[i][0] - points[i - 1][0] < 3 * 3600e3 && last - points[i - 1][0] <= 24 * 3600e3) i--;
-      return points.slice(i);
+      return splitView(points, points.length - i);
     }
-    const days = { '1w': 7, '1m': 31, '3m': 92, '1y': 366 }[r];
-    return points.filter((p) => p[0] >= points.at(-1)[0] - days * 86400000);
+    const days = { '1w': 7, '1m': 31, '3m': 92, '1y': 366 }[r], from = points.findIndex((p) => p[0] >= points.at(-1)[0] - days * 86400000);
+    return splitView(points, points.length - Math.max(0, from)); // 앞쪽은 이동평균 계산용(pts.pre)
   }
   function renderMkChart() {
     if (!document.getElementById('c-mkchart')) return;
@@ -5644,18 +5651,16 @@
       body: `<button type="button" class="mkc-back" data-mkback="1">← ${EN ? 'Back to market overview' : '시장 개요로 돌아가기'}</button><div class="mkc-pick" role="tablist">${all.map((x) => `<button type="button" class="chip-btn sm" data-mkgo="${esc(x)}" aria-pressed="${x === sym}">${esc(nm(x))}</button>`).join('')}</div>
         <div class="mkc-head"><b>${M ? mkVal(M) : mkFmt(sym, last)}</b>${M?.pct != null ? `<em class="${cls(M.pct)}">${pct(M.pct, 2)} ${EN ? 'today' : '오늘'}</em>` : ''}</div>
         <div class="seg range mkc-rg" role="group">${Object.entries(MK_RANGES).map(([k, l]) => `<button type="button" data-mkrange="${k}" aria-pressed="${k === r}">${EN ? { '1d': '1D', '1w': '1W', '1m': '1M', '3m': '3M', '1y': '1Y', '5y': '5Y' }[k] : l}</button>`).join('')}</div>
-        <div class="chart mkc-chart">${C0?.error ? `<p class="note">${EN ? 'Couldn’t load the chart. Try again later.' : '차트를 불러오지 못했어요. 잠시 후 다시 열어 주세요.'}</p>` : P.length ? '<canvas id="cv-mkchart" role="img"></canvas>' : `<p class="skeleton">${EN ? 'Loading…' : '불러오는 중…'}</p>`}</div>
+        ${P.length ? chartTools('mkchart') : ''}<div class="chart mkc-chart">${C0?.error ? `<p class="note">${EN ? 'Couldn’t load the chart. Try again later.' : '차트를 불러오지 못했어요. 잠시 후 다시 열어 주세요.'}</p>` : P.length ? '<canvas id="cv-mkchart" role="img"></canvas>' : `<p class="skeleton">${EN ? 'Loading…' : '불러오는 중…'}</p>`}</div>
         ${P.length ? `<div class="mkc-stats"><div><span>${EN ? `${r.toUpperCase()} change` : `${MK_RANGES[r]} 변화`}</span><b class="${cls(chg)}">${pct(chg, 2)}</b></div><div><span>${EN ? 'High' : '기간 최고'}</span><b>${mkFmt(sym, hi)}</b></div><div><span>${EN ? 'Low' : '기간 최저'}</span><b>${mkFmt(sym, lo)}</b></div>${C0.high52 && C0.low52 ? `<div><span>${EN ? '52-week range' : '52주 범위'}</span><b>${mkFmt(sym, C0.low52)} ~ ${mkFmt(sym, C0.high52)}</b></div>` : ''}</div>` : ''}
         <p class="mkc-about">${esc(EN ? A[2] : A[1])}</p>`,
     });
     document.querySelector('.mkc-pick [aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
     if (P.length) {
-      const intra = r === '1d' || r === '1w', up = (chg ?? 0) >= 0, col = up ? C.up || '#f04452' : C.down || '#3b82f6';
-      const d = (t) => new Date(t), lab = P.map((p) => p[0]);
-      const tf = (t) => { const x = d(t); return intra ? (r === '1d' ? `${String(x.getHours()).padStart(2, '0')}:${String(x.getMinutes()).padStart(2, '0')}` : `${x.getMonth() + 1}/${x.getDate()}`) : r === '5y' ? `${String(x.getFullYear()).slice(2)}.${x.getMonth() + 1}` : `${x.getMonth() + 1}/${x.getDate()}`; };
-      draw('mkchart', { type: 'line', data: { labels: lab, datasets: [lineDs(A[0], P.map((p) => p[1]), col, { fill: 'start', backgroundColor: areaFill(col) })] },
-        options: { interaction, plugins: { ...noLegend, tooltip: tooltip((it) => { const x = d(lab[it.dataIndex]); return `${x.getFullYear()}.${x.getMonth() + 1}.${x.getDate()}${intra ? ` ${String(x.getHours()).padStart(2, '0')}:${String(x.getMinutes()).padStart(2, '0')}` : ''}`; }, (v) => mkFmt(sym, v)) },
-          scales: { x: axisX(lab, tf, 5), y: axisY((v) => mkFmt(sym, v)) } } });
+      const intra = r === '1d' || r === '1w', d2 = (n) => String(n).padStart(2, '0');
+      const xf = r === '1d' ? hm : r === '5y' || r === '1y' ? (t) => { const x = new Date(t); return `${String(x.getFullYear()).slice(2)}.${x.getMonth() + 1}`; } : mdLocal;
+      const tip = (it) => { const x = new Date(P[it.dataIndex][0]); return `${x.getFullYear()}.${x.getMonth() + 1}${r === '5y' ? '' : `.${x.getDate()}`}${intra ? ` ${d2(x.getHours())}:${d2(x.getMinutes())}` : ''}`; };
+      drawCandles('mkchart', P, { xf, tip, ind: true, fmt: (v) => mkFmt(sym, v) });
     }
   }
 
@@ -7325,6 +7330,7 @@
     state.view = v;
     document.querySelectorAll('.view').forEach((el) => { el.hidden = el.dataset.view !== v; });
     document.querySelectorAll('[data-tab]').forEach((b) => (b.dataset.tab === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
+    document.getElementById('tabbar')?.classList.toggle('tb-on', !!document.querySelector(`.tb-grp [data-tab="${v}"]`));
     document.getElementById('view-title').textContent = viewTitle(v);
     try { history.replaceState(null, '', '#' + v); } catch {}
     savePref('view', v);
@@ -7530,12 +7536,12 @@
     const kd = ev.target.closest('[data-kwdel]');
     if (kd) { delKw(kd.dataset.kwdel); return; }
     const ctp = ev.target.closest('[data-ctype]');
-    if (ctp) { state.chartType = ctp.dataset.ctype; savePref('chartType', state.chartType); renderPriceChart(); if (isOther()) renderSPriceChart(); return; }
+    if (ctp) { state.chartType = ctp.dataset.ctype; savePref('chartType', state.chartType); renderPriceChart(); if (isOther()) renderSPriceChart(); if (state.view === 'mkt') renderMkChart(); return; }
     const ctg = ev.target.closest('[data-ctoggle]');
     if (ctg) {
       const k = ctg.dataset.ctoggle === 'ma' ? 'chartMA' : 'chartVol';
       state[k] = !state[k]; savePref(k, state[k] ? '1' : '0');
-      renderPriceChart(); if (isOther()) renderSPriceChart();
+      renderPriceChart(); if (isOther()) renderSPriceChart(); if (state.view === 'mkt') renderMkChart();
       return;
     }
     const bk = ev.target.closest('[data-brokers]');
