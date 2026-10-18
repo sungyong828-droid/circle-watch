@@ -1996,3 +1996,10 @@ body { padding-bottom: calc(var(--tabbar-h) + var(--tbnow-h) + 22px + env(safe-a
 .seg.range.mkc-rg { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; flex-wrap: nowrap; }
 #c-mkchart { grid-column: 1 / -1; } @media (min-width: 900px) { .mkc-chart { height: 320px; } }
 .tabbar .tb-now { color: var(--ink); font-weight: 600; } .tabbar .tb-now .tb-nm { color: var(--ink); }
+/* 지금 종목 줄: 점 = 오늘 등락(빨강 상승 · 파랑 하락), 바꾸기 버튼 여유 있게 */
+.tb-dot { background: var(--faint); }
+.tb-dot.up { background: var(--up, #f04452); box-shadow: 0 0 0 3px rgba(240, 68, 82, 0.18); }
+.tb-dot.down { background: var(--down, #3b82f6); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18); }
+.tb-sw { gap: 4px; padding: 6px 10px 6px 14px; font-size: 12.5px; border: 1px solid var(--line); }
+.tabbar .tb-sw svg { width: 15px; height: 15px; }
+.tabbar .tb-now { padding: 0 10px 0 14px; }

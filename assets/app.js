@@ -4059,9 +4059,8 @@
     ['fire', () => (EN ? '🔥 FIRE · Dividends · Tax' : '🔥 퇴사까지·배당금·세금'), ['home-fire']],
     ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
     ['market', () => (EN ? '📊 Market (overview · fear & greed · money flow)' : '📊 시장(개요·공포탐욕·자금 동향)'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow']],
-    ['channel', () => (EN ? '📝 Investing channel' : '📝 돼용의 투자 채널'), ['ch-card']],
   ];
-  const DEFAULT_ORDER = ['fire', 'market', 'stocks', 'channel'];
+  const DEFAULT_ORDER = ['fire', 'market', 'stocks'];
   // 휴대폰 홈: 시장 개요·공포탐욕·자금 동향을 탭 하나로(넓은 화면은 셋 다 보임)
   const MK_TABS = [['market', 'c-market', () => (EN ? '📊 Overview' : '📊 시장 개요')], ['fg', 'c-feargreed', () => (EN ? '😨 Fear & Greed' : '😨 공포·탐욕')], ['flow', 'c-flow', () => (EN ? '💸 Money flow' : '💸 자금 동향')]];
   function applyMkTab() {
@@ -4081,12 +4080,13 @@
     const order = (L.order || []).filter((k) => HOME_SECTIONS.some((x) => x[0] === k));
     // 새로 생긴 구역은 기본 순서에서 바로 앞 구역 뒤에 끼워 넣는다
     DEFAULT_ORDER.forEach((k, i) => { if (order.includes(k)) return; const prev = DEFAULT_ORDER.slice(0, i).reverse().find((x) => order.includes(x)); order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, k); });
-    return { order, off: L.off || [], tabs: L.tabs !== false };
+    return { order, off: (L.off || []).filter((k) => HOME_SECTIONS.some((x) => x[0] === k)), tabs: true }; // USDC·Arc 탭은 항상 보임
   }
   function applyHomeLayout() {
     const L = homeLayout();
     L.order.forEach((k, i) => { for (const id of HOME_SECTIONS.find((x) => x[0] === k)[2]) { const el = document.getElementById(id); if (el) { el.style.order = String(10 + i); el.classList.toggle('hl-off', L.off.includes(k)); } } });
     const he = document.getElementById('home-edit'); if (he) he.style.order = '99';
+    const ch = document.getElementById('ch-card'); if (ch) { ch.style.order = '98'; ch.classList.remove('hl-off'); } // 돼용의 투자 채널은 항상 맨 아래
     applyMkTab(); applyHsMore();
     TAB_SETS.CRCL = CRCL_TABS.filter(([v]) => L.tabs || !['usdc', 'arc'].includes(v));
     renderTabbar();
@@ -4103,7 +4103,6 @@
       <ul class="he-list">${L.order.map((k, i) => { const S = HOME_SECTIONS.find((x) => x[0] === k), on = !L.off.includes(k); return `<li class="${on ? '' : 'off'}"><span class="he-nm">${S[1]()}</span>
         <label class="he-sw"><input type="checkbox" data-heon="${k}" ${on ? 'checked' : ''}><span>${on ? (EN ? 'Shown' : '보이기') : (EN ? 'Hidden' : '숨김')}</span></label>
         <button type="button" class="ws-btn" data-hemove="${k}:-1" aria-label="${EN ? 'Move up' : '위로'}" ${i === 0 ? 'disabled' : ''}>▲</button><button type="button" class="ws-btn" data-hemove="${k}:1" aria-label="${EN ? 'Move down' : '아래로'}" ${i === L.order.length - 1 ? 'disabled' : ''}>▼</button></li>`; }).join('')}</ul>
-      <label class="chk he-tabs"><input type="checkbox" data-hetabs="1" ${L.tabs ? 'checked' : ''}> ${EN ? 'Show USDC · Arc tabs at the bottom' : '아래 탭에 USDC·Arc 보이기'}</label>
       <button type="button" class="btn-ghost he-reset" data-hereset="1">↺ ${EN ? 'Reset to default' : '처음 상태로'}</button>
     </div>`;
   }
@@ -5130,7 +5129,7 @@
     nav.classList.remove('tb2');
     nav.style.setProperty('--tabs', tabs.length);
     nav.style.setProperty('--sc', /^#|^rgb/.test(S.color || '') ? S.color : 'var(--accent)');
-    const full = isKR(sym) ? S.name || sym : `${sym === 'CRCA' ? 'CRCL' : sym}${S.short && S.short !== sym ? ` · ${S.short}` : ''}`;
+    const full = isKR(sym) ? S.name || sym : sym === 'CRCA' ? 'CRCL' : sym; // 미국은 티커만, 한국은 종목명
     nav.innerHTML = `<button type="button" class="tb-now" data-stocksheet="1" aria-label="${EN ? `Stock screens: ${esc(full)} — change stock` : `종목 화면: ${esc(full)} — 종목 바꾸기`}"><i class="tb-dot" aria-hidden="true"></i><span class="tb-cap">${EN ? 'Viewing' : '지금 종목'}</span><b class="tb-nm">${esc(full)}</b><span class="tb-px" id="tb-px"></span><span class="tb-sw">${EN ? 'Change' : '바꾸기'} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></span></button><div class="tb-row">${tabs.map(([v, label, ic]) => btn([v, v === 'home' ? label : short([v, label, ic])[1], ic])).join('')}</div>`;
     updateTbNow();
     updateNewsBadge();
@@ -5138,7 +5137,8 @@
   function updateTbNow() {
     const el = document.getElementById('tb-px');
     if (!el) return;
-    const p = stockPx(state.stock);
+    const p = stockPx(state.stock), dot = document.querySelector('.tb-dot');
+    if (dot) dot.className = `tb-dot ${p?.pct > 0 ? 'up' : p?.pct < 0 ? 'down' : ''}`; // 오르면 빨강 · 내리면 파랑
     const html = p?.price != null ? `${pxS(state.stock, p.price)} <em class="${cls(p.pct)}">${p.pct != null ? pct(p.pct, 1) : ''}</em>` : '';
     if (el.innerHTML !== html) el.innerHTML = html;
   }
