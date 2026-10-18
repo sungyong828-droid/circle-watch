@@ -5641,13 +5641,14 @@
     const nm = (x) => MK_SHORT[x] || MK_KR_SHORT[x] || x;
     card('mkchart', {
       title: `📈 ${EN ? A[0].replace('코스피', 'KOSPI').replace('코스닥', 'KOSDAQ') : A[0]}`, sub: EN ? 'Yahoo Finance · may be delayed ~15 min' : 'Yahoo Finance · 15분 정도 늦을 수 있어요',
-      body: `<div class="mkc-pick" role="tablist">${all.map((x) => `<button type="button" class="chip-btn sm" data-mkgo="${esc(x)}" aria-pressed="${x === sym}">${esc(nm(x))}</button>`).join('')}</div>
+      body: `<button type="button" class="mkc-back" data-mkback="1">← ${EN ? 'Back to market overview' : '시장 개요로 돌아가기'}</button><div class="mkc-pick" role="tablist">${all.map((x) => `<button type="button" class="chip-btn sm" data-mkgo="${esc(x)}" aria-pressed="${x === sym}">${esc(nm(x))}</button>`).join('')}</div>
         <div class="mkc-head"><b>${M ? mkVal(M) : mkFmt(sym, last)}</b>${M?.pct != null ? `<em class="${cls(M.pct)}">${pct(M.pct, 2)} ${EN ? 'today' : '오늘'}</em>` : ''}</div>
         <div class="seg range mkc-rg" role="group">${Object.entries(MK_RANGES).map(([k, l]) => `<button type="button" data-mkrange="${k}" aria-pressed="${k === r}">${EN ? { '1d': '1D', '1w': '1W', '1m': '1M', '3m': '3M', '1y': '1Y', '5y': '5Y' }[k] : l}</button>`).join('')}</div>
         <div class="chart mkc-chart">${C0?.error ? `<p class="note">${EN ? 'Couldn’t load the chart. Try again later.' : '차트를 불러오지 못했어요. 잠시 후 다시 열어 주세요.'}</p>` : P.length ? '<canvas id="cv-mkchart" role="img"></canvas>' : `<p class="skeleton">${EN ? 'Loading…' : '불러오는 중…'}</p>`}</div>
         ${P.length ? `<div class="mkc-stats"><div><span>${EN ? `${r.toUpperCase()} change` : `${MK_RANGES[r]} 변화`}</span><b class="${cls(chg)}">${pct(chg, 2)}</b></div><div><span>${EN ? 'High' : '기간 최고'}</span><b>${mkFmt(sym, hi)}</b></div><div><span>${EN ? 'Low' : '기간 최저'}</span><b>${mkFmt(sym, lo)}</b></div>${C0.high52 && C0.low52 ? `<div><span>${EN ? '52-week range' : '52주 범위'}</span><b>${mkFmt(sym, C0.low52)} ~ ${mkFmt(sym, C0.high52)}</b></div>` : ''}</div>` : ''}
         <p class="mkc-about">${esc(EN ? A[2] : A[1])}</p>`,
     });
+    document.querySelector('.mkc-pick [aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
     if (P.length) {
       const intra = r === '1d' || r === '1w', up = (chg ?? 0) >= 0, col = up ? C.up || '#f04452' : C.down || '#3b82f6';
       const d = (t) => new Date(t), lab = P.map((p) => p[0]);
@@ -7492,6 +7493,7 @@
     if (ev.target.closest('[data-hsmore]')) { savePref('hsmore', loadPref('hsmore', '0') === '1' ? '0' : '1'); applyHsMore(); return; }
     const mkg = ev.target.closest('[data-mkgo]');
     if (mkg) { state.mkSym = mkg.dataset.mkgo; savePref('mksym', state.mkSym); if (state.view === 'mkt') renderMkChart(); else { showView('mkt'); window.scrollTo({ top: 0 }); } return; }
+    if (ev.target.closest('[data-mkback]')) { savePref('mktab', 'market'); applyMkTab(); showView('home'); requestAnimationFrame(() => { const el = document.getElementById('mk-tabs'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - document.querySelector('.top').offsetHeight - 10 }); }); return; }
     const mkr = ev.target.closest('[data-mkrange]');
     if (mkr) { state.mkRange = mkr.dataset.mkrange; savePref('mkrange', state.mkRange); renderMkChart(); return; }
     const tpl = ev.target.closest('[data-taxpl]');
