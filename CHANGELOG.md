@@ -12,14 +12,14 @@
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
 - 📱 **홈이 짧아졌어요**: 휴대폰에서 시장 개요·공포탐욕·자금 동향을 탭 하나로 묶고, 고른 종목의 핵심 지표·현재 상황 요약은 버튼으로 펼쳐 보게 해서 스크롤이 절반 아래로 줄었어요.
-- 🧭 **아래 탭이 더 알기 쉽게**: Home과 '지금 고른 종목 화면(차트·실적·뉴스)'을 나눠 보여주고, 종목 이름을 누르면 바로 다른 종목으로 바꿀 수 있어요(보던 화면 종류는 그대로).
-- 📈 **시장 개요 칸을 누르면 차트**: S&P500·나스닥·코스피·원달러 환율 등을 누르면 1일~5년 차트, 기간 등락, 52주 범위와 쉬운 설명을 볼 수 있어요.
+- 🧭 **아래 탭이 더 알기 쉽게**: Home 옆에 지금 고른 종목(로고·이름 ⇄)이 보이고, 그 뒤 차트·실적·뉴스가 그 종목 화면이에요. 종목 로고를 누르면 바로 다른 종목으로 바꿀 수 있어요(보던 화면 종류는 그대로).
+- 📈 **시장 개요 칸을 누르면 차트**: S&P500·나스닥·코스피·원달러 환율 등을 누르면 1일~5년 캔들 차트(이동평균·거래량), 기간 등락, 52주 범위와 쉬운 설명을 볼 수 있어요.
 - 🧾 홈 세 번째 칸이 **세금**으로 바뀌었어요(예상 양도세·절세 계좌 마감 D-day). 양도세 계산은 '수익/손실'을 고르고 올해 실현 금액 하나만 넣으면 돼요.
 <!-- internal --> /chart 에 시장 지수·환율 허용(MARKET_CHART, 워커 배포 필요) · #mkt 화면 · mktab/hsmore/mksym/mkrange 설정 · taxCfg {pl, amt}(예전 gain/loss 자동 변환) · 홈 구역 fg/flow → market 하나로.
 <!-- EN
 - Shorter Home on phones: market overview, fear & greed and money flow share one tabbed card, and the selected stock's key metrics & summary open with a button.
-- Clearer bottom bar: Home is separate from the selected stock's screens (chart, earnings, news); tap the stock name to switch stocks and stay on the same kind of screen.
-- Tap any market overview tile (S&P 500, Nasdaq, KOSPI, USD/KRW…) for a 1D–5Y chart, period change, 52-week range and a plain-language explainer.
+- Clearer bottom bar: next to Home sits the selected stock (logo and name ⇄), followed by its screens (chart, earnings, news); tap the logo to switch stocks and stay on the same kind of screen.
+- Tap any market overview tile (S&P 500, Nasdaq, KOSPI, USD/KRW…) for a 1D–5Y candlestick chart (moving averages, volume), period change, 52-week range and a plain-language explainer.
 - The third Home tile is now Tax (estimated gains tax, account deadline). The gains tax calculator takes one amount with a gain/loss switch.
 -->
 
