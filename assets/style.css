@@ -2038,3 +2038,5 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .fire-tabs button > .ic:first-child, .div-tabs button > .ic:first-child, .mk-tabs button > .ic:first-child { vertical-align: 0; }
 .hf-l { display: flex; align-items: center; }
 .hf-l > .ic:first-child { vertical-align: 0; }
+.fire-tabs button { flex-direction: column; gap: 4px; padding-top: 8px; padding-bottom: 8px; white-space: nowrap; line-height: 1.2; }
+.fire-tabs button > .ic:first-child { margin-right: 0; width: 26px; height: 26px; padding: 5px; }
