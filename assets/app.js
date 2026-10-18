@@ -2697,18 +2697,32 @@
         renderAiCards(sym);
       });
   }
-  const P_BADGE = { done: ['✅', '지켰어요', 'Done'], on: ['⏳', '진행 중', 'On track'], late: ['⚠️', '늦어지거나 줄었어요', 'Delayed/cut'], unknown: ['❔', '언급 없음', 'Not mentioned'], new: ['🆕', '새 약속', 'New'] };
+  const P_BADGE = { check: ['⏰', '기한 지남 · 확인 필요', 'Past due · unconfirmed'], done: ['✅', '지켰어요', 'Done'], on: ['⏳', '진행 중', 'On track'], late: ['⚠️', '늦어지거나 줄었어요', 'Delayed/cut'], unknown: ['❔', '언급 없음', 'Not mentioned'], new: ['🆕', '새 약속', 'New'] };
+  // 기한 글자('2026-09-16'·'2026-Q3'·'2026-H2'·'2026') → 그 기간의 마지막 날. 못 읽으면 null(판정 안 함)
+  function promDueEnd(due) {
+    const t = String(due || '').trim(), y = (t.match(/(20\d\d)/) || [])[1];
+    if (!y || new Set(t.match(/20\d\d/g)).size > 1) return null; // '2026년 말 또는 2027년 초'처럼 두 해가 섞이면 판정하지 않는다
+    let m;
+    if ((m = t.match(/^(20\d\d)-(\d\d)-(\d\d)$/))) return t;
+    if ((m = t.match(/Q([1-4])|([1-4])\s*분기/i))) return `${y}-${['03-31', '06-30', '09-30', '12-31'][(+(m[1] || m[2])) - 1]}`;
+    if (/H1|상반기/i.test(t)) return `${y}-06-30`;
+    if (/H2|하반기/i.test(t)) return `${y}-12-31`;
+    if (/^(FY\s*)?20\d\d(년)?( 말| 연말)?$/i.test(t)) return `${y}-12-31`;
+    return null;
+  }
   function promHtml(sym) {
     const X = state.prom[sym];
     if (!X || X.loading && !X.items) return `<p class="skeleton">${EN ? 'Reading the earnings releases…' : '실적 발표문을 읽는 중…'}</p>`;
     if (!X.items?.length) return X.pending ? `<p class="skeleton">${EN ? 'AI is comparing the last two earnings releases… (up to a minute)' : 'AI가 지난 두 번의 실적 발표를 비교하는 중이에요… (1분쯤 걸려요)'}</p>` : '';
+    // 상태 = 실적 발표 기준 판단 → 그 뒤 회사 보도자료로 확인된 변화(upd) → 기한이 지났는데 확인이 안 되면 '확인 필요'
+    const st = (x) => x.upd?.status || (['on', 'unknown', 'new'].includes(x.status) && promDueEnd(x.due) && promDueEnd(x.due) < isoToday() ? 'check' : x.status);
     const old = X.items.filter((x) => x.status !== 'new'), nw = X.items.filter((x) => x.status === 'new');
-    const cnt = ['done', 'on', 'late', 'unknown'].map((k) => [k, old.filter((x) => x.status === k).length]).filter(([, n]) => n);
-    const row = (x) => { const B = P_BADGE[x.status]; return `<li class="pm-i pm-${x.status}"><span class="pm-b">${B[0]} ${EN ? B[2] : B[1]}</span><b data-noi18n>${esc(x.goal)}</b>${x.due ? `<em data-noi18n>${esc(x.due)}</em>` : ''}${x.note ? `<small data-noi18n>${esc(x.note)}</small>` : ''}</li>`; };
+    const cnt = ['done', 'on', 'check', 'late', 'unknown'].map((k) => [k, old.filter((x) => st(x) === k).length]).filter(([, n]) => n);
+    const row = (x) => { const k = st(x), B = P_BADGE[k]; return `<li class="pm-i pm-${k}"><span class="pm-b">${B[0]} ${EN ? B[2] : B[1]}</span><b data-noi18n>${esc(x.goal)}</b>${x.due ? `<em data-noi18n>${EN ? 'Due' : '기한'} ${esc(x.due)}</em>` : ''}${x.upd ? `<small class="pm-upd">📰 ${md(isoToTs(x.upd.d))} ${EN ? 'press release' : '보도자료'}: <a href="${safeUrl(x.upd.url)}" target="_blank" rel="noopener" data-noi18n>${esc(x.upd.title)}</a></small>` : ''}${x.note ? `<small data-noi18n>${x.upd ? `${EN ? `As of the ${md(isoToTs(X.cur.d))} release` : `${md(isoToTs(X.cur.d))} 실적 발표 때`}: ` : ''}${esc(x.note)}</small>` : ''}</li>`; };
     return `<div class="pm-sum">${cnt.map(([k, n]) => `<span class="pm-c pm-${k}">${P_BADGE[k][0]} ${EN ? P_BADGE[k][2] : P_BADGE[k][1]} <b>${n}</b></span>`).join('')}</div>
       ${old.length ? `<ul class="pm-list">${old.map(row).join('')}</ul>` : ''}
       ${nw.length ? `<div class="mini-h er-h">${EN ? 'New promises in the latest release' : '이번 발표에서 새로 한 약속'}</div><ul class="pm-list">${nw.map(row).join('')}</ul>` : ''}
-      <p class="note">${EN ? 'AI compared the two releases (text in Korean) — it can be wrong, so check the originals' : 'AI가 두 발표문만 읽고 판단했어요. 틀릴 수 있으니 원문으로 확인하세요'} · <a href="${safeUrl(X.prev.url)}" target="_blank" rel="noopener">${EN ? 'Previous' : '지난 발표'} ${md(isoToTs(X.prev.d))}</a> · <a href="${safeUrl(X.cur.url)}" target="_blank" rel="noopener">${EN ? 'Latest' : '최신 발표'} ${md(isoToTs(X.cur.d))}</a></p>`;
+      <p class="note">${EN ? `Judged by AI from the two releases (text in Korean), then updated with the company's press releases up to ${md(isoToTs(X.checked || X.cur.d))}. It can be wrong — check the originals` : `AI가 두 실적 발표문으로 판단하고, ${md(isoToTs(X.checked || X.cur.d))}까지 나온 회사 보도자료로 바뀐 것만 고쳤어요. 틀릴 수 있으니 원문으로 확인하세요`} · <a href="${safeUrl(X.prev.url)}" target="_blank" rel="noopener">${EN ? 'Previous' : '지난 발표'} ${md(isoToTs(X.prev.d))}</a> · <a href="${safeUrl(X.cur.url)}" target="_blank" rel="noopener">${EN ? 'Latest' : '최신 발표'} ${md(isoToTs(X.cur.d))}</a></p>`;
   }
   function fsumHtml(sym) {
     const X = state.fsum[sym];
@@ -2727,7 +2741,7 @@
     loadAiCard('prom', sym); loadAiCard('fsum', sym);
     const P = state.prom[sym], F = state.fsum[sym], name = esc(ttlName(sym));
     const pEl = document.getElementById(`c-${ids[0]}`), fEl = document.getElementById(`c-${ids[1]}`);
-    if (pEl) { pEl.hidden = !!(P && !P.loading && !P.items?.length && !P.pending); if (!pEl.hidden) card(ids[0], { title: EN ? '🎯 Promise tracker' : '🎯 회사 약속 추적', sub: P?.items ? (EN ? `${name}promises from the last earnings release, checked against the latest` : `${name}지난 실적 발표에서 한 약속을 이번 발표로 확인`) : (EN ? 'Did the company do what it said?' : '회사가 말한 대로 하고 있을까?'), info: INFO.prom, body: promHtml(sym) }); }
+    if (pEl) { pEl.hidden = !!(P && !P.loading && !P.items?.length && !P.pending); if (!pEl.hidden) card(ids[0], { title: EN ? '🎯 Promise tracker' : '🎯 회사 약속 추적', sub: P?.items ? (EN ? `${name}promises from the ${md(isoToTs(P.prev.d))} earnings release → status as of ${md(isoToTs(P.checked || P.cur.d))}` : `${name}${md(isoToTs(P.prev.d))} 실적 발표 때 한 약속 → ${md(isoToTs(P.checked || P.cur.d))} 기준 상태`) : (EN ? 'Did the company do what it said?' : '회사가 말한 대로 하고 있을까?'), info: INFO.prom, body: promHtml(sym) }); }
     if (fEl) { fEl.hidden = !!(F && !F.loading && !F.list?.length && !F.more); if (!fEl.hidden) card(ids[1], { title: EN ? '📄 SEC filings in Korean' : '📄 미국 공시 한국어 요약', sub: EN ? `${name}recent 8-K · 10-Q · 10-K, 3 lines each` : `${name}최근 8-K·10-Q·10-K를 3줄로`, info: INFO.fsum, body: fsumHtml(sym) }); }
   }
 

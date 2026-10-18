@@ -2078,3 +2078,5 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .fs-h a { font-size: 12px; color: var(--accent, #f2994a); text-decoration: none; white-space: nowrap; }
 .fs-l { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.65; }
 .fs-wait { display: block; margin-top: 4px; font-size: 12px; color: var(--faint); }
+.pm-check { border-left-color: #f5c542; } .pm-check .pm-b { color: #f5c542; }
+.pm-upd { color: var(--ink-2) !important; } .pm-upd a { color: var(--accent, #f2994a); }
