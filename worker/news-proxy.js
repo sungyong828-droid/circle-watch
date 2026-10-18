@@ -816,16 +816,19 @@ const CHART_SYMBOLS = ['JOBY', 'ACHR', 'CRCL', 'CRCA', 'SPCX', 'RKLB', 'TEM', 'G
 // 캔들 차트용 간격(휴대폰에서 알아볼 수 있는 개수): 1일 15분봉 · 1주 1시간봉 · 1개월·3개월 일봉 · 1년 주봉
 // 이동평균선 계산을 위해 보여줄 기간보다 앞쪽까지 받는다(화면은 앱이 원래 기간만 잘라 보여줌)
 const CHART_RANGES = { '1d': ['15m', '5d'], '1w': ['1h', '1mo'], '1m': ['1d', '6mo'], '3m': ['1d', '1y'], '1y': ['1wk', '5y'] };
+// 홈 '시장 개요' 칸의 지수·환율·선물(앱에서 누르면 차트) — 종목 확인 없이 이 목록만 허용
+const MARKET_CHART = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX', 'DX-Y.NYB', 'BTC-USD', '^KS11', '^KQ11', 'KRW=X', 'ES=F', 'NQ=F'];
 export async function handleChart(url, cache, cors, ctx) {
   const sym = (url.searchParams.get('s') || '').toUpperCase();
   const range = url.searchParams.get('r') || '1d';
-  if (!(CHART_SYMBOLS.includes(sym) || symOk(sym)) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
-  if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/chart?s=${sym}&r=${range}&v=ohlc3`, {
+  const mkt = MARKET_CHART.includes(sym);
+  if (!(mkt || CHART_SYMBOLS.includes(sym) || symOk(sym)) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
+  if (!mkt && !(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
+  return swr(cache, ctx, `${url.origin}/chart?s=${encodeURIComponent(sym)}&r=${range}&v=ohlc3`, {
     freshSec: range === '1d' ? 60 : 900, keepSec: 86400, cors,
     build: async () => {
       const [interval, rng] = CHART_RANGES[range];
-      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym(sym)}?interval=${interval}&range=${rng}&includePrePost=${(range === '1d' || range === '1w') && !KR_RE.test(sym)}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${mkt ? encodeURIComponent(sym) : yahooSym(sym)}?interval=${interval}&range=${rng}&includePrePost=${!mkt && (range === '1d' || range === '1w') && !KR_RE.test(sym)}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error('yahoo ' + r.status);
       const j = (await r.json()).chart.result[0];
       const Q = j.indicators?.quote?.[0] || {}, ts = j.timestamp || [];

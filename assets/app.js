@@ -2393,12 +2393,12 @@
     const dv = document.getElementById('hf-div-v');
     const dHtml = dc ? (ready ? `${usd2(dc.monthly)}<small>${EN ? '/mo' : '/월'}</small>` : '…') : (EN ? '+ Set up' : '+ 입력하기');
     if (dv && dv.innerHTML !== dHtml) dv.innerHTML = dHtml;
-    // 성과급: 계산해 둔 값이 있으면 실수령액
+    // 세금: 올해 실현 손익을 넣었으면 예상 양도세, 아니면 절세 계좌 마감까지
     try {
-      const br = readJSON(BONUS_KEY, null) ? bonusCalc() : { ready: false }; // 직접 계산해 본 사람만 금액 표시
-      setText('hf-bonus-v', br.ready ? manwon(br.net) : (EN ? 'Calculate' : '계산하기'));
-      setText('hf-bonus-s', br.ready ? `${EN ? 'Take-home · ' : '실수령 · '}${(BONUS_CO[bonusCfg.co] || BONUS_CO.custom).name}` : (EN ? 'Samsung · SK hynix take-home' : '삼성·하이닉스 실수령액'));
-      document.querySelector('.hf-bonus3')?.classList.toggle('hf-empty', !br.ready);
+      const has = manIn(taxCfg.amt) > 0, T = has ? taxCalc() : null, A = acctCalc();
+      setText('hf-tax-v', has ? (T.tax > 0 ? wonFull(T.tax) : (EN ? 'No tax' : '세금 없음')) : (EN ? 'Calculate' : '계산하기'));
+      setText('hf-tax-s', has ? (T.tax > 0 ? (EN ? 'Est. capital gains tax' : '예상 양도세') : `${EN ? 'Tax-free room' : '공제 남음'} ${wonFull(T.room)}`) : A.dd >= 0 ? `${EN ? 'Gains tax · accounts' : '양도세·절세 계좌'} D-${A.dd}` : (EN ? 'Gains tax · accounts' : '양도세·절세 계좌'));
+      document.querySelector('.hf-tax')?.classList.toggle('hf-empty', !has);
     } catch {}
     setText('hf-div-s', dc ? (ready ? `${EN ? 'Got' : '받은'} ${usd2(dc.recvNet)} · ${EN ? 'back' : '회수'} ${(dc.payback * 100).toFixed(1)}%` : (EN ? 'Loading dividends…' : '배당 내역 불러오는 중…')) : (EN ? 'Enter dividend stocks to calculate' : '배당 종목을 넣으면 계산돼요'));
     try { renderSince(fc); } catch (e) { console.error(e); }
@@ -2586,6 +2586,10 @@
   // 올해 판 종목의 이익·손실(직접 입력) + 퇴사까지 보유 종목의 평가손익 → 예상 세금, 공제 250만원을 다 쓰는 익절, 손실 종목 매도 효과
   const TAX_KEY = 'cw.tax', TAX_DED = 2.5e6, TAX_RATE = 0.22;
   let taxCfg = Object.assign({ gain: '', loss: '' }, readJSON(TAX_KEY, {}) || {});
+  if (taxCfg.pl == null) { // 예전(이익·손실 두 칸) 값 → 순손익 하나로
+    const n = (parseFloat(String(taxCfg.gain).replace(/[,\s]/g, '')) || 0) - (parseFloat(String(taxCfg.loss).replace(/[,\s]/g, '')) || 0);
+    taxCfg = { pl: n < 0 ? 'loss' : 'gain', amt: n ? String(Math.abs(n)) : '' };
+  }
   function taxDeadline() { // 올해 매도 마감(미국 결제 T+1): 12/31이 평일이면 12/30, 아니면 그 전 마지막 평일의 하루 전 평일
     const y = new Date().getFullYear(); let d = new Date(Date.UTC(y, 11, 31));
     const back = () => { do { d = new Date(d.getTime() - 86400000); } while ([0, 6].includes(d.getUTCDay())); };
@@ -2594,7 +2598,7 @@
     return d.toISOString().slice(0, 10);
   }
   function taxCalc() {
-    const g = (parseFloat(String(taxCfg.gain).replace(/[,\s]/g, '')) || 0) * 1e4, l = (parseFloat(String(taxCfg.loss).replace(/[,\s]/g, '')) || 0) * 1e4;
+    const a = (parseFloat(String(taxCfg.amt ?? '').replace(/[,\s]/g, '')) || 0) * 1e4, g = taxCfg.pl === 'loss' ? 0 : a, l = taxCfg.pl === 'loss' ? a : 0;
     const real = g - l, taxable = Math.max(0, real - TAX_DED), tax = taxable * TAX_RATE, room = Math.max(0, TAX_DED - Math.max(0, real));
     const c = fireCfg ? (() => { try { return fireCalc(); } catch { return null; } })() : null;
     const pos = (c?.rows || []).filter((r) => !r.kr).map((r) => { const bfx = c.F.buyFx || c.fx, per = r.px * c.fx - r.avg * bfx; return { t: r.ticker, sh: r.shares, per, un: per * r.shares }; });
@@ -2607,7 +2611,7 @@
     const T = taxCalc(), dl = taxDeadline(), dd = daysBetween(isoToday(), dl);
     const sh = (n) => nf(n % 1 ? 2 : 0).format(n);
     return `<div class="tx-sum2">
-        <div><span>${EN ? 'Net realized this year' : '올해 실현 손익(통산)'}</span><b class="${cls(T.real)}">${signed(T.real, wonFull)}</b><small>${EN ? 'gains − losses' : '이익 − 손실'}</small></div>
+        <div><span>${EN ? 'Net realized this year' : '올해 실현 손익'}</span><b class="${cls(T.real)}">${signed(T.real, wonFull)}</b><small>${EN ? 'gains and losses netted' : '이익·손실을 합친 금액'}</small></div>
         <div><span>${EN ? 'Estimated tax' : '예상 양도세'}</span><b>${T.tax > 0 ? wonFull(T.tax) : (EN ? 'None' : '없음')}</b><small>${EN ? `(net − ₩2.5M) × 22%` : '(손익 − 250만원) × 22%'}</small></div>
       </div>
       ${T.room > 0 ? `<div class="tx-tip ok"><b>💡 ${EN ? `You can still realize ${wonFull(T.room)} of gains tax-free this year` : `올해 ${wonFull(T.room)}까지는 이익을 실현해도 세금이 없어요`}</b>
@@ -2625,9 +2629,11 @@
     card('tax', {
       title: EN ? '🧾 Overseas stock capital gains tax' : '🧾 해외주식 양도세 절세 계산기', sub: EN ? 'Korea · ₩2.5M yearly deduction · 22%' : '연 250만원 공제 · 22%(지방세 포함) · 추정',
       easy: EN ? 'Gains from selling US stocks are taxed 22% above ₩2.5M a year, netted against losses. See how much you can realize tax-free and how selling losers cuts the tax.' : '미국 주식을 팔아 번 돈은 1년에 250만원까지는 세금이 없고, 넘는 부분에 22%가 붙어요. 같은 해 손실과 합쳐서 계산해요. 올해 세금 없이 얼마나 익절할 수 있는지, 손실 종목을 팔면 세금이 얼마나 줄어드는지 보여줘요.',
-      body: `<div class="bn-grid tx-in">
-          <label class="bn-f"><span>${EN ? 'Gains already realized this year' : '올해 이미 판 종목의 이익'}</span><div class="bn-in"><input inputmode="numeric" id="tax-gain" value="${esc(String(taxCfg.gain))}" placeholder="0"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
-          <label class="bn-f"><span>${EN ? 'Losses already realized this year' : '올해 이미 판 종목의 손실'}</span><div class="bn-in"><input inputmode="numeric" id="tax-loss" value="${esc(String(taxCfg.loss))}" placeholder="0"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
+      body: `<div class="tx-in2">
+          <span class="tx-lb">${EN ? 'Overseas stocks realized this year (net)' : '올해 해외주식 실현 손익(합계)'}</span>
+          <div class="tx-row"><div class="seg tx-pl" role="group" aria-label="${EN ? 'Gain or loss' : '수익 또는 손실'}">${[['gain', EN ? 'Gain' : '수익'], ['loss', EN ? 'Loss' : '손실']].map(([k, l]) => `<button type="button" data-taxpl="${k}" aria-pressed="${taxCfg.pl === k}">${l}</button>`).join('')}</div>
+          <div class="bn-in"><input inputmode="numeric" id="tax-amt" value="${esc(String(taxCfg.amt ?? ''))}" placeholder="0" aria-label="${EN ? 'Amount' : '금액'}"><em>${EN ? '×10k ₩' : '만원'}</em></div></div>
+          <small class="tx-help">${EN ? 'Your broker app shows this under “overseas capital gains” or “realized P&L”. Using several brokers? Add them up.' : '증권사 앱의 \'해외주식 양도세 계산\'·\'실현손익\' 메뉴에서 올해 합계를 보면 돼요. 증권사가 여러 곳이면 합쳐서 넣어요.'}</small>
         </div>
         <div id="tax-out">${taxOutHtml()}</div>
         <p class="note">${EN ? 'Estimate only — fees and the exact FX on trade dates change the result. Korean-listed stocks (non-major holders) aren’t taxed and are excluded. Not tax advice.' : '추정치예요. 수수료·거래일 환율에 따라 달라져요. 국내 상장주식(대주주 아님)은 양도세가 없어 뺐어요. 세무 조언이 아니에요. 입력값은 이 기기에만 저장돼요.'}</p>`,
@@ -4050,14 +4056,26 @@
 
   // ---- 🧩 홈 화면 편집: 홈 구역 순서·숨기기, 아래 탭의 USDC·Arc 숨기기(이 기기에 저장)
   const HOME_SECTIONS = [
-    ['fire', () => (EN ? '🔥 FIRE · Dividends · Bonus' : '🔥 퇴사까지·배당금·성과급'), ['home-fire']],
+    ['fire', () => (EN ? '🔥 FIRE · Dividends · Tax' : '🔥 퇴사까지·배당금·세금'), ['home-fire']],
     ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
-    ['market', () => (EN ? '📊 Market overview' : '📊 시장 개요'), ['c-market']],
-    ['fg', () => (EN ? '😨 Fear & Greed' : '😨 공포·탐욕 지수'), ['c-feargreed']],
-    ['flow', () => (EN ? '💸 Market money flow' : '💸 시장 자금 동향'), ['c-flow']],
+    ['market', () => (EN ? '📊 Market (overview · fear & greed · money flow)' : '📊 시장(개요·공포탐욕·자금 동향)'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow']],
     ['channel', () => (EN ? '📝 Investing channel' : '📝 돼용의 투자 채널'), ['ch-card']],
   ];
-  const DEFAULT_ORDER = ['fire', 'market', 'fg', 'flow', 'stocks', 'channel'];
+  const DEFAULT_ORDER = ['fire', 'market', 'stocks', 'channel'];
+  // 휴대폰 홈: 시장 개요·공포탐욕·자금 동향을 탭 하나로(넓은 화면은 셋 다 보임)
+  const MK_TABS = [['market', 'c-market', () => (EN ? '📊 Overview' : '📊 시장 개요')], ['fg', 'c-feargreed', () => (EN ? '😨 Fear & Greed' : '😨 공포·탐욕')], ['flow', 'c-flow', () => (EN ? '💸 Money flow' : '💸 자금 동향')]];
+  function applyMkTab() {
+    const cur = MK_TABS.some((x) => x[0] === loadPref('mktab', 'market')) ? loadPref('mktab', 'market') : 'market';
+    const el = document.getElementById('mk-tabs');
+    if (el) el.innerHTML = MK_TABS.map(([k, , l]) => `<button type="button" role="tab" data-mktab="${k}" aria-selected="${k === cur}">${l()}</button>`).join('');
+    for (const [k, id] of MK_TABS) document.getElementById(id)?.classList.toggle('mk-off', k !== cur);
+  }
+  // 휴대폰 홈: 선택한 종목의 핵심 지표·현재 상황 요약은 접어 두고 버튼으로 펼친다
+  function applyHsMore() {
+    const open = loadPref('hsmore', '0') === '1';
+    for (const id of ['home-crcl', 'home-stock']) document.getElementById(id)?.classList.toggle('hs-open', open);
+    for (const b of document.querySelectorAll('[data-hsmore]')) { b.setAttribute('aria-expanded', String(open)); b.innerHTML = `${open ? (EN ? 'Hide key metrics & summary' : '핵심 지표·현재 상황 요약 접기') : (EN ? 'Show key metrics & summary' : '핵심 지표·현재 상황 요약 보기')} <span aria-hidden="true">${open ? '▴' : '▾'}</span>`; }
+  }
   function homeLayout() {
     const L = readJSON('cw.homeLayout', null) || {};
     const order = (L.order || []).filter((k) => HOME_SECTIONS.some((x) => x[0] === k));
@@ -4069,6 +4087,7 @@
     const L = homeLayout();
     L.order.forEach((k, i) => { for (const id of HOME_SECTIONS.find((x) => x[0] === k)[2]) { const el = document.getElementById(id); if (el) { el.style.order = String(10 + i); el.classList.toggle('hl-off', L.off.includes(k)); } } });
     const he = document.getElementById('home-edit'); if (he) he.style.order = '99';
+    applyMkTab(); applyHsMore();
     TAB_SETS.CRCL = CRCL_TABS.filter(([v]) => L.tabs || !['usdc', 'arc'].includes(v));
     renderTabbar();
     if (state.view && !viewAllowed(state.view)) showView('home');
@@ -5097,13 +5116,19 @@
   function renderTabbar() {
     const nav = document.getElementById('tabbar');
     if (!nav) return;
-    const tabs = TAB_SETS[state.stock];
-    nav.style.setProperty('--tabs', tabs.length);
-    nav.innerHTML = tabs.map(([v, label, ic]) => `<button type="button" data-tab="${v}" ${v === state.view ? 'aria-current="page"' : ''}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[ic]}</svg><span>${label}</span>${ic === 'news' ? '<b class="tab-badge" id="news-badge" hidden></b>' : ''}</button>`).join('');
+    const tabs = TAB_SETS[state.stock], sym = state.stock, S = STOCK_INFO[sym] || {};
+    const btn = ([v, label, ic]) => `<button type="button" data-tab="${v}" ${v === state.view ? 'aria-current="page"' : ''}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[ic]}</svg><span>${label}</span>${ic === 'news' ? '<b class="tab-badge" id="news-badge" hidden></b>' : ''}</button>`;
+    // 종목 묶음 안에서는 위에 종목 이름이 있으니 탭 이름은 짧게(차트·실적·뉴스)
+    const short = ([v, label, ic]) => [v, ic === 'chart' ? (EN ? 'Chart' : '차트') : ic === 'earn' ? (label === '분배금' ? label : EN ? 'Earnings' : '실적') : ic === 'news' ? (EN ? 'News' : '뉴스') : label, ic];
+    const rest = tabs.filter(([v]) => v !== 'home').map(short), nm = isKR(sym) ? (S.name || sym).replace(/\s+/g, '') : sym === 'CRCA' ? 'CRCL' : sym;
+    nav.classList.add('tb2');
+    nav.style.setProperty('--tabs', rest.length);
+    nav.style.setProperty('--sc', S.color || 'var(--accent)');
+    nav.innerHTML = `${btn(tabs[0])}<div class="tb-grp"><button type="button" class="tb-sym" data-stocksheet="1" aria-label="${EN ? `${nm} screens — change stock` : `${nm} 종목 화면 — 종목 바꾸기`}">${logoOf(sym) ? `<img src="${logoOf(sym)}" alt="" width="14" height="14">` : ''}<b>${esc(nm)}</b><span>${EN ? 'screens' : '종목 화면'}</span><i aria-hidden="true">⇄</i></button><div class="tb-tabs">${rest.map(btn).join('')}</div></div>`;
     updateNewsBadge();
   }
-  const viewAllowed = (v) => v === 'fire' || v === 'flow' || TAB_SETS[state.stock].some(([t]) => t === v);
+  const viewAllowed = (v) => v === 'fire' || v === 'flow' || v === 'mkt' || TAB_SETS[state.stock].some(([t]) => t === v);
 
   // 종목 시세: 바이낸스 선물이 있는 종목(SPCX·TEM)은 CRCL처럼 바이낸스 값만, 나머지(JOBY)는 Nasdaq + Yahoo 실시간 체결
   function pq(sym) {
@@ -5251,6 +5276,7 @@
     renderTabbar();
     renderStockSwitch();
     ssScrollToActive();
+    if (state.view === 'home') pulseTabGroup();
     if (!viewAllowed(state.view)) showView('home');
     else document.getElementById('view-title').textContent = viewTitle(state.view);
     fireLoop(state.view === 'fire' || isOther());
@@ -5259,6 +5285,30 @@
     if (sym === 'CRCL') { try { renderKpis(); renderSummary(); } catch (e) { console.error(e); } } // 미리 받아 둔 값으로 Home 지표·요약도 바로
     syncNow(['quote', ...stockParts(sym)], { sym }).then(() => { if (state.stock === sym) { renderStock(); if (sym === 'CRCL') { renderKpis(); renderSummary(); } } }).catch(() => {}).finally(() => busyBar(false));
   }
+
+
+  // 아래 탭의 종목 이름을 누르면: 내 종목 목록에서 바로 바꾸기(지금 보던 화면 종류는 유지)
+  function openStockSheet() {
+    let el = document.getElementById('sw-sheet');
+    if (!el) { el = document.createElement('div'); el.id = 'sw-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); document.body.appendChild(el); }
+    el.setAttribute('aria-label', EN ? 'Change stock' : '종목 바꾸기');
+    const row = (x) => { const p = stockPx(x), nm = isKR(x) ? STOCK_INFO[x].name : x; return `<button type="button" class="sw-row${x === state.stock ? ' on' : ''}" data-swpick="${esc(x)}">${logoOf(x) ? `<img src="${logoOf(x)}" alt="" width="26" height="26">` : `<i class="ss-letter">${esc((STOCK_INFO[x].mark || x)[0])}</i>`}<span><b>${esc(nm)}</b><small>${esc(isKR(x) ? x.slice(0, 6) : STOCK_INFO[x].short || '')}</small></span><em class="${cls(p?.pct)}">${p?.pct != null ? pct(p.pct, 2) : ''}</em></button>`; };
+    el.innerHTML = `<div class="sheet-bg" data-swclose="1"></div><div class="sheet-panel sw-panel">
+      <div class="sheet-h"><b>${EN ? 'Which stock’s screens?' : '어떤 종목 화면을 볼까요?'}</b><button type="button" class="ws-btn" data-swclose="1">${EN ? 'Close' : '닫기'}</button></div>
+      <p class="note sw-note">${EN ? 'The tabs next to Home (chart · earnings · news) switch to the stock you pick here. Home stays the same.' : '아래 Home 옆의 탭(차트·실적·뉴스)이 여기서 고른 종목 화면으로 바뀌어요. Home은 그대로예요.'}</p>
+      <div class="sw-list">${WATCH.map(row).join('')}</div></div>`;
+    el.hidden = false; document.body.classList.add('sheet-open');
+  }
+  function closeStockSheet() { const el = document.getElementById('sw-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+  function pickStockFromSheet(sym) {
+    const kind = { crcl: 'chart', sprice: 'chart', earn: 'earn', searn: 'earn', news: 'news', snews: 'news' }[state.view];
+    closeStockSheet();
+    setStock(sym);
+    if (kind) { const t = TAB_SETS[state.stock].find(([, , ic]) => ic === kind); if (t) showView(t[0]); }
+    window.scrollTo({ top: 0 });
+  }
+  // 홈에서 종목을 고르면 아래 종목 묶음을 잠깐 반짝여 '여기가 이 종목 화면'임을 알려준다
+  function pulseTabGroup() { const g = document.querySelector('.tabbar .tb-grp'); if (!g) return; g.classList.remove('tb-pulse'); void g.offsetWidth; g.classList.add('tb-pulse'); }
 
   // ---------------------------------------------------------------- 종목: 시세 · 차트
   const SRANGES = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '1y': '1년' };
@@ -5532,19 +5582,80 @@
   function renderMarket() {
     if (!document.getElementById('c-market')) return;
     const M = state.market, S = marketSession(), by = Object.fromEntries((M?.items || []).map((x) => [x.sym, x]));
-    const tiles = MK_MAIN.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<div class="mk-t" title="${esc(x.name)}"><span>${esc(MK_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</div>`).join('');
+    const tiles = MK_MAIN.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<button type="button" class="mk-t" data-mkgo="${esc(x.sym)}" title="${esc(x.name)}"><span>${esc(MK_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</button>`).join('');
     const fut = ['ES=F', 'NQ=F'].map((s) => by[s]).filter((x) => x && !x.error && x.pct != null);
     let K = krSession();
     const kst = by['^KS11']?.status; // 네이버 장 상태 — 시각상 정규장인데 닫혀 있으면 휴장일(공휴일)
     const kday = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10), kt = by['^KS11']?.time;
     if ((K.k === 'open' && kst && kst !== 'OPEN') || (K.k === 'post' && kt && kday(kt) !== kday(Date.now()))) K = { k: 'closed', label: '오늘 휴장' };
-    const krTiles = MK_KR.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<div class="mk-t" title="${esc(x.name)}"><span>${esc(MK_KR_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</div>`).join('');
+    const krTiles = MK_KR.map((sym) => by[sym]).filter((x) => x && !x.error).map((x) => `<button type="button" class="mk-t" data-mkgo="${esc(x.sym)}" title="${esc(x.name)}"><span>${esc(MK_KR_SHORT[x.sym] || x.name)}</span><b>${mkVal(x)}</b><em class="${cls(x.pct)}">${pct(x.pct, 2)}</em>${sparkSvg(x.spark, (x.pct || 0) >= 0)}</button>`).join('');
     const ewy = by.EWY;
     card('market', {
-      title: '시장 개요', sub: `<span class="mk-st ${S.k}">${S.label}</span> ${S.next}`, info: INFO.market,
+      title: '시장 개요', sub: `<span class="mk-st ${S.k}">${S.label}</span> ${S.next} <span class="mk-hint">· ${EN ? 'tap for chart' : '누르면 차트'}</span>`, info: INFO.market,
       body: M ? `<div class="mk-grid">${tiles}</div>${fut.length && S.k !== 'open' ? `<p class="mk-fut">지수 선물 ${fut.map((x) => `${esc(x.name.replace(' 선물', ''))} <b class="${cls(x.pct)}">${pct(x.pct, 2)}</b>`).join(' · ')} <small>(장외 시간의 분위기)</small></p>` : ''}
         ${krTiles ? `<div class="mk-sec"><b>🇰🇷 한국</b><span class="mk-st ${K.k}">${K.label}</span></div><div class="mk-grid">${krTiles}</div>${K.k !== 'open' && ewy && !ewy.error && ewy.pct != null ? `<p class="mk-fut">EWY <b class="${cls(ewy.pct)}">${pct(ewy.pct, 2)}</b> <small>미국장에서 거래되는 한국 ETF — 밤사이 한국 증시 분위기(야간선물 대신 참고)</small></p>` : ''}` : ''}` : '<p class="skeleton">불러오는 중…</p>',
     });
+  }
+
+
+  // ---------------------------------------------------------------- 📈 지수·환율 차트(시장 개요 칸을 누르면): 기간별 차트 · 기간 등락 · 52주 범위 · 쉬운 설명
+  const MK_ABOUT = {
+    '^GSPC': ['S&P500', '미국 대형주 500개를 시가총액만큼 담은 지수예요. 미국 증시 전체 흐름을 볼 때 가장 많이 써요.', 'The 500 largest US companies, weighted by size — the go-to gauge of the US market.'],
+    '^IXIC': ['나스닥 종합', '나스닥 거래소에 상장된 기업 전체 지수예요. 애플·엔비디아 같은 기술주 비중이 커요.', 'Every Nasdaq-listed company — heavy in tech like Apple and Nvidia.'],
+    '^DJI': ['다우존스', '미국을 대표하는 우량 대기업 30개 지수예요. 주가가 높은 종목일수록 비중이 커요.', '30 blue-chip US companies, weighted by share price.'],
+    '^RUT': ['러셀2000', '미국 중소형주 2,000개 지수예요. 금리·경기에 민감해서 위험 선호를 볼 때 써요.', '2,000 smaller US companies — sensitive to rates and the economy.'],
+    '^VIX': ['VIX(공포지수)', 'S&P500 옵션으로 계산한 앞으로 30일 변동성 예상치예요. 20 아래면 차분, 30 위면 불안한 시장이에요.', 'Expected 30-day S&P 500 volatility. Below 20 is calm; above 30 is fearful.'],
+    '^TNX': ['미국 10년물 국채 금리', '미국 정부가 10년 동안 돈을 빌릴 때 내는 이자율이에요. 오르면 성장주·부동산에 부담이 돼요.', 'The 10-year US Treasury yield. Rising yields weigh on growth stocks.'],
+    'DX-Y.NYB': ['달러 인덱스', '유로·엔·파운드 등 주요 6개 통화 대비 달러 가치예요. 오르면 달러가 강해진 거예요.', 'The dollar against six major currencies. Up means a stronger dollar.'],
+    'BTC-USD': ['비트코인', '대표 암호화폐예요. 24시간 거래되고, 위험자산 분위기를 빨리 보여줘요.', 'The largest cryptocurrency, trading 24/7 — a quick read on risk appetite.'],
+    '^KS11': ['코스피', '유가증권시장에 상장된 한국 기업 전체 지수예요. 삼성전자·SK하이닉스 비중이 커요.', 'All KOSPI-listed Korean companies — Samsung and SK hynix weigh heavily.'],
+    '^KQ11': ['코스닥', '코스닥 시장 전체 지수예요. 바이오·2차전지·IT 중소형주가 많아요.', 'Korea’s KOSDAQ market — biotech, batteries and smaller tech.'],
+    'KRW=X': ['원·달러 환율', '1달러를 사는 데 필요한 원화예요. 오르면(원화 약세) 미국 주식의 원화 평가금액이 늘어요.', 'Won per dollar. Up (weaker won) lifts the won value of US stocks.'],
+    EWY: ['EWY', '미국 증시에 상장된 한국 주식 ETF예요. 한국 장이 닫힌 밤에 한국 증시 분위기를 미리 볼 수 있어요.', 'A US-listed ETF of Korean stocks — a read on Korea while its market is closed.'],
+  };
+  const MK_RANGES = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '1y': '1년', '5y': '5년' };
+  state.mkc = {};
+  state.mkSym = loadPref('mksym', '^GSPC'); state.mkRange = loadPref('mkrange', '1m');
+  const mkFmt = (sym, v) => (v == null ? '–' : sym === 'KRW=X' ? `${nf(1).format(v)}${EN ? '' : '원'}` : sym === '^TNX' ? v.toFixed(2) + '%' : sym === 'EWY' ? '$' + v.toFixed(2) : sym === 'BTC-USD' ? '$' + nf(0).format(v) : nf(v >= 1000 ? 0 : 2).format(v));
+  function mkSlice(points, r) {
+    if (!points?.length) return [];
+    if (r === '5y') return points;
+    if (r === '1d') { // 마지막 거래 구간: 3시간 넘게 비는 곳에서 끊는다(24시간 거래는 최근 24시간)
+      const last = points.at(-1)[0]; let i = points.length - 1;
+      while (i > 0 && points[i][0] - points[i - 1][0] < 3 * 3600e3 && last - points[i - 1][0] <= 24 * 3600e3) i--;
+      return points.slice(i);
+    }
+    const days = { '1w': 7, '1m': 31, '3m': 92, '1y': 366 }[r];
+    return points.filter((p) => p[0] >= points.at(-1)[0] - days * 86400000);
+  }
+  function renderMkChart() {
+    if (!document.getElementById('c-mkchart')) return;
+    const all = [...MK_MAIN, ...MK_KR], sym = all.includes(state.mkSym) ? state.mkSym : '^GSPC', r = MK_RANGES[state.mkRange] ? state.mkRange : '1m';
+    const srv = r === '5y' ? '1y' : r, key = sym + '|' + srv, C0 = state.mkc[key], M = (state.market?.items || []).find((x) => x.sym === sym);
+    if (!C0) {
+      state.mkc[key] = { loading: true };
+      getJ(`${NEWS_API}/chart?s=${encodeURIComponent(sym)}&r=${srv}`, 15000).then((j) => { state.mkc[key] = j.error ? { error: true } : j; }).catch(() => { state.mkc[key] = { error: true }; }).finally(() => { if (state.view === 'mkt') renderMkChart(); });
+    }
+    const A = MK_ABOUT[sym] || [sym, '', ''], P = C0?.points ? mkSlice(C0.points, r) : [], first = P[0]?.[1], last = P.at(-1)?.[1];
+    const chg = first && last ? last / first - 1 : null, hi = P.length ? Math.max(...P.map((p) => p[3] ?? p[1])) : null, lo = P.length ? Math.min(...P.map((p) => p[4] ?? p[1])) : null;
+    const nm = (x) => MK_SHORT[x] || MK_KR_SHORT[x] || x;
+    card('mkchart', {
+      title: `📈 ${EN ? A[0].replace('코스피', 'KOSPI').replace('코스닥', 'KOSDAQ') : A[0]}`, sub: EN ? 'Yahoo Finance · may be delayed ~15 min' : 'Yahoo Finance · 15분 정도 늦을 수 있어요',
+      body: `<div class="mkc-pick" role="tablist">${all.map((x) => `<button type="button" class="chip-btn sm" data-mkgo="${esc(x)}" aria-pressed="${x === sym}">${esc(nm(x))}</button>`).join('')}</div>
+        <div class="mkc-head"><b>${M ? mkVal(M) : mkFmt(sym, last)}</b>${M?.pct != null ? `<em class="${cls(M.pct)}">${pct(M.pct, 2)} ${EN ? 'today' : '오늘'}</em>` : ''}</div>
+        <div class="seg range mkc-rg" role="group">${Object.entries(MK_RANGES).map(([k, l]) => `<button type="button" data-mkrange="${k}" aria-pressed="${k === r}">${EN ? { '1d': '1D', '1w': '1W', '1m': '1M', '3m': '3M', '1y': '1Y', '5y': '5Y' }[k] : l}</button>`).join('')}</div>
+        <div class="chart mkc-chart">${C0?.error ? `<p class="note">${EN ? 'Couldn’t load the chart. Try again later.' : '차트를 불러오지 못했어요. 잠시 후 다시 열어 주세요.'}</p>` : P.length ? '<canvas id="cv-mkchart" role="img"></canvas>' : `<p class="skeleton">${EN ? 'Loading…' : '불러오는 중…'}</p>`}</div>
+        ${P.length ? `<div class="mkc-stats"><div><span>${EN ? `${r.toUpperCase()} change` : `${MK_RANGES[r]} 변화`}</span><b class="${cls(chg)}">${pct(chg, 2)}</b></div><div><span>${EN ? 'High' : '기간 최고'}</span><b>${mkFmt(sym, hi)}</b></div><div><span>${EN ? 'Low' : '기간 최저'}</span><b>${mkFmt(sym, lo)}</b></div>${C0.high52 && C0.low52 ? `<div><span>${EN ? '52-week range' : '52주 범위'}</span><b>${mkFmt(sym, C0.low52)} ~ ${mkFmt(sym, C0.high52)}</b></div>` : ''}</div>` : ''}
+        <p class="mkc-about">${esc(EN ? A[2] : A[1])}</p>`,
+    });
+    if (P.length) {
+      const intra = r === '1d' || r === '1w', up = (chg ?? 0) >= 0, col = up ? C.up || '#f04452' : C.down || '#3b82f6';
+      const d = (t) => new Date(t), lab = P.map((p) => p[0]);
+      const tf = (t) => { const x = d(t); return intra ? (r === '1d' ? `${String(x.getHours()).padStart(2, '0')}:${String(x.getMinutes()).padStart(2, '0')}` : `${x.getMonth() + 1}/${x.getDate()}`) : r === '5y' ? `${String(x.getFullYear()).slice(2)}.${x.getMonth() + 1}` : `${x.getMonth() + 1}/${x.getDate()}`; };
+      draw('mkchart', { type: 'line', data: { labels: lab, datasets: [lineDs(A[0], P.map((p) => p[1]), col, { fill: 'start', backgroundColor: areaFill(col) })] },
+        options: { interaction, plugins: { ...noLegend, tooltip: tooltip((it) => { const x = d(lab[it.dataIndex]); return `${x.getFullYear()}.${x.getMonth() + 1}.${x.getDate()}${intra ? ` ${String(x.getHours()).padStart(2, '0')}:${String(x.getMinutes()).padStart(2, '0')}` : ''}`; }, (v) => mkFmt(sym, v)) },
+          scales: { x: axisX(lab, tf, 5), y: axisY((v) => mkFmt(sym, v)) } } });
+    }
   }
 
   // ---------------------------------------------------------------- 공포·탐욕 지수 (주식: CNN · 코인: alternative.me)
@@ -7190,7 +7301,7 @@
 
   // ---------------------------------------------------------------- 화면 전환 (하단 탭)
   const VIEW_TITLES = {
-    home: "Fire Portfolio", fire: 'Fire · 퇴사까지', flow: '시장 자금 동향',
+    home: "Fire Portfolio", fire: 'Fire · 퇴사까지', flow: '시장 자금 동향', mkt: '지수·환율 차트',
     crcl: '서클 주가 · 수급', earn: '서클 실적', usdc: 'USDC · 스테이블코인', arc: 'Arc 체인', news: '서클 뉴스 · 공시',
     sprice: '주가 · 수급', searn: '실적', snews: '뉴스 · 공시',
   };
@@ -7222,6 +7333,7 @@
     if (v === 'fire') { applyFireTab(); renderFire(); renderDiv(); renderDivSim(); renderBonus(); renderTax(); renderFinInc(); renderAcct(); renderEtfTax(); if (state.divSub === 'grow') renderGrow(); if (!state.quote) loadQuote().then(() => { renderFire(); renderDiv(); }).catch(() => renderFire()); loadDividends().catch(() => {}); }
     if (v === 'earn') renderEarnings();
     if (v === 'searn') renderSEarnings();
+    if (v === 'mkt') renderMkChart();
     if (v === 'flow') { renderFlowView(); loadFlow().then(() => { renderFlowView(); renderFlowCard(); }).catch(() => {}); }
     if (v === 'sprice' && isKR(state.stock)) { renderSPriceChart(); renderKrDeal(state.stock); renderKrAnalyst(state.stock); }
     else if (v === 'sprice') { renderSPriceChart(); renderShort(shortOf(state.stock), 'sshort', STOCK_INFO[state.stock].short); renderHolders(state.stock, 'sholders'); renderAnalyst(); renderInsider(); renderOptions(); }
@@ -7371,6 +7483,19 @@
     if (stk) { setStock(stk.dataset.stock); return; }
     const stn = ev.target.closest('[data-sumtone]');
     if (stn) { const [id, t] = stn.dataset.sumtone.split(':'); sumTone[id] = sumTone[id] === t ? 'all' : t; if (id === 'summary') renderSummary(); else renderSSummary(); return; }
+    if (ev.target.closest('[data-stocksheet]')) { openStockSheet(); return; }
+    if (ev.target.closest('[data-swclose]')) { closeStockSheet(); return; }
+    const swp = ev.target.closest('[data-swpick]');
+    if (swp) { pickStockFromSheet(swp.dataset.swpick); return; }
+    const mkt = ev.target.closest('[data-mktab]');
+    if (mkt) { savePref('mktab', mkt.dataset.mktab); applyMkTab(); return; }
+    if (ev.target.closest('[data-hsmore]')) { savePref('hsmore', loadPref('hsmore', '0') === '1' ? '0' : '1'); applyHsMore(); return; }
+    const mkg = ev.target.closest('[data-mkgo]');
+    if (mkg) { state.mkSym = mkg.dataset.mkgo; savePref('mksym', state.mkSym); if (state.view === 'mkt') renderMkChart(); else { showView('mkt'); window.scrollTo({ top: 0 }); } return; }
+    const mkr = ev.target.closest('[data-mkrange]');
+    if (mkr) { state.mkRange = mkr.dataset.mkrange; savePref('mkrange', state.mkRange); renderMkChart(); return; }
+    const tpl = ev.target.closest('[data-taxpl]');
+    if (tpl) { taxCfg.pl = tpl.dataset.taxpl; writeJSON(TAX_KEY, taxCfg); for (const b of document.querySelectorAll('[data-taxpl]')) b.setAttribute('aria-pressed', String(b.dataset.taxpl === taxCfg.pl)); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); renderHomeFire(); return; }
     const slb = ev.target.closest('[data-sharelink]');
     if (slb) { shareLink(slb.dataset.sharelink, slb); return; }
     const scb = ev.target.closest('[data-sharecard]');
@@ -7770,7 +7895,7 @@
     if (gi && ev.target.type !== 'checkbox') { growCfg[gi] = ev.target.value === '' && gi === 'gD' ? null : ev.target.value; growSave(); growRefresh(); return; }
     const ei = ev.target.dataset?.etax;
     if (ei && ev.target.type !== 'checkbox' && ev.target.tagName !== 'SELECT') { etaxCfg[ei] = ev.target.value; writeJSON(ETAX_KEY, etaxCfg); const o = document.getElementById('et-out'); if (o) o.innerHTML = etaxOutHtml(); return; }
-    if (ev.target.id === 'tax-gain' || ev.target.id === 'tax-loss') { taxCfg[ev.target.id === 'tax-gain' ? 'gain' : 'loss'] = ev.target.value; writeJSON(TAX_KEY, taxCfg); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); }
+    if (ev.target.id === 'tax-amt') { taxCfg.amt = ev.target.value; writeJSON(TAX_KEY, taxCfg); renderHomeFire(); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); }
   });
   document.addEventListener('change', (ev) => {
     const gc = ev.target.dataset?.grow;

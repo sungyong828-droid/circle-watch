@@ -1923,3 +1923,66 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .rb-buy b { flex: 1 1 auto; font-size: 13.5px; } .rb-buy span { font: 800 16px var(--mono); } .rb-buy small { flex-basis: 100%; font-size: 12px; color: var(--ink-2); }
 .rb-tbl td.up { color: #3fbf7f; }
 @media (max-width: 400px) { .ac-in { grid-template-columns: 1fr 1fr; } }
+
+/* ===== 홈 정리: 세금 칸 · 시장 탭 · 종목 지표 접기 ===== */
+.hf-tax { border: 1px solid color-mix(in srgb, var(--c-blue) 45%, var(--line)); background: linear-gradient(180deg, color-mix(in srgb, var(--c-blue) 12%, transparent), transparent 70%), var(--surface); }
+.hf-tax .hf-v { color: var(--c-blue); }
+.mk-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line-soft); margin-bottom: -4px; }
+.mk-tabs button { border: 0; background: transparent; color: var(--muted); font: 700 12.5px var(--sans); padding: 9px 4px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+.mk-tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+@media (max-width: 899px) { .mk-off { display: none !important; } }
+@media (min-width: 900px) { .mk-tabs { display: none; } }
+.hs-more { display: none; }
+@media (max-width: 899px) {
+  .hs-more { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; border-radius: 12px; border: 1px dashed var(--line); background: transparent; color: var(--ink-2); font: 700 13px var(--sans); cursor: pointer; }
+  .home-part:not(.hs-open) > .group-h, .home-part:not(.hs-open) > .kpis, .home-part:not(.hs-open) > #c-summary, .home-part:not(.hs-open) > #c-ssummary { display: none; }
+}
+/* 시장 개요 칸 → 차트 */
+button.mk-t { border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
+button.mk-t:active { background: var(--surface-2); }
+.mk-hint { color: var(--faint); }
+.mkc-pick { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 6px; margin-top: 8px; scrollbar-width: none; }
+.mkc-pick::-webkit-scrollbar { display: none; }
+.mkc-pick .chip-btn { flex: none; }
+.mkc-pick .chip-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg, #0d1117); }
+.mkc-head { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.mkc-head b { font: 800 26px var(--mono); letter-spacing: -0.02em; } .mkc-head em { font: 700 14px var(--mono); font-style: normal; }
+.mkc-rg { margin-top: 10px; }
+.mkc-chart { margin-top: 10px; height: 240px; }
+.mkc-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.mkc-stats > div { display: grid; gap: 2px; padding: 9px 11px; border-radius: 10px; background: var(--surface-2); }
+.mkc-stats span { font-size: 11.5px; color: var(--muted); } .mkc-stats b { font: 700 14px var(--mono); }
+.mkc-about { margin: 12px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+/* 양도세 입력: 수익/손실 + 금액 */
+.tx-in2 { display: grid; gap: 6px; margin-top: 10px; }
+.tx-lb { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.tx-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.tx-pl { border-radius: 10px; } .tx-pl button { padding: 0 14px; font-size: 13.5px; font-weight: 700; border-radius: 8px; }
+.tx-pl button[data-taxpl="gain"][aria-pressed="true"] { color: #f04452; } .tx-pl button[data-taxpl="loss"][aria-pressed="true"] { color: #3b82f6; }
+.tx-help { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+/* ===== 아래 탭: Home | 지금 고른 종목 묶음 ===== */
+:root { --tabbar-h: 64px; }
+.tabbar.tb2 { display: flex; align-items: stretch; gap: 6px; padding-top: 5px; }
+.tabbar.tb2 > button[data-tab="home"] { flex: 0 0 62px; height: var(--tabbar-h); position: relative; }
+.tb-grp { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; border-radius: 16px; background: color-mix(in srgb, var(--sc) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sc) 32%, transparent); }
+.tb-sym { display: flex; align-items: center; justify-content: center; gap: 5px; height: 20px; margin-top: 3px; padding: 0 8px; border: 0; background: transparent; color: var(--ink); font: 800 11px var(--sans); cursor: pointer; min-width: 0; }
+.tb-sym img { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.tb-sym b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.tb-sym span { font-weight: 600; color: var(--muted); white-space: nowrap; }
+.tb-sym i { font-style: normal; font-size: 11px; color: var(--muted); padding: 0 5px; border-radius: 6px; background: color-mix(in srgb, var(--sc) 18%, transparent); }
+.tb-tabs { display: grid; grid-template-columns: repeat(var(--tabs, 4), minmax(0, 1fr)); }
+.tabbar.tb2 .tb-tabs button { height: calc(var(--tabbar-h) - 23px); gap: 2px; position: relative; }
+.tabbar.tb2 .tb-tabs svg { width: 21px; height: 21px; }
+.tabbar.tb2 .tb-tabs button span { font-size: 10.5px; }
+.tabbar.tb2 .tb-tabs button[aria-current="page"]::before { top: 1px; width: 44px; height: 26px; border-radius: 13px; }
+.tb-grp.tb-pulse { animation: tbPulse 1.2s ease-out 1; }
+@keyframes tbPulse { 0% { box-shadow: inset 0 0 0 1px var(--sc), 0 0 0 0 color-mix(in srgb, var(--sc) 60%, transparent); } 70% { box-shadow: inset 0 0 0 1px var(--sc), 0 0 0 10px transparent; } 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sc) 32%, transparent), 0 0 0 0 transparent; } }
+@media (min-width: 900px) { .tabbar.tb2 { width: min(640px, 100%); } }
+/* 종목 바꾸기 시트 */
+.sw-note { margin: 0 0 10px; }
+.sw-list { display: grid; gap: 4px; }
+.sw-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 0; background: var(--surface-2); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.sw-row.on { box-shadow: inset 0 0 0 1px var(--accent); }
+.sw-row img { border-radius: 7px; } .sw-row .ss-letter { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: var(--surface); font-style: normal; font-weight: 800; }
+.sw-row span { display: grid; min-width: 0; } .sw-row b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sw-row small { font-size: 11.5px; color: var(--muted); }
+.sw-row em { font: 700 12.5px var(--mono); font-style: normal; }
