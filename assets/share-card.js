@@ -35,7 +35,7 @@ async function draw(d, hide, icon) {
   // 제목
   g.textBaseline = 'alphabetic';
   g.font = `800 70px ${FONT}`; g.fillStyle = C.ink;
-  g.fillText(d.title, X, 330);
+  g.fillText(String(d.title).replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2B50\uFE0F]/gu, '').trim(), X, 330); // 이모지 없이(화면은 아이콘)
   // 큰 숫자
   const hero = hide && d.hero.money && d.hero.alt ? d.hero.alt : d.hero;
   g.font = `600 38px ${FONT}`; g.fillStyle = C.muted;

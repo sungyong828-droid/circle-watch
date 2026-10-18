@@ -2011,3 +2011,24 @@ body { padding-bottom: calc(var(--tabbar-h) + var(--tbnow-h) + 22px + env(safe-a
 .he-sw { width: 84px; justify-content: flex-start; }
 .he-sw span { display: inline-block; min-width: 3.2em; }
 .he-list li { min-height: 58px; }
+
+/* ===== 아이콘(이모지 → Lucide 선 아이콘) — 맨 앞 아이콘은 색 타일 ===== */
+.ic { --t: #9aa4b2; --tb: rgba(154, 164, 178, 0.14); display: inline-flex; align-items: center; justify-content: center; width: 1.15em; height: 1.15em; margin-right: 0.3em; vertical-align: -0.2em; color: var(--t); flex: none; }
+.ic svg { width: 100%; height: 100%; stroke-width: 2; }
+.ic-coral { --t: #ff8a65; --tb: rgba(255, 138, 101, 0.15); }
+.ic-teal { --t: #4fd1a5; --tb: rgba(79, 209, 165, 0.14); }
+.ic-blue { --t: #6ea8ff; --tb: rgba(110, 168, 255, 0.15); }
+.ic-purple { --t: #a78bfa; --tb: rgba(167, 139, 250, 0.16); }
+.ic-amber { --t: #f5c04e; --tb: rgba(245, 192, 78, 0.15); }
+.ic-green { --t: #6dd38a; --tb: rgba(109, 211, 138, 0.15); }
+.ic-red { --t: #ff6b7a; --tb: rgba(255, 107, 122, 0.15); }
+.ic-gray { --t: #aab3c0; --tb: rgba(170, 179, 192, 0.13); }
+.ic-dot { display: inline-block; width: 0.62em; height: 0.62em; border-radius: 50%; margin-right: 0.35em; vertical-align: 0.02em; flex: none; }
+/* 색 타일: 카드 제목 · 홈 칸 · 탭 · 시트 제목 · 소개 페이지 제목 맨 앞 */
+:is(.card-h h3, .hf-l, .sheet-h b, .group-h, .fire-tabs button, .div-tabs button, .mk-tabs button, .lp-sec h2, .lp-sec h3, .lp-feat b, .he-nm b, .gr-sum span, .tx-tip > b, .sim-goal-h b) > .ic:first-child {
+  width: 1.55em; height: 1.55em; padding: 0.3em; margin-right: 0.45em; border-radius: 0.5em; background: var(--tb); vertical-align: -0.42em;
+}
+.card-h h3 > .ic:first-child { width: 28px; height: 28px; padding: 6px; border-radius: 9px; vertical-align: -7px; }
+.hf-l > .ic:first-child { width: 24px; height: 24px; padding: 5px; border-radius: 8px; vertical-align: -7px; }
+.fire-tabs button > .ic:first-child, .div-tabs button > .ic:first-child, .mk-tabs button > .ic:first-child { width: 22px; height: 22px; padding: 4px; border-radius: 7px; vertical-align: -6px; margin-right: 6px; }
+button > .ic, a > .ic { vertical-align: -0.22em; }

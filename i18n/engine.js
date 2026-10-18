@@ -8,6 +8,9 @@
   const norm = (s) => s.replace(/\s+/g, ' ').trim();
   const exact = new Map();
   for (const [k, v] of Object.entries(D)) exact.set(norm(k), v);
+  // 화면 이모지는 아이콘(assets/icons.js)으로 바뀌므로, 이모지를 뺀 문구로도 찾을 수 있게 한다
+  const EMO = /[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2B50\uFE0F]/gu;
+  for (const [k, v] of [...exact]) { const k2 = norm(k.replace(EMO, '')); if (k2 && k2 !== k && !exact.has(k2)) exact.set(k2, norm(String(v).replace(EMO, ''))); }
   const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const PUNC = /^[\s·:,;)(\-–—→←•]+|[\s·:,;(\-–—→←•]+$/g;
   const sub = new Map();

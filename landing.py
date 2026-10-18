@@ -8,7 +8,7 @@ import json
 import os
 
 SITE = 'https://my-fire-portfolio.pages.dev/'
-VER = '11'
+VER = '12'
 
 COMMON_FEATURES = [
     ('실시간 주가 · 캔들 차트', '1일·1주·1개월·3개월·1년 캔들 차트에 이동평균선(5·20·60·120일)과 거래량. 캔들/라인 전환.'),
@@ -127,6 +127,7 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noin
 <footer class="lp-foot">
   {FOOT_EN if en else FOOT_KO}
 </footer>
+<script src="assets/icons.js?v=1"></script>
 <script src="assets/landing.js?v={VER}"></script>{f'\n<script src="assets/{script}"></script>' if script else ''}
 </body>
 </html>

@@ -1586,7 +1586,7 @@
     if (!d) { toast(EN ? 'Fill in the numbers first' : '먼저 값을 넣어 계산해 주세요', true); return; }
     if (btn) btn.disabled = true;
     try {
-      const m = await import('./share-card.js?v=3');
+      const m = await import('./share-card.js?v=4');
       await m.openShareCard(d, {
         title: EN ? 'Share as image' : '이미지로 공유', close: EN ? 'Close' : '닫기', hide: EN ? 'Hide amounts (show % only)' : '금액 가리기 (퍼센트만 보여요)',
         save: EN ? 'Save image' : '이미지 저장', share: EN ? 'Share' : '공유하기', saved: EN ? 'Saved' : '이미지를 저장했어요',
