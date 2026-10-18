@@ -1867,7 +1867,7 @@ const PROMUPD_SYS = '너는 회사가 한 약속의 진행 상황을 확인하�
 async function promiseUpdates(sym, base, acc, url, cache, ctx, env) {
   let pr = [];
   // 지난 실적 발표 이후 전부 본다(최신 발표 직전에 이미 이룬 일을 AI가 '새 약속'으로 잘못 넣는 경우도 바로잡게)
-  try { pr = (await nasdaqPressReleases(sym, 50)).filter((n) => n.t.slice(0, 10) > base.prev.d).slice(0, 40); } catch { return { ...base, checking: true }; }
+  try { pr = (await nasdaqPressReleases(sym, 50)).filter((n) => n.t.slice(0, 10) > base.prev.d).slice(0, 40); } catch (e) { return { ...base, checking: true, checkErr: 'pr: ' + String(e.message || e) }; }
   if (!pr.length || !env?.AI || !env?.SUMS) return { ...base, checked: base.cur.d };
   const last = [pr[0].t.slice(0, 10), base.cur.d].sort().at(-1), key = `promupd3:${sym}:${acc}:${last}:${pr.length}`;
   const kept = await env.SUMS.get(key, 'json').catch(() => null);
@@ -1884,7 +1884,7 @@ async function promiseUpdates(sym, base, acc, url, cache, ctx, env) {
       .map(({ x, n }) => ({ i: x.i, status: x.status, d: n.t.slice(0, 10), title: n.title, url: n.url }));
     ctx.waitUntil(env.SUMS.put(key, JSON.stringify(U), { expirationTtl: 150 * 86400 }));
     return apply(U);
-  } catch { return { ...base, checking: true }; }
+  } catch (e) { return { ...base, checking: true, checkErr: String(e.message || e) }; }
 }
 
 // ---------------------------------------------------------------- 오늘의 브리핑 (Workers AI) — 시장 한 줄 + 종목별 '왜 움직였나'
