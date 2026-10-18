@@ -200,6 +200,19 @@
         <li><b>맥스 페인</b>: 만기 때 옵션 매수자들이 가장 많이 잃는 가격. 만기 무렵 주가가 이 근처로 끌린다는 속설이 있어요(참고용).</li>
         <li><b>미결제가 많이 쌓인 가격</b>: 콜이 많으면 저항, 풋이 많으면 지지로 보는 경우가 많아요.</li>
       </ul>`,
+    prom: EN ? `
+      <p>AI reads the company's <b>last two earnings releases</b> (SEC 8-K) and checks whether what it promised last time — guidance, launches, approvals, production — happened in the latest one.</p>
+      <ul><li>✅ Done · ⏳ On track (kept or raised) · ⚠️ Delayed or cut · ❔ Not mentioned this time</li><li>🆕 New promises from the latest release — check them next quarter.</li></ul>
+      <p>Built once per release from the original filings only. AI can misread; the links go to the originals.</p>` : `
+      <p>회사의 <b>최근 두 번의 실적 발표문</b>(SEC 8-K 첨부 보도자료·주주서한)을 AI가 읽고, 지난번에 하겠다고 한 일(가이던스·출시·승인·생산 등)이 이번 발표에서 어떻게 됐는지 확인해요.</p>
+      <ul><li>✅ 지켰어요 · ⏳ 진행 중(목표 유지·상향) · ⚠️ 늦어지거나 줄었어요 · ❔ 이번 발표에 언급 없음</li><li>🆕 이번 발표에서 새로 한 약속 — 다음 분기에 다시 확인해요.</li></ul>
+      <p>실적 발표마다 한 번, 공시 원문만 근거로 만들어요. AI가 잘못 읽을 수 있으니 중요한 건 아래 원문 링크로 확인하세요.</p>`,
+    fsum: EN ? `
+      <p>The company's recent SEC filings — <b>8-K</b> (major events), <b>10-Q</b> (quarterly report), <b>10-K</b> (annual report) — summarized by AI in 3 lines each (in Korean).</p>
+      <p>Each filing is summarized once from the original text (for 10-Q/10-K, the management discussion section). Last 6 months, up to 6 filings.</p>` : `
+      <p>회사가 미국 SEC에 낸 최근 공시를 AI가 <b>한국어 3줄</b>로 정리했어요.</p>
+      <ul><li><b>8-K</b>: 실적 발표·계약·임원 변동 같은 중요한 일이 생기면 4영업일 안에 내는 수시 공시</li><li><b>10-Q / 10-K</b>: 분기·연간 보고서 — 경영진이 직접 설명하는 부분(MD&A)을 읽어요</li></ul>
+      <p>공시마다 한 번, 원문만 근거로 만들어요. 최근 6개월, 최대 6건.</p>`,
     earnday: EN ? `
       <p>This card appears only from <b>the day before to the day of</b> an earnings release and for <b>36 hours</b> after it.</p>
       <ul>
@@ -2665,6 +2678,57 @@
     return `<div class="es-box loading" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'}</b><small>${EN ? 'Writing the summary…' : '요약을 만드는 중…'}</small></div>`;
   }
 
+  // ---------------------------------------------------------------- 🎯 회사 약속 추적 · 📄 공시 한국어 요약 — 서버(/promises·/filesum)가 SEC 원문을 읽고 AI가 한 번 만들어 둔 것
+  // 공시 요약은 한 번 부를 때마다 서버가 하나씩 만들어서, 덜 만들어졌으면(more) 몇 번 더 부른다.
+  state.prom = {}; state.fsum = {};
+  function loadAiCard(kind, sym) {
+    const S = state[kind], X = S[sym];
+    if (X?.loading || (X && !X.again && Date.now() - X.t < 15 * 60000)) return;
+    const tries = (X?.tries || 0) + 1;
+    S[sym] = { ...(X || {}), t: Date.now(), loading: true, again: false, tries };
+    getJ(`${NEWS_API}/${kind === 'prom' ? 'promises' : 'filesum'}?s=${encodeURIComponent(sym)}`, 45000)
+      .then((j) => { S[sym] = { ...j, t: Date.now(), tries }; })
+      .catch(() => { S[sym] = { ...(X?.items || X?.list ? X : { none: true }), t: Date.now(), tries }; })
+      .then(() => {
+        const Y = S[sym];
+        if (tries < 8 && ((kind === 'fsum' && Y.more) || (kind === 'prom' && Y.pending && !Y.budget))) { Y.again = true; setTimeout(() => { if (state.stock === sym || sym === 'CRCL') { loadAiCard(kind, sym); } }, kind === 'prom' ? 20000 : 3000); }
+        renderAiCards(sym);
+      });
+  }
+  const P_BADGE = { done: ['✅', '지켰어요', 'Done'], on: ['⏳', '진행 중', 'On track'], late: ['⚠️', '늦어지거나 줄었어요', 'Delayed/cut'], unknown: ['❔', '언급 없음', 'Not mentioned'], new: ['🆕', '새 약속', 'New'] };
+  function promHtml(sym) {
+    const X = state.prom[sym];
+    if (!X || X.loading && !X.items) return `<p class="skeleton">${EN ? 'Reading the earnings releases…' : '실적 발표문을 읽는 중…'}</p>`;
+    if (!X.items?.length) return X.pending ? `<p class="skeleton">${EN ? 'AI is comparing the last two earnings releases… (up to a minute)' : 'AI가 지난 두 번의 실적 발표를 비교하는 중이에요… (1분쯤 걸려요)'}</p>` : '';
+    const old = X.items.filter((x) => x.status !== 'new'), nw = X.items.filter((x) => x.status === 'new');
+    const cnt = ['done', 'on', 'late', 'unknown'].map((k) => [k, old.filter((x) => x.status === k).length]).filter(([, n]) => n);
+    const row = (x) => { const B = P_BADGE[x.status]; return `<li class="pm-i pm-${x.status}"><span class="pm-b">${B[0]} ${EN ? B[2] : B[1]}</span><b data-noi18n>${esc(x.goal)}</b>${x.due ? `<em data-noi18n>${esc(x.due)}</em>` : ''}${x.note ? `<small data-noi18n>${esc(x.note)}</small>` : ''}</li>`; };
+    return `<div class="pm-sum">${cnt.map(([k, n]) => `<span class="pm-c pm-${k}">${P_BADGE[k][0]} ${EN ? P_BADGE[k][2] : P_BADGE[k][1]} <b>${n}</b></span>`).join('')}</div>
+      ${old.length ? `<ul class="pm-list">${old.map(row).join('')}</ul>` : ''}
+      ${nw.length ? `<div class="mini-h er-h">${EN ? 'New promises in the latest release' : '이번 발표에서 새로 한 약속'}</div><ul class="pm-list">${nw.map(row).join('')}</ul>` : ''}
+      <p class="note">${EN ? 'AI compared the two releases (text in Korean) — it can be wrong, so check the originals' : 'AI가 두 발표문만 읽고 판단했어요. 틀릴 수 있으니 원문으로 확인하세요'} · <a href="${safeUrl(X.prev.url)}" target="_blank" rel="noopener">${EN ? 'Previous' : '지난 발표'} ${md(isoToTs(X.prev.d))}</a> · <a href="${safeUrl(X.cur.url)}" target="_blank" rel="noopener">${EN ? 'Latest' : '최신 발표'} ${md(isoToTs(X.cur.d))}</a></p>`;
+  }
+  function fsumHtml(sym) {
+    const X = state.fsum[sym];
+    if (!X || X.loading && !X.list) return `<p class="skeleton">${EN ? 'Loading filings…' : '공시 불러오는 중…'}</p>`;
+    if (!X.list?.length) return '';
+    const kind = (f) => (/^10-Q/.test(f.form) ? (EN ? 'Quarterly report' : '분기 보고서') : /^10-K/.test(f.form) ? (EN ? 'Annual report' : '연간 보고서') : /^20-F/.test(f.form) ? (EN ? 'Annual report' : '연간 보고서') : (EN ? f.en : f.ko).join(' · ') || (EN ? 'Current report' : '수시 공시'));
+    return `<ul class="fs-list">${X.list.map((f) => `<li><div class="fs-h"><span class="fs-k">${esc(f.form)}</span><b>${esc(kind(f))}</b><span class="fs-d">${md(isoToTs(f.d))}</span><a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${EN ? 'Original' : '원문'} →</a></div>
+      ${f.lines ? `<ul class="fs-l" data-noi18n>${f.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : `<small class="fs-wait">${EN ? 'Summary in progress…' : '요약 만드는 중…'}</small>`}</li>`).join('')}</ul>
+      <p class="note">${EN ? 'AI summaries (in Korean) of the SEC originals — may contain mistakes.' : 'SEC 원문을 AI가 한국어로 줄였어요. 틀릴 수 있으니 중요한 건 원문으로 확인하세요.'}</p>`;
+  }
+  function renderAiCards(sym = state.stock) {
+    const pre = isOther(sym) ? 's' : '', ids = [`${pre}prom`, `${pre}fsum`];
+    const off = isKR(sym) || isEtf(sym);
+    for (const id of ids) { const el = document.getElementById('c-' + id); if (el) el.hidden = off; }
+    if (off) return;
+    loadAiCard('prom', sym); loadAiCard('fsum', sym);
+    const P = state.prom[sym], F = state.fsum[sym], name = esc(ttlName(sym));
+    const pEl = document.getElementById(`c-${ids[0]}`), fEl = document.getElementById(`c-${ids[1]}`);
+    if (pEl) { pEl.hidden = !!(P && !P.loading && !P.items?.length && !P.pending); if (!pEl.hidden) card(ids[0], { title: EN ? '🎯 Promise tracker' : '🎯 회사 약속 추적', sub: P?.items ? (EN ? `${name}promises from the last earnings release, checked against the latest` : `${name}지난 실적 발표에서 한 약속을 이번 발표로 확인`) : (EN ? 'Did the company do what it said?' : '회사가 말한 대로 하고 있을까?'), info: INFO.prom, body: promHtml(sym) }); }
+    if (fEl) { fEl.hidden = !!(F && !F.loading && !F.list?.length); if (!fEl.hidden) card(ids[1], { title: EN ? '📄 SEC filings in Korean' : '📄 미국 공시 한국어 요약', sub: EN ? `${name}recent 8-K · 10-Q · 10-K, 3 lines each` : `${name}최근 8-K·10-Q·10-K를 3줄로`, info: INFO.fsum, body: fsumHtml(sym) }); }
+  }
+
   // ---------------------------------------------------------------- 🇺🇸 미국 신용잔고(FINRA, 월별) — 예전 기록은 사이트 파일, 최근 12개월은 서버(/flow)
   let usMarginP = null;
   // 한 번만 받는다(실패해도 다시 그리기를 반복하지 않게) — 받은 뒤에만 then으로 다시 그린다
@@ -4734,6 +4798,7 @@
   const usdS = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
 
   function renderEarnings() {
+    try { renderAiCards('CRCL'); } catch (e) { console.error(e); }
     const E = state.earnings;
     if (!E) {
       card('earnings', { title: '서클 실적', sub: '분기 실적 · 다음 발표일', info: INFO.earnings, body: `<p class="skeleton">${state.earningsErr ? '실적 데이터를 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` });
@@ -7011,6 +7076,7 @@
 
   function renderSEarnings(sym = state.stock) {
     try { renderBiz(sym); } catch (e) { console.error(e); }
+    try { renderAiCards(sym); } catch (e) { console.error(e); }
     if (isKR(sym)) { renderKrEarn(sym); return; }
     if (!isOther(sym)) return;
     if (sym === 'JOBY') { renderFaa(); renderJobyTimeline(); }
