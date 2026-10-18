@@ -2686,11 +2686,13 @@
     if (X?.loading || (X && !X.again && Date.now() - X.t < 15 * 60000)) return;
     const tries = (X?.tries || 0) + 1;
     S[sym] = { ...(X || {}), t: Date.now(), loading: true, again: false, tries };
-    getJ(`${NEWS_API}/${kind === 'prom' ? 'promises' : 'filesum'}?s=${encodeURIComponent(sym)}`, 45000)
+    // AI가 만드는 동안 응답이 1분 넘게 걸릴 수 있다 — 시간 초과면 받은 것까지 두고 다시 부른다
+    getJ(`${NEWS_API}/${kind === 'prom' ? 'promises' : 'filesum'}?s=${encodeURIComponent(sym)}`, 90000)
       .then((j) => { S[sym] = { ...j, t: Date.now(), tries }; })
-      .catch(() => { S[sym] = { ...(X?.items || X?.list ? X : { none: true }), t: Date.now(), tries }; })
+      .catch(() => { S[sym] = { ...(X || {}), loading: false, err: true, pending: kind === 'prom' && !X?.items, more: kind === 'fsum' && !X?.list ? true : X?.more, t: Date.now(), tries }; })
       .then(() => {
         const Y = S[sym];
+        if (Y.err && tries >= 8 && !Y.items && !Y.list) Y.none = true;
         if (tries < 8 && ((kind === 'fsum' && Y.more) || (kind === 'prom' && Y.pending && !Y.budget))) { Y.again = true; setTimeout(() => { if (state.stock === sym || sym === 'CRCL') { loadAiCard(kind, sym); } }, kind === 'prom' ? 20000 : 3000); }
         renderAiCards(sym);
       });
@@ -2710,7 +2712,7 @@
   }
   function fsumHtml(sym) {
     const X = state.fsum[sym];
-    if (!X || X.loading && !X.list) return `<p class="skeleton">${EN ? 'Loading filings…' : '공시 불러오는 중…'}</p>`;
+    if (!X || !X.list && (X.loading || X.more)) return `<p class="skeleton">${EN ? 'Loading filings — summaries can take a minute the first time…' : '공시 불러오는 중… 처음엔 AI 요약에 1분쯤 걸려요'}</p>`;
     if (!X.list?.length) return '';
     const kind = (f) => (/^10-Q/.test(f.form) ? (EN ? 'Quarterly report' : '분기 보고서') : /^10-K/.test(f.form) ? (EN ? 'Annual report' : '연간 보고서') : /^20-F/.test(f.form) ? (EN ? 'Annual report' : '연간 보고서') : (EN ? f.en : f.ko).join(' · ') || (EN ? 'Current report' : '수시 공시'));
     return `<ul class="fs-list">${X.list.map((f) => `<li><div class="fs-h"><span class="fs-k">${esc(f.form)}</span><b>${esc(kind(f))}</b><span class="fs-d">${md(isoToTs(f.d))}</span><a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${EN ? 'Original' : '원문'} →</a></div>
@@ -2726,7 +2728,7 @@
     const P = state.prom[sym], F = state.fsum[sym], name = esc(ttlName(sym));
     const pEl = document.getElementById(`c-${ids[0]}`), fEl = document.getElementById(`c-${ids[1]}`);
     if (pEl) { pEl.hidden = !!(P && !P.loading && !P.items?.length && !P.pending); if (!pEl.hidden) card(ids[0], { title: EN ? '🎯 Promise tracker' : '🎯 회사 약속 추적', sub: P?.items ? (EN ? `${name}promises from the last earnings release, checked against the latest` : `${name}지난 실적 발표에서 한 약속을 이번 발표로 확인`) : (EN ? 'Did the company do what it said?' : '회사가 말한 대로 하고 있을까?'), info: INFO.prom, body: promHtml(sym) }); }
-    if (fEl) { fEl.hidden = !!(F && !F.loading && !F.list?.length); if (!fEl.hidden) card(ids[1], { title: EN ? '📄 SEC filings in Korean' : '📄 미국 공시 한국어 요약', sub: EN ? `${name}recent 8-K · 10-Q · 10-K, 3 lines each` : `${name}최근 8-K·10-Q·10-K를 3줄로`, info: INFO.fsum, body: fsumHtml(sym) }); }
+    if (fEl) { fEl.hidden = !!(F && !F.loading && !F.list?.length && !F.more); if (!fEl.hidden) card(ids[1], { title: EN ? '📄 SEC filings in Korean' : '📄 미국 공시 한국어 요약', sub: EN ? `${name}recent 8-K · 10-Q · 10-K, 3 lines each` : `${name}최근 8-K·10-Q·10-K를 3줄로`, info: INFO.fsum, body: fsumHtml(sym) }); }
   }
 
   // ---------------------------------------------------------------- 🇺🇸 미국 신용잔고(FINRA, 월별) — 예전 기록은 사이트 파일, 최근 12개월은 서버(/flow)
