@@ -1995,3 +1995,4 @@ body { padding-bottom: calc(var(--tabbar-h) + var(--tbnow-h) + 22px + env(safe-a
 .mkc-back { border: 0; background: transparent; color: var(--ink-2); font: 600 13px var(--sans); padding: 2px 0 8px; cursor: pointer; }
 .seg.range.mkc-rg { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; flex-wrap: nowrap; }
 #c-mkchart { grid-column: 1 / -1; } @media (min-width: 900px) { .mkc-chart { height: 320px; } }
+.tabbar .tb-now { color: var(--ink); font-weight: 600; } .tabbar .tb-now .tb-nm { color: var(--ink); }
