@@ -1990,3 +1990,7 @@ button.mk-t:active { background: var(--surface-2); }
 .mkc-rg button { padding: 6px 0; white-space: nowrap; }
 .mkc-back { border: 0; background: transparent; color: var(--ink-2); font: 600 13px var(--sans); padding: 2px 0 8px; cursor: pointer; }
 .tabbar.tb2 .tb-grp > button[aria-current="page"]::before { width: min(44px, 88%); }
+.tabbar.tb2 { grid-template-columns: 54px 1px minmax(0, 1fr); padding-left: max(4px, env(safe-area-inset-left, 0px)); padding-right: max(4px, env(safe-area-inset-right, 0px)); }
+.tb-grp { grid-template-columns: 1.05fr repeat(var(--tabs, 4), minmax(0, 1fr)); }
+.tabbar.tb2 .tb-grp > button[data-tab] span { overflow: visible; text-overflow: clip; white-space: nowrap; letter-spacing: -0.02em; }
+@media (max-width: 380px) { .tabbar.tb2 .tb-grp > button[data-tab] span, .tb-sym > span { font-size: 10px; } }
