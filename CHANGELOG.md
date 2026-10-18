@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🎨 **아이콘을 새로 바꿨어요**: 화면 곳곳의 이모지를 같은 모양의 선 아이콘으로 바꾸고, 카드 제목·홈 칸·탭에는 색 타일을 입혀 앱처럼 깔끔하게 보이게 했어요. 기기마다 다르게 보이던 이모지 대신 어디서나 똑같이 선명하게 보여요.
+<!-- internal --> assets/icons.js(Lucide 0.460.0 ISC, 60개 · 화면 글자의 이모지를 SVG로 바꿈, MutationObserver) · i18n engine 이모지 뺀 키 추가 · 공유 이미지 제목 이모지 제거 · 국기 → US/KR 배지.
+<!-- EN
+- New icons: emoji across the app are replaced with a consistent line-icon set, with color tiles on card titles, Home tiles and tabs — crisp and identical on every device.
+-->
+
 ## v2026.10.18-1 — 2026-10-18
 
 [이 버전 보기](https://b07806ee.my-fire-portfolio.pages.dev) · 커밋 `a4b7d94`
