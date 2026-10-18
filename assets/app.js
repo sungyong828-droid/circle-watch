@@ -2693,7 +2693,7 @@
       .then(() => {
         const Y = S[sym];
         if (Y.err && tries >= 8 && !Y.items && !Y.list) Y.none = true;
-        if (tries < 8 && ((kind === 'fsum' && Y.more) || (kind === 'prom' && Y.pending && !Y.budget))) { Y.again = true; setTimeout(() => { if (state.stock === sym || sym === 'CRCL') { loadAiCard(kind, sym); } }, kind === 'prom' ? 20000 : 3000); }
+        if (tries < 8 && ((kind === 'fsum' && Y.more) || (kind === 'prom' && (Y.pending || Y.checking) && !Y.budget))) { Y.again = true; setTimeout(() => { if (state.stock === sym || sym === 'CRCL') { loadAiCard(kind, sym); } }, kind === 'prom' ? 20000 : 3000); }
         renderAiCards(sym);
       });
   }
