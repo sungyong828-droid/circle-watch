@@ -1742,7 +1742,10 @@ const secBase = (cik, f) => `https://www.sec.gov/Archives/edgar/data/${+cik}/${f
 // 첨부 99.x(보도자료·주주서한) 파일 이름들 — 보도자료(99.1)를 먼저
 async function exhibits(cik, f) {
   const names = (await secGet(secBase(cik, f) + 'index.json')).directory.item.map((x) => x.name);
-  return names.filter((nm) => /ex[a-z_-]{0,4}99/i.test(nm) && /\.htm$/i.test(nm)).sort((a, b) => /99[._-]?1(?!\d)/.test(b) - /99[._-]?1(?!\d)/.test(a));
+  // 이름이 ex99가 아닌 회사도 있다(서클: augustepr-circle_q22026f.htm) — 본문·XBRL 표(R1.htm)·목록 파일 말고 남은 .htm
+  const ex = names.filter((nm) => /\.htm$/i.test(nm) && nm !== f.doc && !/^R\d+\.htm$|index/i.test(nm));
+  const rank = (nm) => (/ex[a-z_-]{0,4}99[._-]?1(?!\d)/i.test(nm) ? 0 : /ex[a-z_-]{0,4}99/i.test(nm) ? 1 : /ex[a-z_-]{0,4}\d/i.test(nm) ? 3 : 2);
+  return ex.filter((nm) => rank(nm) < 3).sort((a, b) => rank(a) - rank(b));
 }
 // 법적 고지(미래 예측 진술 안내) 앞까지만 — 본문 뒤쪽에 붙는 상투 문구라 요약을 흐린다
 const cutLegal = (t) => { const i = t.search(/Forward[- ]Looking Statements|Cautionary (Note|Statement)/i); return i > 1500 ? t.slice(0, i) : t; };
