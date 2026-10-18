@@ -15,9 +15,14 @@
 <!-- internal --> fireEta(): 최근 180일 평가금액(v) 로그 회귀 → 오늘 값에서 목표까지 일수, 현재 목표 금액 기준 · 하락 추세·50년 초과는 날짜 숨김.
 - 🔔 **조비 실적(11/4 예상) 준비**: 조비가 주주서한 없이 짧은 실적 공시만 내도 FAA 인증 단계 % 자동 반영이 멈추지 않게 고쳤어요. 영어 화면의 실적 발표 카드·분기 이름(Q3 2026)도 자연스럽게 다듬었어요.
 <!-- internal --> worker checkFacts: 99.x 첨부 없는 2.02 8-K는 faa 덮어쓰지 않음(2026-02-02 사례) — 워커 배포 필요 · parseFaaChart 과거 5개 서한 통과 확인 · qLabelLong EN · INFO.earnday EN.
+- 🎯 **회사 약속 추적**(새 기능): 실적 탭에서 회사가 지난 실적 발표 때 한 약속(가이던스·출시·승인 등)이 이번 발표에서 ✅지켜졌는지, ⏳진행 중인지, ⚠️늦어졌는지 AI가 SEC 원문으로 확인해 보여 줘요. 이번에 새로 한 약속도 따로 모아 둬요. 관심 종목으로 추가한 미국 종목에서도 돼요.
+- 📄 **미국 공시 한국어 요약**(새 기능): 최근 8-K·10-Q·10-K 공시를 하나씩 한국어 3줄로 정리하고 원문 링크를 달았어요.
+<!-- internal --> worker handlePromises(/promises, 최근 2개 2.02 8-K 첨부 보도자료 → JSON, KV promises2:SYM:acc 150일) · handleFileSum(/filesum, 8-K 본문+첨부 / 10-Q·10-K MD&A, KV filesum3:SYM:acc 200일, 요청당 2건 생성) · 첨부 이름이 ex99가 아니어도 인식(서클) · 사용자 추가 종목은 takeAiBudget · functions/api/filesum.js·promises.js.
 <!-- EN
 - Estimated FIRE date: once 'Progress history' has 14+ days, it shows "At this pace: ~Mar 2029" from your recent pace, also as a line on the FIRE card (a rough estimate that swings with stock prices).
 - Earnings prep for Joby: FAA certification stage % keeps auto-updating even if a short earnings filing comes without a shareholder letter. The English earnings-day card and quarter names (Q3 2026) read naturally now.
+- Promise tracker (new): on the Earnings tab, AI reads the last two earnings releases on SEC and shows whether last quarter's promises (guidance, launches, approvals) were done, are on track or slipped — plus the new promises. Works for any US stock you add.
+- SEC filings summarized (new): recent 8-K, 10-Q and 10-K filings in 3 lines each (in Korean) with links to the originals.
 -->
 
 ## v2026.10.18-2 — 2026-10-18
