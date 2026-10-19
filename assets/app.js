@@ -202,10 +202,10 @@
       </ul>`,
     prom: EN ? `
       <p>AI reads the company's <b>last two earnings releases</b> (SEC 8-K) and checks whether what it promised last time — guidance, launches, approvals, production — happened in the latest one.</p>
-      <ul><li>✅ Done · ⏳ On track (kept or raised) · ⚠️ Delayed or cut · ❔ Not mentioned this time</li><li>🆕 New promises from the latest release — check them next quarter.</li></ul>
+      <ul><li>✅ Done · ⏳ On track (kept or raised) · ⚠️ Delayed or cut · ❔ Not mentioned this time</li><li>🆕 New promises from the latest release — check them next quarter.</li><li>📰 Company press releases after the latest release update the status (done, delayed, or real progress such as a first test flight).</li></ul>
       <p>Built once per release from the original filings only. AI can misread; the links go to the originals.</p>` : `
       <p>회사의 <b>최근 두 번의 실적 발표문</b>(SEC 8-K 첨부 보도자료·주주서한)을 AI가 읽고, 지난번에 하겠다고 한 일(가이던스·출시·승인·생산 등)이 이번 발표에서 어떻게 됐는지 확인해요.</p>
-      <ul><li>✅ 지켰어요 · ⏳ 진행 중(목표 유지·상향) · ⚠️ 늦어지거나 줄었어요 · ❔ 이번 발표에 언급 없음</li><li>🆕 이번 발표에서 새로 한 약속 — 다음 분기에 다시 확인해요.</li></ul>
+      <ul><li>✅ 지켰어요 · ⏳ 진행 중(목표 유지·상향) · ⚠️ 늦어지거나 줄었어요 · ❔ 이번 발표에 언급 없음</li><li>🆕 이번 발표에서 새로 한 약속 — 다음 분기에 다시 확인해요.</li><li>📰 실적 발표 뒤에 나온 회사 보도자료로 완료·지연·진행 소식(예: 시범 비행 시작)을 반영해요.</li></ul>
       <p>실적 발표마다 한 번, 공시 원문만 근거로 만들어요. AI가 잘못 읽을 수 있으니 중요한 건 아래 원문 링크로 확인하세요.</p>`,
     fsum: EN ? `
       <p>The company's recent SEC filings — <b>8-K</b> (major events), <b>10-Q</b> (quarterly report), <b>10-K</b> (annual report) — summarized by AI in 3 lines each (in Korean).</p>
@@ -2719,11 +2719,11 @@
     const old = X.items.filter((x) => x.status !== 'new'), nw = X.items.filter((x) => x.status === 'new');
     const cnt = ['done', 'on', 'check', 'late', 'unknown'].map((k) => [k, old.filter((x) => st(x) === k).length]).filter(([, n]) => n);
     const asOf = EN ? ` · as of ${md(isoToTs(X.cur.d))} release` : ` · ${md(isoToTs(X.cur.d))} 발표 기준`;
-    const row = (x) => { const k = st(x), B = P_BADGE[k]; return `<li class="pm-i pm-${k}"><span class="pm-b">${B[0]} ${EN ? B[2] : B[1]}${['on', 'unknown'].includes(k) ? asOf : ''}</span><b data-noi18n>${esc(x.goal)}</b>${x.due ? `<em data-noi18n>${EN ? 'Due' : '기한'} ${esc(x.due)}</em>` : ''}${x.upd ? `<small class="pm-upd">📰 ${md(isoToTs(x.upd.d))} ${EN ? 'press release' : '보도자료'}: <a href="${safeUrl(x.upd.url)}" target="_blank" rel="noopener" data-noi18n>${esc(x.upd.title)}</a></small>` : ''}${x.note ? `<small data-noi18n>${x.upd ? `${EN ? `As of the ${md(isoToTs(X.cur.d))} release` : `${md(isoToTs(X.cur.d))} 실적 발표 때`}: ` : ''}${esc(x.note)}</small>` : ''}</li>`; };
+    const row = (x) => { const k = st(x), B = P_BADGE[k]; return `<li class="pm-i pm-${k}"><span class="pm-b">${B[0]} ${EN ? B[2] : B[1]}${['on', 'unknown'].includes(k) && !x.upd ? asOf : ''}</span><b data-noi18n>${esc(x.goal)}</b>${x.due ? `<em data-noi18n>${EN ? 'Due' : '기한'} ${esc(x.due)}</em>` : ''}${x.upd ? `<small class="pm-upd">📰 ${md(isoToTs(x.upd.d))} ${x.upd.status === 'on' ? (EN ? 'progress' : '진행 소식') : (EN ? 'press release' : '보도자료')}: <a href="${safeUrl(x.upd.url)}" target="_blank" rel="noopener" data-noi18n>${esc(x.upd.title)}</a></small>` : ''}${x.note ? `<small data-noi18n>${x.upd ? `${EN ? `As of the ${md(isoToTs(X.cur.d))} release` : `${md(isoToTs(X.cur.d))} 실적 발표 때`}: ` : ''}${esc(x.note)}</small>` : ''}</li>`; };
     return `<div class="pm-sum">${cnt.map(([k, n]) => `<span class="pm-c pm-${k}">${P_BADGE[k][0]} ${EN ? P_BADGE[k][2] : P_BADGE[k][1]} <b>${n}</b></span>`).join('')}</div>
       ${old.length ? `<ul class="pm-list">${old.map(row).join('')}</ul>` : ''}
       ${nw.length ? `<div class="mini-h er-h">${EN ? 'New promises in the latest release' : '이번 발표에서 새로 한 약속'}</div><ul class="pm-list">${nw.map(row).join('')}</ul>` : ''}
-      <p class="note">${EN ? `Judged by AI from the two releases (text in Korean), then updated with the company's press releases up to ${md(isoToTs(X.checked || X.cur.d))}. It can be wrong — check the originals` : `AI가 두 실적 발표문으로 판단하고, ${md(isoToTs(X.checked || X.cur.d))}까지 나온 회사 보도자료로 바뀐 것만 고쳤어요. 틀릴 수 있으니 원문으로 확인하세요`} · <a href="${safeUrl(X.prev.url)}" target="_blank" rel="noopener">${EN ? 'Previous' : '지난 발표'} ${md(isoToTs(X.prev.d))}</a> · <a href="${safeUrl(X.cur.url)}" target="_blank" rel="noopener">${EN ? 'Latest' : '최신 발표'} ${md(isoToTs(X.cur.d))}</a></p>`;
+      <p class="note">${EN ? `Judged by AI from the two releases (text in Korean), then updated with the company's press releases up to ${md(isoToTs(X.checked || X.cur.d))}. It can be wrong — check the originals` : `AI가 두 실적 발표문으로 판단하고, ${md(isoToTs(X.checked || X.cur.d))}까지 나온 회사 보도자료로 바뀐 것·진행 소식을 반영했어요. 틀릴 수 있으니 원문으로 확인하세요`} · <a href="${safeUrl(X.prev.url)}" target="_blank" rel="noopener">${EN ? 'Previous' : '지난 발표'} ${md(isoToTs(X.prev.d))}</a> · <a href="${safeUrl(X.cur.url)}" target="_blank" rel="noopener">${EN ? 'Latest' : '최신 발표'} ${md(isoToTs(X.cur.d))}</a></p>`;
   }
   function fsumHtml(sym) {
     const X = state.fsum[sym];
@@ -6273,14 +6273,19 @@
   function loadPopular() {
     if (popular) return;
     popular = [];
-    getJ(`${NEWS_API}/popular`, 8000).then((j) => { popular = (j.items || []).filter((x) => SYM_OK.test(x.sym)); renderWatchSheet(); }).catch(() => {});
+    getJ(`${NEWS_API}/popular`, 8000).then(async (j) => {
+      const L = (j.items || []).filter((x) => SYM_OK.test(x.sym));
+      // 한국 종목은 코드 대신 종목명으로 보이게 상장 목록에서 이름을 찾아 둔다
+      if (L.some((x) => isKR(x.sym))) await Promise.all(L.filter((x) => isKR(x.sym)).map(async (x) => { x.name = await krName(x.sym); }));
+      popular = L; renderWatchSheet();
+    }).catch(() => {});
   }
   function popularHtml() {
     const list = (popular || []).filter((x) => !WATCH.includes(x.sym)).slice(0, 8);
     if (!list.length) return '';
     return `<div class="ws-sub">🔥 다른 사람들이 많이 추가한 종목 <small>최근 30일</small></div>
-      <ul class="ws-list ws-pop">${list.map((x) => `<li>${logoPath(x.sym) ? `<span class="ws-logo"><img src="${logoPath(x.sym)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(x.sym[0])}</span>`}
-        <div class="ws-name"><b>${esc(isKR(x.sym) ? x.sym.slice(0, 6) : x.sym)}</b><small>${isKR(x.sym) ? '한국 · ' : ''}${x.n}명이 추가</small></div><button type="button" class="ws-btn add" data-wpop="${esc(x.sym)}">+ 추가</button></li>`).join('')}</ul>`;
+      <ul class="ws-list ws-pop">${list.map((x) => `<li>${logoPath(x.sym) ? `<span class="ws-logo"><img src="${logoPath(x.sym)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc((x.name || x.sym)[0])}</span>`}
+        <div class="ws-name"><b>${esc(isKR(x.sym) ? x.name || x.sym.slice(0, 6) : x.sym)}</b><small>${isKR(x.sym) ? `${x.sym.endsWith('.KQ') ? '코스닥' : '코스피'} · ${x.sym.slice(0, 6)} · ` : ''}${x.n}명이 추가</small></div><button type="button" class="ws-btn add" data-wpop="${esc(x.sym)}">+ 추가</button></li>`).join('')}</ul>`;
   }
   // 인기 종목에서 추가: 회사 이름을 찾아서 넣는다
   async function addPopular(sym, btn) {

@@ -11,6 +11,14 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🔥 **많이 추가한 종목에 한국 종목명 표시**: '다른 사람들이 많이 추가한 종목'에서 한국 종목이 숫자 코드 대신 종목명(예: 삼성전자)으로 보이고, 아래에 코스피·코스닥과 코드가 함께 나와요.
+- 🎯 **약속 추적에 진행 소식 반영**: 실적 발표 뒤 회사 보도자료에 완료·지연뿐 아니라 실제 진행 소식(예: 시범 비행 시작)이 나오면 '📰 진행 소식'으로 링크와 함께 보여 줘요. 새로 확인하는 동안에도 이전에 확인한 결과가 그대로 보여요.
+<!-- internal --> popular: krName()으로 이름 채움 · promiseUpdates(): status on 허용(done 항목 하향 금지), KV promupd4 + promupd-last 폴백(AI 한도 소진 때 이전 결과 유지). 사용자 요청 10/19: JOBY 텍사스 eIPP(9/10 시작)가 '9월 예정'으로 남아 있었음.
+<!-- EN
+- Most-added stocks show Korean company names: Korean stocks in 'Most added by others' now show the company name instead of the numeric code, with the market and code underneath.
+- Promise tracker shows progress news: when a company press release after the earnings release reports real progress (e.g. a first test flight), it now appears as '📰 Progress' with a link. Earlier results stay visible while a new check runs.
+-->
+
 ## v2026.10.18-4 — 2026-10-18
 
 [이 버전 보기](https://714dbf01.my-fire-portfolio.pages.dev) · 커밋 `87533fc`
