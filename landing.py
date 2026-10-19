@@ -127,7 +127,7 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noin
 <footer class="lp-foot">
   {FOOT_EN if en else FOOT_KO}
 </footer>
-<script src="assets/icons.js?v=3"></script>
+<script src="assets/icons.js?v=4"></script>
 <script src="assets/landing.js?v={VER}"></script>{f'\n<script src="assets/{script}"></script>' if script else ''}
 </body>
 </html>

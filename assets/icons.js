@@ -52,10 +52,12 @@
     list.forEach(fixText);
   }
   window.fpIconize = walk;
-  // 번역(영어 보기)이 먼저 끝나도록 한 박자 늦게 모아서 바꾼다
+  // 번역(영어 보기)이 먼저 끝나도록 한 박자 늦게 모아서 바꾼다 — 같은 프레임 안(마이크로태스크)에서 끝내야 한다.
+  // 다음 프레임(requestAnimationFrame)으로 미루면 이모지 상태로 한 번 그려졌다가 아이콘으로 바뀌며 높이가 달라져
+  // 실시간 시세로 카드를 다시 그릴 때마다 화면이 위아래로 떨렸다.
   let q = new Set(), timer = 0;
   const flush = () => { timer = 0; const s = q; q = new Set(); for (const n of s) if (n.isConnected) walk(n); };
-  const push = (n) => { q.add(n); if (!timer) timer = requestAnimationFrame(flush); };
+  const push = (n) => { q.add(n); if (!timer) { timer = 1; queueMicrotask(flush); } };
   function start() {
     walk(document.body);
     new MutationObserver((list) => {
