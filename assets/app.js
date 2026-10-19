@@ -2095,7 +2095,8 @@
     async sfilings(d, L, sym = state.stock) { // SEC EDGAR에서 직접
       const s = sym, x = st(s), cik = STOCK_INFO[s]?.cik || x.earn?.cik;
       if (!isOther(s) || !cik) return;
-      const j = await getJ(`https://data.sec.gov/submissions/CIK${cik}.json`);
+      let j;
+      try { j = await getJ(`https://data.sec.gov/submissions/CIK${cik}.json`); } catch (e) { if (x.news?.filings?.length) return; throw e; }
       const r = j.filings.recent, list = [];
       for (let i = 0; i < Math.min(100, r.form.length); i++) {
         const acc = r.accessionNumber[i];
@@ -2156,7 +2157,9 @@
       d.news = { ...(d.news || {}), official: j.official, kr: j.kr, en: j.en, crypto: j.crypto || [], newsAt: j.at, ownerMap };
     },
     async filings(d) { // SEC EDGAR에서 직접 (서버를 거치지 않음)
-      const j = await getJ('https://data.sec.gov/submissions/CIK0001876042.json');
+      // SEC가 가끔 직접 요청을 막는다 — 서버(/news)가 받아 둔 공시 목록이 있으면 그걸로 두고 실패로 치지 않는다
+      let j;
+      try { j = await getJ('https://data.sec.gov/submissions/CIK0001876042.json'); } catch (e) { if (d.news?.filings?.length) return; throw e; }
       const r = j.filings.recent;
       const owners = {};
       for (const f of d.news?.filings || []) (owners[f.d + '|' + f.form] ||= []).push(f.owner);
@@ -6242,7 +6245,7 @@
     const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
     el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
       <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
-      <label class="ws-search"><input id="watch-q" type="search" placeholder="티커·회사명·종목코드 (예: AAPL, 테슬라, 삼성, 005930)" autocomplete="off" value="${esc(q)}"></label>
+      <label class="ws-search"><input id="watch-q" type="search" placeholder="${EN ? 'Ticker, company or KRX code (e.g. AAPL, Tesla, 005930)' : '티커·회사명·종목코드 (예: AAPL, 테슬라, 삼성, 005930)'}" autocomplete="off" value="${esc(q)}"></label>
       ${q ? `<ul class="ws-list">${res || `<li class="empty">${watchResults === null ? '검색 중…' : '검색 결과가 없어요. 미국 종목은 티커·영문·한글 회사명(테슬라), 한국 종목은 회사명·종목코드로 찾아 보세요.'}</li>`}</ul>` : ''}
       ${!q ? popularHtml() : ''}
       ${removedBuiltin.length && !q ? `<div class="ws-sub">다시 추가하기</div><ul class="ws-list">${removedBuiltin.map((s) => `<li><div class="ws-name"><b>${s}</b><small>${esc(STOCK_INFO[s].name)} · 기본</small></div><button type="button" class="ws-btn add" data-wadd="${s}">+ 추가</button></li>`).join('')}</ul>` : ''}
@@ -6276,7 +6279,11 @@
     getJ(`${NEWS_API}/popular`, 8000).then(async (j) => {
       const L = (j.items || []).filter((x) => SYM_OK.test(x.sym));
       // 한국 종목은 코드 대신 종목명으로 보이게 상장 목록에서 이름을 찾아 둔다
-      if (L.some((x) => isKR(x.sym))) await Promise.all(L.filter((x) => isKR(x.sym)).map(async (x) => { x.name = await krName(x.sym); }));
+      // 영어 화면은 영어 이름(서버가 Yahoo에서 찾음), 못 찾으면 한글 이름
+      if (L.some((x) => isKR(x.sym))) await Promise.all(L.filter((x) => isKR(x.sym)).map(async (x) => {
+        if (EN) { try { x.name = ((await getJ(`${NEWS_API}/lookup?q=${encodeURIComponent(x.sym)}`, 6000)).results || []).find((r) => r.symbol === x.sym)?.name; } catch {} }
+        x.name ||= await krName(x.sym);
+      }));
       popular = L; renderWatchSheet();
     }).catch(() => {});
   }
