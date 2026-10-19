@@ -14,12 +14,14 @@
 - 📅 **스페이스X 실적 발표일 확정 반영**: 나스닥 보도자료에 없는 회사도 회사 공식 소식에서 확정 발표일을 찾아요. 스페이스X 3분기 실적이 예상일(11/3) 대신 확정일 10/20로 보여요.
 - 🤖 **AI 요약이 하루 종일 멈추지 않게**: 뉴스 한 줄 요약과 '왜 움직였나' 브리핑이 AI를 덜 쓰도록 바꾸고, 하루 한도가 바닥나면 그날은 쉬었다가 다음 날 오전 9시 이후 못 한 요약을 다시 만들어요(전에는 한도가 바닥난 시간대의 기사는 영영 요약되지 않았어요).
 - 🧾 **'일부 항목 실패' 표시 줄이기**: SEC 공시 목록을 휴대폰에서 직접 못 받을 때 서버가 받아 둔 목록이 있으면 실패로 표시하지 않아요.
+- 🏷️ **종목 칩의 '실적' 표시 잘림 해결**: 실적 발표일에 종목 칩 위에 붙는 '실적' 표시가 위쪽이 잘려 보이던 문제를 고쳤어요.
 - 🌐 **영어 화면 다듬기**: 종목 검색칸 안내 문구를 영어로 바꾸고, '많이 추가한 종목'의 한국 종목을 영어 이름(예: SK hynix)으로 보여 줘요.
 <!-- internal --> runAI(): 4006이면 UTC 하루 동안 aiout 플래그, 요약 실패(f) 미집계·12시간 뒤 재시도 · 기사 본문 1,800→1,100자 · briefSym·시장 한 줄 → SUM_MODEL · buildEarnings(sym, origin): 공식 뉴스 캐시에서 announcedEarningsDate · /lookup?q=000660.KS → Yahoo 영어 이름. AI 사용량(GraphQL): 요약이 대부분, 10/19 저녁 소진.
 <!-- EN
 - SpaceX earnings date confirmed: companies not on Nasdaq's press-release feed now get their confirmed date from official company news — SpaceX Q3 shows Oct 20 instead of the estimated Nov 3.
 - AI summaries keep running all day: news one-liners and 'why it moved' briefs use less AI, and when the daily limit runs out they pause and catch up after 9am KST the next day (articles from that window used to stay unsummarized).
 - Fewer 'Some items failed' warnings: if the phone can't reach SEC directly but the server already has the filings list, it's no longer shown as a failure.
+- Earnings badge on stock chips no longer clipped: the 'Earn' badge shown on earnings day is fully visible.
 - English screen polish: the stock search hint is now in English, and Korean stocks in 'Popular with other users' show English names (e.g. SK hynix).
 -->
 
