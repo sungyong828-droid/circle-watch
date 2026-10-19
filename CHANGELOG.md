@@ -11,9 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🗂️ **새 소식·공시 요약 바로가기 정리**: 실적 보고서·내부자 거래 바로가기를 좁은 두 줄 버튼 대신 나란히 놓인 두 칸 타일로 바꿔, 무엇인지·언제인지·어디로 가는지 한눈에 보여요.
 - ✅ **Arc TVL은 확인된 값만**: DefiLlama 값이 하루 새 30% 넘게 튀면 집계 오류일 수 있어 바로 반영하지 않고 직전 확정값을 보여 줘요. 그 수준이 사흘 이어지면 그때 반영해요.
 <!-- internal --> 10/19: DefiLlama Arc TVL 529M→796M(+50%) — 거의 전부 Uniswap V4(Arc) 4.3M→271M(10/17·18 데이터 빈 뒤), 같은 기간 거래액은 하루 ~6M 그대로 → 집계 변화로 판단. cleanArcTvl()(collector·app 같은 규칙): 마지막 ±30% 급변 뒤 일별 값 3개 미만이면 보류, 스냅샷 tvl도 보류값으로. 사용자: "참고만하세요가 아니라 정확한 데이터만을 항상 반영해야지".
 <!-- EN
+- Tidier shortcuts in the news & filings summary: the earnings-report and insider-filing links are now two side-by-side tiles showing what, when and where they go.
 - Arc TVL shows confirmed values only: if DefiLlama's figure jumps more than 30% in a day it may be a data error, so the last confirmed value is shown until the new level holds for 3 days.
 -->
 
