@@ -1488,6 +1488,7 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .ns-go-b:active { transform: scale(0.98); }
 .ns-go-h { display: flex; align-items: center; font-size: 12px; font-weight: 600; color: var(--muted); }
 .ns-go-b b { font-size: 15px; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.ns-go-b em { margin-top: -4px; font-style: normal; font-size: 11.5px; color: var(--muted); }
 .ns-go-b small { margin-top: auto; padding-top: 2px; font-size: 11.5px; font-weight: 600; color: var(--c-blue); }
 
 /* 과매수·과매도(RSI) */

@@ -5170,8 +5170,8 @@
         </div>
         ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}
         ${F.length ? `<div class="ns-go">
-          <button type="button" class="ns-go-b" data-go="${goEarn}"><span class="ns-go-h">📊 ${EN ? 'Earnings reports' : '실적 보고서'}</span><b>${rep ? `${esc(formInfo(rep.form).label)} · ${md(isoToTs(rep.d))}` : '–'}</b><small>${EN ? 'Open Earnings' : '실적 탭에서 보기'} ›</small></button>
-          <button type="button" class="ns-go-b" data-go="${goIns}"><span class="ns-go-h">👤 ${EN ? 'Insider filings' : '내부자 거래'}</span><b>${EN ? `${ins} in 30 days` : `최근 30일 ${ins}건`}</b><small>${EN ? 'See details' : '자세히 보기'} ›</small></button>
+          <button type="button" class="ns-go-b" data-go="${goEarn}"><span class="ns-go-h">📊 ${EN ? 'Earnings reports' : '실적 보고서'}</span><b>${rep ? esc(formInfo(rep.form).label) : '–'}</b>${rep ? `<em>${EN ? `Filed ${md(isoToTs(rep.d))}` : `${md(isoToTs(rep.d))} 제출`}</em>` : ''}<small>${EN ? 'Open Earnings' : '실적 탭에서 보기'} ›</small></button>
+          <button type="button" class="ns-go-b" data-go="${goIns}"><span class="ns-go-h">👤 ${EN ? 'Insider filings' : '내부자 거래'}</span><b>${EN ? `${ins} filings` : `${ins}건`}</b><em>${EN ? 'Last 30 days' : '최근 30일'}</em><small>${EN ? 'See details' : '자세히 보기'} ›</small></button>
         </div>` : ''}`,
     });
   }
