@@ -1675,7 +1675,8 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .fd[aria-selected="true"] { background: var(--ink); color: var(--bg, #0d1117); border-color: var(--ink); }
 .fd[aria-selected="true"] small { color: inherit; opacity: 0.7; }
 .fd-act { border-style: dashed; color: var(--muted); font-weight: 600; }
-.stock-switch.ss-row { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; }
+/* 가로 스크롤 줄은 위로 튀어나온 '실적' 배지(.ss-ed, top:-6px)를 잘라 버리므로 위쪽에 여백을 두고 그만큼 끌어올린다 */
+.stock-switch.ss-row { padding-top: 8px; margin-top: -8px; display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; }
 .stock-switch.ss-row::-webkit-scrollbar { display: none; }
 .stock-switch.ss-row .ss { flex: 0 0 auto; min-width: 96px; scroll-snap-align: start; }
 .ss-empty { grid-column: 1 / -1; margin: 0; padding: 14px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); text-align: center; }
