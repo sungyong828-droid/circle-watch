@@ -5385,7 +5385,7 @@
     if (el.dataset.built !== key) {
       el.classList.toggle('ss-row', !ssExpanded());
       el.innerHTML = !syms.length ? `<p class="ss-empty">${EN ? 'No stocks in this folder yet — tap <b>✎ Edit</b> to add some.' : '이 폴더에 아직 종목이 없어요. <b>✎ 편집</b>에서 넣어 주세요.'}</p>` : syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
-        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span><i class="ss-ed" hidden>실적</i></span>
+        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span><i class="ss-ed" hidden data-noi18n>${EN ? 'Earn' : '실적'}</i></span>
         <span class="ss-px">–</span><em class="ss-ch flat"></em></button>`).join('');
       el.dataset.built = key;
       requestAnimationFrame(ssScrollToActive);
