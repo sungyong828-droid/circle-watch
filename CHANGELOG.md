@@ -11,6 +11,17 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🌗 **다크·라이트 모드**(새 기능): 오른쪽 위 달·해 버튼으로 밝은 화면과 어두운 화면을 바꿀 수 있어요. 고른 모드는 이 기기에 기억돼요.
+- 🧮 **물타기·불타기 계산기**(새 기능): 종목 시세 탭에서 "이 가격에 몇 주 더 사면 평단이 얼마?"를 바로 계산해요. 보유 정보가 있으면 수량·평단이 미리 채워지고, 목표 평단까지 몇 주가 필요한지도 알려 줘요.
+- 📝 **투자 메모**(새 기능): 종목마다 산 이유·팔 기준을 적어 두면, 실적 발표 카드에서 다시 보여 줘요. 메모는 이 기기에만 저장돼요.
+- 📅 **주간 요약 확장**: '이번 주 내 포트폴리오'를 월요일까지 볼 수 있고(월요일엔 '지난주'), 내 종목 주요 소식 3개가 함께 나와요. 보유 정보 없이 관심 종목만 있어도 보여요.
+<!-- EN
+- Dark & light mode (new): switch with the moon/sun toggle at the top right. Your choice is remembered on this device.
+- Average-down calculator (new): on a stock's price tab, see your new average cost if you buy more at a given price. Your holdings fill it in automatically, and it tells you how many shares it takes to reach a target average.
+- Investment memo (new): jot down why you bought a stock and when you'd sell; it shows up again on the earnings-day card. Saved only on this device.
+- Weekly summary, extended: 'My week in review' now stays through Monday ('Last week' on Mondays) and includes up to 3 key news items for your stocks. It also shows for watchlist-only users.
+-->
+
 ## v2026.10.19-4 — 2026-10-19
 
 [이 버전 보기](https://55aa1736.my-fire-portfolio.pages.dev) · 커밋 `a5010e3`
