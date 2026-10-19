@@ -5385,15 +5385,22 @@
     if (el.dataset.built !== key) {
       el.classList.toggle('ss-row', !ssExpanded());
       el.innerHTML = !syms.length ? `<p class="ss-empty">${EN ? 'No stocks in this folder yet — tap <b>✎ Edit</b> to add some.' : '이 폴더에 아직 종목이 없어요. <b>✎ 편집</b>에서 넣어 주세요.'}</p>` : syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
-        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span><i class="ss-ed" hidden data-noi18n>${EN ? 'Earn' : '실적'}</i></span>
-        <span class="ss-px">–</span><em class="ss-ch flat"></em></button>`).join('');
+        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span></span>
+        <span class="ss-px">–</span><span class="ss-bot"><em class="ss-ch flat"></em><i class="ss-ed" hidden data-noi18n><b></b>${EN ? 'Earn' : '실적'}</i></span></button>`).join('');
       el.dataset.built = key;
       requestAnimationFrame(ssScrollToActive);
     }
     updateTbNow();
     for (const btn of el.querySelectorAll('.ss[data-stock]')) {
       const sym = btn.dataset.stock, p = stockPx(sym);
-      const ed = btn.querySelector('.ss-ed'); if (ed) ed.hidden = !earnDay(sym);
+      // 실적 발표 전날·당일·직후: 등락률 옆에 작은 '실적' 태그(당일은 점이 깜빡임)
+      const ed = btn.querySelector('.ss-ed'), D = earnDay(sym);
+      if (ed) {
+        ed.hidden = !D;
+        const today = D?.phase === 'pre' && earnOf(sym)?.next?.date === etDate();
+        ed.classList.toggle('live', !!today); ed.classList.toggle('done', D?.phase === 'post');
+        ed.title = !D ? '' : D.phase === 'post' ? (EN ? 'Earnings just released' : '실적 발표됨') : today ? (EN ? 'Earnings today' : '오늘 실적 발표') : (EN ? 'Earnings tomorrow' : '내일 실적 발표');
+      }
       btn.setAttribute('aria-selected', String(sym === state.stock));
       btn.setAttribute('aria-label', `${STOCK_INFO[sym].name} ${sym} ${p?.price != null ? pxS(sym, p.price) : ''} ${p?.pct != null ? pct(p.pct, 1) : ''}`);
       btn.querySelector('.ss-px').textContent = p?.price != null ? pxS(sym, p.price) : '–';

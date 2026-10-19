@@ -701,7 +701,19 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 .ss-edit span { font-size: 18px; line-height: 1; }
 .ss-edit small { font-size: 10.5px; }
 .ss-letter { display: inline-grid; place-items: center; font: 800 11px var(--mono); font-style: normal; color: #0d1015; background: var(--sc) !important; }
-.ss-ed { position: absolute; top: -6px; right: -4px; font-style: normal; font: 700 9.5px/1.4 inherit; color: #fff; background: var(--up); border-radius: 6px; padding: 1px 5px; box-shadow: 0 0 0 2px var(--ground); }
+/* 실적 태그: 등락률 옆 작은 알약(내일=조용히, 당일=점 깜빡임, 발표 직후=체크 색) */
+.ss-bot { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.ss-ed {
+  display: inline-flex; align-items: center; gap: 4px; flex: none; font-style: normal; font: 700 10px/1 inherit; letter-spacing: -0.01em;
+  color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 32%, transparent);
+  border-radius: 999px; padding: 2px 6px 2px 5px;
+}
+.ss-ed[hidden] { display: none; }
+.ss-ed b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.ss-ed.live b { animation: ssEdPulse 1.6s ease-in-out infinite; }
+.ss-ed.done { color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, transparent); border-color: color-mix(in srgb, var(--muted) 28%, transparent); }
+@keyframes ssEdPulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 60%, transparent); } 50% { box-shadow: 0 0 0 3px transparent; } }
+@media (prefers-reduced-motion: reduce) { .ss-ed.live b { animation: none; } }
 .ss-head { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 -4px; font-size: 12px; font-weight: 700; color: var(--muted); }
 /* 증권사별 의견 */
 .br-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -1675,8 +1687,7 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .fd[aria-selected="true"] { background: var(--ink); color: var(--bg, #0d1117); border-color: var(--ink); }
 .fd[aria-selected="true"] small { color: inherit; opacity: 0.7; }
 .fd-act { border-style: dashed; color: var(--muted); font-weight: 600; }
-/* 가로 스크롤 줄은 위로 튀어나온 '실적' 배지(.ss-ed, top:-6px)를 잘라 버리므로 위쪽에 여백을 두고 그만큼 끌어올린다 */
-.stock-switch.ss-row { padding-top: 8px; margin-top: -8px; display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; }
+.stock-switch.ss-row { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 24px; }
 .stock-switch.ss-row::-webkit-scrollbar { display: none; }
 .stock-switch.ss-row .ss { flex: 0 0 auto; min-width: 96px; scroll-snap-align: start; }
 .ss-empty { grid-column: 1 / -1; margin: 0; padding: 14px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); text-align: center; }
