@@ -704,9 +704,9 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 /* 실적 태그: 등락률 옆 작은 알약(내일=조용히, 당일=점 깜빡임, 발표 직후=체크 색) */
 .ss-bot { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .ss-ed {
-  display: inline-flex; align-items: center; gap: 4px; flex: none; font-style: normal; font: 700 10px/1 inherit; letter-spacing: -0.01em;
+  display: inline-flex; align-items: center; gap: 4px; flex: none; font-style: normal; font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: -0.01em;
   color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 32%, transparent);
-  border-radius: 999px; padding: 2px 6px 2px 5px;
+  border-radius: 999px; padding: 2px 6px 2px 5px; margin: -2px 0;
 }
 .ss-ed[hidden] { display: none; }
 .ss-ed b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
