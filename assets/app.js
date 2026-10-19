@@ -3273,11 +3273,11 @@
     const from = W.from ? `${+W.from.slice(5, 7)}/${+W.from.slice(8)}` : '', to = `${+isoToday().slice(5, 7)}/${+isoToday().slice(8)}`;
     const nxt = [...(W.earnNext || []).map((x) => `${esc(nameOfSym(x.sym))} ${EN ? 'earnings' : '실적'} ${+x.d.slice(5, 7)}/${+x.d.slice(8)}`), ...(W.divNext || []).slice(0, 3).map((x) => `${esc(fireName(x.sym))} ${EN ? 'dividend' : '배당'} ${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}`)];
     el.innerHTML = `<div class="sc-head"><div><h3>📅 ${weekMon() ? (EN ? 'Last week in review' : '지난주 내 포트폴리오') : EN ? 'My week in review' : '이번 주 내 포트폴리오'}</h3><p class="sub">${from ? `${from} ~ ${to} · ` : ''}${EN ? 'Friday evening to Monday' : '매주 금요일 저녁~월요일에 보여요'}</p></div><button type="button" class="sc-x" data-weekclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
-      ${W.r != null ? `<div class="wk-top"><div><span>${EN ? 'This week' : '이번 주 수익률'}</span><b class="${cls(W.r)}">${pct(W.r, 1)}</b><small>${signed(W.v1 - W.v0, wonFull)}</small></div><div><span>${EN ? 'FIRE progress' : '퇴사까지 진행률'}</span><b>${(W.p1 * 100).toFixed(1)}%</b><small class="${cls(W.p1 - W.p0)}">${W.p1 - W.p0 >= 0 ? '+' : ''}${((W.p1 - W.p0) * 100).toFixed(1)}%p</small></div></div>` : ''}
+      ${W.r != null ? `<div class="wk-top"><div><span>${weekMon() ? (EN ? 'Last week' : '지난주 수익률') : EN ? 'This week' : '이번 주 수익률'}</span><b class="${cls(W.r)}">${pct(W.r, 1)}</b><small>${signed(W.v1 - W.v0, wonFull)}</small></div><div><span>${EN ? 'FIRE progress' : '퇴사까지 진행률'}</span><b>${(W.p1 * 100).toFixed(1)}%</b><small class="${cls(W.p1 - W.p0)}">${W.p1 - W.p0 >= 0 ? '+' : ''}${((W.p1 - W.p0) * 100).toFixed(1)}%p</small></div></div>` : ''}
       <ul class="sc-list">
         ${top.length ? `<li><span class="sc-i" aria-hidden="true">🔺</span><div><b>${EN ? 'Top gainers' : '가장 많이 오른 종목'}</b><div class="sc-chips">${chips(top)}</div></div></li>` : ''}
         ${low.length ? `<li><span class="sc-i" aria-hidden="true">🔻</span><div><b>${EN ? 'Biggest decliners' : '가장 많이 내린 종목'}</b><div class="sc-chips">${chips(low)}</div></div></li>` : ''}
-        ${W.divGot?.length ? `<li><span class="sc-i" aria-hidden="true">💰</span><div><b>${EN ? 'Dividends this week' : '이번 주 받은 배당'} <span class="up">${usd2(W.divNet)}</span></b><small>${[...new Set(W.divGot.map((r) => fireName(r.sym)))].map(esc).join(' · ')}</small></div></li>` : ''}
+        ${W.divGot?.length ? `<li><span class="sc-i" aria-hidden="true">💰</span><div><b>${EN ? 'Dividends received' : '받은 배당'} <span class="up">${usd2(W.divNet)}</span></b><small>${[...new Set(W.divGot.map((r) => fireName(r.sym)))].map(esc).join(' · ')}</small></div></li>` : ''}
         ${W.news?.length ? `<li><span class="sc-i" aria-hidden="true">📰</span><div><b>${EN ? 'Key news' : '내 종목 주요 소식'}</b><ul class="wk-news">${W.news.map((n) => `<li><a href="${safeUrl(n.url)}" target="_blank" rel="noopener"><span><i class="wk-sym">${esc(nameOfSym(n.sym))}</i>${esc(n.title)}</span>${n.sum ? `<small>${esc(n.sum)}</small>` : ''}</a></li>`).join('')}</ul></div></li>` : ''}
         ${nxt.length ? `<li><span class="sc-i" aria-hidden="true">📅</span><div><b>${weekMon() ? (EN ? 'This week' : '이번 주 일정') : EN ? 'Next week' : '다음 주 일정'}</b><small>${nxt.join(' · ')}</small></div></li>` : ''}
       </ul>
@@ -6236,7 +6236,7 @@
   const calcIn = {}; // 종목 → { sh, avg, bp, bq, goal } (입력 중인 글자 그대로)
   const numOf = (v) => { const n = parseFloat(String(v ?? '').replace(/[,\s$₩원주]/g, '')); return isFinite(n) ? n : null; };
   const moneyOf = (sym, v) => (isKR(sym) ? wonFull(v) : usd2(v));
-  const pxIn = (sym, v) => (v == null || !isFinite(v) ? '' : isKR(sym) ? String(Math.round(v)) : String(+v.toFixed(v >= 100 ? 2 : 4)));
+  const pxIn = (sym, v) => (v == null || !isFinite(v) ? '' : isKR(sym) ? String(Math.round(v)) : String(+v.toFixed(v >= 1 ? 2 : 4)));
   function myPos(sym) {
     const f = fireCfg?.positions?.find((p) => p.ticker === sym);
     if (f) return { sh: f.shares, avg: f.avg };
@@ -6251,11 +6251,11 @@
   }
   function avgOutHtml(sym) {
     const R = avgCalc(sym), I = calcIn[sym] || {};
-    if (!R) return `<p class="ac-empty">${EN ? 'Enter the buy price and how many shares you’d add.' : '추가로 살 가격과 수량을 넣으면 바로 계산돼요.'}</p>`;
-    const tag = R.mode === 'down' ? `<span class="ac-tag down">${EN ? 'Averaging down' : '물타기'}</span>` : R.mode === 'up' ? `<span class="ac-tag up">${EN ? 'Averaging up' : '불타기'}</span>` : '';
+    if (!R) return `<p class="avc-empty">${EN ? 'Enter the buy price and how many shares you’d add.' : '추가로 살 가격과 수량을 넣으면 바로 계산돼요.'}</p>`;
+    const tag = R.mode === 'down' ? `<span class="avc-tag down">${EN ? 'Averaging down' : '물타기'}</span>` : R.mode === 'up' ? `<span class="avc-tag up">${EN ? 'Averaging up' : '불타기'}</span>` : '';
     const unit = EN ? ' sh' : '주';
-    return `<div class="ac-hero"><span>${tag}${EN ? 'New average cost' : '새 평단'}</span><b>${pxS(sym, R.avg1)}</b>${R.dAvg != null ? `<small class="${cls(R.dAvg)}">${EN ? 'vs now ' : '지금보다 '}${pct(R.dAvg, 1)}</small>` : ''}</div>
-      <ul class="ac-rows">
+    return `<div class="avc-hero"><span>${tag}${EN ? 'New average cost' : '새 평단'}</span><b>${pxS(sym, R.avg1)}</b>${R.dAvg != null ? `<small class="${cls(R.dAvg)}">${EN ? 'vs now ' : '지금보다 '}${pct(R.dAvg, 1)}</small>` : ''}</div>
+      <ul class="avc-rows">
         <li><span>${EN ? 'Cash needed' : '추가로 필요한 돈'}</span><b>${moneyOf(sym, R.add)}${!isKR(sym) && krwOf(R.add) ? ` <small class="muted">(${krwOf(R.add)})</small>` : ''}</b></li>
         <li><span>${EN ? 'Shares after' : '합친 수량'}</span><b>${fmtSh(R.sh1)}${unit}</b></li>
         <li><span>${EN ? 'Total invested' : '총 투자금'}</span><b>${moneyOf(sym, R.cost1)}</b></li>
@@ -6283,24 +6283,24 @@
     }
     if (!calcIn[sym]) { const P = myPos(sym), x = pxOf(sym); calcIn[sym] = { sh: P ? String(P.sh) : '', avg: P ? pxIn(sym, P.avg) : '', bp: pxIn(sym, x), bq: '', goal: '' }; }
     const I = calcIn[sym], cur = isKR(sym) ? '원' : '$', mine = myPos(sym);
-    const f = (k, label, ph, em) => `<label class="ac-f"><span>${label}</span><span class="ac-in"><input data-ac="${k}" data-sym="${esc(sym)}" inputmode="decimal" value="${esc(I[k] || '')}" placeholder="${ph}" aria-label="${label}"><em>${em}</em></span></label>`;
+    const f = (k, label, ph, em) => `<label class="avc-f"><span>${label}</span><span class="avc-in"><input data-ac="${k}" data-sym="${esc(sym)}" inputmode="decimal" value="${esc(I[k] || '')}" placeholder="${ph}" aria-label="${label}"><em>${em}</em></span></label>`;
     el.dataset.sym = sym; el.dataset.en = String(EN);
     card(id, {
       title: EN ? '🧮 Average-down calculator' : '🧮 물타기·불타기 계산기',
       sub: mine ? (EN ? 'Filled in from your holdings · nothing is saved' : '내 보유 정보로 채웠어요 · 계산만 하고 저장하지 않아요') : (EN ? 'What happens to your average cost if you buy more' : '더 사면 평균 단가가 어떻게 바뀌는지 바로 계산'),
-      body: `<div class="ac-grid">
-          <div class="ac-sec">${EN ? 'What I hold now' : '지금 보유'}</div>
+      body: `<div class="avc-grid">
+          <div class="avc-sec">${EN ? 'What I hold now' : '지금 보유'}</div>
           ${f('sh', EN ? 'Shares' : '수량', EN ? 'e.g. 100' : '예: 100', EN ? 'sh' : '주')}
           ${f('avg', EN ? 'Average cost' : '평단', EN ? 'avg' : '평균 단가', cur)}
-          <div class="ac-sec">${EN ? 'Buy more' : '추가 매수'}</div>
+          <div class="avc-sec">${EN ? 'Buy more' : '추가 매수'}</div>
           ${f('bp', EN ? 'Buy price' : '살 가격', EN ? 'price' : '가격', cur)}
           ${f('bq', EN ? 'Shares to buy' : '살 수량', EN ? 'e.g. 50' : '예: 50', EN ? 'sh' : '주')}
-          <div class="ac-quick">${pxOf(sym) ? `<button type="button" class="chip-btn" data-acnow="${esc(sym)}">${EN ? 'Current price' : '지금 가격'}</button>` : ''}${[-5, -10, -20].map((d) => `<button type="button" class="chip-btn" data-acdrop="${d}" data-sym="${esc(sym)}">${d}%</button>`).join('')}</div>
+          <div class="avc-quick"><button type="button" class="chip-btn" data-acnow="${esc(sym)}">${EN ? 'Current price' : '지금 가격'}</button>${[-5, -10, -20].map((d) => `<button type="button" class="chip-btn" data-acdrop="${d}" data-sym="${esc(sym)}">${d}%</button>`).join('')}</div>
         </div>
-        <div class="ac-out" aria-live="polite">${avgOutHtml(sym)}</div>
-        <div class="ac-goal"><b>🎯 ${EN ? 'Target average' : '평단을 얼마까지 맞추려면?'}</b>
-          <span class="ac-in"><input data-ac="goal" data-sym="${esc(sym)}" inputmode="decimal" value="${esc(I.goal || '')}" placeholder="${EN ? 'target average cost' : '목표 평단'}" aria-label="${EN ? 'Target average cost' : '목표 평단'}"><em>${cur}</em></span>
-          <div class="ac-goal-out">${acGoalHtml(sym)}</div></div>
+        <div class="avc-out" aria-live="polite">${avgOutHtml(sym)}</div>
+        <div class="avc-goal"><b>🎯 ${EN ? 'Target average' : '평단을 얼마까지 맞추려면?'}</b>
+          <span class="avc-in"><input data-ac="goal" data-sym="${esc(sym)}" inputmode="decimal" value="${esc(I.goal || '')}" placeholder="${EN ? 'target average cost' : '목표 평단'}" aria-label="${EN ? 'Target average cost' : '목표 평단'}"><em>${cur}</em></span>
+          <div class="avc-goal-out">${acGoalHtml(sym)}</div></div>
         <p class="note">${EN ? 'Fees and taxes are not included. Not investment advice.' : '수수료·세금은 빼고 계산해요. 투자 권유가 아니에요.'}</p>`,
     });
   }
@@ -6312,7 +6312,7 @@
   }
   function acPaint(sym, el) {
     if (!el) return;
-    const o = el.querySelector('.ac-out'), g = el.querySelector('.ac-goal-out');
+    const o = el.querySelector('.avc-out'), g = el.querySelector('.avc-goal-out');
     if (o) o.innerHTML = avgOutHtml(sym);
     if (g) g.innerHTML = acGoalHtml(sym);
   }
@@ -8019,8 +8019,8 @@
     if (ev.target.closest('#cctp-more')) { state.cctpAll = !state.cctpAll; renderCctp(); return; }
     if (ev.target.closest('#refresh')) manualRefresh();
     if (ev.target.closest('#share-btn')) shareSite();
-    const acn = ev.target.closest('[data-acnow]'); if (acn) { acSetBuy(acn.dataset.acnow, pxOf(acn.dataset.acnow)); return; }
-    const acd = ev.target.closest('[data-acdrop]'); if (acd) { const x = pxOf(acd.dataset.sym); if (x) acSetBuy(acd.dataset.sym, x * (1 + acd.dataset.acdrop / 100)); return; }
+    const acn = ev.target.closest('[data-acnow]'); if (acn) { const x = pxOf(acn.dataset.acnow); if (x) acSetBuy(acn.dataset.acnow, x); else toast(EN ? 'Price not loaded yet' : '아직 시세를 받는 중이에요', true); return; }
+    const acd = ev.target.closest('[data-acdrop]'); if (acd) { const x = pxOf(acd.dataset.sym); if (x) acSetBuy(acd.dataset.sym, x * (1 + acd.dataset.acdrop / 100)); else toast(EN ? 'Price not loaded yet' : '아직 시세를 받는 중이에요', true); return; }
     const mme = ev.target.closest('[data-memoedit]'); if (mme) { memoEdit = mme.dataset.memoedit; renderMemo(memoEdit); document.getElementById('memo-why')?.focus(); return; }
     const mms = ev.target.closest('[data-memosave]'); if (mms) { saveMemo(mms.dataset.memosave); return; }
     if (ev.target.closest('[data-memox]')) { const s0 = memoEdit; memoEdit = null; if (s0) renderMemo(s0); return; }

@@ -2162,32 +2162,32 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 @media (prefers-reduced-motion: reduce) { .theme-btn .tm-knob { transition: none; } }
 
 /* 🧮 물타기·불타기 계산기 */
-.ac-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin-top: 10px; }
-.ac-sec { grid-column: 1 / -1; margin-top: 4px; font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
-.ac-f { display: grid; gap: 4px; min-width: 0; }
-.ac-f > span { font-size: 12px; color: var(--muted); }
-.ac-in { display: flex; align-items: center; height: 42px; padding: 0 10px; border-radius: 12px; background: var(--surface-2); }
-.ac-in:focus-within { outline: 2px solid rgba(242, 153, 74, 0.6); }
-.ac-in input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ink); font: 600 15px var(--sans); font-variant-numeric: tabular-nums; outline: none; }
-.ac-in em { flex: none; font-style: normal; font-size: 12px; color: var(--muted); margin-left: 4px; }
-.ac-quick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
-.ac-quick .chip-btn { font-size: 12px; padding: 5px 10px; }
-.ac-out { margin-top: 12px; }
-.ac-hero { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); }
-.ac-hero span { font-size: 12.5px; color: var(--muted); }
-.ac-hero b { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
-.ac-hero small { font-size: 12.5px; font-weight: 700; }
-.ac-tag { display: inline-block; margin-right: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
-.ac-tag.down { background: rgba(91, 155, 255, 0.14); color: var(--down); }
-.ac-tag.up { background: rgba(240, 97, 109, 0.14); color: var(--up); }
-.ac-rows { list-style: none; margin: 8px 0 0; padding: 0; }
-.ac-rows li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
-.ac-rows li:last-child { border-bottom: 0; }
-.ac-rows li span { color: var(--muted); }
-.ac-rows li b { font-weight: 700; text-align: right; }
-.ac-goal { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; line-height: 1.55; }
-.ac-goal .ac-in { height: 38px; margin: 6px 0; }
-.ac-empty { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.avc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 10px; margin-top: 10px; }
+.avc-sec { grid-column: 1 / -1; margin-top: 4px; font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+.avc-f { display: grid; gap: 4px; min-width: 0; }
+.avc-f > span { font-size: 12px; color: var(--muted); }
+.avc-in { display: flex; min-width: 0; align-items: center; height: 42px; padding: 0 10px; border-radius: 12px; background: var(--surface-2); }
+.avc-in:focus-within { outline: 2px solid rgba(242, 153, 74, 0.6); }
+.avc-in input { flex: 1; width: 100%; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ink); font: 600 15px var(--sans); font-variant-numeric: tabular-nums; outline: none; }
+.avc-in em { flex: none; font-style: normal; font-size: 12px; color: var(--muted); margin-left: 4px; }
+.avc-quick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.avc-quick .chip-btn { font-size: 12px; padding: 5px 10px; }
+.avc-out { margin-top: 12px; }
+.avc-hero { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 8px; flex-wrap: wrap; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); }
+.avc-hero span { font-size: 12.5px; color: var(--muted); }
+.avc-hero b { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
+.avc-hero small { font-size: 12.5px; font-weight: 700; }
+.avc-tag { display: inline-block; margin-right: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.avc-tag.down { background: rgba(91, 155, 255, 0.14); color: var(--down); }
+.avc-tag.up { background: rgba(240, 97, 109, 0.14); color: var(--up); }
+.avc-rows { list-style: none; margin: 8px 0 0; padding: 0; }
+.avc-rows li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 2px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.avc-rows li:last-child { border-bottom: 0; }
+.avc-rows li > span { color: var(--muted); }
+.avc-rows li b { font-weight: 700; text-align: right; }
+.avc-goal { margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); font-size: 13px; line-height: 1.55; }
+.avc-goal .avc-in { height: 38px; margin: 6px 0; }
+.avc-empty { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
 
 /* 📝 투자 메모 */
 .memo-view { display: grid; gap: 8px; margin-top: 10px; }
@@ -2213,7 +2213,7 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .wk-news a { display: grid; gap: 1px; color: inherit; text-decoration: none; }
 .wk-news a > span { font-size: 13px; font-weight: 600; line-height: 1.45; }
 .wk-news a > small { font-size: 12px; color: var(--muted); line-height: 1.45; }
-.wk-news .wk-sym { margin-right: 5px; font-size: 11px; font-weight: 700; color: var(--accent); }
-.ac-goal > b { display: block; font-size: 13px; }
-.ac-goal-out { color: var(--ink-2); }
-.ac-rows small.muted { font-weight: 500; color: var(--muted); }
+.wk-news .wk-sym { font-style: normal; margin-right: 5px; font-size: 11px; font-weight: 700; color: var(--accent); }
+.avc-goal > b { display: block; font-size: 13px; }
+.avc-goal-out { color: var(--ink-2); }
+.avc-rows small.muted { font-weight: 500; color: var(--muted); }
