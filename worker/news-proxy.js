@@ -1276,13 +1276,13 @@ async function krEnName(sym) {
   const r = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&quotesCount=3&newsCount=0`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(6000) });
   if (!r.ok) throw new Error('yahoo search ' + r.status);
   const m = ((await r.json())?.quotes || []).find((x) => x.symbol === sym);
-  const name = String(m?.shortname || m?.longname || '').trim();
+  const name = String(m?.longname || m?.shortname || '').replace(/,?\s+(Co\.,?\s*Ltd|Corporation|Corp|Inc|Ltd|Limited|Holdings Co\.,?\s*Ltd)\.?$/i, '').trim(); // 'Samsung Electronics Co., Ltd.' → 'Samsung Electronics'
   return name ? [{ symbol: sym, name, exchange: sym.endsWith('.KQ') ? 'KOSDAQ' : 'KOSPI', en: true }] : [];
 }
 export async function handleLookup(url, cache, cors, ctx) {
   const q = String(url.searchParams.get('q') || '').trim().slice(0, 40);
   if (!q) return json({ results: [] }, cors);
-  return swr(cache, ctx, `${url.origin}/lookup?q=${encodeURIComponent(q.toLowerCase())}&v=5`, {
+  return swr(cache, ctx, `${url.origin}/lookup?q=${encodeURIComponent(q.toLowerCase())}&v=6`, {
     freshSec: 86400, keepSec: 7 * 86400, cors,
     build: async () => JSON.stringify({ results: KR_RE.test(q.toUpperCase()) ? await krEnName(q.toUpperCase()) : /[가-힣ㄱ-ㅎ]/.test(q) ? await krUsLookup(q) : await nasdaqLookup(q) }),
   });
