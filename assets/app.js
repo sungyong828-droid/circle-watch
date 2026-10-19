@@ -926,6 +926,11 @@
     });
   }
 
+  function tvlJump(t) {
+    const prev = t?.daily?.filter((p) => p[0] < Date.now() / 1000 - 20 * 3600).at(-1)?.[1];
+    const ch = prev && t.now != null ? t.now / prev - 1 : null;
+    return ch != null && Math.abs(ch) >= 0.3 ? { ch, prev } : null;
+  }
   function renderTvl() {
     const t = state.data.arcTvl;
     if (!t) return failed('tvl', 'Arc DeFi TVL', state.data.errors?.arcTvl);
@@ -935,9 +940,12 @@
     if (t.now != null && nowTs > pts.at(-1)[0] + 3600) pts.push([nowTs, t.now]);
     else pts[pts.length - 1] = [pts.at(-1)[0], t.now];
     const labels = pts.map((p) => p[0]);
+    // 하루 새 ±30% 넘게 변하면 실제 자금 이동보다 DefiLlama 집계 변화(새 풀 편입·가격 오류·누락 후 복구)인 경우가 많다 — 확인 필요로 표시
+    const jump = tvlJump(t);
     card('tvl', {
       title: 'Arc DeFi TVL', sub: '대출·DEX 등에 예치된 자산 · DefiLlama 일별', info: INFO.tvl,
       body: `<div class="headline"><span class="big">${usd(t.now)}</span></div>${deltaLine('tvl')}
+        ${jump ? `<a class="faa-notice" href="https://defillama.com/chain/Arc" target="_blank" rel="noopener">⚠️ ${EN ? `Moved ${pct(jump.ch, 0)} in a day (${usd(jump.prev)} → ${usd(t.now)}) — often a DefiLlama data change (new pool counted, pricing error), not real money moving. Treat as unconfirmed →` : `하루 만에 ${pct(jump.ch, 0)} (${usd(jump.prev)} → ${usd(t.now)}) — 실제 자금 이동보다 DefiLlama 집계 변화(새 풀 편입·가격 오류 등)일 때가 많아요. 확인될 때까지 참고만 하세요 →`}<small>${EN ? 'Check which protocol changed on DefiLlama' : 'DefiLlama에서 어느 서비스가 바뀌었는지 보기'}</small></a>` : ''}
         <div class="chart"><canvas id="cv-tvl" role="img" aria-label="Arc TVL 추이"></canvas></div>`,
     });
     draw('tvl', {
@@ -1685,8 +1693,8 @@
     const tv = d.arcTvl;
     if (tv?.daily?.length > 8) {
       const ago7 = tv.daily.at(-8)[1], ch = ago7 ? tv.now / ago7 - 1 : null;
-      const t = ch > 0.05 ? 'pos' : ch < -0.05 ? 'neg' : 'neu';
-      add(t, 'arc:c-tvl', `Arc TVL <b>${usd(tv.now)}</b> · 7일 ${sp(ch)} · DEX 24시간 ${usd(d.arcDex?.total24h)}`,
+      const jump = tvlJump(tv), t = jump ? 'neu' : ch > 0.05 ? 'pos' : ch < -0.05 ? 'neg' : 'neu';
+      add(t, 'arc:c-tvl', `Arc TVL <b>${usd(tv.now)}</b> · 7일 ${sp(ch)}${jump ? (EN ? ' (1-day jump · unconfirmed)' : ' (하루 급변 · 집계 확인 필요)') : ''} · DEX 24시간 ${usd(d.arcDex?.total24h)}`,
         t === 'pos' ? 'Arc TVL 증가' : t === 'neg' ? 'Arc TVL 감소' : null, 1);
     }
 
