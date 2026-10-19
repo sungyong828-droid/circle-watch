@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📳 **화면 떨림 해결**: '퇴사까지' 화면을 내려 둔 채 있으면 실시간 시세가 바뀔 때마다 화면이 위아래로 떨리던 문제를 고쳤어요. 종목별 실적 화면(약속 추적이 새로 확인될 때)에서 생기던 같은 떨림도 함께 없어졌어요.
+<!-- internal --> icons.js: 이모지→아이콘 교체를 rAF(다음 프레임)에서 queueMicrotask(같은 프레임)로. 실시간 렌더(scheduleLivePaint가 rAF 안에서 renderFire)마다 이모지 상태가 한 프레임 그려져 문서 높이가 16px씩 오르내림. 390폭 자동 측정: 퇴사까지·배당·성과급·홈·종목별 모든 탭 높이 변화 0.
+<!-- EN
+- Fixed screen shaking: the 'Until I quit' screen no longer jiggles up and down with each live price update while scrolled, and the same shake on stock earnings screens is gone too.
+-->
+
 ## v2026.10.19-2 — 2026-10-19
 
 [이 버전 보기](https://23fbfe08.my-fire-portfolio.pages.dev) · 커밋 `8912e71`
