@@ -7316,7 +7316,7 @@
     try {
       const S = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
       if (!S?.data || !(Date.now() - Date.parse(S.at) < 3 * 86400000)) return false;
-      state.data = S.data; state.quote = S.quote || null; state.earnings = S.earnings || null;
+      state.data = S.data; fixArcTvl(state.data); state.quote = S.quote || null; state.earnings = S.earnings || null;
       state.holders = S.holders || {}; state.analyst = S.analyst || {}; state.options = S.options || {}; state.market = S.market || null; state.mnews = S.mnews || null; state.faa = S.faa || null; state.spcx = S.spcx || null; state.facts = S.facts || null;
       for (const [k, x] of Object.entries(S.st || {})) Object.assign(st(k), { earn: x.earn || null, news: x.news || null, short: x.short || null, chart: x.chart || {} });
       if (S.px) { px.t = S.px.t; px.mark = S.px.mark; px.oi = S.px.oi; Object.assign(px.klines, S.px.klines || {}); }
@@ -7379,6 +7379,16 @@
     if (ON_PAGES && !res?.ok && DATA_FALLBACK) res = await fetch(`${DATA_FALLBACK}?t=${Date.now()}`, { cache: 'no-store' }).catch(() => null);
     if (!res?.ok) throw new Error('data ' + (res?.status || 'network'));
     state.data = await res.json();
+    fixArcTvl(state.data);
+  }
+  // 서버 자료(수집기가 아직 옛 규칙이거나 저장된 화면)에도 같은 규칙을 적용한다
+  function fixArcTvl(d) {
+    const t = d?.arcTvl;
+    if (!t?.daily?.length || t.held) return;
+    const c = cleanArcTvl(t.daily, t.now);
+    if (!c.held) return;
+    d.arcTvl = { ...t, ...c };
+    for (const s of d.snapshots || []) if (Date.parse(s.t) / 1000 >= c.held.from && s.tvl != null) s.tvl = c.held.prev;
   }
 
   let busy = false, toastTimer = null;
