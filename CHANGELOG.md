@@ -11,10 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
-- ⚠️ **Arc TVL 급변은 '확인 필요'로**: Arc DeFi TVL이 하루 새 30% 넘게 변하면 실제 자금 이동인지 집계 변화인지 확인될 때까지 참고만 하도록 안내하고, 요약에서도 '증가·감소'로 단정하지 않아요.
-<!-- internal --> 10/19: DefiLlama Arc TVL 529M→796M(+50%) — 거의 전부 Uniswap V4(Arc) 4.3M→271M(10/17·18 데이터 빈 뒤), 같은 기간 거래액은 하루 ~6M 그대로 → 집계 변화로 판단. tvlJump(): 20시간 전 일별 값 대비 ±30%.
+- ✅ **Arc TVL은 확인된 값만**: DefiLlama 값이 하루 새 30% 넘게 튀면 집계 오류일 수 있어 바로 반영하지 않고 직전 확정값을 보여 줘요. 그 수준이 사흘 이어지면 그때 반영해요.
+<!-- internal --> 10/19: DefiLlama Arc TVL 529M→796M(+50%) — 거의 전부 Uniswap V4(Arc) 4.3M→271M(10/17·18 데이터 빈 뒤), 같은 기간 거래액은 하루 ~6M 그대로 → 집계 변화로 판단. cleanArcTvl()(collector·app 같은 규칙): 마지막 ±30% 급변 뒤 일별 값 3개 미만이면 보류, 스냅샷 tvl도 보류값으로. 사용자: "참고만하세요가 아니라 정확한 데이터만을 항상 반영해야지".
 <!-- EN
-- Big one-day Arc TVL moves are marked unconfirmed: if Arc DeFi TVL moves more than 30% in a day, the card says it may be a data change rather than real money moving, and the summary no longer calls it a rise or fall.
+- Arc TVL shows confirmed values only: if DefiLlama's figure jumps more than 30% in a day it may be a data error, so the last confirmed value is shown until the new level holds for 3 days.
 -->
 
 ## v2026.10.19-3 — 2026-10-19

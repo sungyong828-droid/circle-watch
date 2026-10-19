@@ -926,10 +926,15 @@
     });
   }
 
-  function tvlJump(t) {
-    const prev = t?.daily?.filter((p) => p[0] < Date.now() / 1000 - 20 * 3600).at(-1)?.[1];
-    const ch = prev && t.now != null ? t.now / prev - 1 : null;
-    return ch != null && Math.abs(ch) >= 0.3 ? { ch, prev } : null;
+  // 하루 새 ±30% 넘게 바뀐 값은 사흘 이어질 때까지 반영하지 않고 직전 확정값을 쓴다(collector/collect.mjs cleanArcTvl과 같은 규칙).
+  // DefiLlama가 새 풀을 편입하거나 가격을 잘못 잡으면 하루에 크게 튄다(2026-10-19 Uniswap V4 Arc $4M→$271M, 거래액은 그대로).
+  function cleanArcTvl(daily, now) {
+    const pts = daily.slice();
+    if (now != null && pts.length) { if (Date.now() / 1000 - pts.at(-1)[0] < 86400) pts[pts.length - 1] = [pts.at(-1)[0], now]; else pts.push([Math.floor(Date.now() / 1000), now]); }
+    let i = -1;
+    for (let k = pts.length - 1; k > 0; k--) if (pts[k - 1][1] > 0 && Math.abs(pts[k][1] / pts[k - 1][1] - 1) >= 0.3) { i = k; break; }
+    if (i < 1 || pts.length - i >= 3 || pts[i - 1][1] < 1e7) return { now, daily };
+    return { now: pts[i - 1][1], daily: daily.filter((p) => p[0] < pts[i][0]), held: { raw: now, from: pts[i][0], prev: pts[i - 1][1], prevAt: pts[i - 1][0] } };
   }
   function renderTvl() {
     const t = state.data.arcTvl;
@@ -941,11 +946,11 @@
     else pts[pts.length - 1] = [pts.at(-1)[0], t.now];
     const labels = pts.map((p) => p[0]);
     // 하루 새 ±30% 넘게 변하면 실제 자금 이동보다 DefiLlama 집계 변화(새 풀 편입·가격 오류·누락 후 복구)인 경우가 많다 — 확인 필요로 표시
-    const jump = tvlJump(t);
+    const H = t.held;
     card('tvl', {
       title: 'Arc DeFi TVL', sub: '대출·DEX 등에 예치된 자산 · DefiLlama 일별', info: INFO.tvl,
       body: `<div class="headline"><span class="big">${usd(t.now)}</span></div>${deltaLine('tvl')}
-        ${jump ? `<a class="faa-notice" href="https://defillama.com/chain/Arc" target="_blank" rel="noopener">⚠️ ${EN ? `Moved ${pct(jump.ch, 0)} in a day (${usd(jump.prev)} → ${usd(t.now)}) — often a DefiLlama data change (new pool counted, pricing error), not real money moving. Treat as unconfirmed →` : `하루 만에 ${pct(jump.ch, 0)} (${usd(jump.prev)} → ${usd(t.now)}) — 실제 자금 이동보다 DefiLlama 집계 변화(새 풀 편입·가격 오류 등)일 때가 많아요. 확인될 때까지 참고만 하세요 →`}<small>${EN ? 'Check which protocol changed on DefiLlama' : 'DefiLlama에서 어느 서비스가 바뀌었는지 보기'}</small></a>` : ''}
+        ${H ? `<p class="note">${EN ? `Confirmed value as of ${md(H.prevAt)}. DefiLlama's latest figure (${usd(H.raw)}, ${pct(H.raw / H.prev - 1, 0)} in a day) jumped too far in one day to trust yet — it's added once it holds for 3 days.` : `${md(H.prevAt)} 확정값이에요. DefiLlama 최신 값(${usd(H.raw)}, 하루 ${pct(H.raw / H.prev - 1, 0)})은 하루 새 너무 크게 바뀌어 집계 오류일 수 있어서, 사흘 이어지면 반영해요.`}</p>` : ''}
         <div class="chart"><canvas id="cv-tvl" role="img" aria-label="Arc TVL 추이"></canvas></div>`,
     });
     draw('tvl', {
@@ -1693,8 +1698,8 @@
     const tv = d.arcTvl;
     if (tv?.daily?.length > 8) {
       const ago7 = tv.daily.at(-8)[1], ch = ago7 ? tv.now / ago7 - 1 : null;
-      const jump = tvlJump(tv), t = jump ? 'neu' : ch > 0.05 ? 'pos' : ch < -0.05 ? 'neg' : 'neu';
-      add(t, 'arc:c-tvl', `Arc TVL <b>${usd(tv.now)}</b> · 7일 ${sp(ch)}${jump ? (EN ? ' (1-day jump · unconfirmed)' : ' (하루 급변 · 집계 확인 필요)') : ''} · DEX 24시간 ${usd(d.arcDex?.total24h)}`,
+      const t = ch > 0.05 ? 'pos' : ch < -0.05 ? 'neg' : 'neu';
+      add(t, 'arc:c-tvl', `Arc TVL <b>${usd(tv.now)}</b> · 7일 ${sp(ch)} · DEX 24시간 ${usd(d.arcDex?.total24h)}`,
         t === 'pos' ? 'Arc TVL 증가' : t === 'neg' ? 'Arc TVL 감소' : null, 1);
     }
 
@@ -1989,8 +1994,8 @@
         const first = hist.findIndex((p) => p.tvl > 1e5);
         daily = hist.slice(Math.max(0, first - 1)).map((p) => [p.date, p.tvl]);
       }
-      d.arcTvl = { ...d.arcTvl, now: arc.tvl, daily };
-      L.tvl = arc.tvl;
+      d.arcTvl = cleanArcTvl(daily, arc.tvl);
+      L.tvl = d.arcTvl.now;
     },
     async series(d) { // USDC·EURC·USYC 일별 공급량 추이 (DefiLlama를 중계 서버로 — 30분 캐시)
       const j = await getJ(`${NEWS_API}/series`, 25000);

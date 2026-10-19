@@ -229,7 +229,19 @@ async function collectArcTvl() {
   const now = chains.find((c) => c.name === 'Arc')?.tvl ?? hist.at(-1).tvl;
   const firstNonZero = hist.findIndex((p) => p.tvl > 1e5);
   const daily = hist.slice(Math.max(0, firstNonZero - 1)).map((p) => [p.date, p.tvl]);
-  return { now, daily };
+  return cleanArcTvl(daily, now);
+}
+
+// 하루 새 ±30% 넘게 바뀐 값은 사흘(일별 값 3개) 이어질 때까지 반영하지 않고 직전 확정값을 쓴다.
+// DefiLlama가 새 풀을 편입하거나 가격을 잘못 잡으면 하루에 크게 튀는데(2026-10-19 Uniswap V4 Arc $4M→$271M),
+// 실제 자금 이동이면 그 수준이 이어지므로 사흘 뒤에 반영된다. (assets/app.js cleanArcTvl과 같은 규칙)
+export function cleanArcTvl(daily, now) {
+  const pts = daily.slice();
+  if (now != null && pts.length) { if (Date.now() / 1000 - pts.at(-1)[0] < 86400) pts[pts.length - 1] = [pts.at(-1)[0], now]; else pts.push([Math.floor(Date.now() / 1000), now]); }
+  let i = -1;
+  for (let k = pts.length - 1; k > 0; k--) if (pts[k - 1][1] > 0 && Math.abs(pts[k][1] / pts[k - 1][1] - 1) >= 0.3) { i = k; break; }
+  if (i < 1 || pts.length - i >= 3 || pts[i - 1][1] < 1e7) return { now, daily };
+  return { now: pts[i - 1][1], daily: daily.filter((p) => p[0] < pts[i][0]), held: { raw: now, from: pts[i][0], prev: pts[i - 1][1], prevAt: pts[i - 1][0] } };
 }
 
 async function collectLending() {
@@ -672,6 +684,9 @@ async function main() {
     shortRatio: out.short?.daily?.at(-1)?.ratio,
   };
   state.snapshots = (state.snapshots || []).concat(snap).slice(-MAX_SNAPSHOTS);
+  // 확인 전인 TVL 급변은 지난 스냅샷에서도 빼서 '직전 대비'가 튀지 않게
+  const H = out.arcTvl?.held;
+  if (H) for (const s of state.snapshots) if (Date.parse(s.t) / 1000 >= H.from && s.tvl != null) s.tvl = H.prev;
   out.snapshots = state.snapshots;
 
   await fs.writeFile(path.join(DATA_DIR, 'latest.json'), JSON.stringify(out));
