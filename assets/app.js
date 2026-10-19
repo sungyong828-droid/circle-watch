@@ -5170,8 +5170,8 @@
         </div>
         ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}
         ${F.length ? `<div class="ns-go">
-          <button type="button" class="link-btn" data-go="${goEarn}">📊 ${EN ? 'Earnings reports' : '실적 보고서'}${rep ? ` · ${esc(formInfo(rep.form).label)} ${md(isoToTs(rep.d))}` : ''}<small>${EN ? 'See in Earnings' : 'Earnings에서 보기'}</small></button>
-          <button type="button" class="link-btn" data-go="${goIns}">👤 ${EN ? `Insider filings: ${ins}` : `내부자 거래 공시 ${ins}건`}<small>${EN ? '30 days · details in the stock tab' : '30일 · 종목 탭에서 자세히'}</small></button>
+          <button type="button" class="ns-go-b" data-go="${goEarn}"><span class="ns-go-h">📊 ${EN ? 'Earnings reports' : '실적 보고서'}</span><b>${rep ? `${esc(formInfo(rep.form).label)} · ${md(isoToTs(rep.d))}` : '–'}</b><small>${EN ? 'Open Earnings' : '실적 탭에서 보기'} ›</small></button>
+          <button type="button" class="ns-go-b" data-go="${goIns}"><span class="ns-go-h">👤 ${EN ? 'Insider filings' : '내부자 거래'}</span><b>${EN ? `${ins} in 30 days` : `최근 30일 ${ins}건`}</b><small>${EN ? 'See details' : '자세히 보기'} ›</small></button>
         </div>` : ''}`,
     });
   }
