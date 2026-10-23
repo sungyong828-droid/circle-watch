@@ -3298,7 +3298,7 @@
       }
     }
     const seen = new Set();
-    return out.filter((x) => (seen.has(x.id) ? false : seen.add(x.id))).sort((a, b) => b.t - a.t).slice(0, 30);
+    return out.filter((x) => now - x.t < wk && (seen.has(x.id) ? false : seen.add(x.id))).sort((a, b) => b.t - a.t).slice(0, 30); // 최근 7일만
   }
   function updateBell() {
     const b = document.getElementById('bell-n');
