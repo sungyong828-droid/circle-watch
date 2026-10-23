@@ -1758,7 +1758,7 @@
       const k8 = N.filings?.find((f) => /^8-K/.test(f.form));
       const fresh8k = k8 && Date.now() - Date.parse(k8.d) < 3 * 86400000;
       for (const it of analystSummary('CRCL')) add(...it);
-      if (off || fresh8k) add('neu', 'news:c-news', `${fresh8k ? `<b>8-K 공시</b>(${md(isoToTs(k8.d))}) · ` : ''}${off ? `최신 발표: ${esc(off.title.length > 48 ? off.title.slice(0, 47) + '…' : off.title)}` : ''}`, fresh8k ? '신규 8-K 공시' : null, 1);
+      if (off || fresh8k) add('neu', 'news:c-news', `${fresh8k ? `<b>8-K 공시</b>(${md(isoToTs(k8.d))}) · ` : ''}${off ? `최신 발표: ${esc(ttl(off).length > 48 ? off.title.slice(0, 47) + '…' : off.title)}` : ''}`, fresh8k ? '신규 8-K 공시' : null, 1);
     }
 
     const tags = items.filter((i) => i.tag).sort((a, b) => b.weight - a.weight).slice(0, 3);
@@ -3526,7 +3526,7 @@
         ${top.length ? `<li><span class="sc-i" aria-hidden="true">🔺</span><div><b>${EN ? 'Top gainers' : '가장 많이 오른 종목'}</b><div class="sc-chips">${chips(top)}</div></div></li>` : ''}
         ${low.length ? `<li><span class="sc-i" aria-hidden="true">🔻</span><div><b>${EN ? 'Biggest decliners' : '가장 많이 내린 종목'}</b><div class="sc-chips">${chips(low)}</div></div></li>` : ''}
         ${W.divGot?.length ? `<li><span class="sc-i" aria-hidden="true">💰</span><div><b>${EN ? 'Dividends received' : '받은 배당'} <span class="up">${usd2(W.divNet)}</span></b><small>${[...new Set(W.divGot.map((r) => fireName(r.sym)))].map(esc).join(' · ')}</small></div></li>` : ''}
-        ${W.news?.length ? `<li><span class="sc-i" aria-hidden="true">📰</span><div><b>${EN ? 'Key news' : '내 종목 주요 소식'}</b><ul class="wk-news">${W.news.map((n) => `<li><a href="${safeUrl(n.url)}" target="_blank" rel="noopener"><span><i class="wk-sym">${esc(nameOfSym(n.sym))}</i>${esc(n.title)}</span>${n.sum ? `<small>${esc(n.sum)}</small>` : ''}</a></li>`).join('')}</ul></div></li>` : ''}
+        ${W.news?.length ? `<li><span class="sc-i" aria-hidden="true">📰</span><div><b>${EN ? 'Key news' : '내 종목 주요 소식'}</b><ul class="wk-news">${W.news.map((n) => `<li><a href="${safeUrl(n.url)}" target="_blank" rel="noopener"><span><i class="wk-sym">${esc(nameOfSym(n.sym))}</i>${esc(ttl(n))}</span>${n.sum ? `<small>${esc(n.sum)}</small>` : ''}</a></li>`).join('')}</ul></div></li>` : ''}
         ${nxt.length ? `<li><span class="sc-i" aria-hidden="true">📅</span><div><b>${weekMon() ? (EN ? 'This week' : '이번 주 일정') : EN ? 'Next week' : '다음 주 일정'}</b><small>${nxt.join(' · ')}</small></div></li>` : ''}
       </ul>
       <button type="button" class="share-card-btn" data-sharecard="week"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>${EN ? 'Share as image' : '이미지로 공유'}</button>`;
@@ -3609,6 +3609,9 @@
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveVisit(true); });
   const mySyms = () => [...new Set([...WATCH, ...(fireCfg?.positions || []).map((p) => p.ticker), ...(divCfg?.hold || []).map((h) => h.t)])];
   const pxOf = (sym) => { try { return (isKR(sym) ? state.krq?.[sym]?.price : null) ?? (STOCK_INFO[sym] ? stockPx(sym)?.price : null) ?? state.quote?.[sym]?.price ?? null; } catch { return null; } };
+  // 뉴스 제목: 한국어 화면에서는 서버가 옮겨 둔 한국어 제목(ko)을 먼저, 영어 원문은 작게 아래에
+  const ttl = (n) => (!EN && n?.ko ? n.ko : n?.title || '');
+  const ttlEn = (n) => (!EN && n?.ko && n.ko !== n.title ? `<span class="nt-en" lang="en">${esc(ttl(n))}</span>` : '');
   const nameOfSym = (sym) => (STOCK_INFO[sym] ? symLabel(sym) : fireName(sym));
   // 방문 기록(주간 리포트용 가격 · 목표가 확인) + 이번 주 일정 카드 — 홈이 갱신될 때마다(3초에 한 번)
   function renderSince(fc) {
@@ -5354,7 +5357,7 @@
       // 회사 공식 발표이거나 제목에 회사 이름이 있으면 '○○ 관련'으로 분류
       const related = base === 'official' || U.relRe.test(n.title);
       const kind = related ? 'related' : base;
-      items.push({ kind, base, lang, t: Date.parse(n.t), title: n.title, sum: n.sum || '', source: n.source + (base === 'industry' && lang !== 'ko' ? ' · 해외' : ''), url: n.url, level: base === 'official' ? 'hi' : 'mid', official: base === 'official', faa: FAA_RE.test(n.title) });
+      items.push({ kind, base, lang, t: Date.parse(n.t), title: n.title, ko: n.ko || '', sum: n.sum || '', source: n.source + (base === 'industry' && lang !== 'ko' ? ' · 해외' : ''), url: n.url, level: base === 'official' ? 'hi' : 'mid', official: base === 'official', faa: FAA_RE.test(n.title) });
     };
     for (const n of N.official || []) push(n, 'official', 'en');
     for (const n of N.kr || []) push(n, 'kr', 'ko');
@@ -5427,7 +5430,7 @@
           <div><span>새 소식</span><b>${unseen}건</b><small>지난 방문 이후</small></div>
           ${F.length ? `<div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>` : `<div><span>회사 발표</span><b>${(N.official || []).length}건</b><small>최근 모은 것</small></div>`}
         </div>
-        ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(off.title)}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}
+        ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(ttl(off))}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}
         ${F.length ? `<div class="ns-go">
           <button type="button" class="ns-go-b" data-go="${goEarn}"><span class="ns-go-h">📊 ${EN ? 'Earnings reports' : '실적 보고서'}</span><b>${rep ? esc(formInfo(rep.form).label) : '–'}</b>${rep ? `<em>${EN ? `Filed ${md(isoToTs(rep.d))}` : `${md(isoToTs(rep.d))} 제출`}</em>` : ''}<small>${EN ? 'Open Earnings' : '실적 탭에서 보기'} ›</small></button>
           <button type="button" class="ns-go-b" data-go="${goIns}"><span class="ns-go-h">👤 ${EN ? 'Insider filings' : '내부자 거래'}</span><b>${EN ? `${ins} filings` : `${ins}건`}</b><em>${EN ? 'Last 30 days' : '최근 30일'}</em><small>${EN ? 'See details' : '자세히 보기'} ›</small></button>
@@ -5460,7 +5463,7 @@
       const kindTxt = i.kind === 'filing' ? i.form : i.official ? '공식' : U.badges[i.kind];
       return `${head}<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener">
         <span class="nk ${kindCls}${i.official ? ' official' : ''}">${esc(kindTxt)}</span>
-        <span class="nt">${isNew ? '<i class="new">NEW</i>' : ''}${i.faa && sym === 'JOBY' ? '<i class="faa-tag">FAA</i>' : ''}${esc(i.title)}</span>
+        <span class="nt">${isNew ? '<i class="new">NEW</i>' : ''}${i.faa && sym === 'JOBY' ? '<i class="faa-tag">FAA</i>' : ''}${esc(ttl(i))}</span>${ttlEn(i)}
         ${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}
         <span class="nm">${esc(i.source)}${timeLabel(i) ? ' · ' + timeLabel(i) : ''}</span></a></li>`;
     }).join('');
@@ -6140,14 +6143,14 @@
     const kws = state.kw.filter(Boolean);
     if (!kws.length) return [];
     const pool = [];
-    for (const n of state.mnews?.items || []) pool.push({ t: Date.parse(n.t), title: n.title, sum: n.sum || '', source: n.source, url: n.url, tag: '시장' });
-    for (const sym of WATCH) { if (!NEWS_UI[sym]) continue; for (const i of newsItems(sym)) if (i.kind !== 'filing') pool.push({ t: i.t, title: i.title, sum: i.sum || '', source: i.source, url: i.url, tag: sym }); }
+    for (const n of state.mnews?.items || []) pool.push({ t: Date.parse(n.t), title: n.title, ko: n.ko || '', sum: n.sum || '', source: n.source, url: n.url, tag: '시장' });
+    for (const sym of WATCH) { if (!NEWS_UI[sym]) continue; for (const i of newsItems(sym)) if (i.kind !== 'filing') pool.push({ t: i.t, title: i.title, ko: i.ko || '', sum: i.sum || '', source: i.source, url: i.url, tag: sym }); }
     const cutoff = Date.now() - 48 * 3600000, seenT = new Set(), out = [];
     for (const n of pool.sort((a, b) => b.t - a.t)) {
       if (!(n.t >= cutoff)) continue;
       const key = n.title.toLowerCase().replace(/[^a-z0-9가-힣]/g, '').slice(0, 50);
       if (seenT.has(key)) continue;
-      const text = `${n.title} ${n.sum}`.toLowerCase();
+      const text = `${n.title} ${n.ko || ''} ${n.sum}`.toLowerCase();
       const hit = kws.filter((w) => text.includes(w.toLowerCase()));
       if (!hit.length) continue;
       seenT.add(key);
@@ -6165,7 +6168,7 @@
         body: `<div class="kw-chips">${kws.map((w) => `<span class="kw-chip">${esc(w)}<button type="button" data-kwdel="${esc(w)}" aria-label="${esc(w)} 삭제">×</button></span>`).join('')}
             <form class="kw-add" data-kwform="1"><input name="kw" maxlength="30" placeholder="+ 키워드 추가" aria-label="키워드 추가" autocomplete="off"></form></div>
           <ul class="nl kw-list">${items.map((i, n) => `${n === 5 ? `</ul>${more(id + ':more', `키워드 기사 ${items.length - 5}건 더 보기`)}<ul class="nl kw-list">` : ''}<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk ${i.tag === '시장' ? 'industry' : 'related'}">${esc(i.tag)}</span>
-            <span class="nt">${hl(i.title, i.hit)}</span>${i.sum ? `<span class="nsum">${hl(i.sum, i.hit)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)} ${timeLabel(i)}</span></a></li>`).join('') || '<li class="empty">최근 48시간 동안 키워드가 들어간 기사가 없어요.</li>'}</ul>${items.length > 5 ? '</details>' : ''}`,
+            <span class="nt">${hl(ttl(i), i.hit)}</span>${ttlEn(i)}${i.sum ? `<span class="nsum">${hl(i.sum, i.hit)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)} ${timeLabel(i)}</span></a></li>`).join('') || '<li class="empty">최근 48시간 동안 키워드가 들어간 기사가 없어요.</li>'}</ul>${items.length > 5 ? '</details>' : ''}`,
       });
     }
     // 화면을 보는 중 새 키워드 기사가 들어오면 알림 띠(처음 불러올 때는 알리지 않음)
@@ -6185,7 +6188,7 @@
     const m = Math.max(0, Math.round((Date.now() - i.t) / 60000)), when = EN ? (m < 1 ? 'just now' : m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ago`) : m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 전`;
     el.style.setProperty('--na-top', `${Math.round(document.querySelector('.top')?.getBoundingClientRect().bottom || 64)}px`);
     el.innerHTML = `<div class="na-top"><span class="na-badge">${EN ? '🔔 Breaking' : '🔔 속보'}</span><span class="na-kw">${esc(i.hit[0])}</span>${i.tag && i.tag !== '시장' ? `<span class="na-tag">${esc(symLabel(i.tag))}</span>` : ''}<span class="na-time">${when}</span><button type="button" class="na-x" data-naclose="1" aria-label="알림 닫기">×</button></div>
-      <a class="na-body" href="${safeUrl(i.url)}" target="_blank" rel="noopener" data-naopen="1"><b class="na-title nt">${esc(i.title)}</b>${i.sum ? `<span class="na-sum nsum">${esc(i.sum)}</span>` : ''}<span class="na-src">${esc(i.source || '')} · ${EN ? 'Open article' : '기사 열기'} ›</span></a>
+      <a class="na-body" href="${safeUrl(i.url)}" target="_blank" rel="noopener" data-naopen="1"><b class="na-title nt">${esc(ttl(i))}</b>${i.sum ? `<span class="na-sum nsum">${esc(i.sum)}</span>` : ''}<span class="na-src">${esc(i.source || '')} · ${EN ? 'Open article' : '기사 열기'} ›</span></a>
       ${more > 0 ? `<button type="button" class="na-more" data-nago="1">${EN ? `${more} more keyword ${more > 1 ? 'stories' : 'story'}` : `키워드 기사 ${more}건 더 보기`}</button>` : ''}<i class="na-bar"></i>`;
     el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     try { navigator.vibrate?.(20); } catch {}
@@ -6478,7 +6481,7 @@
           <div><span>다음 실적</span><b>${D.E.next?.date && D.E.next.date > (q?.end || '') ? md(isoToTs(D.E.next.date)) : '–'}</b><small>${D.E.next?.estimated ? '예상일' : ''}</small></div>
         </div>
         ${k8 ? `<a class="faa-notice good" href="${safeUrl(k8.url)}" target="_blank" rel="noopener">📄 실적 발표 공시(8-K, ${md(isoToTs(k8.d))}) 원문 보기 →</a>` : ''}
-        ${news.length ? `<div class="mini-h er-h">실적 관련 소식</div><ul class="nl faa-nl">${news.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
+        ${news.length ? `<div class="mini-h er-h">실적 관련 소식</div><ul class="nl faa-nl">${news.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(ttl(i))}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
         ${earnSumBlock(sym)}<p class="ed-check">✅ 이어서 볼 것: ${EARN_CHECK[sym] || '가이던스와 컨퍼런스콜 내용'}</p>${memoRemind(sym)}${voteBlock(sym)}`,
     });
   }
@@ -6878,7 +6881,7 @@
     const F = faaData(), A = state.facts?.faa, fl = st('JOBY').news?.filings || [];
     if (!F) return '';
     const tc = newsItems('JOBY').find((i) => i.kind !== 'filing' && TC_RE.test(i.title) && TC_WIN_RE.test(i.title) && !TC_NOT_RE.test(i.title) && Date.now() - i.t < 14 * 86400000);
-    const tcHtml = tc ? `<a class="faa-notice good" href="${safeUrl(tc.url)}" target="_blank" rel="noopener">🎉 형식 인증 취득 소식: ${esc(tc.title)} (${esc(tc.source)}) →</a>` : '';
+    const tcHtml = tc ? `<a class="faa-notice good" href="${safeUrl(tc.url)}" target="_blank" rel="noopener">🎉 형식 인증 취득 소식: ${esc(ttl(tc))} (${esc(tc.source)}) →</a>` : '';
     if (A && !A.ok && A.filed > F.source.date) {
       return tcHtml + `<a class="faa-notice" href="${safeUrl(A.url)}" target="_blank" rel="noopener">🔔 ${md(isoToTs(A.filed))} 새 주주서한이 나왔는데 인증 차트 숫자를 자동으로 읽지 못했어요. Claude에게 "FAA 수치 업데이트해줘"라고 말해 주세요 →</a>`;
     }
@@ -6915,7 +6918,7 @@
         ${trend}
         <div class="mini-h er-h">주요 이정표</div>
         <ul class="faa-ms">${ms}</ul>
-        ${faaNews.length ? `<div class="mini-h er-h">최근 FAA·인증 관련 소식</div><ul class="nl faa-nl">${faaNews.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
+        ${faaNews.length ? `<div class="mini-h er-h">최근 FAA·인증 관련 소식</div><ul class="nl faa-nl">${faaNews.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">${i.official ? '공식' : '뉴스'}</span><span class="nt">${esc(ttl(i))}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : ''}
         <p class="note"><a href="${safeUrl(F.source.url)}" target="_blank" rel="noopener">출처: ${esc(F.source.label)}</a> · ${esc(F.caveat || '')}</p>`,
     });
   }
@@ -7101,7 +7104,7 @@
     const F = state.spcx, L = (state.facts?.spcxLock || []).filter((x) => x.d > (F?.asOf || ''));
     const fl = L.map((x) => `<a class="faa-notice" href="${safeUrl(x.url)}" target="_blank" rel="noopener">🔔 ${md(isoToTs(x.d))} ${x.kind === 'lockup' ? '보호예수 변경 관련 공시' : '주식 추가 매도·발행 등록 공시'}(Form ${esc(x.form)}) — 아래 일정이 바뀌었을 수 있어요 →${x.snippet ? `<small>${esc(x.snippet.slice(0, 180))}…</small>` : ''}</a>`).join('');
     const nw = newsItems('SPCX').filter((i) => i.kind !== 'filing' && LOCK_NEWS_RE.test(i.title) && Date.now() - i.t < 14 * 86400000).slice(0, 3);
-    return fl + (nw.length ? `<div class="mini-h er-h">최근 보호예수 관련 뉴스</div><ul class="nl faa-nl">${nw.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">뉴스</span><span class="nt">${esc(i.title)}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : '');
+    return fl + (nw.length ? `<div class="mini-h er-h">최근 보호예수 관련 뉴스</div><ul class="nl faa-nl">${nw.map((i) => `<li><a href="${safeUrl(i.url)}" target="_blank" rel="noopener"><span class="nk related">뉴스</span><span class="nt">${esc(ttl(i))}</span>${i.sum ? `<span class="nsum">${esc(i.sum)}</span>` : ''}<span class="nm">${esc(i.source)} · ${dayLabel(i.t)}</span></a></li>`).join('')}</ul>` : '');
   }
   const nextLockup = () => { const t = todayIso(); return lockupEvents().filter((e) => !e.skipped && e.date && e.date >= t).sort((a, b) => a.date.localeCompare(b.date))[0] || null; };
   function renderLockup() {
@@ -7502,7 +7505,7 @@
       const off = N.official?.[0];
       const k8 = N.filings?.find((f) => /^8-K/.test(f.form));
       const fresh8k = k8 && Date.now() - Date.parse(k8.d) < 3 * 86400000;
-      if (off || fresh8k) add('neu', 'snews:c-snews', `${fresh8k ? `<b>8-K 공시</b>(${md(isoToTs(k8.d))})${off ? ' · ' : ''}` : ''}${off ? `최신 발표: ${esc(off.title.length > 48 ? off.title.slice(0, 47) + '…' : off.title)}` : ''}`, fresh8k ? '신규 8-K 공시' : null, 1);
+      if (off || fresh8k) add('neu', 'snews:c-snews', `${fresh8k ? `<b>8-K 공시</b>(${md(isoToTs(k8.d))})${off ? ' · ' : ''}` : ''}${off ? `최신 발표: ${esc(ttl(off).length > 48 ? off.title.slice(0, 47) + '…' : off.title)}` : ''}`, fresh8k ? '신규 8-K 공시' : null, 1);
     }
     const NE = E?.next;
     if (NE?.date) add('neu', 'searn:c-searnings', `다음 실적 발표 <b>${krDate(NE.date)}</b>${NE.estimated ? '(예상)' : ''} · D-${Math.max(0, dday(NE.date))} · 예상 EPS ${NE.consensus != null ? '$' + NE.consensus.toFixed(2) : '–'}`, null, 0);
