@@ -11,6 +11,20 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📊 **내 수익률 vs 시장**(새 기능): 퇴사까지 화면에서 지금 보유 종목을 그대로 들고 있었다면 1개월·3개월·6개월·1년·올해 동안 얼마나 올랐는지 S&P500(원화 환산)·코스피와 한 그래프로 비교해요. "S&P500보다 ○%p 앞서요"가 맨 위에 바로 보여요.
+- 🔔 **알림함**(새 기능): 오른쪽 위 종 버튼에 목표가 도달·실적 발표·배당 입금·새 공시를 최근 7일치 모아 보여 줘요. 새 소식 개수가 숫자로 뜨고, 누르면 그 화면으로 바로 가요.
+- 📢 **실적 발표 카드**: 내 종목이 오늘·내일 실적을 발표하거나 방금 발표했으면 홈 맨 위에 자동으로 떠요. EPS 예상 상회·하회와 주가 반응이 한 줄로 보이고, 누르면 그 종목 실적 화면으로 가요.
+- 🎁 **연말 결산**(12월~1월 중순 자동): 올해 내 종목 수익률, 올해의 종목, 받은 배당, 퇴사 진행률, 연말정산 환급을 한 장으로 보여 주고 이미지로 공유할 수 있어요.
+- 🔗 공개 페이지(ETF 세금 비교·적립식·배당 ETF 비교·경제 일정·빚투 지표·성과급·퇴사 계산기)를 카카오톡·SNS에 공유하면 페이지마다 다른 미리보기 이미지가 보여요.
+<!-- internal --> benchCalc(): /chart r=3m(일봉 1년) 종목·^GSPC·^KS11·KRW=X, 날짜 맞춰 앞 값 채움 · notiItems()/cw.notiSeen(30일) · renderSeason()=earnDay() 모든 WATCH · renderRecap() ?recap=1 미리보기 · tools/og_pages.py → assets/og-*.png, ssr fill({og}).
+<!-- EN
+- My return vs the market (new): in FIRE, replay your current holdings over 1M/3M/6M/1Y/YTD and compare with the S&P 500 (in KRW) and KOSPI on one chart.
+- Notifications (new): the bell at the top collects target hits, earnings, dividend payments and new filings from the last 7 days; tap one to jump there.
+- Earnings card: when your stocks report today or tomorrow, or just reported, a card appears at the top of Home with beat/miss and the stock's move.
+- Year in review (Dec to mid-Jan): this year's return, best stock, dividends, FIRE progress and tax refund on one shareable page.
+- Each public page now has its own link preview image.
+-->
+
 ## v2026.10.23-2 — 2026-10-23
 
 [이 버전 보기](https://67317106.my-fire-portfolio.pages.dev) · 커밋 `ff101b8`

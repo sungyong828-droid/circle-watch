@@ -2217,3 +2217,40 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .avc-goal > b { display: block; font-size: 13px; }
 .avc-goal-out { color: var(--ink-2); }
 .avc-rows small.muted { font-weight: 500; color: var(--muted); }
+
+/* 🔔 알림 버튼 · 알림함 */
+.bell-btn { position: relative; }
+.bell-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bell-n { position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #f04452; color: #fff; font: 800 10.5px/17px var(--sans); text-align: center; box-shadow: 0 0 0 2px var(--bg, #0d1117); }
+.nt-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.nt-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 10px 12px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.nt-row.new { box-shadow: inset 3px 0 0 var(--accent); }
+.nt-ic { display: grid; place-items: center; font-size: 18px; }
+.nt-tx { display: grid; gap: 2px; min-width: 0; } .nt-tx b { font-size: 14px; line-height: 1.35; } .nt-tx small { font-size: 12px; color: var(--ink-2); }
+.nt-row em { font-style: normal; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.nt-empty { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+/* 📢 실적 시즌 카드 */
+.se-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.se-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 12px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--ink); font: inherit; text-align: left; cursor: pointer; flex-wrap: wrap; }
+.se-row > b { font-size: 14.5px; margin-right: 2px; }
+.se-row .ss-tag { font-style: normal; font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 8px; }
+.se-row .ss-tag.pre { background: rgba(242, 153, 74, 0.18); color: #f2994a; } .se-row .ss-tag.post { background: rgba(63, 191, 127, 0.18); color: #3fbf7f; }
+.se-m { font-size: 12.5px; color: var(--ink-2); flex: 1 1 auto; min-width: 0; }
+.se-row > i { font-style: normal; color: var(--muted); font-size: 18px; margin-left: auto; }
+/* 📊 내 수익률 vs 시장 */
+.bm-verdict { margin: 8px 0 0; font-size: 15px; font-weight: 700; }
+.bm-rg { margin-top: 10px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
+.bm-rg button { padding: 6px 0; white-space: nowrap; }
+.bm-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.bm-sum > div { display: grid; gap: 2px; padding: 9px 10px; border-radius: 10px; background: var(--surface-2); min-width: 0; }
+.bm-sum > div.me { box-shadow: inset 0 0 0 1px rgba(242, 153, 74, 0.55); }
+.bm-sum span { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .bm-sum b { font: 800 17px var(--mono); }
+.bm-chart { margin-top: 10px; height: 210px; }
+.bm-per { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+/* 🎁 연말 결산 */
+.rc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.rc-grid > div { display: grid; gap: 2px; padding: 11px 12px; border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.rc-grid > .rc-hero { grid-column: 1 / -1; background: linear-gradient(135deg, rgba(242, 153, 74, 0.16), rgba(242, 153, 74, 0.04)); box-shadow: inset 0 0 0 1px rgba(242, 153, 74, 0.35); }
+.rc-grid span { font-size: 12px; color: var(--muted); } .rc-grid b { font: 800 18px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rc-grid .rc-hero b { font-size: 28px; }
+.rc-grid small { font-size: 11.5px; color: var(--ink-2); }
+@media (min-width: 900px) { #c-bench, #c-season, #c-recap { grid-column: 1 / -1; } }

@@ -38,7 +38,7 @@ function chart(series, label, color, fmt, w = 640, h = 170) {
 
 export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url), host = url.hostname;
-  const cache = caches.default, key = new Request(`${url.origin}/money-flow-page?v=1`);
+  const cache = caches.default, key = new Request(`${url.origin}/money-flow-page?v=2`);
   const hit = await cache.match(key);
   if (hit) return respond(await hit.text(), 200, host, 900);
   const [F, H] = await Promise.all([
@@ -46,7 +46,7 @@ export async function onRequestGet({ request, waitUntil }) {
     fetch(`${url.origin}/data/us-margin.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
   ]);
   const go = '/?ref=page-money-flow#flow';
-  if (!F?.rows?.length) return respond(fill({ title: '증시 자금 동향 — 신용융자·고객예탁금', desc: '빚투 과열 신호', canon: `${SITE}money-flow`, ld: null, body: `<section class="lp-hero"><h1>잠시 후 다시 열어 주세요</h1><p class="lp-lead">자료를 받지 못했어요.</p><a class="lp-cta" href="${go}">대시보드 열기 →</a></section>` }), 503, host);
+  if (!F?.rows?.length) return respond(fill({ title: '증시 자금 동향 — 신용융자·고객예탁금', desc: '빚투 과열 신호', canon: `${SITE}money-flow`, og: 'og-money-flow.png?v=1', ld: null, body: `<section class="lp-hero"><h1>잠시 후 다시 열어 주세요</h1><p class="lp-lead">자료를 받지 못했어요.</p><a class="lp-cta" href="${go}">대시보드 열기 →</a></section>` }), 503, host);
   const R = F.rows, c = verdict(R), last = R.at(-1)[0];
   const us = [...new Map([...(H?.rows || []), ...(F.us || [])].map((x) => [x[0], x])).values()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
   const uL = us.at(-1), uMax = us.slice(0, -1).reduce((m, x) => Math.max(m, x[1]), 0), uY = us.find((x) => x[0] === `${+uL?.[0].slice(0, 4) - 1}${uL?.[0].slice(4)}`);
@@ -76,7 +76,7 @@ ${I ? `<section class="lp-sec"><h2>오늘 코스피 투자자별 순매수</h2><
 <section class="lp-sec lp-end"><a class="lp-cta" href="${go}">🔥 Fire Portfolio 대시보드 열기 →</a><p class="lp-note">자료: 금융투자협회 집계(네이버 증권), FINRA. 국내 자료는 하루 늦게 발표돼요. 투자 조언이 아니에요.</p></section>`;
   const title = `증시 빚투 지표 — 신용융자 ${jo(c.cr)}·고객예탁금 ${jo(c.dep)} (${md(last)})`;
   const desc = `신용융자 잔고 ${jo(c.cr)}(1년 ${pctS(c.cr250)}), 고객예탁금 ${jo(c.dep)}, 미국 신용잔고 ${uL ? usT(uL[1]) : '–'}. 빚투 과열 신호와 지표의 뜻을 매일 쉽게 정리해요. 지금 판단: ${c.lv[1]}.`;
-  const html = fill({ title, desc, body, canon: `${SITE}money-flow`, ld: [
+  const html = fill({ title, desc, body, canon: `${SITE}money-flow`, og: 'og-money-flow.png?v=1', ld: [
     { '@context': 'https://schema.org', '@type': 'WebPage', name: title, description: desc, url: `${SITE}money-flow`, inLanguage: 'ko', dateModified: today },
     { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
   ] });

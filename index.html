@@ -34,7 +34,7 @@
 <link rel="apple-touch-icon" href="assets/icon.png?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" integrity="sha384-GIdEBaqGN9mNkDkMkzMHW8EKUqtpPIe/sLj1X7DIrnc9uPtLROJgmuDlh+3rBw0j" crossorigin="anonymous">
 <script src="assets/theme.js?v=1"></script>
-<link rel="stylesheet" href="assets/style.css?v=142">
+<link rel="stylesheet" href="assets/style.css?v=143">
 </head>
 <body>
 <noscript><p style="padding:16px">Fire Portfolio는 서클(CRCL)·조비(JOBY)·스페이스X(SPCX)·템퍼스 AI(TEM) 실시간 주가·차트·뉴스 AI 요약·공매도·기관 보유·애널리스트 목표가를 보여주는 무료 미국 주식 대시보드예요. 화면을 보려면 자바스크립트를 켜 주세요. <a href="about">사이트 소개 보기</a></p></noscript>
@@ -48,6 +48,7 @@
       </div>
     </div>
     <div class="top-actions">
+      <button class="icon-btn bell-btn" id="bell-btn" type="button" aria-label="알림"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><b class="bell-n" id="bell-n" hidden></b></button>
       <button class="theme-btn" id="theme-btn" type="button" role="switch" aria-checked="false" aria-label="라이트 모드로 바꾸기" title="다크·라이트 모드 바꾸기"><span class="tm-ic tm-moon" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor"/></svg></span><span class="tm-ic tm-sun" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><i class="tm-knob" aria-hidden="true"></i></button>
       <button class="lang-btn" id="lang-btn" type="button" aria-label="View in English">EN</button>
       <button class="icon-btn" id="refresh" type="button" aria-label="지금 새로고침" title="모든 데이터를 지금 시각 기준으로 다시 불러와요">
@@ -66,6 +67,8 @@
     <article class="card welcome-card" id="c-welcome" hidden></article>
     <article class="card since-card sched-card" id="c-sched" hidden></article>
     <article class="card since-card week-card" id="c-week" hidden></article>
+    <article class="card season-card" id="c-season" hidden></article>
+    <article class="card recap-card" id="c-recap" hidden></article>
     <div class="home-fire" id="home-fire">
       <button type="button" class="hf-tile hf-fire" data-ftabgo="fire"><span class="hf-l">🔥 퇴사까지</span><b class="hf-v" id="hf-fire-v">–</b><small class="hf-s" id="hf-fire-s">보유 정보를 넣으면 계산돼요</small></button>
       <button type="button" class="hf-tile hf-div" data-ftabgo="div"><span class="hf-l">💰 배당금</span><b class="hf-v" id="hf-div-v">–</b><small class="hf-s" id="hf-div-s">배당 종목을 넣으면 계산돼요</small></button>
@@ -193,6 +196,7 @@
     </div>
     <article class="card fire-card" id="c-fire" data-pane="fire"></article>
     <article class="card" id="c-firemix" data-pane="fire" hidden></article>
+    <article class="card bench-card" id="c-bench" data-pane="fire" hidden></article>
     <article class="card rebal-card" id="c-rebal" data-pane="fire" hidden></article>
     <article class="card" id="c-firelife" data-pane="fire"></article>
     <article class="card" id="c-fire-sim" data-pane="fire"></article>
@@ -240,6 +244,6 @@
 <script src="assets/logo-list.js?v=2"></script>
 <script src="assets/whatsnew.js?v=1"></script>
 <script src="assets/trade-ocr.js?v=2"></script>
-<script src="assets/app.js?v=166"></script>
+<script src="assets/app.js?v=167"></script>
 </body>
 </html>

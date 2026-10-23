@@ -15,8 +15,8 @@ export const krDay = (d) => { const t = new Date(d + 'T12:00:00Z'); return `${t.
 export const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
 
 // 소개 페이지와 같은 머리·바닥글 틀(build.py가 만든 DAILY_TPL)에 제목·설명·본문·구조화 데이터를 넣는다
-export function fill({ title, desc, body, canon, ld }) {
-  return DAILY_TPL.replaceAll('%%TITLE%%', esc(title)).replaceAll('%%DESC%%', esc(desc)).replace('%%BODY%%', body)
+export function fill({ title, desc, body, canon, ld, og }) {
+  return (og ? DAILY_TPL.replace(/assets\/og\.png\?v=\d+/g, `assets/${og}`) : DAILY_TPL).replaceAll('%%TITLE%%', esc(title)).replaceAll('%%DESC%%', esc(desc)).replace('%%BODY%%', body)
     .replaceAll('%%CANON%%', canon).replace('%%LD%%', [].concat(ld).filter(Boolean).map((x) => `<script type="application/ld+json">${JSON.stringify(x).replace(/</g, '\\u003c')}</script>`).join('\n'));
 }
 // Functions 응답에는 _headers 가 안 붙으므로 보안 헤더를 직접, 테스트 환경은 검색 제외

@@ -2130,7 +2130,8 @@ window.__I18N_EN = {
 "배당 포트폴리오 계산기": "Dividend portfolio calculator",
 "우측 상단 새로고침(↻)을 누르면 모든 데이터를 지금 시각 기준으로 다시 불러와요. 가만히 두어도 5분마다(주가·환율은 더 자주) 자동으로 업데이트돼요.": "Tap refresh (↻) at the top right to reload all data now. It also updates automatically every 5 minutes (prices and FX more often).",
 "표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.": "marks live values. For personal monitoring, not investment advice.",
-")을 100으로 맞춘 공급량 지수 · DefiLlama · USYC 10/15부터 CoinGecko": ") indexed to 100 · DefiLlama · USYC from 10/15 via CoinGecko"
+")을 100으로 맞춘 공급량 지수 · DefiLlama · USYC 10/15부터 CoinGecko": ") indexed to 100 · DefiLlama · USYC from 10/15 via CoinGecko",
+"알림": "Notifications"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

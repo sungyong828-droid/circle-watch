@@ -42,7 +42,7 @@ const freq = (n) => (n >= 10 ? '월배당' : n >= 3 ? '분기' : n >= 1 ? `연 $
 export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url), host = url.hostname;
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-  const cache = caches.default, key = new Request(`${url.origin}/dividend-etf-page?v=2&d=${today}`);
+  const cache = caches.default, key = new Request(`${url.origin}/dividend-etf-page?v=3&d=${today}`);
   const hit = await cache.match(key);
   if (hit) return respond(await hit.text(), 200, host, 1800);
   const syms = GROUPS.flatMap((g) => g[2].map((x) => x[0]));
@@ -74,7 +74,7 @@ ${GROUPS.map(([h, d, rows]) => `<section class="lp-sec"><h2>${esc(h)}</h2><p cla
 <section class="lp-sec lp-end"><a class="lp-cta" href="${go}">🔥 Fire Portfolio에서 적립식 배당 시뮬레이션 →</a><p class="lp-note"><a href="portfolio">배당 포트폴리오 계산기</a> · <a href="grow">적립식 배당 시뮬레이터</a> · <a href="etf-tax">미국 ETF 세금 비교</a></p><p class="lp-note">자료: Yahoo Finance(배당 기록·주가). 배당은 바뀔 수 있고 과거 배당이 미래를 보장하지 않아요. 투자 조언이 아니에요.</p></section>`;
   const title = `배당 ETF 비교 — SCHD·JEPI·JEPQ·TIGER 미국배당다우존스 배당률·월배당 (${today.slice(5).replace('-', '/')})`;
   const desc = `SCHD·VYM·DGRO·JEPI·JEPQ와 국내 상장 TIGER·SOL·KODEX 미국배당다우존스의 최근 1년 배당률, 배당 주기, 배당 성장률, 1천만원 투자 시 월배당(세후)을 매일 비교해요.`;
-  const html = fill({ title, desc, body, canon: `${SITE}dividend-etf`, ld: [
+  const html = fill({ title, desc, body, canon: `${SITE}dividend-etf`, og: 'og-dividend-etf.png?v=1', ld: [
     { '@context': 'https://schema.org', '@type': 'WebPage', name: title, description: desc, url: `${SITE}dividend-etf`, inLanguage: 'ko', dateModified: today },
     { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
   ] });

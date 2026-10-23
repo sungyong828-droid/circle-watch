@@ -38,7 +38,7 @@ function weekHtml(title, W, events, today) {
 
 export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url), host = url.hostname;
-  const cache = caches.default, key = new Request(`${url.origin}/calendar-page?v=1&w=${weekOf(0).from}`);
+  const cache = caches.default, key = new Request(`${url.origin}/calendar-page?v=2&w=${weekOf(0).from}`);
   const hit = await cache.match(key);
   if (hit) return respond(await hit.text(), 200, host, 900);
   const wd = KST().getUTCDay(), weekend = wd === 6 || wd === 0;
@@ -61,7 +61,7 @@ ${weekHtml(weekend ? '그다음 주 일정' : '다음 주 일정', B, b?.events 
 <section class="lp-sec lp-end"><a class="lp-cta" href="${go}">🔥 Fire Portfolio 대시보드 열기 →</a><p class="lp-note">자료: 네이버 증권 증시 캘린더. 발표 일정·값은 바뀔 수 있어요. 투자 조언이 아니에요.</p></section>`;
   const title = `이번 주 미국 경제지표 발표 일정(${md(A.from)}~${md(A.to)}) — CPI·PPI·FOMC 한국 시간`;
   const desc = `${md(A.from)}~${md(A.to)} 미국·한국 주요 경제지표 발표 일정을 한국 시간으로 정리했어요. CPI·PPI·FOMC 금리 결정·고용보고서·PCE·소매판매와 발표 값, 지표의 뜻까지 쉽게 설명해요.`;
-  const html = fill({ title, desc, body, canon: `${SITE}calendar`, ld: [
+  const html = fill({ title, desc, body, canon: `${SITE}calendar`, og: 'og-calendar.png?v=1', ld: [
     { '@context': 'https://schema.org', '@type': 'WebPage', name: title, description: desc, url: `${SITE}calendar`, inLanguage: 'ko', dateModified: today },
     { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: FAQ.map(([q, a2]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a2 } })) },
   ] });

@@ -1581,6 +1581,29 @@
           W.divGot?.length && { label: EN ? 'Dividends this week' : '이번 주 받은 배당', value: usd2(W.divNet), money: true },
         ].filter(Boolean).slice(0, 4) };
     }
+    if (kind === 'bench') {
+      const c = fireCfg && state.quote ? (() => { try { return fireCalc(); } catch { return null; } })() : null, rg = BENCH_RANGES[state.benchRange] ? state.benchRange : '3m', R = c ? benchCalc(c, benchFrom(rg)) : null;
+      if (!R) return null;
+      const lbl = EN ? BENCH_RANGES[rg][2] : BENCH_RANGES[rg][1];
+      return { kind, tag, title: EN ? '📊 My stocks vs the market' : '📊 내 종목 vs 시장', bar: null,
+        hero: { label: EN ? `My stocks · ${lbl}` : `내 종목 수익률 · ${lbl}`, value: pct(R.my, 1), money: false },
+        lines: [
+          { label: 'S&P500' + (EN ? ' (KRW)' : '(원화)'), value: pct(R.sp, 1), money: false },
+          { label: EN ? 'KOSPI' : '코스피', value: pct(R.ks, 1), money: false },
+          { label: EN ? 'vs S&P500' : 'S&P500 대비', value: `${R.my - R.sp >= 0 ? '+' : ''}${((R.my - R.sp) * 100).toFixed(1)}%p`, money: false },
+        ] };
+    }
+    if (kind === 'recap') {
+      const D = recapData(), R = D.R;
+      const lines = [R?.per.length > 1 && { label: EN ? 'Best stock' : '올해의 종목', value: `${krTk(R.per[0].t) ? fireName(R.per[0].t) : R.per[0].t} ${pct(R.per[0].r, 1)}`, money: false },
+        D.div && { label: EN ? 'Dividends' : '받은 배당', value: usd2(D.div.usd), money: true },
+        D.prog && { label: EN ? 'FIRE progress' : '퇴사 진행률', value: `${(D.prog.to * 100).toFixed(1)}%`, money: false },
+        R && { label: 'S&P500', value: pct(R.sp, 1), money: false }].filter(Boolean).slice(0, 4);
+      if (!R && !lines.length) return null;
+      return { kind, tag, title: EN ? `🎁 My ${D.Y} in review` : `🎁 ${D.Y}년 투자 결산`, bar: D.prog ? Math.min(1, D.prog.to) : null,
+        hero: R ? { label: EN ? `${D.Y} return` : `${D.Y}년 내 종목 수익률`, value: pct(R.my, 1), money: false } : { label: EN ? 'Dividends' : '올해 받은 배당', value: usd2(D.div?.usd || 0), money: true, alt: { label: EN ? 'Payouts' : '배당 받은 횟수', value: `${D.div?.n || 0}`, money: false } },
+        lines };
+    }
     if (kind === 'etax') {
       const T = etaxCalc(), short = { direct: EN ? 'US-listed' : '미국 직투', kr: EN ? 'Korea-listed' : '국내 상장', isa: 'ISA', pen: EN ? 'Pension' : '연금저축' };
       const base = T.list[0].final;
@@ -3164,6 +3187,210 @@
     if (o) o.innerHTML = rebalOutHtml(c);
   }
 
+
+  // ---------------------------------------------------------------- 📊 내 수익률 vs 시장(퇴사까지): 지금 보유 종목·수량 그대로 들고 있었다면 vs S&P500(원화 환산)·코스피
+  // 종목·지수마다 일봉 1년치(/chart r=3m)를 한 번 받아 날짜를 맞추고, 같은 기간 수익률을 비교한다. 중간 매매·배당은 넣지 않는다(가격 수익률).
+  const BENCH_RANGES = { '1m': [31, '1개월', '1M'], '3m': [92, '3개월', '3M'], '6m': [183, '6개월', '6M'], '1y': [366, '1년', '1Y'], ytd: [0, '올해', 'YTD'] };
+  state.bench = {}; state.benchRange = loadPref('benchRange', '3m');
+  const benchSyms = (c) => [...new Set([...(c?.rows || []).filter((r) => r.shares > 0).map((r) => r.ticker), '^GSPC', '^KS11', 'KRW=X'])];
+  function benchLoad(c, done) {
+    let pend = 0;
+    for (const sym of benchSyms(c)) {
+      if (state.bench[sym]) continue;
+      state.bench[sym] = { loading: true }; pend++;
+      getJ(`${NEWS_API}/chart?s=${encodeURIComponent(sym)}&r=3m`, 15000)
+        .then((j) => { const m = new Map(); for (const p of j.points || []) if (p[1] != null) m.set(new Date(p[0]).toISOString().slice(0, 10), p[1]); state.bench[sym] = j.error || !m.size ? { err: true } : { m, t: Date.now() }; })
+        .catch(() => { state.bench[sym] = { err: true }; })
+        .finally(() => { if (--pend === 0) done?.(); });
+    }
+    return pend;
+  }
+  // from~to(포함) 사이: 날짜별 내 포트폴리오(원화) · S&P500(원화 환산) · 코스피, 기간 수익률, 종목별 수익률
+  function benchCalc(c, from, to = isoToday()) {
+    const H = (c?.rows || []).filter((r) => r.shares > 0), B = state.bench, fx = B['KRW=X']?.m, sp = B['^GSPC']?.m, ks = B['^KS11']?.m;
+    if (!H.length || !fx || !sp || !ks) return null;
+    const ok = H.filter((r) => B[r.ticker]?.m), miss = H.filter((r) => !B[r.ticker]?.m).map((r) => r.ticker);
+    if (!ok.length) return null;
+    const days = [...new Set([...sp.keys(), ...ks.keys(), ...ok.flatMap((r) => [...B[r.ticker].m.keys()])])].filter((d) => d >= from && d <= to).sort();
+    const last = {}, ff = (k, m, d) => { const v = m.get(d); if (v != null) last[k] = v; return last[k]; };
+    // 기간 시작 전 마지막 값으로 시작값을 채운다(시작일이 휴장일이어도)
+    for (const [k, m] of [['fx', fx], ['sp', sp], ['ks', ks], ...ok.map((r) => [r.ticker, B[r.ticker].m])]) { const prev = [...m.keys()].filter((d) => d < from).sort().at(-1); if (prev) last[k] = m.get(prev); }
+    const rows = [];
+    for (const d of days) {
+      const X = ff('fx', fx, d), S = ff('sp', sp, d), K = ff('ks', ks, d);
+      const px = ok.map((r) => ff(r.ticker, B[r.ticker].m, d));
+      if (X == null || S == null || K == null || px.some((v) => v == null)) continue; // 모든 종목 가격이 생긴 날부터
+      rows.push({ d, my: ok.reduce((a, r, i) => a + r.shares * px[i] * (r.kr ? 1 : X), 0), sp: S * X, ks: K, px, X });
+    }
+    if (rows.length < 2) return null;
+    const a = rows[0], z = rows.at(-1), R = (k) => z[k] / a[k] - 1;
+    const per = ok.map((r, i) => ({ t: r.ticker, r: (z.px[i] * (r.kr ? 1 : z.X)) / (a.px[i] * (r.kr ? 1 : a.X)) - 1 })).sort((x, y) => y.r - x.r);
+    return { rows, start: a.d, end: z.d, my: R('my'), sp: R('sp'), ks: R('ks'), per, miss, late: a.d > from };
+  }
+  const benchFrom = (rg) => (rg === 'ytd' ? `${new Date().getFullYear()}-01-01` : addDays(isoToday(), -BENCH_RANGES[rg][0]));
+  function renderBench(c) {
+    const el = document.getElementById('c-bench');
+    if (!el) return;
+    if (!c?.rows?.some((r) => r.shares > 0)) { el.hidden = true; return; }
+    el.hidden = false;
+    if (benchLoad(c, () => { const c2 = fireCfg && state.quote ? (() => { try { return fireCalc(); } catch { return null; } })() : null; renderBench(c2); })) { if (!el.innerHTML) card('bench', { title: EN ? '📊 My return vs the market' : '📊 내 수익률 vs 시장', body: `<p class="skeleton">${EN ? 'Loading prices…' : '가격 기록 불러오는 중…'}</p>` }); return; }
+    const rg = BENCH_RANGES[state.benchRange] ? state.benchRange : '3m', R = benchCalc(c, benchFrom(rg));
+    const nm = (t) => (krTk(t) ? fireName(t) : t);
+    const gap = R ? R.my - R.sp : null;
+    card('bench', {
+      title: EN ? '📊 My return vs the market' : '📊 내 수익률 vs 시장',
+      sub: EN ? 'Current holdings over the period · in KRW' : '지금 보유 종목·수량 그대로 들고 있었다면 · 원화 기준',
+      easy: EN ? 'We take the stocks and share counts you hold now and replay their prices over the period, then compare with the S&P 500 (converted to won) and the KOSPI. Trades in between and dividends are not included.' : '지금 갖고 있는 종목과 수량을 그대로 들고 있었다고 보고 기간 동안의 가격 변화를 계산해, 같은 기간 S&P500(원화로 환산)·코스피와 비교해요. 중간에 사고판 것과 배당은 넣지 않았어요.',
+      share: R ? 'bench' : null,
+      body: R ? `<p class="bm-verdict">${gap >= 0 ? '🎉 ' : ''}${EN ? `${gap >= 0 ? 'Ahead of' : 'Behind'} the S&P 500 by <b class="${cls(gap)}">${Math.abs(gap * 100).toFixed(1)}%p</b>` : `S&P500보다 <b class="${cls(gap)}">${Math.abs(gap * 100).toFixed(1)}%p</b> ${gap >= 0 ? '앞서고 있어요' : '뒤처져 있어요'}`}</p>
+        <div class="seg range bm-rg" role="group">${Object.entries(BENCH_RANGES).map(([k, v]) => `<button type="button" data-benchrange="${k}" aria-pressed="${k === rg}">${EN ? v[2] : v[1]}</button>`).join('')}</div>
+        <div class="bm-sum">
+          <div class="me"><span>${EN ? 'My stocks' : '내 종목'}</span><b class="${cls(R.my)}">${pct(R.my, 1)}</b></div>
+          <div><span>${EN ? 'S&P 500 (KRW)' : 'S&P500(원화)'}</span><b class="${cls(R.sp)}">${pct(R.sp, 1)}</b></div>
+          <div><span>${EN ? 'KOSPI' : '코스피'}</span><b class="${cls(R.ks)}">${pct(R.ks, 1)}</b></div>
+        </div>
+        <div class="chart bm-chart"><canvas id="cv-bench" role="img" aria-label="${EN ? 'Return comparison' : '수익률 비교'}"></canvas></div>
+        ${R.per.length > 1 ? `<p class="bm-per">${EN ? 'Best' : '가장 많이 오른 종목'} <b>${esc(nm(R.per[0].t))} <span class="${cls(R.per[0].r)}">${pct(R.per[0].r, 1)}</span></b> · ${EN ? 'worst' : '가장 약한 종목'} <b>${esc(nm(R.per.at(-1).t))} <span class="${cls(R.per.at(-1).r)}">${pct(R.per.at(-1).r, 1)}</span></b></p>` : ''}
+        <p class="note">${EN ? `${R.start} → ${R.end}.` : `${R.start} → ${R.end} 기준.`}${R.late ? (EN ? ' Starts later because a holding listed recently.' : ' 최근 상장한 종목이 있어 그 종목 가격이 생긴 날부터 비교했어요.') : ''}${R.miss.length ? (EN ? ` Left out (no price history): ${R.miss.map(nm).join(', ')}.` : ` 가격 기록을 못 받아 뺀 종목: ${R.miss.map(nm).join(', ')}.`) : ''} ${EN ? 'Price return only — trades and dividends not included.' : '가격 수익률이라 중간 매매·배당은 들어가지 않아요.'}</p>`
+        : `<p class="note">${EN ? 'Not enough price history for this period yet.' : '이 기간의 가격 기록이 아직 부족해요.'}</p>`,
+    });
+    if (R) {
+      const lab = R.rows.map((x) => x.d), a = R.rows[0];
+      draw('bench', { type: 'line', data: { labels: lab, datasets: [
+        lineDs(EN ? 'My stocks' : '내 종목', R.rows.map((x) => (x.my / a.my - 1) * 100), C.orange, { borderWidth: 2.4 }),
+        lineDs('S&P500', R.rows.map((x) => (x.sp / a.sp - 1) * 100), C.blue, { borderWidth: 1.6 }),
+        lineDs(EN ? 'KOSPI' : '코스피', R.rows.map((x) => (x.ks / a.ks - 1) * 100), C.teal, { borderWidth: 1.6 }),
+      ] }, options: { interaction, plugins: { legend: { display: true, labels: { boxWidth: 10, boxHeight: 2, font: { size: 11 } } }, tooltip: tooltip((it) => lab[it.dataIndex], (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`) },
+        scales: { x: axisX(lab, (d) => `${+d.slice(5, 7)}/${+d.slice(8)}`, 5), y: axisY((v) => `${v >= 0 ? '+' : ''}${Math.round(v)}%`) } } });
+    }
+  }
+
+  // ---------------------------------------------------------------- 🔔 알림함: 목표가 도달 · 실적 발표 · 배당 입금 · 새 공시를 한곳에(최근 7일). 열면 모두 읽음
+  const NOTI_KEY = 'cw.notiSeen';
+  let notiSeen = readJSON(NOTI_KEY, {}) || {};
+  const FORM_KO = { '8-K': '주요 사항 공시', '10-Q': '분기 보고서', '10-K': '연간 보고서' };
+  function notiItems() {
+    const out = [], now = Date.now(), wk = 7 * 864e5;
+    for (const [sym, T] of Object.entries(targets)) if (T.hit && now - T.hit < wk) out.push({ id: `tgt:${sym}:${T.hit}`, t: T.hit, ic: '🎯', title: EN ? `${nameOfSym(sym)} hit your target ${pxS(sym, T.p)}` : `${nameOfSym(sym)} 목표가 ${pxS(sym, T.p)} 도달`, sub: `${EN ? 'at' : '도달 가격'} ${pxS(sym, T.hitPx)}`, go: { sym, v: 'chart' } });
+    for (const sym of WATCH) {
+      let D = null; try { D = earnDay(sym); } catch {}
+      if (!D) continue;
+      if (D.phase === 'pre' && D.N?.date) out.push({ id: `ep:${sym}:${D.N.date}`, t: Date.parse(D.N.date + 'T00:00:00Z'), ic: '🔔', title: EN ? `${nameOfSym(sym)} reports ${dday(D.N.date) <= 0 ? 'today' : 'tomorrow'}` : `${nameOfSym(sym)} 실적 발표 ${dday(D.N.date) <= 0 ? '오늘' : '내일'}`, sub: D.time ? (D.time === 'BMO' ? (EN ? 'before the US open' : '미국 장 시작 전') : (EN ? 'after the US close' : '미국 장 마감 뒤')) : (EN ? 'time TBD' : '시간 미정'), go: { sym, v: 'earn' } });
+      else if (D.phase === 'post') { const sur = (D.E.surprises || []).find((x) => x.end === D.lastQ?.end), eps = D.fq?.eps ?? sur?.eps, est = D.fq?.epsEst ?? sur?.consensus; out.push({ id: `er:${sym}:${D.lastQ?.end}`, t: D.repMs || now, ic: '📊', title: EN ? `${nameOfSym(sym)} earnings are out` : `${nameOfSym(sym)} 실적 발표됨`, sub: eps != null && est != null ? (EN ? `EPS $${(+eps).toFixed(2)} vs $${(+est).toFixed(2)} expected` : `EPS $${(+eps).toFixed(2)} · 예상 $${(+est).toFixed(2)} ${eps >= est ? '상회' : '하회'}`) : (EN ? 'See the results' : '결과 보기'), go: { sym, v: 'earn' } }); }
+    }
+    const c = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null;
+    if (c) {
+      const today = isoToday();
+      for (const r of c.received) if (r.pay >= addDays(today, -3)) out.push({ id: `dv:${r.sym}:${r.pay}`, t: Date.parse(r.pay + 'T09:00:00+09:00'), ic: '💰', title: EN ? `${fireName(r.sym)} dividend paid` : `${fireName(r.sym)} 배당 입금`, sub: `${usd2(r.gross * (1 - c.tax))} · ${krDate(r.pay)}`, go: { tab: 'div' } });
+      for (const x of divCalendar(c)) if (x.pay <= addDays(today, 2)) out.push({ id: `dn:${x.sym}:${x.pay}`, t: Date.parse(x.pay + 'T09:00:00+09:00'), ic: '💰', title: EN ? `${fireName(x.sym)} dividend coming` : `${fireName(x.sym)} 배당 입금 예정`, sub: `${usd2(x.net)}${x.est ? (EN ? ' (est.)' : ' (예상)') : ''} · ${krDate(x.pay)}`, go: { tab: 'div' } });
+    }
+    for (const sym of WATCH) {
+      if (isKR(sym)) continue;
+      const fl = (sym === 'CRCL' ? state.data?.news?.filings : st(sym).news?.filings) || [];
+      for (const f of fl.slice(0, 6)) {
+        const form = (String(f.form).match(/^(8-K|10-Q|10-K)/) || [])[1], t = Date.parse(f.d);
+        if (form && now - t < 3 * 864e5) out.push({ id: `fl:${sym}:${f.form}:${f.d}`, t, ic: '📄', title: EN ? `${nameOfSym(sym)} filed a ${form}` : `${nameOfSym(sym)} 새 공시 · ${FORM_KO[form]}`, sub: `${f.form} · ${md(isoToTs(f.d.slice(0, 10)))}`, go: { sym, v: 'news' } });
+      }
+    }
+    const seen = new Set();
+    return out.filter((x) => (seen.has(x.id) ? false : seen.add(x.id))).sort((a, b) => b.t - a.t).slice(0, 30);
+  }
+  function updateBell() {
+    const b = document.getElementById('bell-n');
+    if (!b) return;
+    let n = 0; try { n = notiItems().filter((x) => !notiSeen[x.id]).length; } catch {}
+    b.textContent = n > 9 ? '9+' : String(n);
+    b.hidden = !n;
+    document.getElementById('bell-btn')?.setAttribute('aria-label', EN ? `Notifications${n ? `, ${n} new` : ''}` : `알림${n ? ` 새 소식 ${n}개` : ''}`);
+  }
+  function goTarget(go) {
+    if (go.tab) { state.fireTab = go.tab; savePref('fireTab', go.tab); showView('fire'); window.scrollTo({ top: 0 }); return; }
+    if (go.sym && WATCH.includes(go.sym)) setStock(go.sym);
+    const ic = { chart: 'chart', earn: 'earn', news: 'news' }[go.v];
+    const t = TAB_SETS[state.stock].find(([, , i]) => i === ic);
+    showView(t ? t[0] : 'home');
+    window.scrollTo({ top: 0 });
+  }
+  function openBell() {
+    let el = document.getElementById('nt-sheet');
+    if (!el) { el = document.createElement('div'); el.id = 'nt-sheet'; el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); document.body.appendChild(el); }
+    el.setAttribute('aria-label', EN ? 'Notifications' : '알림');
+    const L = notiItems(), ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 0 ? (EN ? 'upcoming' : '예정') : m < 60 ? (EN ? `${Math.max(1, m)}m ago` : `${Math.max(1, m)}분 전`) : m < 1440 ? (EN ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 60)}시간 전`) : (EN ? `${Math.round(m / 1440)}d ago` : `${Math.round(m / 1440)}일 전`); };
+    el.innerHTML = `<div class="sheet-bg" data-ntclose="1"></div><div class="sheet-panel nt-panel">
+      <div class="sheet-h"><b>🔔 ${EN ? 'Notifications' : '알림'}</b><button type="button" class="ws-btn" data-ntclose="1">${EN ? 'Close' : '닫기'}</button></div>
+      ${L.length ? `<ul class="nt-list">${L.map((x, i) => `<li><button type="button" class="nt-row${notiSeen[x.id] ? '' : ' new'}" data-ntgo="${i}"><span class="nt-ic" aria-hidden="true">${x.ic}</span><span class="nt-tx"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></span><em>${ago(x.t)}</em></button></li>`).join('')}</ul>`
+        : `<p class="nt-empty">${EN ? 'Nothing new this week. Targets you hit, earnings, dividends and new filings for your stocks show up here.' : '최근 7일 동안 새 소식이 없어요. 목표가 도달·실적 발표·배당 입금·새 공시가 생기면 여기에 모여요.'}</p>`}
+    </div>`;
+    el._items = L;
+    el.hidden = false; document.body.classList.add('sheet-open');
+    for (const x of L) notiSeen[x.id] = Date.now(); // 열면 모두 읽음
+    for (const [k, v] of Object.entries(notiSeen)) if (Date.now() - v > 30 * 864e5) delete notiSeen[k];
+    writeJSON(NOTI_KEY, notiSeen); updateBell();
+  }
+  function closeBell() { const el = document.getElementById('nt-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
+
+  // ---------------------------------------------------------------- 📢 실적 시즌 카드(홈 맨 위): 내 종목 중 오늘·내일 발표하거나 방금 발표한 종목만 자동으로, 누르면 그 종목 실적 화면
+  function renderSeason() {
+    const el = document.getElementById('c-season');
+    if (!el) return;
+    const rows = [];
+    for (const sym of WATCH) { let D = null; try { D = earnDay(sym); } catch {} if (D) rows.push({ sym, D }); }
+    el.hidden = !rows.length;
+    if (!rows.length) return;
+    const line = ({ sym, D }) => {
+      if (D.phase === 'pre') {
+        const when = dday(D.N.date) <= 0 ? (EN ? 'Today' : '오늘') : (EN ? 'Tomorrow' : '내일');
+        const t = D.time ? (D.time === 'BMO' ? (EN ? 'before open' : '장 시작 전') : (EN ? 'after close' : '장 마감 뒤')) : (EN ? 'time TBD' : '시간 미정');
+        return `<span class="ss-tag pre">${when}</span><span class="se-m">${t}${D.N.consensus != null ? ` · ${EN ? 'EPS est.' : '예상 EPS'} $${D.N.consensus.toFixed(2)}` : ''}</span>`;
+      }
+      const sur = (D.E.surprises || []).find((x) => x.end === D.lastQ?.end), eps = D.fq?.eps ?? sur?.eps, est = D.fq?.epsEst ?? sur?.consensus, s2 = eps != null && est ? (eps - est) / Math.abs(est) : null, p = stockPx(sym);
+      return `<span class="ss-tag post">${EN ? 'Out' : '발표됨'}</span><span class="se-m">${s2 != null ? `EPS <b class="${cls(s2)}">${s2 >= 0 ? (EN ? 'beat' : '상회') : (EN ? 'miss' : '하회')} ${pct(s2, 0)}</b> · ` : ''}${EN ? 'stock' : '주가'} <b class="${cls(p?.pct)}">${p?.pct != null ? pct(p.pct, 1) : '–'}</b></span>`;
+    };
+    card('season', {
+      title: EN ? '📢 Earnings in your stocks' : '📢 내 종목 실적 발표',
+      sub: EN ? 'Tap a stock for the full results' : '누르면 그 종목 실적 화면으로 가요',
+      body: `<ul class="se-list">${rows.map((r) => `<li><button type="button" class="se-row" data-segoto="${esc(r.sym)}"><b>${esc(nameOfSym(r.sym))}</b>${line(r)}<i aria-hidden="true">›</i></button></li>`).join('')}</ul>`,
+    });
+  }
+
+  // ---------------------------------------------------------------- 🎁 연말 결산(12월~1월 중순 홈 맨 위 · ?recap=1로 미리 보기): 올해 수익률·배당·퇴사 진행·절세를 한 장으로, 이미지 공유
+  const RECAP_FORCE = /[?&]recap=1\b/.test(location.search);
+  const recapYear = () => { const d = new Date(); return d.getMonth() === 0 ? d.getFullYear() - 1 : d.getFullYear(); };
+  const recapOpen = () => { if (RECAP_FORCE) return true; const d = new Date(); return d.getMonth() === 11 || (d.getMonth() === 0 && d.getDate() <= 15); };
+  function recapData() {
+    const Y = recapYear(), out = { Y };
+    const c = fireCfg && state.quote ? (() => { try { return fireCalc(); } catch { return null; } })() : null;
+    if (c) { benchLoad(c, () => renderRecap()); out.R = benchCalc(c, `${Y}-01-01`, `${Y}-12-31`); }
+    const H = fireHist.filter((h) => h.d?.startsWith(String(Y)));
+    if (H.length >= 2) out.prog = { from: H[0].p, to: H.at(-1).p, since: H[0].d };
+    const dc = divCfg ? (() => { try { return divCalc(); } catch { return null; } })() : null, fx = state.quote?.fx?.rate;
+    if (dc?.byYear?.[Y]) out.div = { usd: dc.byYear[Y].gross * (1 - dc.tax), krw: fx ? dc.byYear[Y].gross * (1 - dc.tax) * fx : null, n: dc.byYear[Y].n };
+    if (acctCfg.y === Y) { const A = acctCalc(); if (A.isa || A.elig) out.acct = A; }
+    if (manIn(taxCfg.amt) > 0 && Y === new Date().getFullYear()) out.tax = taxCalc();
+    return out;
+  }
+  function renderRecap() {
+    const el = document.getElementById('c-recap');
+    if (!el) return;
+    if (!recapOpen()) { el.hidden = true; return; }
+    const D = recapData(), nm = (t) => (krTk(t) ? fireName(t) : t), R = D.R;
+    const tiles = [
+      R && `<div class="rc-hero"><span>${EN ? `${D.Y} return (my stocks)` : `${D.Y}년 내 종목 수익률`}</span><b class="${cls(R.my)}">${pct(R.my, 1)}</b><small>S&P500 ${pct(R.sp, 1)} · ${EN ? 'KOSPI' : '코스피'} ${pct(R.ks, 1)}</small></div>`,
+      R?.per.length > 1 && `<div><span>${EN ? 'Best stock' : '올해의 종목'}</span><b>${esc(nm(R.per[0].t))}</b><small class="${cls(R.per[0].r)}">${pct(R.per[0].r, 1)}</small></div>`,
+      D.div && `<div><span>${EN ? 'Dividends received' : '올해 받은 배당(세후)'}</span><b>${usd2(D.div.usd)}</b><small>${D.div.krw ? `≈ ${wonFull(D.div.krw)} · ` : ''}${D.div.n}${EN ? ' payouts' : '번'}</small></div>`,
+      D.prog && `<div><span>${EN ? 'FIRE progress' : '퇴사 진행률'}</span><b>${(D.prog.to * 100).toFixed(1)}%</b><small>${(D.prog.from * 100).toFixed(1)}% → ${EN ? `since ${D.prog.since}` : `${krDate(D.prog.since)}부터`}</small></div>`,
+      D.acct && `<div><span>${EN ? 'Tax credit back' : '연말정산 환급(예상)'}</span><b>${wonFull(D.acct.refund)}</b><small>ISA ${wonFull(D.acct.isa * 1e4)} · ${EN ? 'pension' : '연금'} ${wonFull(D.acct.elig * 1e4)}</small></div>`,
+      D.tax && `<div><span>${EN ? 'Capital gains tax' : '해외주식 양도세(예상)'}</span><b>${D.tax.tax > 0 ? wonFull(D.tax.tax) : (EN ? 'None' : '없음')}</b><small>${EN ? 'net realized' : '실현 손익'} ${signed(D.tax.real, wonFull)}</small></div>`,
+    ].filter(Boolean);
+    el.hidden = !tiles.length;
+    if (!tiles.length) return;
+    card('recap', {
+      title: EN ? `🎁 My ${D.Y} in review` : `🎁 ${D.Y}년 내 투자 결산`, sub: EN ? 'Your year on one page' : '올 한 해를 한 장으로',
+      share: 'recap',
+      body: `<div class="rc-grid">${tiles.join('')}</div><p class="note">${EN ? 'Return assumes your current holdings over the year (price only). Dividends from the Dividends tab, tax from the Tax tab.' : '수익률은 지금 보유 종목·수량을 1년 내내 들고 있었다고 본 가격 수익률이에요. 배당은 배당금 탭, 절세·양도세는 세금 탭에 넣은 값이에요.'}</p>`,
+    });
+  }
+
   // ---------------------------------------------------------------- 🇰🇷 한국 종목 다음 실적 발표일(네이버 증권 캘린더, 앞으로 6주)
   state.krNext = {};
   function krNextEarn(sym) {
@@ -3395,6 +3622,9 @@
     checkTargets();
     try { renderWeek(fc); } catch (e) { console.error(e); }
     try { renderSched(); } catch (e) { console.error(e); }
+    try { renderSeason(); } catch (e) { console.error(e); }
+    try { renderRecap(); } catch (e) { console.error(e); }
+    try { updateBell(); } catch (e) { console.error(e); }
   }
 
   // ---------------------------------------------------------------- 🎉 퇴사 목표 달성 축하(5·10·20…100%) — 처음 넣었을 때·목표를 바꿨을 때는 조용히 지금 위치만 기록
@@ -3564,6 +3794,7 @@
     if (document.activeElement?.id !== 'sim-range') renderFireSim(c);
     try { renderFireMix(c); } catch (e) { console.error(e); }
     try { renderRebal(c); } catch (e) { console.error(e); }
+    try { renderBench(c); } catch (e) { console.error(e); }
     // 양도세 탭: 시세가 들어오면 보유 종목별 계산을 다시(입력 중엔 건드리지 않음)
     if (state.fireTab === 'tax' && !document.activeElement?.closest?.('#c-tax')) { const o = document.getElementById('tax-out'); if (o) { const h = taxOutHtml(); if (o.innerHTML !== h) o.innerHTML = h; } }
     renderFireHist();
@@ -7825,6 +8056,14 @@
     const stn = ev.target.closest('[data-sumtone]');
     if (stn) { const [id, t] = stn.dataset.sumtone.split(':'); sumTone[id] = sumTone[id] === t ? 'all' : t; if (id === 'summary') renderSummary(); else renderSSummary(); return; }
     if (ev.target.closest('[data-stocksheet]')) { openStockSheet(); return; }
+    if (ev.target.closest('#bell-btn')) { openBell(); return; }
+    if (ev.target.closest('[data-ntclose]')) { closeBell(); return; }
+    const ntg = ev.target.closest('[data-ntgo]');
+    if (ntg) { const x = document.getElementById('nt-sheet')?._items?.[+ntg.dataset.ntgo]; closeBell(); if (x) goTarget(x.go); return; }
+    const seg = ev.target.closest('[data-segoto]');
+    if (seg) { goTarget({ sym: seg.dataset.segoto, v: 'earn' }); return; }
+    const bmr = ev.target.closest('[data-benchrange]');
+    if (bmr) { state.benchRange = bmr.dataset.benchrange; savePref('benchRange', state.benchRange); const c = fireCfg && state.quote ? (() => { try { return fireCalc(); } catch { return null; } })() : null; renderBench(c); return; }
     if (ev.target.closest('[data-swclose]')) { closeStockSheet(); return; }
     const swp = ev.target.closest('[data-swpick]');
     if (swp) { pickStockFromSheet(swp.dataset.swpick); return; }

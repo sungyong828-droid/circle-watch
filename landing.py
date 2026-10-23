@@ -279,7 +279,7 @@ def fire_page():
     ])}<p class="lp-note"><a href="dividend">배당금 계산기 자세히 →</a></p></section>
 {faq_html(FIRE_FAQ)}
 <section class="lp-sec lp-end"><a class="lp-cta" href="{go}">🔥 퇴사 계산기 열기 →</a></section>'''
-    return page('fire', title, desc, body, [app_ld('Fire Portfolio 퇴사 계산기', 'fire', desc), faq_ld(FIRE_FAQ)])
+    return page('fire', title, desc, body, [app_ld('Fire Portfolio 퇴사 계산기', 'fire', desc), faq_ld(FIRE_FAQ)], og='og-fire.png?v=1')
 
 
 EN_FAQ = [
@@ -517,7 +517,7 @@ def bonus_page():
 </ol></section>
 {faq_html(BONUS_FAQ)}
 <section class="lp-sec lp-end"><a class="lp-cta" href="{go}">💼 성과급 계산기 열기 →</a><p class="lp-note"><a href="portfolio">배당 포트폴리오 계산기 →</a></p></section>"""
-    return page('bonus', title, desc, body, [app_ld('Fire Portfolio 성과급 계산기', 'bonus', desc), faq_ld(BONUS_FAQ)])
+    return page('bonus', title, desc, body, [app_ld('Fire Portfolio 성과급 계산기', 'bonus', desc), faq_ld(BONUS_FAQ)], og='og-bonus.png?v=1')
 
 
 def portfolio_page():
@@ -582,7 +582,7 @@ def etftax_page():
 </ol></section>
 {faq_html(ETAX_FAQ)}
 <section class="lp-sec lp-end"><a class="lp-cta" href="{go}">🧮 미국 ETF 세금 비교하기 →</a><p class="lp-note"><a href="grow">적립식 배당 시뮬레이터 →</a> · <a href="portfolio">배당 포트폴리오 계산기 →</a></p></section>"""
-    return page('etf-tax', title, desc, body, [app_ld('Fire Portfolio 미국 ETF 세금 비교 계산기', 'etf-tax', desc), faq_ld(ETAX_FAQ)])
+    return page('etf-tax', title, desc, body, [app_ld('Fire Portfolio 미국 ETF 세금 비교 계산기', 'etf-tax', desc), faq_ld(ETAX_FAQ)], og='og-etf-tax.png?v=1')
 
 
 def grow_page():
@@ -606,7 +606,7 @@ def grow_page():
     ])}</section>
 {faq_html(GROW_FAQ)}
 <section class="lp-sec lp-end"><a class="lp-cta" href="{go}">📈 적립식 배당 시뮬레이터 열기 →</a><p class="lp-note"><a href="etf-tax">미국 ETF 세금 비교 →</a> · <a href="portfolio">배당 포트폴리오 계산기 →</a></p></section>"""
-    return page('grow', title, desc, body, [app_ld('Fire Portfolio 적립식 배당 시뮬레이터', 'grow', desc), faq_ld(GROW_FAQ)], og='og-dividend.png?v=1')
+    return page('grow', title, desc, body, [app_ld('Fire Portfolio 적립식 배당 시뮬레이터', 'grow', desc), faq_ld(GROW_FAQ)], og='og-grow.png?v=1')
 
 
 def rss():
