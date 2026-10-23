@@ -3611,7 +3611,7 @@
   const pxOf = (sym) => { try { return (isKR(sym) ? state.krq?.[sym]?.price : null) ?? (STOCK_INFO[sym] ? stockPx(sym)?.price : null) ?? state.quote?.[sym]?.price ?? null; } catch { return null; } };
   // 뉴스 제목: 한국어 화면에서는 서버가 옮겨 둔 한국어 제목(ko)을 먼저, 영어 원문은 작게 아래에
   const ttl = (n) => (!EN && n?.ko ? n.ko : n?.title || '');
-  const ttlEn = (n) => (!EN && n?.ko && n.ko !== n.title ? `<span class="nt-en" lang="en">${esc(ttl(n))}</span>` : '');
+  const ttlEn = (n) => (!EN && n?.ko && n.ko !== n.title ? `<span class="nt-en" lang="en">${esc(String(n.title))}</span>` : ''); // 영어 원문
   const nameOfSym = (sym) => (STOCK_INFO[sym] ? symLabel(sym) : fireName(sym));
   // 방문 기록(주간 리포트용 가격 · 목표가 확인) + 이번 주 일정 카드 — 홈이 갱신될 때마다(3초에 한 번)
   function renderSince(fc) {
