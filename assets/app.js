@@ -3230,7 +3230,7 @@
     if (rows.length < 2) return null;
     const a = rows[0], z = rows.at(-1), R = (k) => z[k] / a[k] - 1;
     const per = ok.map((r, i) => ({ t: r.ticker, r: (z.px[i] * (r.kr ? 1 : z.X)) / (a.px[i] * (r.kr ? 1 : a.X)) - 1 })).sort((x, y) => y.r - x.r);
-    return { rows, start: a.d, end: z.d, my: R('my'), sp: R('sp'), ks: R('ks'), per, miss, late: a.d > from };
+    return { rows, start: a.d, end: z.d, my: R('my'), sp: R('sp'), ks: R('ks'), per, miss, late: daysBetween(from, a.d) > 7 }; // 연휴로 며칠 늦게 시작하는 건 '늦은 상장'이 아님
   }
   const benchFrom = (rg) => (rg === 'ytd' ? `${new Date().getFullYear()}-01-01` : addDays(isoToday(), -BENCH_RANGES[rg][0]));
   function renderBench(c) {
@@ -3333,7 +3333,7 @@
     writeJSON(NOTI_KEY, notiSeen); updateBell();
   }
   // 실적·공시 자료는 늦게 도착하기도 해서, 알림 숫자와 실적 카드는 20초마다 다시 확인한다
-  setTimeout(() => { const tick = () => { if (document.hidden) return; try { renderSeason(); updateBell(); } catch (e) { console.error(e); } }; tick(); setInterval(tick, 20000); }, 4000);
+  setTimeout(() => { const tick = () => { if (document.hidden) return; try { renderSeason(); updateBell(); renderRecap(); } catch (e) { console.error(e); } }; tick(); setTimeout(tick, 6000); setInterval(tick, 20000); }, 4000);
   function closeBell() { const el = document.getElementById('nt-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
 
   // ---------------------------------------------------------------- 📢 실적 시즌 카드(홈 맨 위): 내 종목 중 오늘·내일 발표하거나 방금 발표한 종목만 자동으로, 누르면 그 종목 실적 화면
@@ -3385,7 +3385,7 @@
       R && `<div class="rc-hero"><span>${EN ? `${D.Y} return (my stocks)` : `${D.Y}년 내 종목 수익률`}</span><b class="${cls(R.my)}">${pct(R.my, 1)}</b><small>S&P500 ${pct(R.sp, 1)} · ${EN ? 'KOSPI' : '코스피'} ${pct(R.ks, 1)}</small></div>`,
       R?.per.length > 1 && `<div><span>${EN ? 'Best stock' : '올해의 종목'}</span><b>${esc(nm(R.per[0].t))}</b><small class="${cls(R.per[0].r)}">${pct(R.per[0].r, 1)}</small></div>`,
       D.div && `<div><span>${EN ? 'Dividends received' : '올해 받은 배당(세후)'}</span><b>${usd2(D.div.usd)}</b><small>${D.div.krw ? `≈ ${wonFull(D.div.krw)} · ` : ''}${D.div.n}${EN ? ' payouts' : '번'}</small></div>`,
-      D.prog && `<div><span>${EN ? 'FIRE progress' : '퇴사 진행률'}</span><b>${(D.prog.to * 100).toFixed(1)}%</b><small>${(D.prog.from * 100).toFixed(1)}% → ${EN ? `since ${D.prog.since}` : `${krDate(D.prog.since)}부터`}</small></div>`,
+      D.prog && `<div><span>${EN ? 'FIRE progress' : '퇴사 진행률'}</span><b>${(D.prog.to * 100).toFixed(1)}%</b><small>${EN ? `${(D.prog.from * 100).toFixed(1)}% on ${D.prog.since}` : `${krDate(D.prog.since)} ${(D.prog.from * 100).toFixed(1)}%에서`}</small></div>`,
       D.acct && `<div><span>${EN ? 'Tax credit back' : '연말정산 환급(예상)'}</span><b>${wonFull(D.acct.refund)}</b><small>ISA ${wonFull(D.acct.isa * 1e4)} · ${EN ? 'pension' : '연금'} ${wonFull(D.acct.elig * 1e4)}</small></div>`,
       D.tax && `<div><span>${EN ? 'Capital gains tax' : '해외주식 양도세(예상)'}</span><b>${D.tax.tax > 0 ? wonFull(D.tax.tax) : (EN ? 'None' : '없음')}</b><small>${EN ? 'net realized' : '실현 손익'} ${signed(D.tax.real, wonFull)}</small></div>`,
     ].filter(Boolean);
