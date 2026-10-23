@@ -11,7 +11,13 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- ⚠️ **Arc DEX 거래액 급증 표시**: 24시간 거래액이 평소(최근 7일 중간값)의 3배를 넘으면 "급증, 확인 중" 안내가 떠요. 실제 거래가 몰린 건지 집계 오류인지 함께 지켜볼 수 있어요.
+- 스테이블코인 표 EURC 1일·7일·30일 증감률을 유로 단위 일별 기록으로 계산(DefiLlama 목록 값은 달러 환산이라 환율 변동이 섞임, 차이 0.1~0.2%p). <!-- internal -->
+- 워커 5분 예약 실행에서 15분마다 latest.json이 14분 넘게 묵었으면 GitHub 수집(workflow_dispatch)을 깨움. GH_TOKEN 비밀값 필요. <!-- internal -->
 - 화면: 실시간 갱신 때 중계 서버의 USDC 외 공급량 기록이 수집기 기록보다 짧으면 더 최근까지 있는 쪽을 쓰도록(워커에서 CoinGecko가 막혀 USYC가 10/14에서 끊기던 문제). <!-- internal -->
+<!-- EN
+- Arc DEX volume spike notice: if 24-hour volume exceeds 3× the usual level (7-day median), a "spike, checking" note appears so you can tell whether it's real trading or a counting error.
+-->
 
 ## v2026.10.23-1 — 2026-10-23
 

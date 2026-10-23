@@ -820,7 +820,15 @@
     const s = state.data.stables;
     if (!s) return failed('stables', '달러 스테이블코인 공급량', state.data.errors?.stables);
     const eurcOfficial = current('eurcTotal').v, usdcOfficial = current('usdcTotal').v, shareNow = current('usdcShare').v;
+    // EURC 목록 값은 달러 환산이 섞여(서클 공식보다 ~17% 큼) 증감률에 환율 변동이 들어간다 → 유로 단위 일별 기록으로 다시 계산
+    const eurcCh = (() => {
+      const S = state.data.series?.eurc, last = S?.at(-1);
+      if (!last || Date.now() / 1000 - last[0] > 3 * 86400) return null;
+      const at = (n) => { const p = S.findLast((q) => q[0] <= last[0] - n * 86400); return p?.[1] > 0 ? last[1] / p[1] - 1 : null; };
+      return { ch1: at(1), ch7: at(7), ch30: at(30) };
+    })();
     const row = (r, isProduct) => {
+      if (r.sym === 'EURC' && eurcCh) r = { ...r, ...eurcCh };
       const hl = r.sym === 'USDC' ? ' class="hl"' : '';
       const off = r.sym === 'USDC' && usdcOfficial;
       const supply = r.cur === 'EUR' ? eur(r.sym === 'EURC' && eurcOfficial ? eurcOfficial : r.supply) : usd(off ? usdcOfficial : r.supply);
@@ -961,9 +969,13 @@
     const pts = x.daily.slice(-14);
     const labels = pts.map((p) => p[0]);
     const top = (x.top || []).slice(0, 4);
+    // 24시간 값이 최근 7일 중간값의 3배 이상이면 급증 표시 — 실제 거래 몰림인지 집계 오류인지 확인 전
+    const prev7 = x.daily.slice(-8, -1).map((p) => p[1]).sort((a, b) => a - b), med = prev7[3];
+    const spike = prev7.length === 7 && med > 0 && x.total24h >= med * 3 ? x.total24h / med : 0;
     card('dex', {
       title: 'Arc DEX 거래액', sub: '일별 · DefiLlama', info: INFO.dex,
       body: `<div class="headline"><span class="big">${usd(x.total24h)}</span><span class="lbl">최근 24시간 · 7일 합계 ${usd(x.total7d)}</span></div>${deltaLine('dex24h')}
+        ${spike ? `<p class="note">⚠️ ${EN ? `Spike, checking: about ${spike.toFixed(1)}× the usual level (7-day median ${usd(med)}). It may be a real burst of trading or a DefiLlama counting error, so watch whether it continues.` : `급증, 확인 중: 평소(최근 7일 중간값 ${usd(med)})의 약 ${spike.toFixed(1)}배예요. 실제로 거래가 몰린 건지 DefiLlama 집계 오류인지 아직 몰라요. 며칠 이어지는지 함께 보세요.`}</p>` : ''}
         <div class="chart"><canvas id="cv-dex" role="img" aria-label="Arc DEX 일별 거래액"></canvas></div>
         ${top.length ? `<p class="note">24시간 상위: ${top.map((p) => `${esc(p.name)} ${usd(p.v)}`).join(' · ')}</p>` : ''}`,
     });

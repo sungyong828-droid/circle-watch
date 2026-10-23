@@ -1549,6 +1549,17 @@ export async function handleFacts(url, cache, cors, ctx, env) {
 }
 
 // ---------------------------------------------------------------- USDC·EURC·USYC 일별 공급량 (DefiLlama — 응답 헤더 문제로 브라우저가 직접 못 받음)
+async function kickCollector(env) {
+  const r = await fetch(`https://sungyong828-droid.github.io/circle-watch/data/latest.json?t=${Date.now()}`, { cf: { cacheTtl: 0 } });
+  const at = r.ok ? Date.parse((await r.json()).updatedAt) : 0;
+  if (Date.now() - at < 14 * 60000) return;
+  await fetch('https://api.github.com/repos/sungyong828-droid/circle-watch/actions/workflows/update.yml/dispatches', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'circle-watch-worker', 'content-type': 'application/json' },
+    body: JSON.stringify({ ref: 'main' }),
+  });
+}
+
 export async function handleSeries(url, cache, cors, ctx) {
   const key = new Request(`${url.origin}/series`);
   let res = await cache.match(key);
@@ -2101,6 +2112,9 @@ export default {
   async scheduled(event, env, ctx) {
     // 3시간마다: FAA 인증 %·스페이스X 보호예수 공시 자동 확인
     if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); return; }
+    // 15분마다: GitHub 예약 실행은 실제로 3~5시간씩 밀리므로, 데이터가 14분 넘게 묵었으면 수집을 직접 깨운다
+    // (GH_TOKEN 비밀값이 있을 때만 — 저장소 Actions 쓰기 권한 토큰)
+    if (env.GH_TOKEN && Math.floor(event.scheduledTime / 300000) % 3 === 0) ctx.waitUntil(kickCollector(env).catch(() => {}));
     const sym = STOCKS[Math.floor(event.scheduledTime / 300000) % STOCKS.length];
     ctx.waitUntil((async () => {
       const data = await buildNews(sym);
