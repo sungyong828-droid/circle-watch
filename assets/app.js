@@ -1994,7 +1994,9 @@
       if (j.error || !j.usdc?.length) throw new Error(j.error || 'series');
       // 같은 동기화에서 '스테이블코인'이 붙여 둔 오늘 값은 남긴다
       const keep = (arr, cur) => { const last = cur?.at(-1); return last && last[0] > arr.at(-1)[0] ? [...arr, last] : arr; };
-      d.series = { usdc: keep(j.usdc, d.series?.usdc), eurc: j.eurc?.length ? j.eurc : d.series?.eurc, usyc: j.usyc?.length ? j.usyc : d.series?.usyc };
+      // 중계 서버 기록이 수집기 기록보다 짧으면(예: CoinGecko가 워커를 막아 USYC가 10/14에서 끊김) 더 최근까지 있는 쪽을 쓴다
+      const newer = (a, b) => (a?.length && (a.at(-1)[0] >= (b?.at(-1)?.[0] ?? 0)) ? a : b);
+      d.series = { usdc: keep(j.usdc, d.series?.usdc), eurc: newer(j.eurc, d.series?.eurc), usyc: newer(j.usyc, d.series?.usyc) };
     },
     async facts() { state.facts = await getJ(`${NEWS_API}/facts`, 15000); }, // FAA %·보호예수 공시 자동 확인 결과
     async rates(d) { // 미 재무부 13주 국채 금리
