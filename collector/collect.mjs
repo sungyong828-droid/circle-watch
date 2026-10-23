@@ -204,9 +204,28 @@ async function stableSeries(id, field = 'totalCirculating') {
     .filter(([t]) => t >= HISTORY_START);
 }
 
-async function collectSeries() {
-  const [usdc, eurc, usyc] = await Promise.all([stableSeries('2'), stableSeries('50'), stableSeries('237')]);
-  return { usdc, eurc, usyc };
+// DefiLlama는 2026-10-14부터 USYC 기록을 멈췄다(전체 차트는 빈 응답) → 종목 상세 기록 뒤에
+// CoinGecko 시가총액÷가격(=유통 수량, DefiLlama와 같은 단위)을 일별로 이어 붙인다
+async function usycSeries() {
+  let L = await stableSeries('237').catch(() => []);
+  if (!L.length) {
+    const d = await getJSON('https://stablecoins.llama.fi/stablecoin/237');
+    L = (d.tokens || []).map((p) => [Number(p.date), Object.values(p.circulating || {})[0] || 0]).filter(([t, v]) => t >= HISTORY_START && v > 0);
+  }
+  try {
+    const g = await getJSON('https://api.coingecko.com/api/v3/coins/hashnote-usyc/market_chart?vs_currency=usd&days=90&interval=daily', { retries: 1 });
+    const last = L.at(-1)?.[0] ?? 0;
+    const add = new Map();
+    g.prices.forEach(([ms, p], i) => { const mc = g.market_caps[i]?.[1]; if (p > 0 && mc > 0 && ms / 1000 > last + DAY / 2) add.set(dayStart(ms / 1000), mc / p); });
+    L = L.concat([...add].sort((a, b) => a[0] - b[0]));
+  } catch (e) { log('usyc: CoinGecko 실패 →', e.message); }
+  return L;
+}
+
+async function collectSeries(prev) {
+  // USDC가 핵심 — EURC·USYC가 실패해도 직전 기록으로 두고 나머지는 갱신한다
+  const [usdc, eurc, usyc] = await Promise.all([stableSeries('2'), stableSeries('50').catch(() => null), usycSeries().catch(() => null)]);
+  return { usdc, eurc: eurc?.length ? eurc : prev?.eurc ?? [], usyc: usyc?.length ? usyc : prev?.usyc ?? [] };
 }
 
 async function collectArcDex() {
@@ -637,7 +656,7 @@ async function main() {
   const sections = {
     stables: () => collectStables(),
     circle: () => collectCircleOfficial(),
-    series: () => collectSeries(),
+    series: () => collectSeries(prev.series),
     arcDex: () => collectArcDex(),
     arcTvl: () => collectArcTvl(),
     lending: () => collectLending(),
@@ -670,7 +689,7 @@ async function main() {
     eurcTotal: out.circle?.eurcTotal,
     arcUsdc: out.onchain?.now?.arcUsdc ?? out.circle?.arcUsdc,
     arcEurc: out.onchain?.now?.arcEurc ?? out.circle?.arcEurc,
-    usycSupply: out.stables?.products?.find((p) => p.sym === 'USYC')?.supply,
+    usycSupply: out.stables?.products?.find((p) => p.sym === 'USYC')?.supply ?? out.series?.usyc?.at(-1)?.[1],
     dex24h: out.arcDex?.total24h,
     tvl: out.arcTvl?.now,
     borrow: lastLend?.borrow,

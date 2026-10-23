@@ -1571,7 +1571,17 @@ export async function handleSeries(url, cache, cors, ctx) {
       };
       // USDC가 핵심 — EURC·USYC는 실패해도 빈 기록으로 두고 나머지를 보여준다
       const soft = (p) => p.catch(() => []);
-      const [usdc, eurc, usyc] = await Promise.all([get(2), soft(get(50)), soft(get(237))]);
+      // DefiLlama가 2026-10-14부터 USYC 기록을 멈춤 → CoinGecko 시가총액÷가격(유통 수량)으로 이어 붙인다
+      const usycTail = async (L) => {
+        try {
+          const r = await fetch('https://api.coingecko.com/api/v3/coins/hashnote-usyc/market_chart?vs_currency=usd&days=90&interval=daily', opt);
+          if (!r.ok) return L;
+          const g = await r.json(), last = L.at(-1)?.[0] ?? 0, add = new Map();
+          g.prices.forEach(([ms, p], i) => { const mc = g.market_caps[i]?.[1]; if (p > 0 && mc > 0 && ms / 1000 > last + 43200) add.set(Math.floor(ms / 86400000) * 86400, mc / p); });
+          return L.concat([...add].sort((a, b) => a[0] - b[0]));
+        } catch { return L; }
+      };
+      const [usdc, eurc, usyc] = await Promise.all([get(2), soft(get(50)), soft(get(237)).then(usycTail)]);
       if (!usdc.length) throw new Error('llama: no USDC data');
       res = new Response(JSON.stringify({ at: new Date().toISOString(), usdc, eurc, usyc }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=1800' } });
       ctx.waitUntil(cache.put(key, res.clone()));
