@@ -3193,17 +3193,22 @@
   const BENCH_RANGES = { '1m': [31, '1개월', '1M'], '3m': [92, '3개월', '3M'], '6m': [183, '6개월', '6M'], '1y': [366, '1년', '1Y'], ytd: [0, '올해', 'YTD'] };
   state.bench = {}; state.benchRange = loadPref('benchRange', '3m');
   const benchSyms = (c) => [...new Set([...(c?.rows || []).filter((r) => r.shares > 0).map((r) => r.ticker), '^GSPC', '^KS11', 'KRW=X'])];
+  // 받는 중이면 끝날 때 기다리던 화면을 모두 다시 그린다(같은 자료를 여러 카드가 함께 기다려도 빠지지 않게)
+  let benchPend = 0;
+  const benchWait = new Set();
   function benchLoad(c, done) {
-    let pend = 0;
+    if (done) benchWait.add(done);
+    let started = 0;
     for (const sym of benchSyms(c)) {
       if (state.bench[sym]) continue;
-      state.bench[sym] = { loading: true }; pend++;
+      state.bench[sym] = { loading: true }; benchPend++; started++;
       getJ(`${NEWS_API}/chart?s=${encodeURIComponent(sym)}&r=3m`, 15000)
         .then((j) => { const m = new Map(); for (const p of j.points || []) if (p[1] != null) m.set(new Date(p[0]).toISOString().slice(0, 10), p[1]); state.bench[sym] = j.error || !m.size ? { err: true } : { m, t: Date.now() }; })
         .catch(() => { state.bench[sym] = { err: true }; })
-        .finally(() => { if (--pend === 0) done?.(); });
+        .finally(() => { if (--benchPend === 0) { const W = [...benchWait]; benchWait.clear(); for (const f of W) { try { f(); } catch (e) { console.error(e); } } } });
     }
-    return pend;
+    if (!benchPend) benchWait.delete(done);
+    return benchPend;
   }
   // from~to(포함) 사이: 날짜별 내 포트폴리오(원화) · S&P500(원화 환산) · 코스피, 기간 수익률, 종목별 수익률
   function benchCalc(c, from, to = isoToday()) {
@@ -3327,6 +3332,8 @@
     for (const [k, v] of Object.entries(notiSeen)) if (Date.now() - v > 30 * 864e5) delete notiSeen[k];
     writeJSON(NOTI_KEY, notiSeen); updateBell();
   }
+  // 실적·공시 자료는 늦게 도착하기도 해서, 알림 숫자와 실적 카드는 20초마다 다시 확인한다
+  setTimeout(() => { const tick = () => { if (document.hidden) return; try { renderSeason(); updateBell(); } catch (e) { console.error(e); } }; tick(); setInterval(tick, 20000); }, 4000);
   function closeBell() { const el = document.getElementById('nt-sheet'); if (el) el.hidden = true; document.body.classList.remove('sheet-open'); }
 
   // ---------------------------------------------------------------- 📢 실적 시즌 카드(홈 맨 위): 내 종목 중 오늘·내일 발표하거나 방금 발표한 종목만 자동으로, 누르면 그 종목 실적 화면
