@@ -3625,7 +3625,7 @@
     const chips = (L) => L.map((m) => `<span class="wk-chip"><span>${esc(nameOfSym(m.sym))}</span><b class="${cls(m.r)}">${pct(m.r, 1)}</b></span>`).join('');
     const from = W.from ? `${+W.from.slice(5, 7)}/${+W.from.slice(8)}` : '', to = `${+isoToday().slice(5, 7)}/${+isoToday().slice(8)}`;
     const nxt = [...(W.earnNext || []).map((x) => `${esc(nameOfSym(x.sym))} ${EN ? 'earnings' : '실적'} ${+x.d.slice(5, 7)}/${+x.d.slice(8)}`), ...(W.divNext || []).slice(0, 3).map((x) => `${esc(fireName(x.sym))} ${EN ? 'dividend' : '배당'} ${+x.pay.slice(5, 7)}/${+x.pay.slice(8)}`)];
-    el.innerHTML = `<div class="sc-head"><div><h3>📅 ${weekMon() ? (EN ? 'Last week in review' : '지난주 내 포트폴리오') : EN ? 'My week in review' : '이번 주 내 포트폴리오'}</h3><p class="sub">${from ? `${from} ~ ${to} · ` : ''}${EN ? 'Friday evening to Monday' : '매주 금요일 저녁~월요일에 보여요'}</p></div><button type="button" class="sc-x" data-weekclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
+    el.innerHTML = `<div class="sc-head"><div><h3>📅 ${weekMon() ? (EN ? 'Last week in review' : '지난주 내 포트폴리오') : EN ? 'My week in review' : '이번 주 내 포트폴리오'}</h3><p class="sub">${from ? `${from} ~ ${to} · ` : ''}${EN ? 'Friday evening to Monday' : '매주 금요일 저녁부터 월요일까지 보여요'}</p></div><button type="button" class="sc-x" data-weekclose="1" aria-label="${EN ? 'Dismiss' : '닫기'}">×</button></div>
       ${W.r != null ? `<div class="wk-top"><div><span>${weekMon() ? (EN ? 'Last week' : '지난주 수익률') : EN ? 'This week' : '이번 주 수익률'}</span><b class="${cls(W.r)}">${pct(W.r, 1)}</b><small>${signed(W.v1 - W.v0, wonFull)}</small></div><div><span>${EN ? 'FIRE progress' : '퇴사까지 진행률'}</span><b>${(W.p1 * 100).toFixed(1)}%</b><small class="${cls(W.p1 - W.p0)}">${W.p1 - W.p0 >= 0 ? '+' : ''}${((W.p1 - W.p0) * 100).toFixed(1)}%p</small></div></div>` : ''}
       <ul class="sc-list">
         ${top.length ? `<li><span class="sc-i" aria-hidden="true">🔺</span><div><b>${EN ? 'Top gainers' : '가장 많이 오른 종목'}</b><div class="sc-chips">${chips(top)}</div></div></li>` : ''}
@@ -3880,7 +3880,7 @@
     if (!document.getElementById('c-firescen')) return;
     card('firescen', {
       title: EN ? '🎯 When can I retire? 3 scenarios' : '🎯 퇴사 시점 시나리오',
-      sub: EN ? 'Today’s value + monthly savings growing at 4% · 7% · 10% a year' : '지금 평가금액 + 매달 더 넣는 돈이 연 4%·7%·10%로 불어나면',
+      sub: EN ? 'Today’s value + monthly savings growing at 4% · 7% · 10% a year' : '지금 평가금액 + 매달 더 넣는 돈 · 연 수익률 4%·7%·10% 기준',
       easy: EN ? 'Shows when your portfolio would reach the FIRE goal if it grows at a steady yearly rate. Real returns jump around a lot, so treat these dates as a rough guide. Pre-tax, not adjusted for inflation.' : '지금 모은 돈이 매년 일정한 비율로 불어난다고 볼 때 목표 금액에 닿는 때예요. 실제 주가는 크게 오르내리니 대략의 기준으로만 보세요. 세전이고 물가 상승은 반영하지 않았어요.',
       body: `<label class="bn-f"><span>${EN ? 'Monthly savings to add' : '매달 더 넣는 돈'}</span><div class="bn-in"><input inputmode="numeric" id="scen-add" value="${esc(String(scenCfg.add || ''))}" placeholder="0" aria-label="${EN ? 'Monthly savings to add (×10k won)' : '매달 더 넣는 돈(만원)'}"><em>${EN ? '×10k ₩' : '만원'}</em></div></label>
         <div id="scen-out">${scenHtml(c)}</div>`,
