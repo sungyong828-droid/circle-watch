@@ -7732,8 +7732,8 @@ ${what.join(' · ')}
   const SEMI_MEM = new Set(['005930.KS', '005935.KS', '000660.KS', 'MU']);
   const SEMI_ALL = new Set([...SEMI_MEM, 'NVDA', 'AMD', 'TSM', 'AVGO', 'ASML', 'INTC', 'QCOM', 'ARM', 'AMAT', 'LRCX', 'KLAC', 'MRVL', 'TXN', 'SMCI', 'SOXX', 'SMH', 'SOXL', '042700.KS', '000990.KS', '403870.KQ', '058470.KQ', '240810.KQ', '091160.KS']);
   const BIGTECH = new Set(['GOOGL', 'GOOG', 'MSFT', 'AMZN', 'META', 'AAPL', 'ORCL', 'NFLX', 'QQQ', 'QQQM', 'TQQQ', 'MAGS']);
-  const HDIV = new Set(['MSTY', 'JEPI', 'JEPQ', 'QYLD', 'XYLD', 'RYLD', 'SCHD', 'DIVO', 'SPYI', 'QQQI', 'TSLY', 'NVDY', 'CONY', 'ULTY', 'YMAX', 'YMAG', 'PLTY', 'AMZY', 'GOOY', 'SVOL', 'KQQQ', 'GPIQ', 'GPIX']);
-  // 목록에 없는 미국 ETF도 최근 1년 분배율이 6% 넘으면 고배당 ETF 키트를 붙인다
+  const HDIV = new Set(['MSTY', 'JEPI', 'JEPQ', 'QYLD', 'XYLD', 'RYLD', 'DIVO', 'SPYI', 'QQQI', 'TSLY', 'NVDY', 'CONY', 'ULTY', 'YMAX', 'YMAG', 'PLTY', 'AMZY', 'GOOY', 'SVOL', 'KQQQ', 'GPIQ', 'GPIX']);
+  // 목록에 없는 미국 ETF도 최근 1년 분배율이 6% 넘으면 고배당 ETF 키트를 붙인다(SCHD처럼 3~4%대 배당성장 ETF는 빼고)
   const kitOf = (sym) => (SEMI_ALL.has(sym) ? 'semi' : BIGTECH.has(sym) ? 'big' : HDIV.has(sym) || (isEtf(sym) && (etfStats(sym)?.yld || 0) >= 0.06) ? 'div' : null);
   state.kit = { semi: null, big: null };
   const kitLoading = {};

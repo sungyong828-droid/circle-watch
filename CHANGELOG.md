@@ -11,6 +11,8 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 고배당 ETF 키트에서 SCHD 제외(분배율 약 3.9%, 배당성장 ETF) · 워커 경로 허용 목록에 /semi·/bigtech·/etfkit 추가 <!-- internal -->
+
 ## v2026.10.25-4 — 2026-10-25
 
 [이 버전 보기](https://a75e6d1c.my-fire-portfolio.pages.dev) · 커밋 `ac5b285`
