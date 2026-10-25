@@ -2307,3 +2307,13 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .kit-tbl .num { text-align: right; font-family: var(--mono); white-space: nowrap; padding-left: 8px; }
 .kit-tbl td small { margin-left: 3px; font-family: var(--sans); font-size: 10.5px; color: var(--muted); }
 .kit-watch { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 5px; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+.kit-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; align-items: end; height: 120px; margin: 10px 0 4px; }
+.kit-bars .kb { display: grid; grid-template-rows: 1fr auto auto; height: 100%; align-items: end; text-align: center; min-width: 0; }
+.kit-bars .kb i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: var(--c-blue); opacity: .85; align-self: end; }
+.kit-bars .kb:last-child i { opacity: 1; }
+.kit-bars b { font-size: 10.5px; font-weight: 600; color: var(--ink-2); margin-top: 3px; white-space: nowrap; overflow: hidden; }
+.kit-bars small { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.kit-trend { margin: 10px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.kit-trend.warn { color: var(--ink); }
+.kit-trend b.up { color: var(--up); } .kit-trend b.down { color: var(--down); }
+.kit-tbl td b .up, .kit-tbl td b .down { font-weight: 700; }

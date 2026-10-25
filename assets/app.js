@@ -7725,22 +7725,36 @@ ${what.join(' · ')}
     });
   }
 
-  // ---- 🧰 업종 키트: 같은 업종 종목에 '이 업종은 이걸 보면 돼요' 카드를 자동으로 붙인다. 지금은 반도체.
-  // 메모리 회사(삼성전자·SK하이닉스·마이크론)는 D램 현물가를 먼저, 그 밖의 반도체는 미국 반도체 지수·대표 종목을 먼저 보여 준다.
+  // ---- 🧰 업종 키트: 같은 업종 종목에 '이 업종은 이걸 보면 돼요' 카드를 자동으로 붙인다(실적·분배금 탭 맨 위 + 홈 한 줄)
+  //  · 반도체: D램 현물가 + 미국 반도체 흐름(메모리 회사는 D램 먼저)
+  //  · 빅테크: 4대 클라우드 회사 AI 설비투자(SEC) + 나스닥100·빅테크 주가
+  //  · 고배당 ETF: 분배금을 받고도 원금이 줄었는지(총수익) + 분배금 추세
   const SEMI_MEM = new Set(['005930.KS', '005935.KS', '000660.KS', 'MU']);
   const SEMI_ALL = new Set([...SEMI_MEM, 'NVDA', 'AMD', 'TSM', 'AVGO', 'ASML', 'INTC', 'QCOM', 'ARM', 'AMAT', 'LRCX', 'KLAC', 'MRVL', 'TXN', 'SMCI', 'SOXX', 'SMH', 'SOXL', '042700.KS', '000990.KS', '403870.KQ', '058470.KQ', '240810.KQ', '091160.KS']);
-  const kitOf = (sym) => (SEMI_ALL.has(sym) ? 'semi' : null);
-  let semiLoading = null;
-  function loadSemi() {
-    if (semiLoading || (state.semi && Date.now() - state.semiAt < 30 * 60000)) return semiLoading;
-    semiLoading = getJ(`${NEWS_API}/semi`, 15000)
-      .then((d) => { state.semi = d; state.semiAt = Date.now(); state.semiErr = false; })
-      .catch(() => { state.semiErr = true; state.semiAt = Date.now(); })
-      .finally(() => { semiLoading = null; renderKit(); });
-    return semiLoading;
+  const BIGTECH = new Set(['GOOGL', 'GOOG', 'MSFT', 'AMZN', 'META', 'AAPL', 'ORCL', 'NFLX', 'QQQ', 'QQQM', 'TQQQ', 'MAGS']);
+  const HDIV = new Set(['MSTY', 'JEPI', 'JEPQ', 'QYLD', 'XYLD', 'RYLD', 'SCHD', 'DIVO', 'SPYI', 'QQQI', 'TSLY', 'NVDY', 'CONY', 'ULTY', 'YMAX', 'YMAG', 'PLTY', 'AMZY', 'GOOY', 'SVOL', 'KQQQ', 'GPIQ', 'GPIX']);
+  // 목록에 없는 미국 ETF도 최근 1년 분배율이 6% 넘으면 고배당 ETF 키트를 붙인다
+  const kitOf = (sym) => (SEMI_ALL.has(sym) ? 'semi' : BIGTECH.has(sym) ? 'big' : HDIV.has(sym) || (isEtf(sym) && (etfStats(sym)?.yld || 0) >= 0.06) ? 'div' : null);
+  state.kit = { semi: null, big: null };
+  const kitLoading = {};
+  function loadKit(k, url, key = k) {
+    const S = key === k ? state.kit : st(key);
+    const at = key === k ? state.kit[k + 'At'] : S.etfKitAt;
+    if (kitLoading[key] || (Date.now() - (at || 0) < 30 * 60000)) return;
+    kitLoading[key] = getJ(url, 20000)
+      .then((d) => { if (key === k) { state.kit[k] = d; state.kit[k + 'Err'] = false; } else { S.etfKit = d; S.etfKitErr = false; } })
+      .catch(() => { if (key === k) state.kit[k + 'Err'] = true; else S.etfKitErr = true; })
+      .finally(() => { if (key === k) state.kit[k + 'At'] = Date.now(); else S.etfKitAt = Date.now(); kitLoading[key] = null; renderKit(); });
   }
-  const SEMI_NAME = { '^SOX': () => (EN ? 'PHLX Semiconductor' : '미국 반도체지수(SOX)'), MU: () => (EN ? 'Micron' : '마이크론'), NVDA: () => (EN ? 'NVIDIA' : '엔비디아'), TSM: () => 'TSMC' };
+  const PEER_NAME = { '^SOX': () => (EN ? 'PHLX Semiconductor' : '미국 반도체지수(SOX)'), '^NDX': () => (EN ? 'Nasdaq-100' : '나스닥100'), MU: () => (EN ? 'Micron' : '마이크론'), NVDA: () => (EN ? 'NVIDIA' : '엔비디아'), TSM: () => 'TSMC', MSFT: () => (EN ? 'Microsoft' : '마이크로소프트'), GOOGL: () => (EN ? 'Alphabet' : '구글'), AMZN: () => (EN ? 'Amazon' : '아마존'), META: () => (EN ? 'Meta' : '메타'), AAPL: () => (EN ? 'Apple' : '애플') };
   const DRAM_NAME = { ddr5: 'DDR5 16Gb', ddr4_16: 'DDR4 16Gb', ddr4_8: 'DDR4 8Gb' };
+  const kitB = (v, dp = 1) => `<b class="${cls(v)}">${pct(v, dp)}</b>`;
+  const kitPct = (v, dp = 1) => (v == null ? '–' : `<span class="${cls(v)}">${pct(v, dp)}</span>`);
+  function peersTbl(peers, title) {
+    return peers?.length ? `<div class="kit-sec"><div class="mini-h">${title} <small>${EN ? 'last close' : '최근 종가 기준'}</small></div>
+      <table class="kit-tbl"><thead><tr><th></th><th class="num">${EN ? '1D' : '하루'}</th><th class="num">${EN ? '1M' : '1개월'}</th><th class="num">${EN ? '3M' : '3개월'}</th></tr></thead><tbody>${peers.map((x) => `<tr><td>${PEER_NAME[x.sym]?.() || esc(x.sym)}</td><td class="num">${kitPct(x.d1)}</td><td class="num">${kitPct(x.m1)}</td><td class="num">${kitPct(x.m3)}</td></tr>`).join('')}</tbody></table></div>` : '';
+  }
+  const watchHtml = (L) => `<div class="kit-sec"><div class="mini-h">👀 ${EN ? 'What to watch' : '이 업종은 이걸 보세요'}</div><ul class="kit-watch">${L.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
   // 모아 둔 D램 기록에서 n일 전(가장 가까운 앞 날짜) 대비 변화
   function dramBack(hist, k, days) {
     const last = hist.at(-1);
@@ -7748,48 +7762,91 @@ ${what.join(' · ')}
     const cut = addDays(last.d, -days), base = hist.filter((h) => h.d <= cut && h[k] > 0).at(-1);
     return base ? last[k] / base[k] - 1 : null;
   }
-  function kitLead(sym) {
-    const D = state.semi, mem = SEMI_MEM.has(sym), d5 = D?.dram?.items?.ddr5, sox = D?.peers?.find((x) => x.sym === '^SOX');
-    const a = d5 ? `${EN ? 'DRAM spot' : 'D램 현물가'} <b class="${cls(d5.chg)}">${pct(d5.chg, 1)}</b>` : '';
-    const b = sox?.m1 != null ? `${EN ? 'US chips 1M' : '미국 반도체 1개월'} <b class="${cls(sox.m1)}">${pct(sox.m1, 1)}</b>` : '';
-    return (mem ? [a, b] : [b, a]).filter(Boolean).join(' · ');
+  function kitSemi(sym, D) {
+    const mem = SEMI_MEM.has(sym), hist = D.hist || [], days = hist.length;
+    const d5 = D.dram?.items?.ddr5, sox = D.peers?.find((x) => x.sym === '^SOX');
+    const lead = (mem ? [d5 && `${EN ? 'DRAM spot' : 'D램 현물가'} ${kitB(d5.chg)}`, sox?.m1 != null && `${EN ? 'US chips 1M' : '미국 반도체 1개월'} ${kitB(sox.m1)}`] : [sox?.m1 != null && `${EN ? 'US chips 1M' : '미국 반도체 1개월'} ${kitB(sox.m1)}`, d5 && `${EN ? 'DRAM spot' : 'D램 현물가'} ${kitB(d5.chg)}`]).filter(Boolean).join(' · ');
+    const dramRows = D.dram ? Object.entries(D.dram.items).map(([k, x]) => {
+      const m1 = dramBack(hist, k, 30), w1 = dramBack(hist, k, 7);
+      return `<tr><td>${DRAM_NAME[k] || esc(x.name)}</td><td class="num">$${x.avg.toFixed(2)}</td><td class="num">${kitPct(x.chg, 2)}</td><td class="num">${m1 != null ? kitPct(m1) : w1 != null ? `${kitPct(w1)}<small>${EN ? '1W' : '1주'}</small>` : '–'}</td></tr>`;
+    }).join('') : '';
+    const dram = D.dram ? `<div class="kit-sec"><div class="mini-h">💾 ${EN ? 'DRAM spot price' : 'D램 현물가'} <small>DRAMeXchange · ${esc(D.dram.date.slice(5).replace('-', '/'))} ${esc(D.dram.time || '')} ${EN ? 'Taiwan time' : '대만 시각'}</small></div>
+        <table class="kit-tbl"><thead><tr><th>${EN ? 'Chip' : '제품'}</th><th class="num">${EN ? 'Avg' : '평균가'}</th><th class="num">${EN ? '1D' : '하루'}</th><th class="num">${EN ? '1M' : '1개월'}</th></tr></thead><tbody>${dramRows}</tbody></table>
+        ${days < 30 ? `<p class="note">${EN ? `We started recording daily prices ${days ? `${days} day${days === 1 ? '' : 's'} ago` : 'today'}; the 1-month change fills in as records build up.` : `매일 가격을 기록하기 시작했어요(${days}일째). 기록이 쌓이면 1개월 변화가 채워져요.`}</p>` : ''}</div>`
+      : `<p class="note">${EN ? 'DRAM spot prices are unavailable right now.' : 'D램 현물가를 지금은 받지 못했어요.'}</p>`;
+    const peers = peersTbl(D.peers, `🇺🇸 ${EN ? 'US chip stocks' : '미국 반도체 흐름'}`);
+    const watch = mem
+      ? (EN ? ['DRAM spot prices tend to lead contract prices — and memory makers’ earnings — by a few months.', 'Micron reports before Samsung and SK hynix, so its results are an early read on the memory cycle.', 'Foreign investors own a large share of Korean chip stocks; their buying and selling moves prices.'] : ['D램 현물가가 먼저 움직이고, 몇 달 뒤 계약가와 메모리 회사 실적에 반영되는 경우가 많아요.', '마이크론은 삼성전자·SK하이닉스보다 먼저 실적을 내서, 메모리 업황을 미리 보는 신호로 쓰여요.', '한국 반도체주는 외국인 보유 비중이 커서 외국인 매매에 주가가 크게 움직여요.'])
+      : (EN ? ['AI server demand (NVIDIA’s results and guidance) sets the tone for the whole sector.', 'TSMC’s monthly sales show how busy chip production is.', 'The SOX index shows whether money is flowing into or out of chips overall.'] : ['AI 서버 수요(엔비디아 실적·전망)가 업종 전체 분위기를 정해요.', 'TSMC 월별 매출은 반도체 생산이 얼마나 바쁜지 보여 줘요.', '미국 반도체지수(SOX)로 반도체 전체에 돈이 들어오는지 빠지는지 볼 수 있어요.']);
+    return {
+      tag: EN ? 'Chip industry' : '반도체 업황', lead,
+      title: EN ? '🔬 Chip industry check' : '🔬 반도체 업황',
+      sub: EN ? 'What to watch for chip stocks, updated hourly' : '반도체 종목이라면 함께 볼 지표 · 1시간마다 갱신',
+      easy: EN ? 'Memory makers like Samsung and SK hynix earn most of their profit from DRAM and NAND prices. When spot prices rise, earnings often improve a few months later. US chip stocks show what global investors think of the sector.' : '삼성전자·SK하이닉스 같은 메모리 회사는 D램·낸드 가격에 따라 이익이 크게 달라져요. 현물가가 오르면 몇 달 뒤 실적이 좋아지는 경우가 많아요. 미국 반도체 주가는 해외 투자자들이 업종을 어떻게 보는지 보여 줘요.',
+      body: `${mem ? dram + peers : peers + dram}${watchHtml(watch)}<p class="note">${EN ? 'Spot prices are for small trades and can differ from large contract prices. Not investment advice.' : '현물가는 소량 거래 가격이라 대형 계약 가격과 다를 수 있어요. 투자 조언이 아니에요.'}</p>`,
+    };
+  }
+  const bn = (v) => (EN ? `$${(v / 1e9).toFixed(1)}B` : `${nf(0).format(Math.round(v / 1e8))}억 달러`);
+  const qName = (end) => { const [y, m] = end.split('-'); return EN ? `Q${Math.ceil(+m / 3)} ${y}` : `${y.slice(2)}년 ${Math.ceil(+m / 3)}분기`; };
+  function kitBig(sym, D) {
+    const C = D.capex || [];
+    // 네 회사 모두 발표한 분기만 합친다(달력 분기 끝 날짜가 같다)
+    const ends = [...new Set(C.flatMap((c) => c.q.map((q) => q.end)))].sort().filter((e) => C.length && C.every((c) => c.q.some((q) => q.end === e)));
+    const tot = ends.map((e) => ({ end: e, v: C.reduce((a, c) => a + c.q.find((q) => q.end === e).v, 0) }));
+    const last = tot.at(-1), yago = last && tot.find((t) => Math.abs(Date.parse(t.end) - (Date.parse(last.end) - 365 * 864e5)) < 20 * 864e5);
+    const yoy = last && yago ? last.v / yago.v - 1 : null;
+    const ndx = D.peers?.find((x) => x.sym === '^NDX');
+    const lead = [last && `${EN ? 'Big 4 AI capex' : '빅테크 AI 투자'} <b>${bn(last.v)}</b>${yoy != null ? ` (${EN ? 'YoY' : '1년 전보다'} ${kitB(yoy, 0)})` : ''}`, ndx?.m1 != null && `${EN ? 'Nasdaq-100 1M' : '나스닥100 1개월'} ${kitB(ndx.m1)}`].filter(Boolean).join(' · ');
+    const max = Math.max(...tot.map((t) => t.v), 1);
+    const bars = tot.length >= 2 ? `<div class="kit-bars" role="img" aria-label="${EN ? 'Quarterly capex total' : '분기별 설비투자 합계'}">${tot.slice(-6).map((t) => `<div class="kb"><i style="height:${Math.max(4, (t.v / max) * 100).toFixed(1)}%"></i><b>${EN ? `$${Math.round(t.v / 1e9)}B` : `${nf(0).format(Math.round(t.v / 1e8))}억`}</b><small>${esc(qName(t.end))}</small></div>`).join('')}</div>` : '';
+    const rows = C.map((c) => `<tr><td>${PEER_NAME[c.sym]?.() || esc(c.sym)}</td><td class="num">${esc(qName(c.last.end))}</td><td class="num">${bn(c.last.v)}</td><td class="num">${kitPct(c.yoy, 0)}</td></tr>`).join('');
+    const capex = C.length ? `<div class="kit-sec"><div class="mini-h">🏗️ ${EN ? 'AI & data-center capex' : 'AI·데이터센터 설비투자'} <small>${EN ? 'SEC filings · cash spent on property & equipment' : 'SEC 공시 · 분기 유형자산 취득액'}</small></div>${bars}
+        <table class="kit-tbl"><thead><tr><th></th><th class="num">${EN ? 'Quarter' : '분기'}</th><th class="num">${EN ? 'Capex' : '투자액'}</th><th class="num">${EN ? 'YoY' : '1년 전 대비'}</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="note">${EN ? 'Capex data is unavailable right now.' : '설비투자 자료를 지금은 받지 못했어요.'}</p>`;
+    const watch = EN ? ['Rising AI spending is good news for chipmakers — the key question is whether cloud revenue growth keeps up with it.', 'Cloud growth (Google Cloud, Azure, AWS) is the number to check on earnings day.', 'Ad revenue (Google, Meta) moves with the economy.'] : ['AI 투자가 늘면 엔비디아 같은 반도체 회사엔 좋은 소식이에요. 핵심은 그만큼 클라우드 매출이 따라 느는지예요.', '실적 발표 날엔 클라우드 매출 성장률(구글 클라우드·애저·AWS)을 먼저 보세요.', '광고 매출(구글·메타)은 경기 영향을 많이 받아요.'];
+    return {
+      tag: EN ? 'Big Tech' : '빅테크', lead,
+      title: EN ? '🏢 Big Tech check' : '🏢 빅테크 점검',
+      sub: EN ? 'AI spending by the four cloud giants and how Big Tech stocks are moving' : '4대 클라우드 회사의 AI 투자와 빅테크 주가 흐름',
+      easy: EN ? 'Microsoft, Alphabet, Amazon and Meta are spending record sums on AI data centers. These numbers come straight from their quarterly SEC filings. When this spending grows, chip and power companies benefit; investors then watch whether cloud revenue grows enough to justify it.' : '마이크로소프트·구글·아마존·메타는 AI 데이터센터에 역대 최대 돈을 쓰고 있어요. 이 숫자는 각 회사가 SEC에 낸 분기 보고서에서 그대로 가져와요. 투자가 늘면 반도체·전력 회사가 수혜를 보고, 투자자들은 그만큼 클라우드 매출이 느는지 지켜봐요.',
+      body: `${capex}${peersTbl(D.peers, `📈 ${EN ? 'Big Tech stocks' : '빅테크 주가'}`)}${watchHtml(watch)}<p class="note">${EN ? 'Capex = cash paid for property and equipment (Amazon: productive assets), quarterly. Not investment advice.' : '설비투자 = 분기 현금흐름표의 유형자산 취득액(아마존은 생산 자산 취득액). 투자 조언이 아니에요.'}</p>`,
+    };
+  }
+  function kitDiv(sym, D) {
+    const y = D.y1 || D.m6 || D.m3, per = D.y1 ? (EN ? '1 year' : '1년') : D.m6 ? (EN ? '6 months' : '6개월') : (EN ? '3 months' : '3개월');
+    const lead = y ? (y.total < 0
+      ? (EN ? `${per}: ${kitB(y.dist)} paid out, but price ${kitB(y.px)} → total <b class="down">${pct(y.total, 1)}</b>` : `${per}간 분배금 ${kitB(y.dist)}를 받았지만 주가가 ${kitB(y.px)} → 원금 기준 ${kitB(y.total)}`)
+      : (EN ? `${per} total return ${kitB(y.total)} (price ${kitB(y.px)} + payouts ${kitB(y.dist)})` : `${per} 총수익 ${kitB(y.total)} (주가 ${kitB(y.px)} + 분배금 ${kitB(y.dist)})`)) : '';
+    const rows = [['m3', EN ? '3M' : '3개월'], ['m6', EN ? '6M' : '6개월'], ['y1', EN ? '1Y' : '1년']].filter(([k]) => D[k]).map(([k, l]) => `<tr><td>${l}</td><td class="num">${kitPct(D[k].px)}</td><td class="num">${kitPct(D[k].dist)}</td><td class="num"><b>${kitPct(D[k].total)}</b></td></tr>`).join('');
+    const tr = D.distTrend;
+    const trend = tr != null ? `<p class="kit-trend ${tr <= -0.1 ? 'warn' : ''}">${tr <= -0.1 ? '⚠️ ' : ''}${EN ? `Payouts in the last 3 months were ${kitB(tr, 0)} vs the 3 months before.` : `최근 3개월 분배금이 그 전 3개월보다 ${kitB(tr, 0)} ${tr < 0 ? '줄었어요' : tr > 0 ? '늘었어요' : '같아요'}.`}</p>` : '';
+    const watch = EN ? ['Look at total return, not just the payout rate. A high yield can hide a falling price.', 'Covered-call ETFs give up part of the upside when the underlying rallies.', 'Shrinking payouts often follow a falling or calmer underlying asset.', 'US funds withhold 15% tax on distributions; see 🔥 → 💰 Dividends for what you actually receive.'] : ['분배율보다 총수익을 보세요. 분배율이 높아도 주가가 계속 빠지면 원금이 줄어요.', '커버드콜 ETF는 기초 자산이 크게 오를 때 상승을 일부 포기해요.', '분배금이 줄면 기초 자산 가격이 떨어졌거나 변동성이 줄었다는 신호인 경우가 많아요.', '미국 ETF 분배금은 15%가 세금으로 빠져요. 실제로 받는 돈은 🔥 → 💰 배당금에서 계산돼요.'];
+    return {
+      tag: EN ? 'High-yield ETF' : '고배당 ETF', lead,
+      title: EN ? '💸 High-yield ETF check' : '💸 고배당 ETF 점검',
+      sub: EN ? 'Did the payouts make up for the price change? (payouts not reinvested)' : '분배금을 받고도 원금이 줄지 않았는지 · 분배금 재투자 없이 단순 합산',
+      easy: EN ? 'High-yield ETFs pay out a lot, but some of that can come from your own principal as the price falls. Total return = price change + payouts received. If it’s negative, you lost money even after the payouts.' : '고배당 ETF는 분배금을 많이 주지만, 주가가 함께 떨어지면 사실상 내 원금을 돌려받는 셈이 돼요. 총수익 = 주가 변화 + 받은 분배금이에요. 이게 마이너스면 분배금을 받고도 손해예요.',
+      body: `<div class="kit-sec"><table class="kit-tbl"><thead><tr><th></th><th class="num">${EN ? 'Price' : '주가'}</th><th class="num">${EN ? 'Payouts' : '분배금'}</th><th class="num">${EN ? 'Total' : '총수익'}</th></tr></thead><tbody>${rows}</tbody></table></div>${trend}${watchHtml(watch)}<p class="note">${EN ? 'Pre-tax, based on Yahoo Finance prices and ex-dividend dates. Not investment advice.' : '세전 · Yahoo Finance 종가와 배당락일 기준. 투자 조언이 아니에요.'}</p>`,
+    };
   }
   function renderKit(sym = state.stock) {
     const el = document.getElementById('c-kit'), line = document.getElementById('kit-line'), kit = kitOf(sym);
     if (el) el.hidden = !kit;
     if (line) line.hidden = !kit;
     if (!kit || !el) return;
-    if (!state.semi) {
-      if (!state.semiErr) loadSemi();
-      card('kit', { title: EN ? '🔬 Chip industry check' : '🔬 반도체 업황', body: `<p class="skeleton">${state.semiErr ? (EN ? 'Could not load chip data. Try refreshing.' : '반도체 자료를 받지 못했어요. 새로고침으로 다시 시도해 주세요.') : (EN ? 'Loading…' : '불러오는 중…')}</p>` });
+    const src = kit === 'semi' ? [state.kit.semi, state.kit.semiErr, () => loadKit('semi', `${NEWS_API}/semi`)]
+      : kit === 'big' ? [state.kit.big, state.kit.bigErr, () => loadKit('big', `${NEWS_API}/bigtech`)]
+      : [st(sym).etfKit, st(sym).etfKitErr, () => loadKit('div', `${NEWS_API}/etfkit?s=${encodeURIComponent(sym)}`, sym)];
+    const [D, err, load] = src;
+    load();
+    const name = { semi: EN ? '🔬 Chip industry check' : '🔬 반도체 업황', big: EN ? '🏢 Big Tech check' : '🏢 빅테크 점검', div: EN ? '💸 High-yield ETF check' : '💸 고배당 ETF 점검' }[kit];
+    if (!D) {
+      card('kit', { title: name, body: `<p class="skeleton">${err ? (EN ? 'Could not load the data. Try refreshing.' : '자료를 받지 못했어요. 새로고침으로 다시 시도해 주세요.') : (EN ? 'Loading…' : '불러오는 중…')}</p>` });
       if (line) line.hidden = true;
       return;
     }
-    if (Date.now() - state.semiAt > 30 * 60000) loadSemi();
-    const D = state.semi, mem = SEMI_MEM.has(sym), hist = D.hist || [], days = hist.length;
-    const lead = kitLead(sym);
-    if (line) { const h = lead ? `<span class="kl-t">🔬 ${EN ? 'Chip industry' : '반도체 업황'}</span><span class="kl-v">${lead}</span><i aria-hidden="true">›</i>` : ''; line.hidden = !h; if (line.innerHTML !== h) line.innerHTML = h; }
-    const dramRows = D.dram ? Object.entries(D.dram.items).map(([k, x]) => {
-      const m1 = dramBack(hist, k, 30), w1 = dramBack(hist, k, 7);
-      return `<tr><td>${DRAM_NAME[k] || esc(x.name)}</td><td class="num">$${x.avg.toFixed(2)}</td><td class="num"><span class="${cls(x.chg)}">${pct(x.chg, 2)}</span></td><td class="num">${m1 != null ? `<span class="${cls(m1)}">${pct(m1, 1)}</span>` : w1 != null ? `<span class="${cls(w1)}">${pct(w1, 1)}</span><small>${EN ? '1W' : '1주'}</small>` : '–'}</td></tr>`;
-    }).join('') : '';
-    const dram = D.dram ? `<div class="kit-sec"><div class="mini-h">💾 ${EN ? 'DRAM spot price' : 'D램 현물가'} <small>DRAMeXchange · ${esc(D.dram.date.slice(5).replace('-', '/'))} ${esc(D.dram.time || '')} ${EN ? 'Taiwan time' : '대만 시각'}</small></div>
-        <table class="kit-tbl"><thead><tr><th>${EN ? 'Chip' : '제품'}</th><th class="num">${EN ? 'Avg' : '평균가'}</th><th class="num">${EN ? '1D' : '하루'}</th><th class="num">${EN ? '1M' : '1개월'}</th></tr></thead><tbody>${dramRows}</tbody></table>
-        ${days < 30 ? `<p class="note">${EN ? `We started recording daily prices ${days ? `${days} day${days === 1 ? '' : 's'} ago` : 'today'}; the 1-month change fills in as records build up.` : `매일 가격을 기록하기 시작했어요(${days}일째). 기록이 쌓이면 1개월 변화가 채워져요.`}</p>` : ''}</div>`
-      : `<p class="note">${EN ? 'DRAM spot prices are unavailable right now.' : 'D램 현물가를 지금은 받지 못했어요.'}</p>`;
-    const peers = D.peers?.length ? `<div class="kit-sec"><div class="mini-h">🇺🇸 ${EN ? 'US chip stocks' : '미국 반도체 흐름'} <small>${EN ? 'last close' : '최근 종가 기준'}</small></div>
-        <table class="kit-tbl"><thead><tr><th></th><th class="num">${EN ? '1D' : '하루'}</th><th class="num">${EN ? '1M' : '1개월'}</th><th class="num">${EN ? '3M' : '3개월'}</th></tr></thead><tbody>${D.peers.map((x) => `<tr><td>${SEMI_NAME[x.sym]?.() || esc(x.sym)}</td><td class="num"><span class="${cls(x.d1)}">${pct(x.d1, 1)}</span></td><td class="num"><span class="${cls(x.m1)}">${pct(x.m1, 1)}</span></td><td class="num"><span class="${cls(x.m3)}">${pct(x.m3, 1)}</span></td></tr>`).join('')}</tbody></table></div>` : '';
-    const watch = mem
-      ? (EN ? ['DRAM spot prices tend to lead contract prices — and memory makers’ earnings — by a few months.', 'Micron reports before Samsung and SK hynix, so its results are an early read on the memory cycle.', 'Foreign investors own a large share of Korean chip stocks; their buying and selling moves prices.'] : ['D램 현물가가 먼저 움직이고, 몇 달 뒤 계약가와 메모리 회사 실적에 반영되는 경우가 많아요.', '마이크론은 삼성전자·SK하이닉스보다 먼저 실적을 내서, 메모리 업황을 미리 보는 신호로 쓰여요.', '한국 반도체주는 외국인 보유 비중이 커서 외국인 매매에 주가가 크게 움직여요.'])
-      : (EN ? ['AI server demand (NVIDIA’s results and guidance) sets the tone for the whole sector.', 'TSMC’s monthly sales show how busy chip production is.', 'The SOX index shows whether money is flowing into or out of chips overall.'] : ['AI 서버 수요(엔비디아 실적·전망)가 업종 전체 분위기를 정해요.', 'TSMC 월별 매출은 반도체 생산이 얼마나 바쁜지 보여 줘요.', '미국 반도체지수(SOX)로 반도체 전체에 돈이 들어오는지 빠지는지 볼 수 있어요.']);
-    card('kit', {
-      title: EN ? '🔬 Chip industry check' : '🔬 반도체 업황',
-      sub: EN ? 'What to watch for chip stocks, updated hourly' : '반도체 종목이라면 함께 볼 지표 · 1시간마다 갱신',
-      easy: EN ? 'Memory makers like Samsung and SK hynix earn most of their profit from DRAM and NAND prices. When spot prices rise, earnings often improve a few months later. US chip stocks show what global investors think of the sector.' : '삼성전자·SK하이닉스 같은 메모리 회사는 D램·낸드 가격에 따라 이익이 크게 달라져요. 현물가가 오르면 몇 달 뒤 실적이 좋아지는 경우가 많아요. 미국 반도체 주가는 해외 투자자들이 업종을 어떻게 보는지 보여 줘요.',
-      body: `${lead ? `<p class="kit-lead">${lead}</p>` : ''}${mem ? dram + peers : peers + dram}
-        <div class="kit-sec"><div class="mini-h">👀 ${EN ? 'What to watch' : '이 업종은 이걸 보세요'}</div><ul class="kit-watch">${watch.map((w) => `<li>${w}</li>`).join('')}</ul></div>
-        <p class="note">${EN ? 'Spot prices are for small trades and can differ from large contract prices. Not investment advice.' : '현물가는 소량 거래 가격이라 대형 계약 가격과 다를 수 있어요. 투자 조언이 아니에요.'}</p>`,
-    });
+    const K = kit === 'semi' ? kitSemi(sym, D) : kit === 'big' ? kitBig(sym, D) : kitDiv(sym, D);
+    if (line) { const h = K.lead ? `<span class="kl-t">${name.split(' ')[0]} ${K.tag}</span><span class="kl-v">${K.lead}</span><i aria-hidden="true">›</i>` : ''; line.hidden = !h; if (line.innerHTML !== h) line.innerHTML = h; }
+    card('kit', { title: K.title, sub: K.sub, easy: K.easy, body: `${K.lead ? `<p class="kit-lead">${K.lead}</p>` : ''}${K.body}` });
   }
 
   function renderSEarnings(sym = state.stock) {
@@ -7824,7 +7881,7 @@ ${what.join(' · ')}
       for (const j of [() => renderSPriceCard(sym), () => renderKit(sym), () => renderSPriceChart(sym), () => renderKrKpis(sym), () => renderKrDeal(sym), () => renderKrAnalyst(sym), () => renderBiz(sym), () => renderKrEarn(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
       return;
     }
-    const jobs = [() => renderSPriceCard(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
+    const jobs = [() => renderSPriceCard(sym), () => renderKit(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
       () => renderShort(shortOf(sym), 'sshort', S.short), () => renderHolders(sym, 'sholders'), () => renderAnalyst(sym), () => renderInsider(sym), () => renderOptions(sym), () => renderEarnDay(sym), () => renderSEarnings(sym),
       () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge];
     for (const j of jobs) { try { j(); } catch (e) { console.error(e); } }

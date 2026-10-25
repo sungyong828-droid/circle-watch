@@ -1216,6 +1216,73 @@ export async function handleSemi(url, cache, cors, ctx, env) {
   return swr(cache, ctx, `${url.origin}/semi?v=1`, { freshSec: url.searchParams.has('fresh') ? 120 : 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildSemi(env)) });
 }
 
+// ---------------------------------------------------------------- 🏢 빅테크(업종 키트): 4대 클라우드 회사 AI 설비투자(SEC 공시) + 나스닥100·빅테크 주가(Yahoo)
+// 설비투자 = 현금흐름표의 유형자산 취득액. 분기 보고서는 연초부터 누적 값이라, 같은 회계연도 안에서 앞 보고서를 빼서 분기 값을 만든다.
+const CAPEX_COS = [['MSFT', '0000789019', 'PaymentsToAcquirePropertyPlantAndEquipment'], ['GOOGL', '0001652044', 'PaymentsToAcquirePropertyPlantAndEquipment'], ['AMZN', '0001018724', 'PaymentsToAcquireProductiveAssets'], ['META', '0001326801', 'PaymentsToAcquirePropertyPlantAndEquipment']];
+const BIGTECH_PEERS = ['^NDX', 'MSFT', 'GOOGL', 'AMZN', 'META', 'AAPL'];
+export function quarterlyFromYtd(facts) {
+  const by = new Map();
+  for (const f of facts || []) if (f.start && f.end && /^10-[QK]/.test(f.form || '') && isFinite(f.val)) by.set(`${f.start}|${f.end}`, f.val); // 나중 보고서가 앞 값을 고친다
+  const starts = new Map();
+  for (const [k, v] of by) { const [st, en] = k.split('|'); if (!starts.has(st)) starts.set(st, []); starts.get(st).push([en, v]); }
+  const out = new Map(), day = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
+  for (const [st, L] of starts) {
+    L.sort((a, b) => a[0].localeCompare(b[0]));
+    let prev = 0, pe = st;
+    for (const [en, v] of L) { if (day(pe, en) >= 80 && day(pe, en) <= 100 && v - prev > 0) out.set(en, v - prev); prev = v; pe = en; }
+  }
+  return [...out].sort((a, b) => a[0].localeCompare(b[0])).map(([end, v]) => ({ end, v }));
+}
+async function capexOf([sym, cik, tag]) {
+  const j = await secGet(`https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`);
+  const Q = quarterlyFromYtd(j?.units?.USD).slice(-9);
+  if (Q.length < 5) throw new Error('capex ' + sym);
+  const last = Q.at(-1), yago = Q.find((q) => Math.abs(Date.parse(q.end) - (Date.parse(last.end) - 365 * 86400000)) < 20 * 86400000);
+  return { sym, q: Q.slice(-8), last, yoy: yago ? last.v / yago.v - 1 : null };
+}
+export async function buildBigtech() {
+  const [cap, peers] = await Promise.all([Promise.allSettled(CAPEX_COS.map(capexOf)), Promise.allSettled(BIGTECH_PEERS.map(yahooDaily))]);
+  const capex = cap.map((r) => (r.status === 'fulfilled' ? r.value : null)).filter(Boolean);
+  const out = { at: new Date().toISOString(), capex, peers: peers.map((p) => (p.status === 'fulfilled' ? p.value : null)).filter(Boolean), failed: [] };
+  if (capex.length < CAPEX_COS.length) out.failed.push('capex');
+  if (!capex.length && !out.peers.length) throw new Error('빅테크 자료를 받지 못했습니다');
+  return out;
+}
+export async function handleBigtech(url, cache, cors, ctx) {
+  return swr(cache, ctx, `${url.origin}/bigtech?v=1`, { freshSec: 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildBigtech()) });
+}
+// ---------------------------------------------------------------- 💸 고배당 ETF(업종 키트): 1년 주가 + 분배금으로 '분배금을 받고도 원금이 줄었는지'(총수익, 재투자 없이 단순 합)
+export function etfReturns(ts, closes, divs, now = Date.now() / 1000) {
+  const pts = ts.map((t, i) => [t, closes[i]]).filter(([, v]) => v > 0);
+  if (pts.length < 20) return null;
+  const end = pts.at(-1);
+  const per = (days) => {
+    const cut = end[0] - days * 86400, st = pts.find(([t]) => t >= cut);
+    if (!st || end[0] - st[0] < days * 86400 * 0.8) return null;
+    const dsum = divs.filter((d) => d.t > st[0] && d.t <= end[0]).reduce((a, d) => a + d.amt, 0);
+    return { from: new Date(st[0] * 1000).toISOString().slice(0, 10), px: end[1] / st[1] - 1, dist: dsum / st[1], total: (end[1] + dsum) / st[1] - 1 };
+  };
+  const sumIn = (a, b) => divs.filter((d) => d.t > now - a * 86400 && d.t <= now - b * 86400).reduce((s, d) => s + d.amt, 0);
+  const r3 = sumIn(91, 0), p3 = sumIn(182, 91);
+  return { price: end[1], m3: per(91), m6: per(182), y1: per(365), distTrend: r3 > 0 && p3 > 0 ? r3 / p3 - 1 : null };
+}
+export async function handleEtfKit(url, cache, cors, ctx) {
+  const sym = String(url.searchParams.get('s') || '').toUpperCase();
+  if (!SYM_RE.test(sym)) return json({ error: 'bad symbol' }, cors, 400);
+  return swr(cache, ctx, `${url.origin}/etfkit?s=${sym}&v=1`, {
+    freshSec: 6 * 3600, keepSec: 7 * 86400, cors,
+    build: async () => {
+      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=1y&interval=1d&events=div`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error('yahoo ' + r.status);
+      const R = (await r.json()).chart?.result?.[0];
+      const divs = Object.values(R?.events?.dividends || {}).map((d) => ({ t: d.date, amt: d.amount })).filter((d) => d.amt > 0).sort((a, b) => a.t - b.t);
+      const x = etfReturns(R?.timestamp || [], R?.indicators?.quote?.[0]?.close || [], divs);
+      if (!x) throw new Error('기록이 부족합니다');
+      return JSON.stringify({ at: new Date().toISOString(), sym, type: R.meta?.instrumentType || '', ...x });
+    },
+  });
+}
+
 export async function handleFearGreed(url, cache, cors, ctx) {
   return swr(cache, ctx, `${url.origin}/feargreed?v=1`, { freshSec: url.searchParams.has('fresh') ? 60 : 900, keepSec: 3 * 86400, cors, build: async () => JSON.stringify(await buildFearGreed()) });
 }
@@ -2297,6 +2364,8 @@ export default {
     if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
     if (url.pathname === '/feargreed') return handleFearGreed(url, cache, cors, ctx);
     if (url.pathname === '/semi') return handleSemi(url, cache, cors, ctx, env);
+    if (url.pathname === '/bigtech') return handleBigtech(url, cache, cors, ctx);
+    if (url.pathname === '/etfkit') return handleEtfKit(url, cache, cors, ctx);
     if (url.pathname === '/flow') return handleFlow(url, cache, cors, ctx);
     if (url.pathname === '/calendar') return handleCalendar(url, cache, cors, ctx);
     if (url.pathname === '/earnsum') return handleEarnSum(url, cache, cors, ctx, env);
