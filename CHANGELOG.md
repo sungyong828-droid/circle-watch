@@ -11,6 +11,16 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.10.25-3 — 2026-10-25
+
+[이 버전 보기](https://24c92fe9.my-fire-portfolio.pages.dev) · 커밋 `ca61f80`
+
+- 🔧 화면을 다듬고 작은 문제를 고쳤어요.
+<!-- internal --> - Regenerate whatsnew after prod deploy
+<!-- internal --> - Fix line breaks: scenario classes collided with week card, EN Call label, EN big won amounts
+<!-- internal --> - Reword two Korean subtitles that broke before a particle
+<!-- internal --> - News: fix Korean headline translation (read AI reasoning field, numbered-line format)
+
 ## v2026.10.25-2 — 2026-10-25
 
 [이 버전 보기](https://0104d9cf.my-fire-portfolio.pages.dev) · 커밋 `be1d5dc`
