@@ -3865,16 +3865,16 @@
   }
   function scenHtml(c) {
     if (!c) return `<p class="skeleton">${EN ? 'Loading prices…' : '시세 불러오는 중…'}</p>`;
-    if (c.progress >= 1) return `<p class="sc-done">${EN ? 'You have already reached your goal 🎊' : '이미 목표에 닿았어요 🎊'}</p>`;
+    if (c.progress >= 1) return `<p class="fsc-done">${EN ? 'You have already reached your goal 🎊' : '이미 목표에 닿았어요 🎊'}</p>`;
     const add = Math.max(0, +scenCfg.add || 0) * 1e4, goal = c.F.goal, start = Math.max(0, c.basis);
     const name = { low: EN ? 'Cautious' : '보수적', mid: EN ? 'Base' : '기본', high: EN ? 'Optimistic' : '낙관' };
     const R = SCENS.map(([k, r]) => ({ k, r, m: scenMonths(start, goal, r, add) }));
     const maxM = Math.max(...R.map((x) => x.m ?? 600), 1), mid = R[1], W = scenWhen(mid.m);
     // 매달 50만원 더 넣으면 기본 시나리오가 얼마나 당겨지는지(결론 아래 한 줄)
     const more = mid.m != null ? scenMonths(start, goal, mid.r, add + 5e5) : null, gain = mid.m != null && more != null ? mid.m - more : null;
-    return `<div class="sc-lead">${EN ? 'At 7% a year' : '연 7%로 불어나면'} <b>${W.when}</b>${W.dur ? `<small>${EN ? `in ${W.dur}` : `${W.dur} 뒤`}</small>` : ''}</div>
-      <ul class="sc-list">${R.map((x) => { const w = scenWhen(x.m); return `<li class="sc-${x.k}"><span class="sc-nm"><b>${name[x.k]}</b><small>${EN ? 'yr' : '연'} ${(x.r * 100).toFixed(0)}%</small></span><span class="sc-bar" aria-hidden="true"><i style="width:${Math.max(4, ((x.m ?? 600) / maxM) * 100).toFixed(1)}%"></i></span><span class="sc-v"><b>${w.when}</b><small>${w.dur}</small></span></li>`; }).join('')}</ul>
-      ${gain > 0 ? `<p class="note sc-tip">💡 ${EN ? `Adding ₩500k more a month brings the base case <b>${scenWhen(gain).dur}</b> sooner.` : `매달 50만원을 더 넣으면 기본 시나리오가 <b>${scenWhen(gain).dur}</b> 빨라져요.`}</p>` : ''}`;
+    return `<div class="fsc-lead">${EN ? 'At 7% a year' : '연 7%로 불어나면'} <b>${W.when}</b>${W.dur ? `<small>${EN ? `in ${W.dur}` : `${W.dur} 뒤`}</small>` : ''}</div>
+      <ul class="fsc-list">${R.map((x) => { const w = scenWhen(x.m); return `<li class="fsc-${x.k}"><span class="fsc-nm"><b>${name[x.k]}</b><small>${EN ? 'yr' : '연'} ${(x.r * 100).toFixed(0)}%</small></span><span class="fsc-bar" aria-hidden="true"><i style="width:${Math.max(4, ((x.m ?? 600) / maxM) * 100).toFixed(1)}%"></i></span><span class="fsc-v"><b>${w.when}</b><small>${w.dur}</small></span></li>`; }).join('')}</ul>
+      ${gain > 0 ? `<p class="note fsc-tip">💡 ${EN ? `Adding ₩500k more a month brings the base case <b>${scenWhen(gain).dur}</b> sooner.` : `매달 50만원을 더 넣으면 기본 시나리오가 <b>${scenWhen(gain).dur}</b> 빨라져요.`}</p>` : ''}`;
   }
   function renderFireScen(c) {
     if (!document.getElementById('c-firescen')) return;
@@ -4842,7 +4842,7 @@ ${what.join(' · ')}
   // 원 금액을 '6억 1,234만원'처럼
   const manwon = (v) => {
     if (v == null || !isFinite(v)) return '–';
-    if (EN) return `₩${nf(0).format(Math.round(v))}`;
+    if (EN) return Math.abs(v) >= 1e7 ? `${v < 0 ? '-' : ''}₩${unit(Math.abs(v))}` : `₩${nf(0).format(Math.round(v))}`; // 큰 금액은 ₩849M 처럼(두 칸 표에서 줄이 끊기지 않게)
     const sign = v < 0 ? '-' : '', a = Math.abs(v), eok = Math.floor(a / 1e8), man = Math.round((a - eok * 1e8) / 1e4);
     return sign + (eok ? `${nf(0).format(eok)}억${man ? ` ${nf(0).format(man)}만원` : '원'}` : `${nf(0).format(man)}만원`);
   };

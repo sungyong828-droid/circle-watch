@@ -724,7 +724,7 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 .br-list .h-chg b { display: block; font: 600 12px var(--mono); color: var(--ink); white-space: nowrap; }
 /* 옵션 */
 .op-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
-.op-l { font: 700 12px inherit; width: 22px; }
+.op-l { font: 700 12px inherit; min-width: 22px; white-space: nowrap; }
 .op-k { display: inline-grid; padding: 5px 9px; border-radius: 8px; background: var(--surface-2); font: 600 12.5px var(--mono); }
 .op-k small { font: 500 10.5px var(--mono); color: var(--muted); }
 .op-k.up { box-shadow: inset 2px 0 0 var(--up); } .op-k.down { box-shadow: inset 2px 0 0 var(--down); }
@@ -777,7 +777,7 @@ details.more .more-close { display: flex; align-items: center; justify-content: 
   border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 details.more .more-close::after { content: ''; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(2px) rotate(-135deg); }
 /* 옵션: 미결제 많은 행사가 3개를 한 줄에 */
-.op-row { display: grid; grid-template-columns: 24px repeat(3, minmax(0, 1fr)); gap: 5px; align-items: stretch; }
+.op-row { display: grid; grid-template-columns: minmax(24px, max-content) repeat(3, minmax(0, 1fr)); gap: 5px; align-items: stretch; }
 .op-row .op-k { display: grid; min-width: 0; padding: 4px 6px; font-size: 12px; white-space: nowrap; overflow: hidden; }
 .op-row .op-k small { font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
 .op-l { align-self: center; }
@@ -2266,22 +2266,22 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .nl .nt-en, .ns-top .nt-en { grid-column: 2; margin-top: -3px; }
 
 /* 🎯 퇴사 시점 시나리오 */
-.sc-lead { margin: 10px 0 8px; font-size: 14px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
-.sc-lead b { font-size: 22px; color: var(--ink); font-weight: 800; }
-.sc-lead small { font-size: 12.5px; color: var(--muted); }
-.sc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.sc-list li { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px; }
-.sc-nm { display: grid; line-height: 1.25; }
-.sc-nm b { font-size: 13px; color: var(--ink); }
-.sc-nm small, .sc-v small { font-size: 11.5px; color: var(--muted); }
-.sc-bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
-.sc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--c-blue); }
-.sc-low .sc-bar i { background: var(--faint); } .sc-high .sc-bar i { background: var(--good); }
-.sc-v { display: grid; text-align: right; line-height: 1.25; min-width: 82px; }
-.sc-v b { font-size: 13.5px; color: var(--ink); }
-.sc-mid .sc-nm b, .sc-mid .sc-v b { font-weight: 800; }
-.sc-tip { margin-top: 10px; }
-.sc-done { margin: 10px 0 0; font-weight: 700; }
+.fsc-lead { margin: 10px 0 8px; font-size: 14px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.fsc-lead b { font-size: 22px; color: var(--ink); font-weight: 800; }
+.fsc-lead small { font-size: 12.5px; color: var(--muted); }
+.fsc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fsc-list li { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px; }
+.fsc-nm { display: grid; line-height: 1.25; }
+.fsc-nm b { font-size: 13px; color: var(--ink); }
+.fsc-nm small, .fsc-v small { font-size: 11.5px; color: var(--muted); }
+.fsc-bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.fsc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--c-blue); }
+.fsc-low .fsc-bar i { background: var(--faint); } .fsc-high .fsc-bar i { background: var(--good); }
+.fsc-v { display: grid; text-align: right; line-height: 1.25; min-width: 82px; }
+.fsc-v b { font-size: 13.5px; color: var(--ink); }
+.fsc-mid .fsc-nm b, .fsc-mid .fsc-v b { font-weight: 800; }
+.fsc-tip { margin-top: 10px; }
+.fsc-done { margin: 10px 0 0; font-weight: 700; }
 
 /* 📲 폰 알림(알림함 맨 위) */
 .nt-push { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2); }

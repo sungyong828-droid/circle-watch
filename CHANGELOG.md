@@ -16,6 +16,7 @@
 [이 버전 보기](https://0104d9cf.my-fire-portfolio.pages.dev) · 커밋 `be1d5dc`
 
 - 📌 **오늘 한 줄**을 더 간단하게: 오늘(주말엔 지난 거래일) 내 자산이 얼마나 움직였는지만 보여 줘요. 보유 정보가 없으면 보이지 않아요.
+- 줄바꿈 정리: 퇴사 시나리오 카드 클래스(sc-*)가 주간 요약 카드와 겹쳐 뉴스 제목이 좁은 칸에 끊기던 문제 → fsc-* 로 분리 · 영어 보기 옵션 표 "Call" 한 글자 끊김 · 영어 보기 큰 원화 금액(₩1,000,000,000)을 ₩1.0B 처럼 줄여 두 칸 표에서 끊기지 않게 <!-- internal -->
 <!-- EN
 - Today in one line is simpler: it now shows only how much your holdings moved today (last session on weekends), and hides if you have no holdings.
 -->
