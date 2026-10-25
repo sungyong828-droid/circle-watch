@@ -17,6 +17,7 @@
 
 - 📌 **오늘 한 줄**을 더 간단하게: 오늘(주말엔 지난 거래일) 내 자산이 얼마나 움직였는지만 보여 줘요. 보유 정보가 없으면 보이지 않아요.
 - 줄바꿈 정리: 퇴사 시나리오 카드 클래스(sc-*)가 주간 요약 카드와 겹쳐 뉴스 제목이 좁은 칸에 끊기던 문제 → fsc-* 로 분리 · 영어 보기 옵션 표 "Call" 한 글자 끊김 · 영어 보기 큰 원화 금액(₩1,000,000,000)을 ₩1.0B 처럼 줄여 두 칸 표에서 끊기지 않게 <!-- internal -->
+- 영어 기사 제목 번역이 10/23부터 한 번도 저장되지 않던 문제: Workers AI가 JSON 모양 답을 content 대신 reasoning 칸에 넣어 줘서 못 읽음 → 번호 줄("1. 제목") 형식으로 받고 reasoning·JSON 배열도 읽음(parseTitleList) · 예전 실패 횟수 kf는 무시하고 tf로 다시 셈 · 한글 뒤에 영문이 붙은 번역은 버림 · 워커 배포 필요 <!-- internal -->
 <!-- EN
 - Today in one line is simpler: it now shows only how much your holdings moved today (last session on weekends), and hides if you have no holdings.
 -->
