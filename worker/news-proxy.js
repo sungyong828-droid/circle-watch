@@ -1,4 +1,5 @@
 // Fire Portfolio 중계 Worker (Cloudflare Worker · Pages Functions 공용)
+import { sendWebPush } from './webpush.js';
 // 구글 뉴스 RSS·Nasdaq·SEC·Yahoo는 브라우저에서 직접 받을 수 없어(CORS), 이 코드가 대신 받아 JSON으로 돌려준다.
 // GET /news?s=SYM → { at, official, kr, en, filings, crypto }   (3분 캐시 · 항목마다 AI 한 줄 요약 sum)
 // GET /earnings · /quote · /chart · /holders(기관 보유) · /circle
@@ -1565,10 +1566,109 @@ export async function handleFacts(url, cache, cors, ctx, env) {
 }
 
 // ---------------------------------------------------------------- USDC·EURC·USYC 일별 공급량 (DefiLlama — 응답 헤더 문제로 브라우저가 직접 못 받음)
+// 서버 데이터 감시(15분마다): 14분 넘게 묵었으면 수집을 깨우고(GH_TOKEN), 오래 멈춘 게 있으면 디스코드로 알린다(ALERT_WEBHOOK)
+export function dataIssues(d, now = Date.now()) {
+  const out = [];
+  const at = Date.parse(d?.updatedAt || 0) || 0;
+  const h = (now - at) / 3600000;
+  if (h > 1.5) out.push(`서버 수집이 ${at ? `${Math.floor(h)}시간 넘게` : ''} 멈췄어요`);
+  // 일별 기록: 마지막 점이 사흘 넘게 안 바뀌면 그 출처만 멈춘 것(전체 수집은 돌아도 화면 그래프가 멈춰 보인다)
+  const last = (L) => (Array.isArray(L) && L.length ? Number(L[L.length - 1][0]) * 1000 : 0);
+  for (const [nm, L] of [['USDC 공급량 기록', d?.series?.usdc], ['EURC 공급량 기록', d?.series?.eurc], ['USYC 공급량 기록', d?.series?.usyc], ['Arc TVL 기록', d?.arcTvl?.daily]]) {
+    const t = last(L);
+    if (t && now - t > 3 * 86400000) out.push(`${nm}이 ${new Date(t + 9 * 3600000).toISOString().slice(5, 10).replace('-', '/')}에서 멈췄어요`);
+    else if (!t) out.push(`${nm}이 비어 있어요`);
+  }
+  for (const k of Object.keys(d?.errors || {})) out.push(`수집 실패: ${k}`);
+  return out;
+}
+async function watchData(env) {
+  let d = null;
+  try { const r = await fetch(`https://sungyong828-droid.github.io/circle-watch/data/latest.json?t=${Date.now()}`, { cf: { cacheTtl: 0 } }); if (r.ok) d = await r.json(); } catch {}
+  if (env.GH_TOKEN && !(Date.now() - Date.parse(d?.updatedAt || 0) < 14 * 60000)) await kickCollector(env).catch(() => {});
+  if (!env.ALERT_WEBHOOK || !env.SUMS) return;
+  // 수집 실패 한 번은 다음 수집에서 풀리는 일이 많아 30분(두 번 연속) 이어질 때만 알린다
+  const issues = d ? dataIssues(d) : ['서버 데이터(latest.json)를 받지 못했어요'];
+  const prev = (await env.SUMS.get('alert:data', 'json')) || { sig: '', since: 0, sent: 0 };
+  const sig = issues.join('|'), now = Date.now();
+  if (!issues.length) {
+    if (prev.sent) await postAlert(env, '✅ Fire Portfolio 데이터가 다시 정상이에요');
+    if (prev.sig || prev.sent) await env.SUMS.put('alert:data', JSON.stringify({ sig: '', since: 0, sent: 0 }));
+    return;
+  }
+  const since = prev.sig === sig ? prev.since || now : now;
+  const due = now - since >= 25 * 60000 && (prev.sentSig !== sig || now - prev.sent > 12 * 3600000);
+  if (due) await postAlert(env, `⚠️ Fire Portfolio 데이터 확인 필요\n${issues.map((x) => `• ${x}`).join('\n')}`);
+  await env.SUMS.put('alert:data', JSON.stringify({ sig, since, sent: due ? now : prev.sent, sentSig: due ? sig : prev.sentSig }));
+}
+async function postAlert(env, content) {
+  await fetch(env.ALERT_WEBHOOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: content.slice(0, 1900) }) }).catch(() => {});
+}
+// ---------------------------------------------------------------- 📲 폰 알림(웹 푸시) — 구독은 /api/push(Pages)가 KV에 'push:…'로 저장한다
+// 5분마다: 목표가에 닿은 종목을 알리고 그 목표가는 지운다(한 번만 알림). 매일 한국 시각 20시: 오늘(미국 날짜) 실적 발표가 확정된 종목을 알린다.
+// 비밀값 VAPID_JWK가 있을 때만 돈다.
+export async function pushTick(env, at = Date.now()) {
+  if (!env.VAPID_JWK || !env.SUMS) return;
+  const L = await env.SUMS.list({ prefix: 'push:' });
+  if (!L.keys.length) return;
+  const recs = (await Promise.all(L.keys.slice(0, 200).map(async (k) => [k.name, await env.SUMS.get(k.name, 'json').catch(() => null)]))).filter(([, r]) => r?.sub);
+  const send = async (name, r, msg) => {
+    const st = await sendWebPush(r.sub, msg, env.VAPID_JWK).catch(() => 0);
+    if (st === 404 || st === 410) { await env.SUMS.delete(name); r.gone = true; }
+    return st >= 200 && st < 300;
+  };
+  // 1) 목표가 — 이번에 확인할 종목 시세(미국 Nasdaq · 한국 네이버)
+  const us = new Set(), kr = new Set();
+  for (const [, r] of recs) for (const sym of Object.keys(r.t || {})) (/\.K[SQ]$/.test(sym) ? kr : us).add(sym);
+  if (us.size || kr.size) {
+    const Q = {};
+    await Promise.all([...us].slice(0, 30).map(async (sym) => { Q[sym] = await nasdaqQuote(sym, 'stocks').catch(() => nasdaqQuote(sym, 'etf')).catch(() => null); }));
+    if (kr.size) Object.assign(Q, await buildKrQuote([...kr].slice(0, 40)).catch(() => ({})));
+    for (const [name, r] of recs) {
+      let changed = false;
+      for (const [sym, T] of Object.entries(r.t || {})) {
+        const px = Q[sym]?.price;
+        if (!(px > 0) || !(T.dir === 'down' ? px <= T.p : px >= T.p)) continue;
+        const en = r.lang === 'en', kw = /\.K[SQ]$/.test(sym), f = (v) => (kw ? `₩${Math.round(v).toLocaleString('en-US')}` : `$${v.toFixed(2)}`), nm = kw ? Q[sym]?.name || sym : sym;
+        await send(name, r, {
+          title: en ? `🎯 ${nm} hit your target` : `🎯 ${nm} 목표가 도달`,
+          body: en ? `Now ${f(px)} (target ${f(T.p)}, ${T.dir === 'down' ? 'at or below' : 'at or above'})` : `지금 ${f(px)} · 목표가 ${f(T.p)} ${T.dir === 'down' ? '이하' : '이상'}`,
+          url: '/?from=push#home', tag: 'tgt-' + sym,
+        });
+        delete r.t[sym]; changed = true;
+        if (r.gone) break;
+      }
+      if (changed && !r.gone) await env.SUMS.put(name, JSON.stringify(r), { expirationTtl: 90 * 86400 });
+    }
+  }
+  // 2) 실적 발표일 — 한국 시각 20:00~20:04에 한 번(미국 장 시작 전)
+  const kst = new Date(at + 9 * 3600000);
+  if (kst.getUTCHours() !== 20 || kst.getUTCMinutes() >= 5) return;
+  const etToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(at);
+  const syms = [...new Set(recs.filter(([, r]) => !r.gone).flatMap(([, r]) => r.e || []))].slice(0, 30);
+  const today = new Set();
+  await Promise.all(syms.map(async (sym) => {
+    try {
+      const text = (await nasdaqJson(`analyst/${sym}/earnings-date`))?.reportText || '';
+      const m = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+      // 알고리즘으로 짐작한 날짜(estimated)는 틀릴 수 있어 알리지 않는다
+      if (m && mdy(m[1]) === etToday && !/estimated|algorithm/i.test(text)) today.add(sym);
+    } catch {}
+  }));
+  if (!today.size) return;
+  for (const [name, r] of recs) {
+    if (r.gone) continue;
+    const mine = (r.e || []).filter((sym) => today.has(sym));
+    if (!mine.length) continue;
+    const en = r.lang === 'en';
+    await send(name, r, {
+      title: en ? `📢 Earnings today: ${mine.join(', ')}` : `📢 오늘 실적 발표: ${mine.join(', ')}`,
+      body: en ? 'Reporting today (US time). Check the earnings card for what to watch.' : '미국 시각으로 오늘 실적을 발표해요. 실적 카드에서 볼 점을 확인해 보세요.',
+      url: '/?from=push#home', tag: 'earn-' + etToday,
+    });
+  }
+}
 async function kickCollector(env) {
-  const r = await fetch(`https://sungyong828-droid.github.io/circle-watch/data/latest.json?t=${Date.now()}`, { cf: { cacheTtl: 0 } });
-  const at = r.ok ? Date.parse((await r.json()).updatedAt) : 0;
-  if (Date.now() - at < 14 * 60000) return;
   await fetch('https://api.github.com/repos/sungyong828-droid/circle-watch/actions/workflows/update.yml/dispatches', {
     method: 'POST',
     headers: { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'circle-watch-worker', 'content-type': 'application/json' },
@@ -2128,9 +2228,12 @@ export default {
   async scheduled(event, env, ctx) {
     // 3시간마다: FAA 인증 %·스페이스X 보호예수 공시 자동 확인
     if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); return; }
+    // 5분마다(요약과 다른 때): 폰 알림 — 목표가 도달·실적 발표일
+    if (event.cron === '2-59/5 * * * *') { ctx.waitUntil(pushTick(env, event.scheduledTime).catch(() => {})); return; }
     // 15분마다: GitHub 예약 실행은 실제로 3~5시간씩 밀리므로, 데이터가 14분 넘게 묵었으면 수집을 직접 깨운다
     // (GH_TOKEN 비밀값이 있을 때만 — 저장소 Actions 쓰기 권한 토큰)
-    if (env.GH_TOKEN && Math.floor(event.scheduledTime / 300000) % 3 === 0) ctx.waitUntil(kickCollector(env).catch(() => {}));
+    // 같은 때 데이터 멈춤 감시도 한다(ALERT_WEBHOOK 비밀값이 있을 때 디스코드로 알림)
+    if ((env.GH_TOKEN || env.ALERT_WEBHOOK) && Math.floor(event.scheduledTime / 300000) % 3 === 0) ctx.waitUntil(watchData(env).catch(() => {}));
     const sym = STOCKS[Math.floor(event.scheduledTime / 300000) % STOCKS.length];
     ctx.waitUntil((async () => {
       const data = await buildNews(sym);

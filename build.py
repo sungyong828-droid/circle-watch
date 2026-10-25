@@ -19,7 +19,7 @@ subprocess.run([sys.executable, os.path.join(ROOT, 'i18n', 'build_dict.py')], ch
 
 shutil.rmtree(DIST, ignore_errors=True)
 os.makedirs(os.path.join(DIST, 'data'))
-for f in ['index.html', 'admin.html', '_headers', 'robots.txt']:
+for f in ['index.html', 'admin.html', '_headers', 'robots.txt', 'sw.js', 'manifest.webmanifest']:  # sw.js: 폰 알림(푸시)만 받는 서비스 워커
     shutil.copy(os.path.join(ROOT, f), os.path.join(DIST, f))
 shutil.copytree(os.path.join(ROOT, 'assets'), os.path.join(DIST, 'assets'))
 for f in ['faa-joby.json', 'spcx-facts.json', 'tem-kpis.json', 'us-margin.json']:

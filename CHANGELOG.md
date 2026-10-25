@@ -11,6 +11,22 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📌 **오늘 한 줄**(새 기능): 홈 맨 위에 오늘 내 자산이 얼마나 움직였는지와 가장 많이 오른·내린 종목을 한 줄로 보여 줘요. 보유 정보가 없으면 관심 종목 기준이에요. 홈 화면 편집에서 숨길 수 있어요.
+- 🎯 **퇴사 시점 시나리오**(새 기능): 퇴사까지 화면에서 지금 평가금액과 매달 더 넣는 돈이 연 4%·7%·10%로 불어날 때 언제 목표에 닿는지 나란히 보여 줘요. 매달 50만원을 더 넣으면 얼마나 빨라지는지도 알려 줘요.
+- 📲 **폰 알림**(새 기능): 🔔 알림함에서 켜면 앱을 닫아 둬도 목표가 도달·실적 발표일을 폰 알림으로 받아요. 서버에는 목표가와 종목 이름만 보내요(보유 수량·평단은 안 보내요). 아이폰은 홈 화면에 추가한 앱에서 켤 수 있어요.
+- 💾 **백업 파일 저장·불러오기**: 보유 정보·관심 종목·메모·설정을 파일로 저장해 두고 언제든 다시 불러올 수 있어요(기존 '다른 기기로 옮기기' 아래).
+- ⚠️ 체인·공급량 데이터 수집이 멈추면 위쪽에 '일부 데이터 지연'이 떠요. 누르면 어떤 기록이 언제부터 멈췄는지 보여 줘요.
+- ⚡ 첫 화면이 더 빨리 떠요(같은 내용의 카드는 다시 그리지 않음).
+- 워커: 15분마다 서버 데이터 멈춤 감시 → ALERT_WEBHOOK 비밀값이 있으면 디스코드 알림(25분 이어질 때, 12시간마다 다시, 복구 알림) · 5분마다(2-59/5) 웹 푸시 cron pushTick(VAPID_JWK 필요) · /api/push 구독 KV push:<id> 90일 · sw.js(푸시 전용, fetch 캐시 없음)+manifest · card() 같은 html이면 다시 쓰지 않음(캔버스 제외)·base() 스냅샷 정렬 메모·ssExpanded 폭 캐시 · 워커 배포 필요 · 비밀값: node tools/setup_secrets.mjs push|alert <!-- internal -->
+<!-- EN
+- Today in one line (new): the top of Home shows how much your holdings moved today plus the top and bottom stock (watchlist if you have no holdings). Hide it in Customize Home.
+- When can I retire? (new): in FIRE, see when today's value plus monthly savings would reach your goal at 4%, 7% and 10% a year, side by side, and how much sooner ₩500k more a month gets you there.
+- Phone alerts (new): turn them on from the 🔔 to get target-price and earnings-day alerts even with the app closed. Only target prices and tickers go to the server. On iPhone, add the app to your Home Screen first.
+- Backup file: save your holdings, watchlist, memos and settings to a file and restore them anytime.
+- If on-chain or supply data stops updating, a "Some data delayed" note appears at the top; tap it to see what is stale.
+- Home loads faster.
+-->
+
 ## v2026.10.23-4 — 2026-10-23
 
 [이 버전 보기](https://d411f0d0.my-fire-portfolio.pages.dev) · 커밋 `d53cb31`

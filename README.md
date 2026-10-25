@@ -138,3 +138,9 @@ Worker cron(3시간마다, `17 */3 * * *`)이 SEC를 직접 읽어 KV `facts`에
     cd moved
     npx wrangler pages deploy . --project-name yongs-portfolio --branch main
     npx wrangler pages deploy . --project-name circle-watch --branch main
+
+## 폰 알림 · 데이터 멈춤 알림 (처음 한 번 설정)
+
+- `node tools/setup_secrets.mjs push` — 폰 알림(웹 푸시) 열쇠 `VAPID_JWK`를 만들어 Worker·Pages(실제·테스트)에 넣는다. 값은 화면에 나오지 않는다. 다시 만들면 켜 둔 알림이 모두 꺼진다.
+- `node tools/setup_secrets.mjs alert` — `.env.local`의 `DISCORD_WEBHOOK_URL`을 Worker의 `ALERT_WEBHOOK`으로 넣는다. 서버 수집이 1.5시간 넘게 멈추거나 USDC·EURC·USYC·Arc TVL 일별 기록이 사흘 넘게 안 바뀌면 디스코드로 알린다.
+- 구독은 `/api/push`가 KV(`push:…`, 90일)에 푸시 주소·목표가·종목 이름만 저장한다. Worker cron(`2-59/5 * * * *`)이 목표가 도달을 확인하고, 매일 한국 시각 20시에 확정된 실적 발표일을 알린다. `sw.js`는 알림만 받고 화면 파일을 캐시하지 않는다.

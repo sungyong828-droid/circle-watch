@@ -1,0 +1,14 @@
+{
+  "name": "Fire Portfolio",
+  "short_name": "Fire Portfolio",
+  "description": "퇴사까지 진행률·내 종목 시세·뉴스를 한 화면에",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d1015",
+  "theme_color": "#0d1015",
+  "icons": [
+    { "src": "/assets/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
