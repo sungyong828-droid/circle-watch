@@ -7771,7 +7771,8 @@ ${what.join(' · ')}
     }
     // 6) 업황(업종 키트가 있는 종목)
     const kl = document.getElementById('kit-line');
-    if (!crcl && kitOf(sym) && kl && !kl.hidden && kl.textContent.trim()) rows.push({ ic: '🧰', lb: EN ? 'Industry' : '업황', tx: esc(kl.textContent.trim().replace(/[›>]\s*$/, '')), go: 'searn:c-kit' });
+    const kv = kl && !kl.hidden ? kl.querySelector('.kl-v')?.textContent.trim() : '', kt = kl?.querySelector('.kl-t')?.textContent.replace(/[^\p{L}\p{N}\s·]/gu, '').trim();
+    if (!crcl && kitOf(sym) && kv) rows.push({ ic: '🧰', lb: kt || (EN ? 'Industry' : '업황'), tx: esc(kv), go: 'searn:c-kit' });
     // 7) 최근 소식
     let n0 = null; try { n0 = newsItems(sym).find((i) => i.kind !== 'filing' && i.kind === 'related'); } catch {}
     if (n0) rows.push({ ic: '📰', lb: `${EN ? 'Latest news' : '최근 소식'} · ${dayLabel(n0.t)}`, tx: esc(ttl(n0)), go: crcl ? 'news' : 'snews' });
