@@ -7757,8 +7757,9 @@ ${what.join(' · ')}
     const E = !kr && !etf ? earnOf(sym) : null;
     if (E) {
       const q = (E.quarters || []).at(-1), sur = q && (E.surprises || []).find((x) => x.end === q.end), ya = q && (E.quarters || []).find((x) => x.end === `${+q.end.slice(0, 4) - 1}${q.end.slice(4)}`);
-      const yoy = q?.revenue && ya?.revenue ? q.revenue / ya.revenue - 1 : null, beat = sur?.eps != null && sur?.consensus != null ? sur.eps >= sur.consensus : null;
-      if (q && (yoy != null || beat != null)) rows.push({ ic: '📊', lb: `${EN ? 'Last results' : '최근 실적'} · ${qLabelLong(q.end)}`, tx: [yoy != null ? `${EN ? 'revenue' : '매출'} <b class="${cls(yoy)}">${pct(yoy, 0)}</b> ${EN ? 'YoY' : '(1년 전보다)'}` : '', beat != null ? `EPS ${EN ? (beat ? 'beat' : 'missed') : (beat ? '예상 상회' : '예상 하회')} ($${(+sur.eps).toFixed(2)} vs $${(+sur.consensus).toFixed(2)})` : ''].filter(Boolean).join(' · '), go: V('earn:c-earnings', 'searn:c-searnings') });
+      const yoy0 = q?.revenue && ya?.revenue ? q.revenue / ya.revenue - 1 : null, yoy = yoy0 != null && ya.revenue >= 5e6 && Math.abs(yoy0) <= 3 ? yoy0 : null; // 1년 전 매출이 아주 작으면 % 대신 금액으로
+      const revAbs = yoy == null && q?.revenue ? `${EN ? 'revenue' : '매출'} <b>${usdS2(q.revenue)}</b>` : '', beat = sur?.eps != null && sur?.consensus != null ? sur.eps >= sur.consensus : null;
+      if (q && (yoy != null || revAbs || beat != null)) rows.push({ ic: '📊', lb: `${EN ? 'Last results' : '최근 실적'} · ${qLabelLong(q.end)}`, tx: [yoy != null ? `${EN ? 'revenue' : '매출'} <b class="${cls(yoy)}">${pct(yoy, 0)}</b> ${EN ? 'YoY' : '(1년 전보다)'}` : revAbs, beat != null ? `EPS ${EN ? (beat ? 'beat' : 'missed') : (beat ? '예상 상회' : '예상 하회')} ($${(+sur.eps).toFixed(2)} vs $${(+sur.consensus).toFixed(2)})` : ''].filter(Boolean).join(' · '), go: V('earn:c-earnings', 'searn:c-searnings') });
       const N = E.next;
       if (N?.date && dday(N.date) >= 0) rows.push({ ic: '📅', lb: EN ? 'Next' : '다음 일정', tx: `${EN ? 'Earnings' : '실적 발표'} <b>${krDate(N.date)}</b> (${dday(N.date) === 0 ? 'D-DAY' : `D-${dday(N.date)}`})${N.estimated ? (EN ? ' · estimated' : ' · 예상일') : ''}${N.consensus != null ? ` · ${EN ? 'EPS est.' : '예상 EPS'} $${N.consensus.toFixed(2)}` : ''}`, go: V('earn:c-earnings', 'searn:c-searnings') });
     }
