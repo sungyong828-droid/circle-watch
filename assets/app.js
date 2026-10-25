@@ -2487,24 +2487,13 @@
   }
 
 
-  // 홈 맨 위 '오늘 한 줄': 내 자산이 오늘 얼마나 움직였는지 + 가장 많이 오른·내린 종목(보유 정보가 없으면 관심 종목 기준)
+  // 홈 맨 위 '오늘 한 줄': 내 자산이 오늘(주말엔 지난 거래일) 얼마나 움직였는지만 — 보유 정보가 없으면 숨긴다
   function renderTodayLine(fc) {
     const el = document.getElementById('today-line');
     if (!el) return;
     const dow = new Date(etDate() + 'T12:00:00Z').getUTCDay(), day = dow === 0 || dow === 6 ? (EN ? 'Last session' : '지난 거래일') : (EN ? 'Today' : '오늘');
-    let moves, lead = '';
-    if (fc) {
-      moves = fc.rows.filter((r) => r.q?.prevClose > 0).map((r) => ({ sym: r.ticker, p: r.px / r.q.prevClose - 1 }));
-      const base = fc.valueKrw - fc.todayKrw, p = base > 0 ? fc.todayKrw / base : null;
-      if (p != null && moves.length) lead = `${day} ${EN ? 'my holdings' : '내 자산'} <b class="${cls(p)}">${signed(fc.todayKrw, wonFull)} (${pct(p, 1)})</b>`;
-    } else {
-      moves = WATCH.map((sym) => ({ sym, p: stockPx(sym)?.pct })).filter((x) => x.p != null && isFinite(x.p));
-      if (moves.length > 1) { const up = moves.filter((x) => x.p > 0).length; lead = EN ? `${day} ${up} of ${moves.length} watchlist stocks up` : `${day} 관심 종목 ${moves.length}개 중 <b>${up}개 상승</b>`; }
-    }
-    const S = moves.slice().sort((a, b) => b.p - a.p), hi = S[0], lo = S.at(-1);
-    const one = (x) => `${esc(nameOfSym(x.sym))} <b class="${cls(x.p)}">${pct(x.p, 1)}</b>`;
-    const parts = [lead, hi && hi.p > 0 && `${EN ? 'Top' : '최고'} ${one(hi)}`, lo && lo !== hi && lo.p < 0 && `${EN ? 'Bottom' : '최저'} ${one(lo)}`].filter(Boolean);
-    const html = parts.length >= 2 ? `<span aria-hidden="true">📌</span> ${parts.join('<i aria-hidden="true">·</i>')}` : '';
+    const base = fc ? fc.valueKrw - fc.todayKrw : 0, p = fc && base > 0 && fc.rows.some((r) => r.q?.prevClose > 0) ? fc.todayKrw / base : null;
+    const html = p != null ? `<span aria-hidden="true">📌</span> ${day} ${EN ? 'my holdings' : '내 자산'} <b class="${cls(p)}">${signed(fc.todayKrw, wonFull)} (${pct(p, 1)})</b>` : '';
     el.hidden = !html;
     if (el.innerHTML !== html) el.innerHTML = html;
   }
@@ -4611,7 +4600,7 @@
 
   // ---- 🧩 홈 화면 편집: 홈 구역 순서·숨기기, 아래 탭의 USDC·Arc 숨기기(이 기기에 저장)
   const HOME_SECTIONS = [
-    ['today', () => (EN ? '📌 Today in one line' : '📌 오늘 한 줄'), ['today-line'], () => (EN ? 'My move today · top & bottom stock' : '오늘 내 자산 · 가장 오른·내린 종목')],
+    ['today', () => (EN ? '📌 Today in one line' : '📌 오늘 한 줄'), ['today-line'], () => (EN ? 'How much my holdings moved today' : '오늘 내 자산이 얼마나 움직였는지')],
     ['fire', () => (EN ? '🔥 My money' : '🔥 내 돈 요약'), ['home-fire'], () => (EN ? 'FIRE · Dividends · Tax' : '퇴사까지 · 배당금 · 세금')],
     ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
     ['market', () => (EN ? '📊 Market' : '📊 시장'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow'], () => (EN ? 'Overview · Fear & Greed · Money flow' : '개요 · 공포탐욕 · 자금 동향')],
