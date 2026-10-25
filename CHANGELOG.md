@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.10.25-2 — 2026-10-25
+
+[이 버전 보기](https://0104d9cf.my-fire-portfolio.pages.dev) · 커밋 `be1d5dc`
+
 - 📌 **오늘 한 줄**을 더 간단하게: 오늘(주말엔 지난 거래일) 내 자산이 얼마나 움직였는지만 보여 줘요. 보유 정보가 없으면 보이지 않아요.
 <!-- EN
 - Today in one line is simpler: it now shows only how much your holdings moved today (last session on weekends), and hides if you have no holdings.
