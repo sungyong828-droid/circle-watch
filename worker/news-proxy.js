@@ -2311,7 +2311,8 @@ export default {
   // 5분마다 종목 하나씩 돌아가며 새 기사를 요약해 둔다(아무도 안 봐도 요약이 쌓이도록)
   async scheduled(event, env, ctx) {
     // 3시간마다: FAA 인증 %·스페이스X 보호예수 공시 자동 확인
-    if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); return; }
+    // (같은 때 D램 현물가도 받아 둔다 — 아무도 반도체 종목을 안 봐도 매일 기록이 쌓이게)
+    if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); ctx.waitUntil(buildSemi(env).catch(() => {})); return; }
     // 5분마다(요약과 다른 때): 폰 알림 — 목표가 도달·실적 발표일
     if (event.cron === '2-59/5 * * * *') { ctx.waitUntil(pushTick(env, event.scheduledTime).catch(() => {})); return; }
     // 15분마다: GitHub 예약 실행은 실제로 3~5시간씩 밀리므로, 데이터가 14분 넘게 묵었으면 수집을 직접 깨운다
