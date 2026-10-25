@@ -7751,7 +7751,7 @@ ${what.join(' · ')}
   function kitLead(sym) {
     const D = state.semi, mem = SEMI_MEM.has(sym), d5 = D?.dram?.items?.ddr5, sox = D?.peers?.find((x) => x.sym === '^SOX');
     const a = d5 ? `${EN ? 'DRAM spot' : 'D램 현물가'} <b class="${cls(d5.chg)}">${pct(d5.chg, 1)}</b>` : '';
-    const b = sox?.m1 != null ? `${EN ? 'SOX 1M' : '미국 반도체지수 1개월'} <b class="${cls(sox.m1)}">${pct(sox.m1, 1)}</b>` : '';
+    const b = sox?.m1 != null ? `${EN ? 'US chips 1M' : '미국 반도체 1개월'} <b class="${cls(sox.m1)}">${pct(sox.m1, 1)}</b>` : '';
     return (mem ? [a, b] : [b, a]).filter(Boolean).join(' · ');
   }
   function renderKit(sym = state.stock) {
