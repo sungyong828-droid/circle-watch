@@ -7725,6 +7725,71 @@ ${what.join(' · ')}
     });
   }
 
+
+  // ---------------------------------------------------------------- 📋 기업 한눈에 보기(종목 첫 화면 맨 위): 회사·주가 위치·최근 실적·다음 일정·시장의 시선·업황·최근 소식을 한 줄씩
+  // 이미 받아 둔 자료로만 만든다(AI 없음 · 자료 없는 줄은 숨김). 줄을 누르면 그 내용의 자세한 카드로 바로 간다.
+  const GL_ABOUT = {
+    CRCL: ['달러 스테이블코인 USDC를 발행하고, 고객 돈(준비금)을 국채 등에 넣어 받는 이자로 주로 돈을 벌어요.', 'Issues the USDC stablecoin and earns mostly interest on the reserves backing it.'],
+    JOBY: ['전기로 수직 이착륙하는 에어택시(eVTOL)를 만들고 직접 운항하려는 회사예요. 미국 FAA 인증을 받는 중이에요.', 'Builds electric vertical take-off air taxis (eVTOL) to fly itself; FAA certification is under way.'],
+    SPCX: ['로켓 발사(팰컨·스타십)와 위성 인터넷 스타링크로 돈을 벌어요. 매출의 큰 몫이 스타링크예요.', 'Earns from rocket launches (Falcon, Starship) and Starlink satellite internet, its biggest revenue source.'],
+    TEM: ['AI로 암 등 환자의 유전체 검사를 하고, 쌓인 임상·유전체 데이터를 제약사에 파는 정밀의료 회사예요.', 'AI precision medicine: genomic testing for patients, and licensing its clinical and genomic data to drug makers.'],
+  };
+  const firstSentence = (t) => { const x = String(t || '').replace(/\s+/g, ' ').trim(); const m = x.match(/^.{20,140}?[.!?。](?=\s|$)|^.{20,140}?(요|다)\.(?=\s|$)/); return m ? m[0] : x.slice(0, 120) + (x.length > 120 ? '…' : ''); };
+  function glanceRows(sym) {
+    const crcl = sym === 'CRCL', kr = isKR(sym), etf = !kr && isEtf(sym), V = (a, b) => (crcl ? a : b), rows = [];
+    // 1) 무엇으로 돈을 버나
+    const k = bizKey(sym), B = state.biz?.[k];
+    const about = GL_ABOUT[sym] ? GL_ABOUT[sym][EN ? 1 : 0] : B?.easy ? firstSentence(tx(B.easy)) : '';
+    if (about) rows.push({ ic: '🏢', lb: EN ? 'Business' : '무엇으로 돈을 버나', tx: esc(about), go: crcl ? 'usdc' : `searn:${B ? 'c-biz' : 'c-searnings'}` });
+    // 2) 주가 위치
+    const p = stockPx(sym), D = st(sym).daily;
+    if (p?.price != null) {
+      let extra = '';
+      if (D?.length) {
+        const pts = D.filter((x) => x[1] != null), cl = pts.map((x) => x[1]), yr = pts.filter((x) => x[0] >= pts.at(-1)[0] - 365 * 864e5);
+        const hi = Math.max(...yr.map((x) => x[3] ?? x[1]), p.price), lo = Math.min(...yr.map((x) => x[4] ?? x[1]), p.price), pos = hi > lo ? (p.price - lo) / (hi - lo) : null;
+        const r = rsiOf(cl), lab = r == null ? '' : r >= 70 ? (EN ? 'overbought' : '과매수') : r <= 30 ? (EN ? 'oversold' : '과매도') : r >= 60 ? (EN ? 'warming' : '다소 과열') : r <= 40 ? (EN ? 'cooling' : '다소 침체') : (EN ? 'neutral' : '중립');
+        extra = `${pos != null ? ` · ${EN ? '52-week range' : '52주 범위 중'} <b>${Math.round(pos * 100)}%</b>` : ''}${lab ? ` · RSI ${Math.round(r)} ${lab}` : ''}`;
+      } else if (!kr && D == null && !st(sym).glTry) { st(sym).glTry = 1; ensureDaily(sym).then(() => renderGlance(sym)).catch(() => {}); } // 한 번만(빈 기록이면 다시 부르지 않게)
+      rows.push({ ic: '📈', lb: EN ? 'Price' : '주가', tx: `<b>${pxS(sym, p.price)}</b> <span class="${cls(p.pct)}">${p.pct != null ? pct(p.pct, 1) : ''}</span>${extra}`, go: V('crcl:c-pricechart', 'sprice:c-spricechart') });
+    }
+    // 3) 최근 실적 · 4) 다음 일정 (미국 상장 기업)
+    const E = !kr && !etf ? earnOf(sym) : null;
+    if (E) {
+      const q = (E.quarters || []).at(-1), sur = q && (E.surprises || []).find((x) => x.end === q.end), ya = q && (E.quarters || []).find((x) => x.end === `${+q.end.slice(0, 4) - 1}${q.end.slice(4)}`);
+      const yoy = q?.revenue && ya?.revenue ? q.revenue / ya.revenue - 1 : null, beat = sur?.eps != null && sur?.consensus != null ? sur.eps >= sur.consensus : null;
+      if (q && (yoy != null || beat != null)) rows.push({ ic: '📊', lb: `${EN ? 'Last results' : '최근 실적'} · ${qLabelLong(q.end)}`, tx: [yoy != null ? `${EN ? 'revenue' : '매출'} <b class="${cls(yoy)}">${pct(yoy, 0)}</b> ${EN ? 'YoY' : '(1년 전보다)'}` : '', beat != null ? `EPS ${EN ? (beat ? 'beat' : 'missed') : (beat ? '예상 상회' : '예상 하회')} ($${(+sur.eps).toFixed(2)} vs $${(+sur.consensus).toFixed(2)})` : ''].filter(Boolean).join(' · '), go: V('earn:c-earnings', 'searn:c-searnings') });
+      const N = E.next;
+      if (N?.date && dday(N.date) >= 0) rows.push({ ic: '📅', lb: EN ? 'Next' : '다음 일정', tx: `${EN ? 'Earnings' : '실적 발표'} <b>${krDate(N.date)}</b> (${dday(N.date) === 0 ? 'D-DAY' : `D-${dday(N.date)}`})${N.estimated ? (EN ? ' · estimated' : ' · 예상일') : ''}${N.consensus != null ? ` · ${EN ? 'EPS est.' : '예상 EPS'} $${N.consensus.toFixed(2)}` : ''}`, go: V('earn:c-earnings', 'searn:c-searnings') });
+    }
+    if (kr) { const X = state.krNext?.[sym.slice(0, 6)]; if (X?.e) rows.push({ ic: '📅', lb: EN ? 'Next' : '다음 일정', tx: `${esc(X.e.k)} <b>${krDate(X.e.d)}</b>`, go: 'searn:c-searnings' }); }
+    // 5) 시장의 시선
+    if (!kr && !etf) {
+      let A = null; try { A = analystView(sym); } catch {}
+      if (A?.n && A.T?.mean) rows.push({ ic: '🎯', lb: EN ? 'Analysts' : '시장의 시선', tx: `<span class="tone ${A.tone}">${EN ? ({ '매수 우위': 'Mostly buy', '매도 우위': 'Mostly sell', '중립': 'Mixed' }[A.label] || A.label) : A.label}</span> ${EN ? 'avg target' : '목표가 평균'} <b>${price(A.T.mean)}</b>${A.up != null ? ` (<span class="${cls(A.up)}">${pct(A.up, 0)}</span>)` : ''} · ${EN ? `${A.n} brokers` : `증권사 ${A.n}곳`}`, go: V('crcl:c-analyst', 'sprice:c-sanalyst') });
+    }
+    // 6) 업황(업종 키트가 있는 종목)
+    const kl = document.getElementById('kit-line');
+    if (!crcl && kitOf(sym) && kl && !kl.hidden && kl.textContent.trim()) rows.push({ ic: '🧰', lb: EN ? 'Industry' : '업황', tx: esc(kl.textContent.trim().replace(/[›>]\s*$/, '')), go: 'searn:c-kit' });
+    // 7) 최근 소식
+    let n0 = null; try { n0 = newsItems(sym).find((i) => i.kind !== 'filing' && i.kind === 'related'); } catch {}
+    if (n0) rows.push({ ic: '📰', lb: `${EN ? 'Latest news' : '최근 소식'} · ${dayLabel(n0.t)}`, tx: esc(ttl(n0)), go: crcl ? 'news' : 'snews' });
+    return rows;
+  }
+  function renderGlance(sym = state.stock) {
+    const id = sym === 'CRCL' ? 'glance' : 'sglance', el = document.getElementById('c-' + id);
+    if (!el) return;
+    if (sym !== 'CRCL' && (bizAuto(sym) || BIZ_KEYS.has(bizKey(sym))) && !(bizKey(sym) in (state.biz || {}))) { try { renderBiz(sym); } catch {} } // 회사 설명을 미리 받아 둔다
+    const rows = glanceRows(sym);
+    el.hidden = rows.length < 2;
+    if (el.hidden) return;
+    const nm = isKR(sym) ? STOCK_INFO[sym]?.name || sym : `${STOCK_INFO[sym]?.short || sym}`;
+    card(id, {
+      title: EN ? `📋 ${nm} at a glance` : `📋 ${nm} 한눈에 보기`, sub: EN ? 'Tap a line for the details' : '줄을 누르면 자세한 내용으로 가요',
+      body: `<ul class="gl-list">${rows.map((r) => `<li><button type="button" class="gl-row" data-glgo="${esc(r.go)}"><span class="gl-ic" aria-hidden="true">${r.ic}</span><span class="gl-tx"><small>${r.lb}</small><span>${r.tx}</span></span><i aria-hidden="true">›</i></button></li>`).join('')}</ul>`,
+    });
+  }
+
   // ---- 🧰 업종 키트: 같은 업종 종목에 '이 업종은 이걸 보면 돼요' 카드를 자동으로 붙인다(실적·분배금 탭 맨 위 + 홈 한 줄)
   //  · 반도체: D램 현물가 + 미국 반도체 흐름(메모리 회사는 D램 먼저)
   //  · 빅테크: 4대 클라우드 회사 AI 설비투자(SEC) + 나스닥100·빅테크 주가
@@ -7865,7 +7930,7 @@ ${what.join(' · ')}
     renderStockSwitch();
     const sym = state.stock;
     for (const j of [() => renderAvgCalc(sym), () => renderMemo(sym)]) { try { j(); } catch (e) { console.error(e); } }
-    if (!isOther(sym)) { for (const j of [() => renderHolders('CRCL', 'holders'), () => renderAnalyst('CRCL'), () => renderInsider('CRCL'), () => renderOptions('CRCL'), () => renderEarnDay('CRCL')]) { try { j(); } catch (e) { console.error(e); } } return; }
+    if (!isOther(sym)) { for (const j of [() => renderHolders('CRCL', 'holders'), () => renderAnalyst('CRCL'), () => renderInsider('CRCL'), () => renderOptions('CRCL'), () => renderEarnDay('CRCL'), () => renderGlance('CRCL')]) { try { j(); } catch (e) { console.error(e); } } return; }
     document.getElementById('c-faa').hidden = sym !== 'JOBY';
     document.getElementById('c-lockup').hidden = sym !== 'SPCX';
     const ct = document.getElementById('c-tempus'); if (ct) ct.hidden = sym !== 'TEM';
@@ -7878,10 +7943,10 @@ ${what.join(' · ')}
     const kh = document.querySelector('#home-stock .group-h'); if (kh) kh.hidden = false;
     if (kr) {
       document.getElementById('c-searnday').hidden = true;
-      for (const j of [() => renderSPriceCard(sym), () => renderKit(sym), () => renderSPriceChart(sym), () => renderKrKpis(sym), () => renderKrDeal(sym), () => renderKrAnalyst(sym), () => renderBiz(sym), () => renderKrEarn(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
+      for (const j of [() => renderSPriceCard(sym), () => renderKit(sym), () => renderGlance(sym), () => renderSPriceChart(sym), () => renderKrKpis(sym), () => renderKrDeal(sym), () => renderKrAnalyst(sym), () => renderBiz(sym), () => renderKrEarn(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
       return;
     }
-    const jobs = [() => renderSPriceCard(sym), () => renderKit(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
+    const jobs = [() => renderSPriceCard(sym), () => renderKit(sym), () => renderGlance(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
       () => renderShort(shortOf(sym), 'sshort', S.short), () => renderHolders(sym, 'sholders'), () => renderAnalyst(sym), () => renderInsider(sym), () => renderOptions(sym), () => renderEarnDay(sym), () => renderSEarnings(sym),
       () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge];
     for (const j of jobs) { try { j(); } catch (e) { console.error(e); } }
@@ -8414,6 +8479,8 @@ ${what.join(' · ')}
     if (psh) { if (psh.dataset.push === 'on') pushEnable(); else pushDisable(); return; }
     const ntg = ev.target.closest('[data-ntgo]');
     if (ntg) { const x = document.getElementById('nt-sheet')?._items?.[+ntg.dataset.ntgo]; closeBell(); if (x) goTarget(x.go); return; }
+    const glg = ev.target.closest('[data-glgo]');
+    if (glg) { const [v, target] = glg.dataset.glgo.split(':'); showView(v, target); if (!target) window.scrollTo({ top: 0 }); return; }
     const seg = ev.target.closest('[data-segoto]');
     if (seg) { goTarget({ sym: seg.dataset.segoto, v: 'earn' }); return; }
     const bmr = ev.target.closest('[data-benchrange]');
