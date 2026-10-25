@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🔬 **반도체 업황**(새 기능): 삼성전자·SK하이닉스·마이크론·엔비디아 같은 반도체 종목을 고르면 D램 현물가, 미국 반도체지수·마이크론·엔비디아·TSMC 흐름, '이 업종은 이걸 보세요'를 한 카드로 보여 줘요. 홈에는 한 줄 요약이 뜨고, 누르면 실적 탭의 카드로 가요. D램 가격은 오늘부터 매일 기록해서 1개월 변화가 채워져요.
+- 업종 키트 1호(반도체): /semi(워커·Pages) DRAMeXchange 현물가 파싱 + Yahoo ^SOX·MU·NVDA·TSM, KV semi:hist 하루 1회 · 앱 SEMI_MEM/SEMI_ALL, c-kit(실적 탭)·kit-line(홈) · 워커 배포 필요 <!-- internal -->
+<!-- EN
+- Chip industry check (new): pick a chip stock (Samsung, SK hynix, Micron, NVIDIA and more) to see DRAM spot prices, the US semiconductor index with Micron, NVIDIA and TSMC, and what to watch, in one card. Home shows a one-line summary that opens the card.
+-->
+
 ## v2026.10.25-3 — 2026-10-25
 
 [이 버전 보기](https://24c92fe9.my-fire-portfolio.pages.dev) · 커밋 `ca61f80`

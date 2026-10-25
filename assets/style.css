@@ -2289,3 +2289,21 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .nt-push .np-tx b { color: var(--ink); }
 .nt-push .np-tx small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
 .nt-push .btn-primary, .nt-push .btn-ghost { flex: none; width: auto; padding: 7px 14px; font-size: 13px; }
+
+/* 🧰 업종 키트(반도체) */
+.kit-line { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border: 0; border-radius: var(--radius); background: var(--surface); color: var(--muted); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.kit-line .kl-t { flex: none; font-weight: 700; color: var(--ink); }
+.kit-line .kl-v { flex: 1; min-width: 0; }
+.kit-line b { color: var(--ink); } .kit-line b.up, .kit-lead b.up { color: var(--up); } .kit-line b.down, .kit-lead b.down { color: var(--down); }
+.kit-line > i { font-style: normal; color: var(--faint); }
+.kit-lead { margin: 10px 0 4px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+.kit-lead b { color: var(--ink); }
+.kit-sec { margin-top: 14px; }
+.kit-sec .mini-h { font-size: 13px; font-weight: 700; color: var(--ink); }
+.kit-sec .mini-h small { font-weight: 500; color: var(--muted); margin-left: 4px; font-size: 11.5px; }
+.kit-tbl { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+.kit-tbl th { font-weight: 500; font-size: 11.5px; color: var(--muted); text-align: left; padding: 4px 0; }
+.kit-tbl td { padding: 7px 0; border-top: 1px solid var(--line-soft); color: var(--ink); }
+.kit-tbl .num { text-align: right; font-family: var(--mono); white-space: nowrap; padding-left: 8px; }
+.kit-tbl td small { margin-left: 3px; font-family: var(--sans); font-size: 10.5px; color: var(--muted); }
+.kit-watch { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 5px; font-size: 13px; line-height: 1.55; color: var(--ink-2); }

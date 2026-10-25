@@ -7725,7 +7725,75 @@ ${what.join(' · ')}
     });
   }
 
+  // ---- 🧰 업종 키트: 같은 업종 종목에 '이 업종은 이걸 보면 돼요' 카드를 자동으로 붙인다. 지금은 반도체.
+  // 메모리 회사(삼성전자·SK하이닉스·마이크론)는 D램 현물가를 먼저, 그 밖의 반도체는 미국 반도체 지수·대표 종목을 먼저 보여 준다.
+  const SEMI_MEM = new Set(['005930.KS', '005935.KS', '000660.KS', 'MU']);
+  const SEMI_ALL = new Set([...SEMI_MEM, 'NVDA', 'AMD', 'TSM', 'AVGO', 'ASML', 'INTC', 'QCOM', 'ARM', 'AMAT', 'LRCX', 'KLAC', 'MRVL', 'TXN', 'SMCI', 'SOXX', 'SMH', 'SOXL', '042700.KS', '000990.KS', '403870.KQ', '058470.KQ', '240810.KQ', '091160.KS']);
+  const kitOf = (sym) => (SEMI_ALL.has(sym) ? 'semi' : null);
+  let semiLoading = null;
+  function loadSemi() {
+    if (semiLoading || (state.semi && Date.now() - state.semiAt < 30 * 60000)) return semiLoading;
+    semiLoading = getJ(`${NEWS_API}/semi`, 15000)
+      .then((d) => { state.semi = d; state.semiAt = Date.now(); state.semiErr = false; })
+      .catch(() => { state.semiErr = true; state.semiAt = Date.now(); })
+      .finally(() => { semiLoading = null; renderKit(); });
+    return semiLoading;
+  }
+  const SEMI_NAME = { '^SOX': () => (EN ? 'PHLX Semiconductor' : '미국 반도체지수(SOX)'), MU: () => (EN ? 'Micron' : '마이크론'), NVDA: () => (EN ? 'NVIDIA' : '엔비디아'), TSM: () => 'TSMC' };
+  const DRAM_NAME = { ddr5: 'DDR5 16Gb', ddr4_16: 'DDR4 16Gb', ddr4_8: 'DDR4 8Gb' };
+  // 모아 둔 D램 기록에서 n일 전(가장 가까운 앞 날짜) 대비 변화
+  function dramBack(hist, k, days) {
+    const last = hist.at(-1);
+    if (!last?.[k]) return null;
+    const cut = addDays(last.d, -days), base = hist.filter((h) => h.d <= cut && h[k] > 0).at(-1);
+    return base ? last[k] / base[k] - 1 : null;
+  }
+  function kitLead(sym) {
+    const D = state.semi, mem = SEMI_MEM.has(sym), d5 = D?.dram?.items?.ddr5, sox = D?.peers?.find((x) => x.sym === '^SOX');
+    const a = d5 ? `${EN ? 'DRAM spot' : 'D램 현물가'} <b class="${cls(d5.chg)}">${pct(d5.chg, 1)}</b>` : '';
+    const b = sox?.m1 != null ? `${EN ? 'SOX 1M' : '미국 반도체지수 1개월'} <b class="${cls(sox.m1)}">${pct(sox.m1, 1)}</b>` : '';
+    return (mem ? [a, b] : [b, a]).filter(Boolean).join(' · ');
+  }
+  function renderKit(sym = state.stock) {
+    const el = document.getElementById('c-kit'), line = document.getElementById('kit-line'), kit = kitOf(sym);
+    if (el) el.hidden = !kit;
+    if (line) line.hidden = !kit;
+    if (!kit || !el) return;
+    if (!state.semi) {
+      if (!state.semiErr) loadSemi();
+      card('kit', { title: EN ? '🔬 Chip industry check' : '🔬 반도체 업황', body: `<p class="skeleton">${state.semiErr ? (EN ? 'Could not load chip data. Try refreshing.' : '반도체 자료를 받지 못했어요. 새로고침으로 다시 시도해 주세요.') : (EN ? 'Loading…' : '불러오는 중…')}</p>` });
+      if (line) line.hidden = true;
+      return;
+    }
+    if (Date.now() - state.semiAt > 30 * 60000) loadSemi();
+    const D = state.semi, mem = SEMI_MEM.has(sym), hist = D.hist || [], days = hist.length;
+    const lead = kitLead(sym);
+    if (line) { const h = lead ? `<span class="kl-t">🔬 ${EN ? 'Chip industry' : '반도체 업황'}</span><span class="kl-v">${lead}</span><i aria-hidden="true">›</i>` : ''; line.hidden = !h; if (line.innerHTML !== h) line.innerHTML = h; }
+    const dramRows = D.dram ? Object.entries(D.dram.items).map(([k, x]) => {
+      const m1 = dramBack(hist, k, 30), w1 = dramBack(hist, k, 7);
+      return `<tr><td>${DRAM_NAME[k] || esc(x.name)}</td><td class="num">$${x.avg.toFixed(2)}</td><td class="num"><span class="${cls(x.chg)}">${pct(x.chg, 2)}</span></td><td class="num">${m1 != null ? `<span class="${cls(m1)}">${pct(m1, 1)}</span>` : w1 != null ? `<span class="${cls(w1)}">${pct(w1, 1)}</span><small>${EN ? '1W' : '1주'}</small>` : '–'}</td></tr>`;
+    }).join('') : '';
+    const dram = D.dram ? `<div class="kit-sec"><div class="mini-h">💾 ${EN ? 'DRAM spot price' : 'D램 현물가'} <small>DRAMeXchange · ${esc(D.dram.date.slice(5).replace('-', '/'))} ${esc(D.dram.time || '')} ${EN ? 'Taiwan time' : '대만 시각'}</small></div>
+        <table class="kit-tbl"><thead><tr><th>${EN ? 'Chip' : '제품'}</th><th class="num">${EN ? 'Avg' : '평균가'}</th><th class="num">${EN ? '1D' : '하루'}</th><th class="num">${EN ? '1M' : '1개월'}</th></tr></thead><tbody>${dramRows}</tbody></table>
+        ${days < 30 ? `<p class="note">${EN ? `We started recording daily prices ${days ? `${days} day${days === 1 ? '' : 's'} ago` : 'today'}; the 1-month change fills in as records build up.` : `매일 가격을 기록하기 시작했어요(${days}일째). 기록이 쌓이면 1개월 변화가 채워져요.`}</p>` : ''}</div>`
+      : `<p class="note">${EN ? 'DRAM spot prices are unavailable right now.' : 'D램 현물가를 지금은 받지 못했어요.'}</p>`;
+    const peers = D.peers?.length ? `<div class="kit-sec"><div class="mini-h">🇺🇸 ${EN ? 'US chip stocks' : '미국 반도체 흐름'} <small>${EN ? 'last close' : '최근 종가 기준'}</small></div>
+        <table class="kit-tbl"><thead><tr><th></th><th class="num">${EN ? '1D' : '하루'}</th><th class="num">${EN ? '1M' : '1개월'}</th><th class="num">${EN ? '3M' : '3개월'}</th></tr></thead><tbody>${D.peers.map((x) => `<tr><td>${SEMI_NAME[x.sym]?.() || esc(x.sym)}</td><td class="num"><span class="${cls(x.d1)}">${pct(x.d1, 1)}</span></td><td class="num"><span class="${cls(x.m1)}">${pct(x.m1, 1)}</span></td><td class="num"><span class="${cls(x.m3)}">${pct(x.m3, 1)}</span></td></tr>`).join('')}</tbody></table></div>` : '';
+    const watch = mem
+      ? (EN ? ['DRAM spot prices tend to lead contract prices — and memory makers’ earnings — by a few months.', 'Micron reports before Samsung and SK hynix, so its results are an early read on the memory cycle.', 'Foreign investors own a large share of Korean chip stocks; their buying and selling moves prices.'] : ['D램 현물가가 먼저 움직이고, 몇 달 뒤 계약가와 메모리 회사 실적에 반영되는 경우가 많아요.', '마이크론은 삼성전자·SK하이닉스보다 먼저 실적을 내서, 메모리 업황을 미리 보는 신호로 쓰여요.', '한국 반도체주는 외국인 보유 비중이 커서 외국인 매매에 주가가 크게 움직여요.'])
+      : (EN ? ['AI server demand (NVIDIA’s results and guidance) sets the tone for the whole sector.', 'TSMC’s monthly sales show how busy chip production is.', 'The SOX index shows whether money is flowing into or out of chips overall.'] : ['AI 서버 수요(엔비디아 실적·전망)가 업종 전체 분위기를 정해요.', 'TSMC 월별 매출은 반도체 생산이 얼마나 바쁜지 보여 줘요.', '미국 반도체지수(SOX)로 반도체 전체에 돈이 들어오는지 빠지는지 볼 수 있어요.']);
+    card('kit', {
+      title: EN ? '🔬 Chip industry check' : '🔬 반도체 업황',
+      sub: EN ? 'What to watch for chip stocks, updated hourly' : '반도체 종목이라면 함께 볼 지표 · 1시간마다 갱신',
+      easy: EN ? 'Memory makers like Samsung and SK hynix earn most of their profit from DRAM and NAND prices. When spot prices rise, earnings often improve a few months later. US chip stocks show what global investors think of the sector.' : '삼성전자·SK하이닉스 같은 메모리 회사는 D램·낸드 가격에 따라 이익이 크게 달라져요. 현물가가 오르면 몇 달 뒤 실적이 좋아지는 경우가 많아요. 미국 반도체 주가는 해외 투자자들이 업종을 어떻게 보는지 보여 줘요.',
+      body: `${lead ? `<p class="kit-lead">${lead}</p>` : ''}${mem ? dram + peers : peers + dram}
+        <div class="kit-sec"><div class="mini-h">👀 ${EN ? 'What to watch' : '이 업종은 이걸 보세요'}</div><ul class="kit-watch">${watch.map((w) => `<li>${w}</li>`).join('')}</ul></div>
+        <p class="note">${EN ? 'Spot prices are for small trades and can differ from large contract prices. Not investment advice.' : '현물가는 소량 거래 가격이라 대형 계약 가격과 다를 수 있어요. 투자 조언이 아니에요.'}</p>`,
+    });
+  }
+
   function renderSEarnings(sym = state.stock) {
+    try { renderKit(sym); } catch (e) { console.error(e); }
     try { renderBiz(sym); } catch (e) { console.error(e); }
     try { renderAiCards(sym); } catch (e) { console.error(e); }
     if (isKR(sym)) { renderKrEarn(sym); return; }
@@ -7753,7 +7821,7 @@ ${what.join(' · ')}
     const kh = document.querySelector('#home-stock .group-h'); if (kh) kh.hidden = false;
     if (kr) {
       document.getElementById('c-searnday').hidden = true;
-      for (const j of [() => renderSPriceCard(sym), () => renderSPriceChart(sym), () => renderKrKpis(sym), () => renderKrDeal(sym), () => renderKrAnalyst(sym), () => renderBiz(sym), () => renderKrEarn(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
+      for (const j of [() => renderSPriceCard(sym), () => renderKit(sym), () => renderSPriceChart(sym), () => renderKrKpis(sym), () => renderKrDeal(sym), () => renderKrAnalyst(sym), () => renderBiz(sym), () => renderKrEarn(sym), () => renderNewsSummary(sym), () => renderNews(sym), updateNewsBadge]) { try { j(); } catch (e) { console.error(e); } }
       return;
     }
     const jobs = [() => renderSPriceCard(sym), () => renderSKpis(sym), () => renderSSummary(sym), () => renderSPriceChart(sym),
@@ -8465,6 +8533,7 @@ ${what.join(' · ')}
     if (frg) { state.flowRange = frg.dataset.flowrange; savePref('flowRange', state.flowRange); renderFlowView(); return; }
     const vb = ev.target.closest('[data-vote]');
     if (vb) { const [k, v] = vb.dataset.vote.split('|'); castVote(k, +v); return; }
+    if (ev.target.closest('#kit-line')) { showView('searn'); setTimeout(() => document.getElementById('c-kit')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60); return; }
     const bku = ev.target.closest('[data-backup]');
     if (bku) { if (bku.dataset.backup === 'save') saveBackup(); else loadBackup(); return; }
     const mo = ev.target.closest('[data-moveopen]');

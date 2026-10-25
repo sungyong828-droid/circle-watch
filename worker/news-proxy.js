@@ -1157,6 +1157,65 @@ export async function buildFearGreed() {
   if (!out.cnn && !out.crypto) throw new Error('공포·탐욕 지수를 받지 못했습니다');
   return out;
 }
+// ---------------------------------------------------------------- 🔬 반도체 업황(업종 키트): D램 현물가(DRAMeXchange) + 미국 반도체 지수·대표 종목(Yahoo)
+// D램 현물가는 그날 값만 공개돼서, 하루 한 번 KV('semi:hist')에 모아 추이를 만든다(최대 400일).
+const DRAM_ITEMS = [['ddr5', /^DDR5 16Gb \(2Gx8\) 4800\/5600/], ['ddr4_16', /^DDR4 16Gb \(2Gx8\) 3200/], ['ddr4_8', /^DDR4 8Gb \(1Gx8\) 3200/]];
+const SEMI_PEERS = ['^SOX', 'MU', 'NVDA', 'TSM'];
+export function parseDramSpot(html) {
+  const t = String(html).replace(/<(script|style)[\s\S]*?<\/\1>/gi, '').replace(/<[^>]+>/g, '|').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').replace(/(\| ?)+/g, '|');
+  const i = t.search(/DRAM Spot Price ?\|Last Update/), j = t.indexOf('Module Spot Price', i); // 위쪽 메뉴의 같은 글자는 건너뛴다
+  if (i < 0) return null;
+  const sec = t.slice(i, j > i ? j : i + 3000);
+  const upd = (sec.match(/Last Update:\s*([A-Za-z]{3})\.?\s*(\d{1,2})\s+(\d{4})\s+(\d{1,2}:\d{2})/) || []);
+  const MON = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+  const date = upd[1] && MON[upd[1]] ? `${upd[3]}-${String(MON[upd[1]]).padStart(2, '0')}-${upd[2].padStart(2, '0')}` : null;
+  const cells = sec.split('|').map((x) => x.trim()).filter(Boolean);
+  const items = {};
+  for (const [k, re] of DRAM_ITEMS) {
+    const at = cells.findIndex((c) => re.test(c));
+    if (at < 0) continue;
+    const num = cells.slice(at + 1, at + 7).map((c) => parseFloat(c.replace(/[%,\s]/g, '')));
+    const [hi, lo, , , avg, chg] = num;
+    if ([hi, lo, avg, chg].every(isFinite) && avg > 0 && lo <= avg && avg <= hi) items[k] = { name: cells[at], avg, chg: chg / 100, hi, lo };
+  }
+  return Object.keys(items).length && date ? { date, time: upd[4] || null, items } : null;
+}
+async function yahooDaily(sym) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=3mo&interval=1d`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const R = (await r.json()).chart?.result?.[0];
+  const ts = R?.timestamp || [], c = R?.indicators?.quote?.[0]?.close || [];
+  const pts = ts.map((t, i) => [t, c[i]]).filter(([, v]) => v > 0);
+  if (pts.length < 2) throw new Error('no data');
+  const last = R.meta?.regularMarketPrice ?? pts.at(-1)[1], prev = R.meta?.chartPreviousClose && pts.length < 2 ? R.meta.chartPreviousClose : pts.at(-2)[1];
+  const back = (days) => { const cut = pts.at(-1)[0] - days * 86400; const p = pts.filter(([t]) => t <= cut).at(-1); return p ? p[1] : null; };
+  const m1 = back(30), m3 = pts[0][1];
+  return { sym, price: last, d1: last / prev - 1, m1: m1 ? last / m1 - 1 : null, m3: m3 ? last / m3 - 1 : null, at: new Date((R.meta?.regularMarketTime || pts.at(-1)[0]) * 1000).toISOString() };
+}
+export async function buildSemi(env) {
+  const [dx, ...peers] = await Promise.allSettled([
+    fetch('https://www.dramexchange.com/', { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.text() : Promise.reject(new Error('dramexchange ' + r.status)))),
+    ...SEMI_PEERS.map(yahooDaily),
+  ]);
+  const dram = dx.status === 'fulfilled' ? parseDramSpot(dx.value) : null;
+  let hist = [];
+  if (env?.SUMS) {
+    try { hist = (await env.SUMS.get('semi:hist', 'json')) || []; } catch {}
+    if (dram && hist.at(-1)?.d !== dram.date) { // 새 날짜만 기록(하루 한 번 쓰기)
+      hist = [...hist.filter((h) => h.d !== dram.date), { d: dram.date, ...Object.fromEntries(Object.entries(dram.items).map(([k, v]) => [k, v.avg])) }].slice(-400);
+      await env.SUMS.put('semi:hist', JSON.stringify(hist)).catch(() => {});
+    }
+  }
+  const out = { at: new Date().toISOString(), dram, hist, peers: peers.map((p) => (p.status === 'fulfilled' ? p.value : null)).filter(Boolean), failed: [] };
+  if (!dram) out.failed.push('dram');
+  if (out.peers.length < SEMI_PEERS.length) out.failed.push('peers');
+  if (!dram && !out.peers.length) throw new Error('반도체 자료를 받지 못했습니다');
+  return out;
+}
+export async function handleSemi(url, cache, cors, ctx, env) {
+  return swr(cache, ctx, `${url.origin}/semi?v=1`, { freshSec: url.searchParams.has('fresh') ? 120 : 3600, keepSec: 7 * 86400, cors, build: async () => JSON.stringify(await buildSemi(env)) });
+}
+
 export async function handleFearGreed(url, cache, cors, ctx) {
   return swr(cache, ctx, `${url.origin}/feargreed?v=1`, { freshSec: url.searchParams.has('fresh') ? 60 : 900, keepSec: 3 * 86400, cors, build: async () => JSON.stringify(await buildFearGreed()) });
 }
@@ -2237,6 +2296,7 @@ export default {
     if (url.pathname === '/market') return handleMarket(url, cache, cors, ctx);
     if (url.pathname === '/dividends') return handleDividends(url, cache, cors, ctx);
     if (url.pathname === '/feargreed') return handleFearGreed(url, cache, cors, ctx);
+    if (url.pathname === '/semi') return handleSemi(url, cache, cors, ctx, env);
     if (url.pathname === '/flow') return handleFlow(url, cache, cors, ctx);
     if (url.pathname === '/calendar') return handleCalendar(url, cache, cors, ctx);
     if (url.pathname === '/earnsum') return handleEarnSum(url, cache, cors, ctx, env);
