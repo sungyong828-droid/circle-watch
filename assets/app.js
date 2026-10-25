@@ -7787,7 +7787,7 @@ ${what.join(' · ')}
     };
   }
   const bn = (v) => (EN ? `$${(v / 1e9).toFixed(1)}B` : `${nf(0).format(Math.round(v / 1e8))}억 달러`);
-  const qName = (end) => { const [y, m] = end.split('-'); return EN ? `Q${Math.ceil(+m / 3)} ${y}` : `${y.slice(2)}년 ${Math.ceil(+m / 3)}분기`; };
+  const qName = (end, short) => { const [y, m] = end.split('-'), q = Math.ceil(+m / 3); return short ? `${y.slice(2)}.${q}Q` : EN ? `Q${q} ${y}` : `${y.slice(2)}년 ${q}분기`; };
   function kitBig(sym, D) {
     const C = D.capex || [];
     // 네 회사 모두 발표한 분기만 합친다(달력 분기 끝 날짜가 같다)
@@ -7796,9 +7796,9 @@ ${what.join(' · ')}
     const last = tot.at(-1), yago = last && tot.find((t) => Math.abs(Date.parse(t.end) - (Date.parse(last.end) - 365 * 864e5)) < 20 * 864e5);
     const yoy = last && yago ? last.v / yago.v - 1 : null;
     const ndx = D.peers?.find((x) => x.sym === '^NDX');
-    const lead = [last && `${EN ? 'Big 4 AI capex' : '빅테크 AI 투자'} <b>${bn(last.v)}</b>${yoy != null ? ` (${EN ? 'YoY' : '1년 전보다'} ${kitB(yoy, 0)})` : ''}`, ndx?.m1 != null && `${EN ? 'Nasdaq-100 1M' : '나스닥100 1개월'} ${kitB(ndx.m1)}`].filter(Boolean).join(' · ');
+    const lead = [last && `${EN ? `AI capex (${qName(last.end)})` : `AI 투자(${qName(last.end)})`} <b>${bn(last.v)}</b>${yoy != null ? ` (${EN ? 'YoY' : '1년 전보다'} ${kitB(yoy, 0)})` : ''}`, ndx?.m1 != null && `${EN ? 'Nasdaq-100 1M' : '나스닥100 1개월'} ${kitB(ndx.m1)}`].filter(Boolean).join(' · ');
     const max = Math.max(...tot.map((t) => t.v), 1);
-    const bars = tot.length >= 2 ? `<div class="kit-bars" role="img" aria-label="${EN ? 'Quarterly capex total' : '분기별 설비투자 합계'}">${tot.slice(-6).map((t) => `<div class="kb"><i style="height:${Math.max(4, (t.v / max) * 100).toFixed(1)}%"></i><b>${EN ? `$${Math.round(t.v / 1e9)}B` : `${nf(0).format(Math.round(t.v / 1e8))}억`}</b><small>${esc(qName(t.end))}</small></div>`).join('')}</div>` : '';
+    const bars = tot.length >= 2 ? `<div class="kit-bars" role="img" aria-label="${EN ? 'Quarterly capex total' : '분기별 설비투자 합계'}">${tot.slice(-6).map((t) => `<div class="kb"><i style="height:${Math.max(4, (t.v / max) * 100).toFixed(1)}%"></i><b>${EN ? `$${Math.round(t.v / 1e9)}B` : `${nf(0).format(Math.round(t.v / 1e8))}억`}</b><small>${esc(qName(t.end, true))}</small></div>`).join('')}</div>` : '';
     const rows = C.map((c) => `<tr><td>${PEER_NAME[c.sym]?.() || esc(c.sym)}</td><td class="num">${esc(qName(c.last.end))}</td><td class="num">${bn(c.last.v)}</td><td class="num">${kitPct(c.yoy, 0)}</td></tr>`).join('');
     const capex = C.length ? `<div class="kit-sec"><div class="mini-h">🏗️ ${EN ? 'AI & data-center capex' : 'AI·데이터센터 설비투자'} <small>${EN ? 'SEC filings · cash spent on property & equipment' : 'SEC 공시 · 분기 유형자산 취득액'}</small></div>${bars}
         <table class="kit-tbl"><thead><tr><th></th><th class="num">${EN ? 'Quarter' : '분기'}</th><th class="num">${EN ? 'Capex' : '투자액'}</th><th class="num">${EN ? 'YoY' : '1년 전 대비'}</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="note">${EN ? 'Capex data is unavailable right now.' : '설비투자 자료를 지금은 받지 못했어요.'}</p>`;
@@ -7814,7 +7814,7 @@ ${what.join(' · ')}
   function kitDiv(sym, D) {
     const y = D.y1 || D.m6 || D.m3, per = D.y1 ? (EN ? '1 year' : '1년') : D.m6 ? (EN ? '6 months' : '6개월') : (EN ? '3 months' : '3개월');
     const lead = y ? (y.total < 0
-      ? (EN ? `${per}: ${kitB(y.dist)} paid out, but price ${kitB(y.px)} → total <b class="down">${pct(y.total, 1)}</b>` : `${per}간 분배금 ${kitB(y.dist)}를 받았지만 주가가 ${kitB(y.px)} → 원금 기준 ${kitB(y.total)}`)
+      ? (EN ? `${per}: payouts <b>${pctPlain(y.dist, 1)}</b>, but the price fell <b class="down">${pctPlain(-y.px, 1)}</b> → total ${kitB(y.total)}` : `${per}간 분배금으로 <b>${pctPlain(y.dist, 1)}</b>를 받았지만 주가가 <b class="down">${pctPlain(-y.px, 1)}</b> 빠져 원금 기준 ${kitB(y.total)}`)
       : (EN ? `${per} total return ${kitB(y.total)} (price ${kitB(y.px)} + payouts ${kitB(y.dist)})` : `${per} 총수익 ${kitB(y.total)} (주가 ${kitB(y.px)} + 분배금 ${kitB(y.dist)})`)) : '';
     const rows = [['m3', EN ? '3M' : '3개월'], ['m6', EN ? '6M' : '6개월'], ['y1', EN ? '1Y' : '1년']].filter(([k]) => D[k]).map(([k, l]) => `<tr><td>${l}</td><td class="num">${kitPct(D[k].px)}</td><td class="num">${kitPct(D[k].dist)}</td><td class="num"><b>${kitPct(D[k].total)}</b></td></tr>`).join('');
     const tr = D.distTrend;
