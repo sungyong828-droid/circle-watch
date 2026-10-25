@@ -7775,7 +7775,7 @@ ${what.join(' · ')}
     if (!crcl && kitOf(sym) && kv) rows.push({ ic: '🧰', lb: kt || (EN ? 'Industry' : '업황'), tx: esc(kv), go: 'searn:c-kit' });
     // 7) 최근 소식
     let n0 = null; try { n0 = newsItems(sym).find((i) => i.kind !== 'filing' && i.kind === 'related'); } catch {}
-    if (n0) rows.push({ ic: '📰', lb: `${EN ? 'Latest news' : '최근 소식'} · ${dayLabel(n0.t)}`, tx: esc(ttl(n0)), go: crcl ? 'news' : 'snews' });
+    if (n0) rows.push({ ic: '📰', lb: `${EN ? 'Latest news' : '최근 소식'} · ${dayLabel(n0.t)}`, tx: `<span data-noi18n>${esc(ttl(n0))}</span>`, go: crcl ? 'news' : 'snews' }); // 기사 제목은 번역기가 조각내지 않게
     return rows;
   }
   function renderGlance(sym = state.stock) {

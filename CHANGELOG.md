@@ -11,6 +11,14 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📋 **기업 한눈에 보기**(새 기능): 종목을 고르면 첫 화면 맨 위에 그 회사가 무엇으로 돈을 버는지, 지금 주가 위치(52주 범위·과열 여부), 최근 실적, 다음 실적 발표일, 애널리스트 목표가, 업황, 최근 소식이 한 줄씩 정리돼요. 줄을 누르면 자세한 카드로 바로 가요.
+- 🗂️ 실적 탭을 '무엇으로 돈을 버나 → 회사별 핵심 지표 → 실적 → 회사 약속 → 업황 → 공시 요약' 순서로 정리했어요.
+<!-- internal --> renderGlance()/glanceRows(): 기존 자료만(AI 없음), 자료 없는 줄 숨김 · 1년 전 매출 500만 달러 미만·±300% 넘으면 % 대신 금액 · BUILTIN 4종목 회사 설명은 GL_ABOUT · index.html view-searn 카드 순서 변경.
+<!-- EN
+- Company at a glance (new): the first screen of every stock now starts with what the company does, where the price sits (52-week range, RSI), latest results, next earnings date, analyst targets, the industry and the latest news. Tap a line to jump to the details.
+- The earnings tab now reads business → key metrics → results → promises → industry → filings.
+-->
+
 ## v2026.10.25-5 — 2026-10-25
 
 [이 버전 보기](https://8953b8d0.my-fire-portfolio.pages.dev) · 커밋 `b13730e`
