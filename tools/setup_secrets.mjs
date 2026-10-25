@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const put = (args, cwd, value) => {
-  const r = spawnSync('npx', ['wrangler', ...args], { cwd, input: value, stdio: ['pipe', 'inherit', 'inherit'], shell: process.platform === 'win32' });
+  // 윈도에서는 npx가 .cmd라 셸로 실행한다(인자는 모두 고정 문자열)
+  const r = process.platform === 'win32'
+    ? spawnSync(['npx', 'wrangler', ...args].join(' '), { cwd, input: value, stdio: ['pipe', 'inherit', 'inherit'], shell: true })
+    : spawnSync('npx', ['wrangler', ...args], { cwd, input: value, stdio: ['pipe', 'inherit', 'inherit'] });
   if (r.status !== 0) { console.error('실패:', args.join(' ')); process.exit(1); }
 };
 const what = process.argv[2];
