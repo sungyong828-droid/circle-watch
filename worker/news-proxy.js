@@ -586,7 +586,7 @@ async function secQuarterly(sym = 'CRCL') {
     signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error('sec ' + r.status);
-  const g0 = (await r.json()).facts['us-gaap'] || {};
+  const F = (await r.json()).facts || {}, g0 = F['us-gaap'] || {};
   // 항목 이름이 회사마다 달라 여러 후보 중 있는 것을 쓴다
   const g = new Proxy(g0, { get: (o, c) => (Array.isArray(c) ? undefined : o[c]) });
   const pickC = (c) => (Array.isArray(c) ? c.find((x) => g0[x]) || c[0] : c);
@@ -649,7 +649,14 @@ async function secQuarterly(sym = 'CRCL') {
     const v = u[Object.keys(u)[0]].filter((x) => x.start && /10-[QK]/.test(x.form || '')).sort((a, b) => a.end.localeCompare(b.end) || b.start.localeCompare(a.start)).at(-1);
     if (v && (!ytdLatest.end || v.end >= ytdLatest.end)) { ytdLatest.start = v.start; ytdLatest.end = v.end; ytdLatest[k] = v.val; }
   }
-  return { q: out, ytd: ytdLatest, cik: E.cik };
+  // 주식 수(밸류에이션용): 분기 희석 가중평균 + 표지(dei)의 최신 발행 주식 수
+  const dil = series('WeightedAverageNumberOfDilutedSharesOutstanding', false);
+  const so = (F.dei?.EntityCommonStockSharesOutstanding?.units?.shares || []).filter((v) => v.end && v.val > 0).sort((x, y) => x.end.localeCompare(y.end));
+  // 종류주가 여러 개면(GOOGL 등) 같은 날짜 값을 더한다
+  const soOn = (end) => [...new Set(so.filter((v) => v.end === end).map((v) => v.val))].reduce((t, v) => t + v, 0);
+  const soEnd = so.at(-1)?.end, sharesNow = soEnd ? soOn(soEnd) : null;
+  const coverShares = Object.fromEntries([...new Set(so.map((v) => v.end))].map((e) => [e, soOn(e)]));
+  return { q: out, ytd: ytdLatest, cik: E.cik, dilShares: dil, coverShares, sharesNow, sharesAt: soEnd || null };
 }
 
 // 회사가 보도자료로 실적 발표일을 확정하면(예: "Circle to Announce Q3 2026 Financial Results on November 4, 2026") 그 날짜
@@ -1019,6 +1026,86 @@ export async function handleAnalyst(url, cache, cors, ctx) {
       const [a, st] = await Promise.allSettled([buildAnalyst(sym), buildStreet(sym)]);
       if (a.status !== 'fulfilled' && st.status !== 'fulfilled') throw new Error('애널리스트 자료를 받지 못했습니다');
       return JSON.stringify({ ...(a.status === 'fulfilled' ? a.value : { at: new Date().toISOString(), symbol: sym }), street: st.status === 'fulfilled' ? st.value : null, streetErr: st.status === 'rejected' ? String(st.reason?.message || st.reason) : undefined });
+    },
+  });
+}
+
+// ---------------------------------------------------------------- 💰 밸류에이션(비싼가 싼가) · 🆚 경쟁사 비교 — AI 없이 SEC 재무제표 + Yahoo 주가로 계산
+// 시가총액 = 주가 × 주식 수. 과거 주식 수는 액면분할 비율로 맞춘다(Yahoo 주가는 분할 반영 가격이라).
+// PER = 시가총액 ÷ 최근 4분기 순이익(적자면 없음) · PSR = 시가총액 ÷ 최근 4분기 매출. 분기 말마다 계산해 과거 범위를 만든다.
+async function yahooWeekly(sym) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym(sym)}?range=5y&interval=1wk&events=split`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(9000) });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart?.result?.[0];
+  const ts = j?.timestamp || [], c = j?.indicators?.quote?.[0]?.close || [];
+  const pts = ts.map((t, i) => [t * 1000, c[i]]).filter(([, v]) => v > 0);
+  if (pts.length < 2) throw new Error('no price');
+  const splits = Object.values(j.events?.splits || {}).map((x) => ({ t: x.date * 1000, ratio: x.numerator / x.denominator })).filter((x) => x.ratio > 0 && isFinite(x.ratio));
+  return { pts, price: j.meta?.regularMarketPrice ?? pts.at(-1)[1], splits };
+}
+export function valuationOf(sec, px, now = Date.now()) {
+  const q = sec.q || {}, rev = q.revenue || {}, ni = q.netIncome || {};
+  const ends = Object.keys(rev).sort();
+  const day = 86400000, at = (e) => Date.parse(e + 'T00:00:00Z');
+  // 최근 4분기 합계: 4개 분기가 1년 안에 모두 있어야 한다
+  const ttm = (map, end) => { const L = Object.keys(map).filter((e) => e <= end && at(end) - at(e) < 300 * day).sort(); return L.length === 4 ? L.reduce((t, e) => t + map[e], 0) : null; };
+  // 주식 수(분할 반영): 그 날짜까지의 가장 최근 값 × 그 뒤에 있었던 분할 비율
+  const sh = [...Object.entries(sec.coverShares || {}), ...Object.entries(sec.dilShares || {})].map(([e, v]) => [at(e), v]).filter(([, v]) => v > 0).sort((a, b) => a[0] - b[0]);
+  const splitAfter = (t) => (px.splits || []).filter((x) => x.t > t).reduce((m, x) => m * x.ratio, 1);
+  const sharesAt = (t) => { const p = sh.filter(([d]) => d <= t + 45 * day).at(-1) || sh[0]; return p ? p[1] * splitAfter(p[0]) : null; };
+  const priceAt = (t) => px.pts.filter(([d]) => d <= t).at(-1)?.[1] ?? null;
+  const hist = [];
+  for (const e of ends) {
+    const t = at(e), p = priceAt(t), s = sharesAt(t), R = ttm(rev, e), N = ttm(ni, e);
+    if (!p || !s || t < px.pts[0][0]) continue;
+    const cap = p * s;
+    hist.push({ end: e, psr: R > 0 ? +(cap / R).toFixed(2) : null, per: N > 0 ? +(cap / N).toFixed(1) : null });
+  }
+  const last = ends.at(-1), R = last ? ttm(rev, last) : null, N = last ? ttm(ni, last) : null;
+  const prevEnd = last ? ends.filter((e) => at(last) - at(e) > 330 * day && at(last) - at(e) < 400 * day).at(-1) : null;
+  const R0 = prevEnd ? ttm(rev, prevEnd) : null;
+  const yoyQ = last && prevEnd && rev[prevEnd] > 0 ? rev[last] / rev[prevEnd] - 1 : null;
+  const s = sharesAt(now), cap = s ? px.price * s : null;
+  const y1 = priceAt(now - 365 * day);
+  return {
+    price: px.price, cap, asOf: last || null,
+    per: cap && N > 0 ? +(cap / N).toFixed(1) : null, psr: cap && R > 0 ? +(cap / R).toFixed(2) : null,
+    loss: N != null && N <= 0, revTtm: R, revGrowth: R && R0 > 0 ? R / R0 - 1 : yoyQ, ret1y: y1 ? px.price / y1 - 1 : null,
+    hist: hist.slice(-20),
+  };
+}
+export async function handleValuation(url, cache, cors, ctx) {
+  const s = (url.searchParams.get('s') || '').toUpperCase();
+  if (!SYM_RE.test(s)) return json({ error: 'bad request' }, cors, 400); // 미국 상장 종목만(SEC 재무제표)
+  if (!(await knownSym(s, cache, url.origin))) return unknownSym(cors);
+  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=1`, {
+    freshSec: 6 * 3600, keepSec: 7 * 86400, maxStaleSec: 2 * 86400, cors,
+    build: async () => {
+      const [sec, px] = await Promise.all([secQuarterly(s), yahooWeekly(s)]);
+      return JSON.stringify({ at: new Date().toISOString(), symbol: s, ...valuationOf(sec, px) });
+    },
+  });
+}
+
+// ---------------------------------------------------------------- 🔍 왜 움직였나 — 크게 오르내린 날의 뉴스(구글 뉴스 날짜 검색, AI 없음)
+// 지난 날의 기사는 바뀌지 않으니 오래 보관한다.
+export async function handleMoveNews(url, cache, cors, ctx) {
+  const sym = pickSym(url), d = url.searchParams.get('d') || '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Date.parse(d) > Date.now() + 86400000 || Date.now() - Date.parse(d) > 400 * 86400000) return json({ error: 'bad date' }, cors, 400);
+  if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
+  const iso = (t) => new Date(t).toISOString().slice(0, 10);
+  const from = iso(Date.parse(d) - 86400000), to = iso(Date.parse(d) + 2 * 86400000);
+  const old = Date.now() - Date.parse(d) > 3 * 86400000;
+  return swr(cache, ctx, `${url.origin}/movenews?s=${sym}&d=${d}&v=1`, {
+    freshSec: old ? 30 * 86400 : 3 * 3600, keepSec: 60 * 86400, cors,
+    build: async () => {
+      const kr = KR_RE.test(sym), name = (await companyOf(sym).catch(() => null))?.core || sym;
+      const q = kr ? `"${name}" 주가 after:${from} before:${to}` : `"${name}" OR ${sym} stock after:${from} before:${to}`;
+      const lo = Date.parse(from), hi = Date.parse(to), seen = new Set();
+      const items = (await googleNews(q, kr ? 'ko' : 'en').catch(() => []))
+        .filter((n) => { const t = Date.parse(n.t), k = String(n.title).toLowerCase().replace(/[^a-z0-9가-힣]/g, '').slice(0, 40); if (!n.title || !(t >= lo && t < hi) || seen.has(k)) return false; seen.add(k); return true; })
+        .sort((x, y) => Math.abs(Date.parse(x.t) - Date.parse(d) - 432e5) - Math.abs(Date.parse(y.t) - Date.parse(d) - 432e5)).slice(0, 6); // 그날에 가까운 기사부터
+      return JSON.stringify({ at: new Date().toISOString(), symbol: sym, d, items: items.map(({ t, title, source, url }) => ({ t, title, source, url })) });
     },
   });
 }
@@ -1427,8 +1514,20 @@ const SUM_KEEP_DAYS = 35;
 const AI_OUT_RE = /4006|daily free allocation|neurons/i;
 const aiOutKey = () => new Request(`https://budget.internal/aiout/${new Date().toISOString().slice(0, 10)}`);
 async function aiOff() { try { return !!(await caches.default.match(aiOutKey())); } catch { return false; } }
+// 하루 AI 사용량을 직접 센다(무료 한도에 닿기 전에 멈추기): 가벼운 모델 1, 정확한 모델 3으로 계산.
+// 한도의 대략 70% 선(AI_UNITS_PER_DAY)에서 새 AI 작업을 멈추고 저장된 요약만 보여 준다.
+// 기본 4종목 밖(사용자가 추가한 종목)은 그 절반(AI_EXTRA_STOP)에서 먼저 멈춰, 기본 종목 몫을 남겨 둔다.
+// 카운터는 데이터센터별 캐시라 대략적인 값이다(방문자 대부분이 같은 서울 데이터센터).
+const AI_UNITS_PER_DAY = 500, AI_EXTRA_STOP = 250;
+const aiUnitKey = () => new Request(`https://budget.internal/aiunits/${new Date().toISOString().slice(0, 10)}`);
+async function aiUnitsUsed() { try { const h = await caches.default.match(aiUnitKey()); return h ? Number(await h.text()) || 0 : 0; } catch { return 0; } }
+async function addAiUnits(n) {
+  try { await caches.default.put(aiUnitKey(), new Response(String((await aiUnitsUsed()) + n), { headers: { 'cache-control': 'public, max-age=90000' } })); } catch {}
+}
 async function runAI(env, model, opts) {
   if (await aiOff()) throw new Error('AI 한도 소진(4006)');
+  if ((await aiUnitsUsed()) >= AI_UNITS_PER_DAY) throw new Error('AI 하루 사용량 상한(4006)');
+  await addAiUnits(model === SUM_MODEL ? 1 : 3);
   try { return await env.AI.run(model, opts); } catch (e) {
     if (AI_OUT_RE.test(String(e?.message || e))) {
       const left = Math.max(60, Math.ceil((Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z') + 86400000 - Date.now()) / 1000));
@@ -1546,7 +1645,7 @@ async function takeAiBudget(n) {
     const key = new Request(`https://budget.internal/ai/${new Date().toISOString().slice(0, 10)}`);
     const hit = await caches.default.match(key);
     const used = hit ? Number(await hit.text()) || 0 : 0;
-    if (used + n > EXTRA_AI_PER_DAY) return false;
+    if (used + n > EXTRA_AI_PER_DAY || (await aiUnitsUsed()) >= AI_EXTRA_STOP) return false;
     await caches.default.put(key, new Response(String(used + n), { headers: { 'cache-control': 'public, max-age=90000' } }));
     return true;
   } catch { return true; }
@@ -2342,7 +2441,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo', '/flow', '/calendar', '/earnsum', '/filesum', '/promises', '/semi', '/bigtech', '/etfkit'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/valuation', '/movenews', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo', '/flow', '/calendar', '/earnsum', '/filesum', '/promises', '/semi', '/bigtech', '/etfkit'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
@@ -2375,6 +2474,8 @@ export default {
     if (url.pathname === '/krinfo') return handleKrInfo(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
+    if (url.pathname === '/valuation') return handleValuation(url, cache, cors, ctx);
+    if (url.pathname === '/movenews') return handleMoveNews(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);
   },
   // 5분마다 종목 하나씩 돌아가며 새 기사를 요약해 둔다(아무도 안 봐도 요약이 쌓이도록)

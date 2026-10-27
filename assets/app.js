@@ -1546,8 +1546,9 @@
   function paintOsc(sym, elId) {
     const el = document.getElementById(elId);
     if (!el) return;
-    el.innerHTML = oscHtml(sym);
-    if (!st(sym).daily || Date.now() - st(sym).dailyAt > 1800000) ensureDaily(sym).then(() => { const e = document.getElementById(elId); if (e && (sym === 'CRCL' || state.stock === sym)) e.innerHTML = oscHtml(sym); }).catch(() => { const e = document.getElementById(elId); if (e) e.innerHTML = ''; });
+    const full = () => `${oscHtml(sym)}<div data-mvhost="${sym}">${movesHtml(sym)}</div>`; // 과매수·과매도 + 왜 움직였나
+    el.innerHTML = full();
+    if (!st(sym).daily || Date.now() - st(sym).dailyAt > 1800000) ensureDaily(sym).then(() => { const e = document.getElementById(elId); if (e && (sym === 'CRCL' || state.stock === sym)) e.innerHTML = full(); }).catch(() => { const e = document.getElementById(elId); if (e) e.innerHTML = ''; });
   }
 
   // ---------------------------------------------------------------- 결과를 이미지 카드로 공유(퇴사까지·배당금·성과급)
@@ -5294,6 +5295,7 @@ ${what.join(' · ')}
 
   function renderEarnings() {
     try { renderAiCards('CRCL'); } catch (e) { console.error(e); }
+    try { renderValCards('CRCL'); } catch (e) { console.error(e); }
     const E = state.earnings;
     if (!E) {
       card('earnings', { title: '서클 실적', sub: '분기 실적 · 다음 발표일', info: INFO.earnings, body: `<p class="skeleton">${state.earningsErr ? '실적 데이터를 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` });
@@ -7769,6 +7771,12 @@ ${what.join(' · ')}
       let A = null; try { A = analystView(sym); } catch {}
       if (A?.n && A.T?.mean) rows.push({ ic: '🎯', lb: EN ? 'Analysts' : '시장의 시선', tx: `<span class="tone ${A.tone}">${EN ? ({ '매수 우위': 'Mostly buy', '매도 우위': 'Mostly sell', '중립': 'Mixed' }[A.label] || A.label) : A.label}</span> ${EN ? 'avg target' : '목표가 평균'} <b>${price(A.T.mean)}</b>${A.up != null ? ` (<span class="${cls(A.up)}">${pct(A.up, 0)}</span>)` : ''} · ${EN ? `${A.n} brokers` : `증권사 ${A.n}곳`}`, go: V('crcl:c-analyst', 'sprice:c-sanalyst') });
     }
+    // 5-1) 비싼가 싼가(미국 상장 기업)
+    if (!kr && !etf) {
+      const P = valPos(st(sym).val);
+      if (P && !P.short) rows.push({ ic: '💰', lb: EN ? 'Valuation' : '비싼가 싼가', tx: `${P.k} <b>${xS(P.now)}</b> · <span class="vl-tag ${P.tone}">${EN ? `${P.lab} (last ${P.yrs}y)` : `지난 ${P.yrs}년 중 ${P.lab}`}</span>`, go: V('earn:c-val', 'searn:c-sval') });
+      else if (st(sym).val === undefined && !valLoad[sym] && /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym)) ensureVal(sym).then(() => renderGlance(sym)).catch(() => {});
+    }
     // 6) 업황(업종 키트가 있는 종목)
     const kl = document.getElementById('kit-line');
     const kv = kl && !kl.hidden ? kl.querySelector('.kl-v')?.textContent.trim() : '', kt = kl?.querySelector('.kl-t')?.textContent.replace(/[^\p{L}\p{N}\s·]/gu, '').trim();
@@ -7794,6 +7802,109 @@ ${what.join(' · ')}
       body: `<ul class="gl-list">${shown.map((r) => `<li><button type="button" class="gl-row" data-glgo="${esc(r.go)}"><span class="gl-ic" aria-hidden="true">${r.ic}</span><span class="gl-tx"><small>${r.lb}</small><span>${r.tx}</span></span><i aria-hidden="true">›</i></button></li>`).join('')}</ul>`
         + (more > 0 ? `<button type="button" class="gl-more" data-gltoggle="1" aria-expanded="${open}">${open ? (EN ? 'Show less' : '접기') : (EN ? `Show ${more} more` : `${more}개 더 보기`)} <span aria-hidden="true">${open ? '▴' : '▾'}</span></button>` : ''),
     });
+  }
+
+  // ---- 💰 비싼가 싼가 · 🆚 경쟁사 비교 (/api/valuation — SEC 재무제표 + Yahoo 주가, AI 없음 · 미국 상장 기업만)
+  // 경쟁사: 손으로 고른 목록 → 없으면 업종 키트(반도체·빅테크) 묶음. 외국 기업(20-F)은 SEC 분기 재무가 없어 '–'로 나온다.
+  const PEERS = {
+    CRCL: ['COIN', 'PYPL', 'HOOD', 'V'], JOBY: ['ACHR', 'BLDE', 'TXT', 'BA'], SPCX: ['RKLB', 'ASTS', 'LUNR', 'BA'], TEM: ['GH', 'NTRA', 'ILMN', 'VEEV'],
+    TSLA: ['GM', 'F', 'RIVN', 'LCID'], PLTR: ['SNOW', 'DDOG', 'CRM', 'NOW'], COIN: ['HOOD', 'CRCL', 'SCHW', 'PYPL'], HOOD: ['COIN', 'SCHW', 'IBKR', 'SOFI'],
+    SOFI: ['HOOD', 'UPST', 'PYPL', 'AFRM'], RKLB: ['SPCX', 'ASTS', 'LUNR', 'BA'], ACHR: ['JOBY', 'BLDE', 'TXT', 'BA'], IONQ: ['RGTI', 'QBTS', 'IBM', 'HON'],
+    NFLX: ['DIS', 'WBD', 'ROKU', 'SPOT'], UBER: ['LYFT', 'DASH', 'ABNB', 'GOOGL'], AMZN: ['WMT', 'COST', 'MSFT', 'GOOGL'], WMT: ['COST', 'TGT', 'AMZN', 'KR'],
+    JPM: ['BAC', 'WFC', 'C', 'GS'], V: ['MA', 'AXP', 'PYPL', 'COF'], MA: ['V', 'AXP', 'PYPL', 'COF'], LLY: ['MRK', 'PFE', 'ABBV', 'JNJ'], KO: ['PEP', 'MDLZ', 'KDP', 'MNST'],
+  };
+  const PEER_US_SEMI = ['NVDA', 'AMD', 'AVGO', 'QCOM', 'MU', 'INTC', 'TXN', 'MRVL'], PEER_BIG = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'ORCL'];
+  const peersOf = (sym) => (PEERS[sym] || (SEMI_ALL.has(sym) ? PEER_US_SEMI : BIGTECH.has(sym) ? PEER_BIG : [])).filter((x) => x !== sym).slice(0, 4);
+  const valLoad = {};
+  function ensureVal(sym) {
+    const x = st(sym);
+    if (x.val !== undefined && Date.now() - (x.valAt || 0) < 3 * 3600000) return Promise.resolve(x.val);
+    return (valLoad[sym] ||= getJ(`${NEWS_API}/valuation?s=${encodeURIComponent(sym)}`, 20000)
+      .then((j) => { x.val = j.error ? null : j; x.valAt = Date.now(); return x.val; })
+      .catch(() => { x.val = null; x.valAt = Date.now() - 3 * 3600000 + 300000; return null; }) // 실패하면 5분 뒤 다시
+      .finally(() => { delete valLoad[sym]; }));
+  }
+  const xS = (v) => (v == null ? '–' : `${v >= 100 ? Math.round(v) : v >= 10 ? v.toFixed(1) : v.toFixed(2)}${EN ? 'x' : '배'}`);
+  // 지금 PER(흑자) 또는 PSR(적자·기록 부족)이 과거 분기 말 값들 사이 어디쯤인지
+  function valPos(V) {
+    if (!V?.hist) return null;
+    const per = V.hist.map((h) => h.per).filter((v) => v > 0), psr = V.hist.map((h) => h.psr).filter((v) => v > 0);
+    const [k, now, L] = V.per > 0 && per.length >= 6 ? ['PER', V.per, per] : V.psr > 0 && psr.length >= 4 ? ['PSR', V.psr, psr] : [V.per > 0 ? 'PER' : 'PSR', V.per > 0 ? V.per : V.psr, []];
+    if (!(now > 0)) return null;
+    if (L.length < 4) return { k, now, short: true };
+    const lo = Math.min(...L, now), hi = Math.max(...L, now), srt = [...L].sort((a, b) => a - b), med = srt[Math.floor(srt.length / 2)];
+    const rank = L.filter((v) => v < now).length / L.length, yrs = Math.max(1, Math.round((Date.parse(V.hist.at(-1).end) - Date.parse(V.hist[0].end)) / 31557600000));
+    const [lab, tone] = rank <= 0.25 ? [EN ? 'cheaper than usual' : '평소보다 싼 편', 'good'] : rank >= 0.75 ? [EN ? 'pricier than usual' : '평소보다 비싼 편', 'bad'] : [EN ? 'around its usual level' : '평소 수준', 'mid'];
+    return { k, now, lo, hi, med, rank, yrs, lab, tone };
+  }
+  function renderValCards(sym = state.stock) {
+    const crcl = sym === 'CRCL', vId = crcl ? 'val' : 'sval', pId = crcl ? 'peers' : 'speers';
+    const vEl = document.getElementById('c-' + vId), pEl = document.getElementById('c-' + pId);
+    if (!vEl || !pEl) return;
+    const ok = !isKR(sym) && !isEtf(sym) && /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym);
+    if (!ok) { vEl.hidden = pEl.hidden = true; return; }
+    const V = st(sym).val;
+    if (V === undefined && !valLoad[sym]) ensureVal(sym).then(() => { if (sym === 'CRCL' || state.stock === sym) { renderValCards(sym); renderGlance(sym); } }).catch(() => {});
+    // 1) 비싼가 싼가
+    const P = valPos(V);
+    vEl.hidden = !P;
+    if (P) {
+      const pos = P.short ? 0 : (P.now - P.lo) / (P.hi - P.lo || 1), mp = P.short ? 0 : (P.med - P.lo) / (P.hi - P.lo || 1);
+      const what = P.k === 'PER' ? (EN ? 'PER = market value ÷ last 12 months of profit.' : 'PER = 회사 가치(시가총액) ÷ 최근 1년 순이익. 이익의 몇 배 값에 사고파는지예요.')
+        : (EN ? 'PSR = market value ÷ last 12 months of sales (used when profit is negative or its history is short).' : 'PSR = 회사 가치(시가총액) ÷ 최근 1년 매출. 적자이거나 이익 기록이 짧으면 매출로 봐요.');
+      card(vId, {
+        title: EN ? '💰 Cheap or expensive?' : '💰 비싼가 싼가', sub: `${EN ? 'vs its own history · SEC filings + Yahoo price' : '과거의 자기 자신과 비교 · SEC 재무제표 + Yahoo 주가'}${V.asOf ? ` · ${EN ? 'financials as of' : '재무 기준'} ${V.asOf}` : ''}`,
+        body: `<div class="vl-main"><b>${P.k} ${xS(P.now)}</b>${P.short ? `<span class="vl-tag mid">${EN ? 'history too short to compare' : '비교할 기록이 아직 짧아요'}</span>` : `<span class="vl-tag ${P.tone}">${EN ? `${P.lab} (last ${P.yrs}y)` : `지난 ${P.yrs}년 중 ${P.lab}`}</span>`}</div>
+          ${P.short ? '' : `<div class="vl-bar" role="img" aria-label="${P.k} ${xS(P.lo)} – ${xS(P.hi)}"><i class="vl-med" style="left:${(mp * 100).toFixed(1)}%"></i><i class="vl-now" style="left:${(pos * 100).toFixed(1)}%"></i></div>
+          <div class="vl-ends"><span>${EN ? 'Low' : '최저'} ${xS(P.lo)}</span><span>${EN ? 'Typical' : '보통'} ${xS(P.med)}</span><span>${EN ? 'High' : '최고'} ${xS(P.hi)}</span></div>`}
+          <p class="note">${what} ${EN ? 'Compared with its own past quarter-end values — not a fair-value estimate.' : '분기 말마다 계산한 과거 값과 비교한 거예요. 적정 주가를 뜻하지는 않아요.'}${V.loss && P.k === 'PSR' ? (EN ? ' The last 12 months were loss-making.' : ' 최근 1년은 적자예요.') : ''}</p>`,
+      });
+    }
+    // 2) 경쟁사 비교
+    const peers = peersOf(sym);
+    pEl.hidden = !peers.length;
+    if (!peers.length) return;
+    const need = peers.filter((p) => st(p).val === undefined && !valLoad[p]);
+    if (need.length) Promise.all(need.map(ensureVal)).then(() => { if (sym === 'CRCL' || state.stock === sym) renderValCards(sym); }).catch(() => {});
+    const row = (x, me) => {
+      const W = st(x).val, w = W === undefined ? '…' : '–';
+      return `<tr${me ? ' class="me"' : ''}><th scope="row">${esc(x)}</th><td class="${cls(W?.ret1y)}">${W?.ret1y != null ? pct(W.ret1y, 0) : w}</td><td class="${cls(W?.revGrowth)}">${W?.revGrowth != null ? pct(W.revGrowth, 0) : w}</td><td>${W?.per ? xS(W.per) : W?.loss ? (EN ? 'Loss' : '적자') : w}</td><td>${W?.psr ? xS(W.psr) : w}</td></tr>`;
+    };
+    card(pId, {
+      title: EN ? '🆚 vs competitors' : '🆚 경쟁사와 비교', sub: EN ? 'Same-industry companies · SEC filings + Yahoo price' : '같은 업종 회사 · SEC 재무제표 + Yahoo 주가',
+      body: `<div class="pr-wrap"><table class="pr-tbl"><thead><tr><th scope="col">${EN ? 'Stock' : '종목'}</th><th scope="col">${EN ? '1Y' : '1년 주가'}</th><th scope="col">${EN ? 'Sales' : '매출 성장'}</th><th scope="col">PER</th><th scope="col">PSR</th></tr></thead>
+        <tbody>${row(sym, true)}${peers.map((x) => row(x, false)).join('')}</tbody></table></div>
+        <p class="note">${EN ? 'Sales = last 12 months vs the 12 months before. Lower PER/PSR means the price is lower relative to profit/sales. “–” = no data (e.g. foreign filers).' : '매출 성장 = 최근 1년 매출이 그 전 1년보다 늘어난 비율. PER·PSR은 낮을수록 이익·매출에 비해 주가가 덜 비싸다는 뜻이에요. ‘–’는 자료 없음(외국 기업 등).'}</p>`,
+    });
+  }
+
+  // ---- 🔍 왜 움직였나: 최근 3개월 중 크게 오르내린 날 → 누르면 그날 뉴스(/api/movenews, AI 없음)
+  const mvOpen = {}, mvNews = {};
+  function bigMoves(sym) {
+    const P = (st(sym).daily || []).filter((p) => p[1] != null);
+    if (P.length < 10) return [];
+    const cut = P.at(-1)[0] - 92 * 86400000, R = [];
+    for (let i = 1; i < P.length; i++) if (P[i][0] >= cut) R.push({ t: P[i][0], r: P[i][1] / P[i - 1][1] - 1 });
+    const avg = R.reduce((a, x) => a + Math.abs(x.r), 0) / (R.length || 1), th = Math.max(isKR(sym) ? 0.04 : 0.05, avg * 2.5);
+    return R.filter((x) => Math.abs(x.r) >= th).sort((a, b) => Math.abs(b.r) - Math.abs(a.r)).slice(0, 4).sort((a, b) => b.t - a.t);
+  }
+  const mvDay = (sym, t) => new Date(t).toLocaleDateString('en-CA', { timeZone: isKR(sym) ? 'Asia/Seoul' : 'America/New_York' });
+  function movesHtml(sym) {
+    const M = bigMoves(sym);
+    if (!M.length) return '';
+    return `<div class="mv"><h4>${EN ? '🔍 Why did it move?' : '🔍 왜 움직였나'}</h4><p class="note">${EN ? 'Biggest daily moves in the last 3 months · tap for that day’s news' : '최근 3개월 중 크게 움직인 날 · 누르면 그날 뉴스'}</p><ul>${M.map((x) => {
+      const d = mvDay(sym, x.t), k = `${sym}|${d}`, open = !!mvOpen[k], N = mvNews[k];
+      const body = !open ? '' : N === undefined ? `<p class="note">${EN ? 'Finding news…' : '뉴스 찾는 중…'}</p>` : !N.length ? `<p class="note">${EN ? 'No news found for that day.' : '그날 기사를 찾지 못했어요.'}</p>`
+        : `<ul class="mv-news">${N.map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer"><span data-noi18n>${esc(n.title)}</span><small>${esc(n.source || '')}</small></a></li>`).join('')}</ul>`;
+      return `<li><button type="button" class="mv-row" data-mv="${esc(k)}" aria-expanded="${open}"><span>${dayLabel(Date.parse(d + 'T12:00:00'))}</span><b class="${cls(x.r)}">${pct(x.r, 1)}</b><i aria-hidden="true">${open ? '▴' : '▾'}</i></button>${body}</li>`;
+    }).join('')}</ul></div>`;
+  }
+  function toggleMove(k) {
+    mvOpen[k] = !mvOpen[k];
+    const [sym, d] = k.split('|');
+    const repaint = () => { for (const e of document.querySelectorAll(`[data-mvhost="${sym}"]`)) e.innerHTML = movesHtml(sym); };
+    if (mvOpen[k] && mvNews[k] === undefined) getJ(`${NEWS_API}/movenews?s=${encodeURIComponent(sym)}&d=${d}`, 15000).then((j) => { mvNews[k] = j.items || []; }).catch(() => { mvNews[k] = []; }).finally(repaint);
+    repaint();
   }
 
   // ---- 🧰 업종 키트: 같은 업종 종목에 '이 업종은 이걸 보면 돼요' 카드를 자동으로 붙인다(실적·분배금 탭 맨 위 + 홈 한 줄)
@@ -7922,6 +8033,7 @@ ${what.join(' · ')}
 
   function renderSEarnings(sym = state.stock) {
     try { renderKit(sym); } catch (e) { console.error(e); }
+    try { renderValCards(sym); } catch (e) { console.error(e); }
     try { renderBiz(sym); } catch (e) { console.error(e); }
     try { renderAiCards(sym); } catch (e) { console.error(e); }
     if (isKR(sym)) { renderKrEarn(sym); return; }
@@ -8630,6 +8742,7 @@ ${what.join(' · ')}
     if (ev.target.closest('[data-fclose]')) { closeFolderSheet(); return; }
     if (ev.target.closest('[data-fsave]')) { saveFolder(); return; }
     if (ev.target.closest('[data-fdel]')) { deleteFolder(); return; }
+    { const b = ev.target.closest('[data-mv]'); if (b) { toggleMove(b.dataset.mv); return; } }
     if (ev.target.closest('[data-gltoggle]')) { savePref('glOpen', loadPref('glOpen', '0') === '1' ? '0' : '1'); renderGlance(state.stock); if (state.stock !== 'CRCL') renderGlance('CRCL'); return; }
     if (ev.target.closest('[data-sstoggle]')) { savePref('ssExpand', ssExpanded() ? '0' : '1'); renderStockSwitch(); return; }
     if (ev.target.closest('[data-homeedit]')) { openHomeEdit(); return; }

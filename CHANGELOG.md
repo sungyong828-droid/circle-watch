@@ -11,6 +11,15 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 💰 **비싼가 싼가**(새 기능): 실적 탭에서 지금 주가가 그 회사의 지난 몇 년(PER, 적자면 PSR)과 비교해 싼 편인지 비싼 편인지 막대 하나로 보여 줘요. 한눈에 보기에도 한 줄 나와요.
+- 🆚 **경쟁사와 비교**(새 기능): 같은 업종 회사 4곳과 1년 주가·매출 성장·PER·PSR을 한 표로 비교해요.
+- 🔍 **왜 움직였나**(새 기능): 가격 차트 아래에 최근 3개월 중 크게 오르내린 날이 나오고, 누르면 그날 뉴스를 보여 줘요.
+<!-- internal --> /api/valuation(SEC companyfacts + Yahoo 주봉 5년, 분할 반영 시가총액) · /api/movenews(구글 뉴스 after:/before:) — 둘 다 AI 없음. runAI 하루 사용량 상한(AI_UNITS_PER_DAY 500, 추가 종목은 250에서 먼저 멈춤).
+<!-- EN
+- Cheap or expensive? (new): the earnings tab shows where today's PER (or PSR when loss-making) sits within the company's own last few years.
+- vs competitors (new): one table comparing 1-year price change, sales growth, PER and PSR with four same-industry companies.
+- Why did it move? (new): below the price chart, the biggest daily moves of the last 3 months — tap one to see that day's news.
+-->
 - 📋 '기업 한눈에 보기'를 접을 수 있어요: 처음엔 두 줄(사업·주가)만 보이고 'n개 더 보기'로 펼쳐요. 펼친 상태는 기억해요. 차트까지 덜 내려가도 돼요.
 <!-- EN
 - "At a glance" now starts folded to two lines (business and price); tap "Show more" to open it. Your choice is remembered, so the chart sits higher on the screen.
