@@ -8151,24 +8151,11 @@ ${what.join(' · ')}
     if (!d) return;
     if (manualRunning) return; // 새로고침 중에는 '업데이트 중…' 유지
     if (state.booting) { document.getElementById('status').innerHTML = '<span class="spin-dot"></span>최신 값 받는 중…'; return; }
-    const fails = state.syncFail || [], st = dataStale();
+    // '데이터 지연'·'일부 항목 실패' 같은 경고는 신뢰도를 떨어뜨려 화면에 띄우지 않는다(각 카드의 기준 시각으로 충분)
     const el = document.getElementById('status');
     el.innerHTML = state.syncedAt
-      ? (st.length ? `<button type="button" class="st-warn" data-stale="1">⚠️ ${EN ? 'Some data delayed' : '일부 데이터 지연'}</button> · ` : '') + `<span class="live-dot"></span>${EN ? `Updated ${ago(state.syncedAt)}` : `${ago(state.syncedAt)} 업데이트`}` + (!st.length && fails.length ? ` · <span class="warn">일부 항목 실패</span>` : '')
+      ? `<span class="live-dot"></span>${EN ? `Updated ${ago(state.syncedAt)}` : `${ago(state.syncedAt)} 업데이트`}`
       : '불러오는 중…';
-  }
-  // 서버가 모으는 값이 멈췄는지: 주가·뉴스는 바로 받아 '방금 업데이트'여도, 체인·공급량 기록은 서버 수집이 멈추면 그대로 묵는다
-  function dataStale() {
-    const d = state.data, out = [];
-    if (!d) return out;
-    const h = (Date.now() - Date.parse(d.updatedAt || 0)) / 3600000;
-    if (h > 1.5) out.push(EN ? `On-chain & supply data is from ${ago(d.updatedAt)}` : `체인·공급량 데이터가 ${ago(d.updatedAt)} 기준이에요`);
-    const md = (t) => { const x = new Date(t); return `${x.getMonth() + 1}/${x.getDate()}`; };
-    for (const [nm, L] of [['USDC', d.series?.usdc], ['EURC', d.series?.eurc], ['USYC', d.series?.usyc], ['Arc TVL', d.arcTvl?.daily]]) {
-      const t = Array.isArray(L) && L.length ? Number(L.at(-1)[0]) * 1000 : 0;
-      if (t && Date.now() - t > 3 * 86400000) out.push(EN ? `${nm} history stops at ${md(t)}` : `${nm} 기록이 ${md(t)}에서 멈춰 있어요`);
-    }
-    return out;
   }
 
   function renderAll() {
@@ -8642,7 +8629,6 @@ ${what.join(' · ')}
     if (ev.target.closest('[data-sstoggle]')) { savePref('ssExpand', ssExpanded() ? '0' : '1'); renderStockSwitch(); return; }
     if (ev.target.closest('[data-homeedit]')) { openHomeEdit(); return; }
     if (ev.target.closest('[data-heclose]')) { closeHomeEdit(); return; }
-    if (ev.target.closest('[data-stale]')) { toast(dataStale().join(' · ') + (EN ? ' — refreshes automatically once collection resumes.' : ' — 수집이 다시 돌면 자동으로 채워져요.'), true, 7000); return; }
     const hem = ev.target.closest('[data-hemove]');
     if (hem) { const [k, d] = hem.dataset.hemove.split(':'), L = homeLayout(), i = L.order.indexOf(k), j = i + +d; if (j >= 0 && j < L.order.length) { [L.order[i], L.order[j]] = [L.order[j], L.order[i]]; saveHomeLayout(L); } return; }
     if (ev.target.closest('[data-hereset]')) { saveHomeLayout({}); return; }

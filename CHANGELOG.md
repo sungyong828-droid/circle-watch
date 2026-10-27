@@ -11,6 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 화면 위 '일부 데이터 지연'·'일부 항목 실패' 경고를 없앴어요. 맨 위에는 'n분 전 업데이트'만 보여요. <!-- internal -->
+<!-- EN
+- Removed the "Some data delayed" / "Some items failed" notes from the top bar. <!-- internal -->
+-->
+
 ## v2026.10.25-6 — 2026-10-25
 
 [이 버전 보기](https://bec320c5.my-fire-portfolio.pages.dev) · 커밋 `593892c`
