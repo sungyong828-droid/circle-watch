@@ -11,6 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📋 '한눈에 보기'를 접으면 제목과 펼치기 버튼만 남아요(처음엔 접힌 상태). 펼친 상태는 기억해요.
+<!-- EN
+- "At a glance" now folds down to just its title and a Show button (folded by default); your choice is remembered.
+-->
+
 ## v2026.10.27-2 — 2026-10-27
 
 [이 버전 보기](https://a204a259.my-fire-portfolio.pages.dev) · 커밋 `6c99458`
