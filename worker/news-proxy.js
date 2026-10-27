@@ -617,16 +617,15 @@ async function secQuarterly(sym = 'CRCL') {
       const d = days(v.start, v.end);
       if (d >= 80 && d <= 100) q[v.end] = v.val;
       else if (d >= 170 && d <= 190) h1[v.end] = v.val;
-      else if (d >= 350 && d <= 380) fy[v.end] = v.val;
+      else if (d >= 350 && d <= 380) fy[v.end] = { start: v.start, val: v.val };
     }
     // 상장 직후라 1분기 단독 수치가 없으면: 상반기 − 2분기 (주당순이익은 더할 수 없어 제외)
     if (additive) for (const [end, total] of Object.entries(h1)) { const p = prevQEnd(end); if (q[end] != null && q[p] == null) q[p] = total - q[end]; }
-    // 4분기 = 연간 − 1~3분기 (10-K에는 4분기 단독 수치가 없음)
-    for (const [end, total] of Object.entries(fy)) {
+    // 4분기 = 연간 − 1~3분기 (10-K에는 4분기 단독 수치가 없음). 회계연도가 12월에 안 끝나는 회사(MSFT 6월 등)도 같은 방식
+    for (const [end, { start, val: total }] of Object.entries(fy)) {
       if (!additive || q[end] != null) continue;
-      const y = +end.slice(0, 4), mo = end.slice(5, 7);
-      const prev = [`${y}-03-31`, `${y}-06-30`, `${y}-09-30`].filter(() => mo === '12');
-      if (prev.length === 3 && prev.every((p) => q[p] != null)) q[end] = total - prev.reduce((s, p) => s + q[p], 0);
+      const prev = Object.keys(q).filter((e) => e > start && e < end);
+      if (prev.length === 3) q[end] = total - prev.reduce((s, p) => s + q[p], 0);
     }
     return q;
   };
@@ -1065,7 +1064,10 @@ export function valuationOf(sec, px, now = Date.now()) {
   // 최근 4분기 합계: 4개 분기가 1년 안에 모두 있어야 한다
   const ttm = (map, end) => { const L = Object.keys(map).filter((e) => e <= end && at(end) - at(e) < 300 * day).sort(); return L.length === 4 ? L.reduce((t, e) => t + map[e], 0) : null; };
   // 주식 수(분할 반영): 그 날짜까지의 가장 최근 값 × 그 뒤에 있었던 분할 비율
-  const sh = [...Object.entries(sec.coverShares || {}), ...Object.entries(sec.dilShares || {})].map(([e, v]) => [at(e), v]).filter(([, v]) => v > 0).sort((a, b) => a[0] - b[0]);
+  // 주식 수를 천 주 단위로 잘못 올린 회사(TEM 등): 순이익 ÷ 주식 수가 주당순이익의 약 1000배면 1000을 곱한다
+  const eq = Object.keys(q.eps || {}).filter((e) => ni[e] && sec.dilShares?.[e] && q.eps[e]).sort().at(-1);
+  const k1000 = eq && Math.abs(ni[eq] / sec.dilShares[eq] / q.eps[eq]) > 300 ? 1000 : 1;
+  const sh = [...Object.entries(sec.coverShares || {}), ...Object.entries(sec.dilShares || {}).map(([e, v]) => [e, v * k1000])].map(([e, v]) => [at(e), v]).filter(([, v]) => v > 0).sort((a, b) => a[0] - b[0]);
   const splitAfter = (t) => (px.splits || []).filter((x) => x.t > t).reduce((m, x) => m * x.ratio, 1);
   const sharesAt = (t) => { const p = sh.filter(([d]) => d <= t + 45 * day).at(-1) || sh[0]; return p ? p[1] * splitAfter(p[0]) : null; };
   const priceAt = (t) => px.pts.filter(([d]) => d <= t).at(-1)?.[1] ?? null;
@@ -1094,7 +1096,7 @@ export async function handleValuation(url, cache, cors, ctx) {
   const s = (url.searchParams.get('s') || '').toUpperCase();
   if (!SYM_RE.test(s)) return json({ error: 'bad request' }, cors, 400); // 미국 상장 종목만(SEC 재무제표)
   if (!(await knownSym(s, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=2`, {
+  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=3`, {
     freshSec: 6 * 3600, keepSec: 7 * 86400, maxStaleSec: 2 * 86400, cors,
     build: async () => {
       const [sec, px] = await Promise.all([secQuarterly(s), yahooWeekly(s)]);
