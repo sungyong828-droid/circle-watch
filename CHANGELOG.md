@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.10.27-1 — 2026-10-27
+
+[이 버전 보기](https://ae5336d1.my-fire-portfolio.pages.dev) · 커밋 `69e7f8e`
+
 - 화면 위 '일부 데이터 지연'·'일부 항목 실패' 경고를 없앴어요. 맨 위에는 'n분 전 업데이트'만 보여요. <!-- internal -->
 - ⚡ 다시 열 때 더 빨라요: 화면 파일을 폰에 저장해 두고, 바뀐 파일만 새로 받아요. <!-- internal -->
 <!-- internal --> build.py: assets 바로 아래 js·css·json 주소에 ?v=<내용 해시> 자동 부착 + _headers에 1년 immutable 캐시 · index.html에 cdn.jsdelivr.net preconnect.
