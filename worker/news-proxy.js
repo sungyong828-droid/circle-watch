@@ -592,7 +592,15 @@ async function earnCfg(sym) {
     ytd: { ocf: 'NetCashProvidedByUsedInOperatingActivities', capex: 'PaymentsToAcquirePropertyPlantAndEquipment' },
   };
 }
+// SEC 재무제표 정리본을 6시간 저장해 실적·밸류에이션·경쟁사 비교가 같이 쓴다(SEC 호출을 줄여 차단 방지)
 async function secQuarterly(sym = 'CRCL') {
+  const key = new Request(`https://cache.internal/secq/${sym}?v=2`);
+  try { const h = await caches.default.match(key); if (h) return await h.json(); } catch {}
+  const out = await secQuarterlyRaw(sym);
+  try { await caches.default.put(key, new Response(JSON.stringify(out), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=21600' } })); } catch {}
+  return out;
+}
+async function secQuarterlyRaw(sym) {
   const E = await earnCfg(sym);
   const r = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${E.cik}.json`, {
     headers: { 'user-agent': 'FirePortfolio dashboard (https://my-fire-portfolio.pages.dev)', accept: 'application/json' },
