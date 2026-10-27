@@ -7832,7 +7832,7 @@ ${what.join(' · ')}
   const PEER_US_SEMI = ['NVDA', 'AMD', 'AVGO', 'QCOM', 'MU', 'INTC', 'TXN', 'MRVL'], PEER_BIG = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'ORCL'];
   const peersOf = (sym) => (PEERS[sym] || (SEMI_ALL.has(sym) ? PEER_US_SEMI : BIGTECH.has(sym) ? PEER_BIG : [])).filter((x) => x !== sym).slice(0, 4);
   const valLoad = {};
-  const VAL_KR = false; // 한국 종목(DART): DART가 해외·클라우드 서버 접속을 막아 아직 꺼 둔다(서버 코드는 준비됨)
+  const VAL_KR = true; // 한국 종목: PC의 tools/dart_sync.py 가 매주 DART 분기 재무를 KV에 올린다(DART는 클라우드 서버 접속을 막음)
   function ensureVal(sym) {
     const x = st(sym);
     if (x.val !== undefined && Date.now() - (x.valAt || 0) < 3 * 3600000) return Promise.resolve(x.val);

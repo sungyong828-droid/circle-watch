@@ -14,7 +14,10 @@
 - 🆚 경쟁사 표에서 종목을 누르면 그 종목 화면이 바로 열려요(관심 종목에 없으면 추가돼요).
 - 🔔 실적 발표 전날·당일 카드에 '이번에 확인할 회사 약속'이 함께 나와요.
 - 첫 화면을 막던 로고 목록(약 30KB)을 따로 받게 해 처음 열 때 조금 더 빨라졌어요. <!-- internal -->
+- 💰 한국 종목도 '비싼가 싼가'가 나와요(금감원 DART 분기 재무 기준).
+<!-- internal --> tools/dart_sync.py(PC 작업 스케줄러, 매주 월) → KV valkr:<칸> · 서버는 KV + Yahoo 주가. DART가 Cloudflare 접속을 막아 서버에서 직접 부르지 않음.
 <!-- EN
+- Korean stocks now get "Cheap or expensive?" too (quarterly financials from DART).
 - Tap a ticker in the competitor table to open that stock (it is added to your list if needed).
 - The earnings-eve card now lists the company promises to check this time.
 -->
