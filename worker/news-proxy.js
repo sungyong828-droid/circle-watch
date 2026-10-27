@@ -1102,10 +1102,18 @@ export function valuationOf(sec, px, now = Date.now()) {
 // ---------------------------------------------------------------- 🇰🇷 한국 종목 밸류에이션 — 금감원 DART 공식 API(비밀값 DART_KEY)
 // 종목코드 → DART 고유번호 표(corpCode.xml, 상장사만 추려 KV에 30일 보관) · 분기 재무(fnlttSinglAcnt) · 발행주식수(stockTotqySttus)
 const DART = 'https://opendart.fss.or.kr/api';
+// 오류 글에 주소(키 포함)가 섞여 화면·응답으로 나가지 않게, DART 호출은 모두 여기서 하고 오류는 짧은 문구로 바꾼다
+async function dartFetch(env, path, params, ms = 9000) {
+  let r;
+  try { r = await fetch(`${DART}/${path}?crtfc_key=${env.DART_KEY}&${new URLSearchParams(params)}`, { redirect: 'manual', signal: AbortSignal.timeout(ms) }); }
+  catch (e) { throw new Error(`dart ${path.split('.')[0]}: ${e?.name === 'TimeoutError' ? 'timeout' : 'network'}`); }
+  if (r.status >= 300 && r.status < 400) throw new Error(`dart ${path.split('.')[0]}: blocked(${r.status})`);
+  if (!r.ok) throw new Error(`dart ${path.split('.')[0]}: ${r.status}`);
+  return r;
+}
 async function dartCodes(env) {
   try { const m = await env.SUMS.get('dart:codes', { type: 'json' }); if (m && Object.keys(m).length > 1000) return m; } catch {}
-  const r = await fetch(`${DART}/corpCode.xml?crtfc_key=${env.DART_KEY}`, { signal: AbortSignal.timeout(20000) });
-  if (!r.ok) throw new Error('dart corpCode ' + r.status);
+  const r = await dartFetch(env, 'corpCode.xml', {}, 20000);
   const zip = new Uint8Array(await r.arrayBuffer()), dv = new DataView(zip.buffer);
   // ZIP 끝(중앙 디렉터리)에서 첫 파일의 압축 크기·위치를 읽는다
   let eocd = zip.length - 22;
@@ -1127,9 +1135,7 @@ async function dartCodes(env) {
 const DART_RPT = [['11013', '03-31'], ['11012', '06-30'], ['11014', '09-30'], ['11011', '12-31']]; // 1분기·반기·3분기·사업보고서
 const dartNum = (s) => { const t = String(s ?? '').replace(/,/g, '').trim(); if (!t || t === '-') return null; const n = Number(t.replace(/^\((.*)\)$/, '-$1')); return isFinite(n) ? n : null; };
 async function dartJson(env, path, params) {
-  const r = await fetch(`${DART}/${path}?crtfc_key=${env.DART_KEY}&${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(9000) });
-  if (!r.ok) throw new Error('dart ' + r.status);
-  const j = await r.json();
+  const j = await (await dartFetch(env, path, params)).json();
   if (j.status === '013') return []; // 자료 없음(아직 안 낸 보고서)
   if (j.status !== '000') throw new Error(`dart ${j.status} ${j.message || ''}`);
   return j.list || [];
