@@ -602,9 +602,7 @@ async function secQuarterly(sym = 'CRCL') {
   const F = (await r.json()).facts || {}, g0 = F['us-gaap'] || {};
   // 항목 이름이 회사마다 달라 여러 후보 중 있는 것을 쓴다
   const g = new Proxy(g0, { get: (o, c) => (Array.isArray(c) ? undefined : o[c]) });
-  // 후보가 여럿이면 가장 최근 분기까지 있는 항목(회사가 중간에 항목 이름을 바꾸는 경우 — 예: NVDA 매출)
-  const lastEnd = (x) => { const u = g0[x]?.units; return u ? u[Object.keys(u)[0]].reduce((m, v) => (v.end > m ? v.end : m), '') : ''; };
-  const pickC = (c) => (Array.isArray(c) ? c.filter((x) => g0[x]).sort((a, b) => lastEnd(b).localeCompare(lastEnd(a)))[0] || c[0] : c);
+  const pickC = (c) => (Array.isArray(c) ? c.find((x) => g0[x]) || c[0] : c);
   const days = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
   // 분기 말일 기준 3개월 전 분기 말일 ("2026-06-30" → "2026-03-31")
   const prevQEnd = (end) => { const y = +end.slice(0, 4), m = +end.slice(5, 7) - 3; const d = new Date(Date.UTC(m <= 0 ? y - 1 : y, m <= 0 ? m + 12 : m, 0)); return d.toISOString().slice(0, 10); };
@@ -653,7 +651,8 @@ async function secQuarterly(sym = 'CRCL') {
     return q;
   };
   const out = {};
-  for (const [k, c] of Object.entries(E.flows || {})) out[k] = series(pickC(c), k !== 'eps');
+  // 손익 항목은 후보를 모두 합친다(앞 후보 우선) — 회사가 중간에 항목 이름을 바꿔도(예: NVDA 매출) 옛 분기와 최근 분기가 다 남게
+  for (const [k, c] of Object.entries(E.flows || {})) out[k] = Array.isArray(c) ? c.filter((x) => g0[x]).reduceRight((m, x) => ({ ...m, ...series(x, k !== 'eps') }), {}) : series(c, k !== 'eps');
   for (const [k, c] of Object.entries(E.instants || {})) out[k] = instant(pickC(c));
   for (const [k, c] of Object.entries(E.ytd || {})) out[k] = ytdQuarterly(pickC(c));
   // 올해 누적 현금흐름(최신 보고서 기준) — 분기로 못 나누는 신규 상장사용
@@ -1096,7 +1095,7 @@ export async function handleValuation(url, cache, cors, ctx) {
   const s = (url.searchParams.get('s') || '').toUpperCase();
   if (!SYM_RE.test(s)) return json({ error: 'bad request' }, cors, 400); // 미국 상장 종목만(SEC 재무제표)
   if (!(await knownSym(s, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=3`, {
+  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=4`, {
     freshSec: 6 * 3600, keepSec: 7 * 86400, maxStaleSec: 2 * 86400, cors,
     build: async () => {
       const [sec, px] = await Promise.all([secQuarterly(s), yahooWeekly(s)]);
