@@ -7786,9 +7786,13 @@ ${what.join(' · ')}
     el.hidden = rows.length < 2;
     if (el.hidden) return;
     const nm = isKR(sym) ? STOCK_INFO[sym]?.name || sym : `${STOCK_INFO[sym]?.short || sym}`;
+    // 기본은 앞의 두 줄(사업·주가)만 — 차트까지 내려가는 길이를 줄이고, 펼친 상태는 기억한다
+    const open = loadPref('glOpen', '0') === '1', GL_MIN = 2, more = rows.length - GL_MIN;
+    const shown = open || more <= 0 ? rows : rows.slice(0, GL_MIN);
     card(id, {
       title: EN ? `📋 ${nm} at a glance` : `📋 ${nm} 한눈에 보기`, sub: EN ? 'Tap a line for the details' : '줄을 누르면 자세한 내용으로 가요',
-      body: `<ul class="gl-list">${rows.map((r) => `<li><button type="button" class="gl-row" data-glgo="${esc(r.go)}"><span class="gl-ic" aria-hidden="true">${r.ic}</span><span class="gl-tx"><small>${r.lb}</small><span>${r.tx}</span></span><i aria-hidden="true">›</i></button></li>`).join('')}</ul>`,
+      body: `<ul class="gl-list">${shown.map((r) => `<li><button type="button" class="gl-row" data-glgo="${esc(r.go)}"><span class="gl-ic" aria-hidden="true">${r.ic}</span><span class="gl-tx"><small>${r.lb}</small><span>${r.tx}</span></span><i aria-hidden="true">›</i></button></li>`).join('')}</ul>`
+        + (more > 0 ? `<button type="button" class="gl-more" data-gltoggle="1" aria-expanded="${open}">${open ? (EN ? 'Show less' : '접기') : (EN ? `Show ${more} more` : `${more}개 더 보기`)} <span aria-hidden="true">${open ? '▴' : '▾'}</span></button>` : ''),
     });
   }
 
@@ -8626,6 +8630,7 @@ ${what.join(' · ')}
     if (ev.target.closest('[data-fclose]')) { closeFolderSheet(); return; }
     if (ev.target.closest('[data-fsave]')) { saveFolder(); return; }
     if (ev.target.closest('[data-fdel]')) { deleteFolder(); return; }
+    if (ev.target.closest('[data-gltoggle]')) { savePref('glOpen', loadPref('glOpen', '0') === '1' ? '0' : '1'); renderGlance(state.stock); if (state.stock !== 'CRCL') renderGlance('CRCL'); return; }
     if (ev.target.closest('[data-sstoggle]')) { savePref('ssExpand', ssExpanded() ? '0' : '1'); renderStockSwitch(); return; }
     if (ev.target.closest('[data-homeedit]')) { openHomeEdit(); return; }
     if (ev.target.closest('[data-heclose]')) { closeHomeEdit(); return; }

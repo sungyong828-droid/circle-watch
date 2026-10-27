@@ -11,6 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📋 '기업 한눈에 보기'를 접을 수 있어요: 처음엔 두 줄(사업·주가)만 보이고 'n개 더 보기'로 펼쳐요. 펼친 상태는 기억해요. 차트까지 덜 내려가도 돼요.
+<!-- EN
+- "At a glance" now starts folded to two lines (business and price); tap "Show more" to open it. Your choice is remembered, so the chart sits higher on the screen.
+-->
+
 ## v2026.10.27-1 — 2026-10-27
 
 [이 버전 보기](https://ae5336d1.my-fire-portfolio.pages.dev) · 커밋 `69e7f8e`
