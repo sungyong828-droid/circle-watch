@@ -380,6 +380,19 @@ async function nasdaqPressReleases(sym, limit = 20) {
   }).filter((n) => n.title);
 }
 
+// Nasdaq 종목 기사 목록(구글 뉴스가 서버에서 자주 막혀 '왜 움직였나'의 지난 날 기사 찾기에 쓴다)
+async function nasdaqArticles(sym, offset = 0) {
+  const r = await fetch(`https://www.nasdaq.com/api/news/topic/articlebysymbol?q=${sym.toLowerCase()}|stocks&offset=${offset}&limit=100&fallback=true`, {
+    headers: { 'user-agent': BROWSER_UA, accept: 'application/json, text/plain, */*', referer: 'https://www.nasdaq.com/' }, signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error('nasdaq news ' + r.status);
+  const rows = (await r.json())?.data?.rows || [];
+  return rows.map((x) => {
+    const t = Date.parse(`${x.created} 16:00:00 GMT`);
+    return isFinite(t) ? { t: new Date(t).toISOString(), title: decodeXml(String(x.title || '')).trim(), source: x.publisher || 'Nasdaq', url: /^https?:/.test(x.url || '') ? x.url : 'https://www.nasdaq.com' + (x.url || '') } : null;
+  }).filter((n) => n?.title);
+}
+
 async function buildNews(sym = 'CRCL') {
   const C = NEWS_CFG[sym] || await genericNewsCfg(sym);
   const notes = [];
@@ -589,7 +602,9 @@ async function secQuarterly(sym = 'CRCL') {
   const F = (await r.json()).facts || {}, g0 = F['us-gaap'] || {};
   // 항목 이름이 회사마다 달라 여러 후보 중 있는 것을 쓴다
   const g = new Proxy(g0, { get: (o, c) => (Array.isArray(c) ? undefined : o[c]) });
-  const pickC = (c) => (Array.isArray(c) ? c.find((x) => g0[x]) || c[0] : c);
+  // 후보가 여럿이면 가장 최근 분기까지 있는 항목(회사가 중간에 항목 이름을 바꾸는 경우 — 예: NVDA 매출)
+  const lastEnd = (x) => { const u = g0[x]?.units; return u ? u[Object.keys(u)[0]].reduce((m, v) => (v.end > m ? v.end : m), '') : ''; };
+  const pickC = (c) => (Array.isArray(c) ? c.filter((x) => g0[x]).sort((a, b) => lastEnd(b).localeCompare(lastEnd(a)))[0] || c[0] : c);
   const days = (a, b) => (Date.parse(b) - Date.parse(a)) / 86400000;
   // 분기 말일 기준 3개월 전 분기 말일 ("2026-06-30" → "2026-03-31")
   const prevQEnd = (end) => { const y = +end.slice(0, 4), m = +end.slice(5, 7) - 3; const d = new Date(Date.UTC(m <= 0 ? y - 1 : y, m <= 0 ? m + 12 : m, 0)); return d.toISOString().slice(0, 10); };
@@ -1070,7 +1085,8 @@ export function valuationOf(sec, px, now = Date.now()) {
   return {
     price: px.price, cap, asOf: last || null,
     per: cap && N > 0 ? +(cap / N).toFixed(1) : null, psr: cap && R > 0 ? +(cap / R).toFixed(2) : null,
-    loss: N != null && N <= 0, revTtm: R, revGrowth: R && R0 > 0 ? R / R0 - 1 : yoyQ, ret1y: y1 ? px.price / y1 - 1 : null,
+    // 1년 전 매출이 아주 작으면(상업화 초기) 성장률이 수천 %로 튀어 뜻이 없다 → 비움
+    loss: N != null && N <= 0, revTtm: R, revGrowth: R && R0 >= 2e7 ? R / R0 - 1 : !R0 && prevEnd && rev[prevEnd] >= 5e6 ? yoyQ : null, ret1y: y1 ? px.price / y1 - 1 : null,
     hist: hist.slice(-20),
   };
 }
@@ -1078,7 +1094,7 @@ export async function handleValuation(url, cache, cors, ctx) {
   const s = (url.searchParams.get('s') || '').toUpperCase();
   if (!SYM_RE.test(s)) return json({ error: 'bad request' }, cors, 400); // 미국 상장 종목만(SEC 재무제표)
   if (!(await knownSym(s, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=1`, {
+  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=2`, {
     freshSec: 6 * 3600, keepSec: 7 * 86400, maxStaleSec: 2 * 86400, cors,
     build: async () => {
       const [sec, px] = await Promise.all([secQuarterly(s), yahooWeekly(s)]);
@@ -1096,15 +1112,24 @@ export async function handleMoveNews(url, cache, cors, ctx) {
   const iso = (t) => new Date(t).toISOString().slice(0, 10);
   const from = iso(Date.parse(d) - 86400000), to = iso(Date.parse(d) + 2 * 86400000);
   const old = Date.now() - Date.parse(d) > 3 * 86400000;
-  return swr(cache, ctx, `${url.origin}/movenews?s=${sym}&d=${d}&v=1`, {
+  return swr(cache, ctx, `${url.origin}/movenews?s=${sym}&d=${d}&v=2`, {
     freshSec: old ? 30 * 86400 : 3 * 3600, keepSec: 60 * 86400, cors,
     build: async () => {
       const kr = KR_RE.test(sym), name = (await companyOf(sym).catch(() => null))?.core || sym;
       const q = kr ? `"${name}" 주가 after:${from} before:${to}` : `"${name}" OR ${sym} stock after:${from} before:${to}`;
       const lo = Date.parse(from), hi = Date.parse(to), seen = new Set();
-      const items = (await googleNews(q, kr ? 'ko' : 'en').catch(() => []))
+      const lists = await Promise.all([
+        googleNews(q, kr ? 'ko' : 'en').catch(() => []),
+        kr ? [] : (async () => { // 그날까지 거슬러 올라가며 최대 3쪽
+          const out = [];
+          for (let off = 0; off < 300; off += 100) { const L = await nasdaqArticles(sym, off).catch(() => []); out.push(...L); if (!L.length || Date.parse(L.at(-1).t) < lo) break; }
+          return out;
+        })(),
+      ]);
+      const items = lists.flat()
         .filter((n) => { const t = Date.parse(n.t), k = String(n.title).toLowerCase().replace(/[^a-z0-9가-힣]/g, '').slice(0, 40); if (!n.title || !(t >= lo && t < hi) || seen.has(k)) return false; seen.add(k); return true; })
         .sort((x, y) => Math.abs(Date.parse(x.t) - Date.parse(d) - 432e5) - Math.abs(Date.parse(y.t) - Date.parse(d) - 432e5)).slice(0, 6); // 그날에 가까운 기사부터
+      if (!items.length) throw new Error('기사 없음'); // 빈 결과는 저장하지 않는다(출처가 잠깐 막힌 것일 수 있어 다음에 다시)
       return JSON.stringify({ at: new Date().toISOString(), symbol: sym, d, items: items.map(({ t, title, source, url }) => ({ t, title, source, url })) });
     },
   });

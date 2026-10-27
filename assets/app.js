@@ -7903,7 +7903,9 @@ ${what.join(' · ')}
     mvOpen[k] = !mvOpen[k];
     const [sym, d] = k.split('|');
     const repaint = () => { for (const e of document.querySelectorAll(`[data-mvhost="${sym}"]`)) e.innerHTML = movesHtml(sym); };
-    if (mvOpen[k] && mvNews[k] === undefined) getJ(`${NEWS_API}/movenews?s=${encodeURIComponent(sym)}&d=${d}`, 15000).then((j) => { mvNews[k] = j.items || []; }).catch(() => { mvNews[k] = []; }).finally(repaint);
+    // 서버가 못 찾으면 이미 받아 둔 이 종목 뉴스(최근 한 달) 중 그 무렵 기사로
+    const local = () => { const lo = Date.parse(d) - 86400000, hi = Date.parse(d) + 2 * 86400000; try { return newsItems(sym).filter((n) => n.t >= lo && n.t < hi).slice(0, 6).map((n) => ({ title: ttl(n), source: n.source, url: n.url })); } catch { return []; } };
+    if (mvOpen[k] && mvNews[k] === undefined) getJ(`${NEWS_API}/movenews?s=${encodeURIComponent(sym)}&d=${d}`, 20000).then((j) => { mvNews[k] = j.items?.length ? j.items : local(); }).catch(() => { mvNews[k] = local(); }).finally(repaint);
     repaint();
   }
 
