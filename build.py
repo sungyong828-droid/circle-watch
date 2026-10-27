@@ -123,6 +123,36 @@ if _esb and _min:
 else:
     print('minify 건너뜀(esbuild 없음)')
 
+# 화면 파일 오래 저장(캐시): assets 바로 아래 js·css·json을 가리키는 주소마다 ?v=<내용 해시>를 붙이고,
+# 그 파일들은 1년 동안 저장하게 한다. 내용이 바뀌면 해시(주소)도 바뀌어 새 파일을 받는다(?v= 손으로 올릴 필요 없음).
+import hashlib
+_AD = os.path.join(DIST, 'assets')
+_top = sorted(f for f in os.listdir(_AD) if f.endswith(('.js', '.css', '.json')) and os.path.isfile(os.path.join(_AD, f)))
+_ref = re.compile(r'(?<![\w-])(assets/|\./)(' + '|'.join(map(re.escape, _top)) + r')(?:\?v=[\w.-]*)?(?![\w.-])')  # ./ = app.js의 import('./move.js')
+_pages = [os.path.join(dp, f) for dp, _, fs in os.walk(DIST) for f in fs if f.endswith('.html')]
+_tpl = os.path.join(ROOT, 'worker', 'daily-tpl.js')  # /daily 서버 페이지 틀도 같은 주소를 쓰게
+def _hash(f):
+    return hashlib.sha256(open(os.path.join(_AD, f), 'rb').read()).hexdigest()[:10]
+for _ in range(6):  # 파일끼리 서로 가리키면(app.js → i18n-en.js 등) 해시가 자리 잡을 때까지 반복
+    _h = {f: _hash(f) for f in _top}
+    changed = False
+    for p in [os.path.join(_AD, f) for f in _top] + _pages + [_tpl]:
+        me = os.path.basename(p) if os.path.dirname(p) == _AD else None
+        t = open(p, encoding='utf-8').read()
+        t2 = _ref.sub(lambda m: m.group(0) if m.group(2) == me else f'{m.group(1)}{m.group(2)}?v={_h[m.group(2)]}', t)
+        if t2 != t:
+            open(p, 'w', encoding='utf-8', newline='').write(t2)
+            changed = True
+    if not changed:
+        break
+else:
+    sys.exit('캐시 주소(?v=해시)가 자리 잡지 않았어요 — assets 파일끼리 서로 가리키는지 확인')
+with open(hdr, 'a', encoding='utf-8') as f:
+    f.write('\n# 화면 파일: 주소에 내용 해시(?v=)가 붙어 있어 1년 저장(build.py가 자동으로 붙임)\n')
+    for fn in _top:
+        f.write(f'/assets/{fn}\n  Cache-Control: public, max-age=31536000, immutable\n')
+print(f'캐시 주소: {len(_top)}개 파일에 내용 해시 적용')
+
 # 최종 확인: dist 어디에도 개인 식별자가 남아 있으면 배포하지 않는다
 leaks = []
 for dp, _, files in os.walk(DIST):
