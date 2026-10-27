@@ -2812,6 +2812,7 @@
     for (const id of ids) { const el = document.getElementById('c-' + id); if (el) el.hidden = off; }
     if (off) return;
     loadAiCard('prom', sym); loadAiCard('fsum', sym);
+    try { renderEarnDay(sym); } catch {} // 발표 전날 카드의 '확인할 약속'도 같이 갱신
     const P = state.prom[sym], F = state.fsum[sym], name = esc(ttlName(sym));
     const pEl = document.getElementById(`c-${ids[0]}`), fEl = document.getElementById(`c-${ids[1]}`);
     if (pEl) { pEl.hidden = !!(P && !P.loading && !P.items?.length && !P.pending); if (!pEl.hidden) card(ids[0], { title: EN ? '🎯 Promise tracker' : '🎯 회사 약속 추적', sub: P?.items ? (EN ? `${name}promises from the ${md(isoToTs(P.prev.d))} earnings release → status as of ${md(isoToTs(P.checked || P.cur.d))}` : `${name}${md(isoToTs(P.prev.d))} 실적 발표 때 한 약속 → ${md(isoToTs(P.checked || P.cur.d))} 기준 상태`) : (EN ? 'Did the company do what it said?' : '회사가 말한 대로 하고 있을까?'), info: INFO.prom, body: promHtml(sym) }); }
@@ -5455,8 +5456,14 @@ ${what.join(' · ')}
   const watchCfg = (() => { const w = readJSON(WATCH_KEY, null); return w?.list?.length ? { list: w.list, custom: w.custom || {}, folders: w.folders || [] } : { list: BUILTIN.slice(), custom: {}, folders: [] }; })();
   // 추가한 종목의 기본 설정(이름·색·관련어). 로고는 이니셜.
   // 로고: 기본 4종목은 assets/logos, 그 밖의 S&P 500·자주 찾는 종목은 assets/logos/t (tools/fetch_logos.py가 받아 둠)
-  const LOGOS = new Set(String(window.__LOGOS || '').split(' ').filter(Boolean));
-  const logoPath = (sym) => (LOGOS.has(sym) ? `assets/logos/t/${sym}.png` : null);
+  // 로고 목록(logo-list.js, 약 30KB)은 첫 화면을 막지 않게 따로(async) 받는다 — 받기 전에는 글자 아이콘, 받으면 종목 줄을 다시 그린다
+  let LOGOS = null;
+  const logoSet = () => LOGOS || (window.__LOGOS ? (LOGOS = new Set(String(window.__LOGOS).split(' ').filter(Boolean))) : null);
+  const logoPath = (sym) => (logoSet()?.has(sym) ? `assets/logos/t/${sym}.png` : null);
+  if (!window.__LOGOS) document.getElementById('logo-list')?.addEventListener('load', () => {
+    const sw = document.getElementById('stock-switch'); if (sw) sw.dataset.built = '';
+    try { renderStockSwitch(); } catch {}
+  }, { once: true });
   const ETF_NAME = /\b(ETF|ETN|Fund|Trust|Shares)\b|iShares|SPDR|ProShares|Direxion|YieldMax|Invesco QQQ/i;
   const isEtf = (sym) => !isKR(sym) && !!(STOCK_INFO[sym]?.etf || state.quote?.[sym]?.asset === 'etf' || st(sym).etfDiv?.type === 'ETF');
   function customInfo(sym, meta = {}) {
@@ -6639,6 +6646,16 @@ ${what.join(' · ')}
     SPCX: '스타링크 매출 성장, 설비투자 규모 — 발표 <b>2거래일 뒤 보호예수 최대 13억 주 해제</b>(3분기)',
     TEM: '매출 성장률, 흑자 유지 여부, 유전체 검사 건수·데이터 사업 성장',
   };
+  // 발표 전날·당일 카드: 지난 발표에서 회사가 한 약속 중 이번에 확인할 것(저장된 약속 추적 결과를 그대로 씀)
+  function edPromHtml(sym) {
+    if (isKR(sym) || isEtf(sym)) return '';
+    const X = state.prom[sym];
+    if (!X) { loadAiCard('prom', sym); return ''; }
+    const L = (X.items || []).filter((x) => ['new', 'on', 'unknown', 'check'].includes(x.upd?.status || x.status)).slice(0, 3);
+    if (!L.length) return '';
+    return `<div class="ed-prom"><b>${EN ? '🎯 Promises to check this time' : '🎯 이번에 확인할 회사 약속'}</b><ul>${L.map((x) => `<li><span data-noi18n>${esc(x.goal)}</span>${x.due ? `<small>${EN ? 'due' : '기한'} ${esc(x.due)}</small>` : ''}</li>`).join('')}</ul>
+      <button type="button" class="link-btn" data-glgo="${sym === 'CRCL' ? 'earn:c-prom' : 'searn:c-sprom'}">${EN ? 'All promises' : '약속 전체 보기'}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div>`;
+  }
   function renderEarnDay(sym = state.stock) {
     const id = sym === 'CRCL' ? 'earnday' : 'searnday', el = document.getElementById('c-' + id);
     if (!el) return;
@@ -6662,7 +6679,7 @@ ${what.join(' · ')}
             <div><span>옵션이 보는 변동폭</span><b>${O?.earn ? '±' + (O.earn.move * 100).toFixed(1) + '%' : '–'}</b><small>${O?.earn ? `${price(O.spot * (1 - O.earn.move))} ~ ${price(O.spot * (1 + O.earn.move))}` : '옵션 자료 없음'}</small></div>
             <div><span>${EN ? `Beat in last ${sur.length} qtrs` : `최근 ${sur.length}분기 예상 상회`}</span><b>${sur.length ? `${beats}/${sur.length}` : '–'}</b><small>EPS 기준</small></div>
           </div>
-          <p class="ed-check">✅ 볼 것: ${EARN_CHECK[sym] || '매출·EPS가 예상보다 높은지, 다음 분기 가이던스'}</p>${memoRemind(sym)}${voteBlock(sym)}`,
+          <p class="ed-check">✅ 볼 것: ${EARN_CHECK[sym] || '매출·EPS가 예상보다 높은지, 다음 분기 가이던스'}</p>${edPromHtml(sym)}${memoRemind(sym)}${voteBlock(sym)}`,
       });
       return;
     }
@@ -7867,14 +7884,21 @@ ${what.join(' · ')}
     if (need.length) Promise.all(need.map(ensureVal)).then(() => { if (sym === 'CRCL' || state.stock === sym) renderValCards(sym); }).catch(() => {});
     const row = (x, me) => {
       const W = st(x).val, w = W === undefined ? '…' : '–';
-      return `<tr${me ? ' class="me"' : ''}><th scope="row">${esc(x)}</th><td class="${cls(W?.ret1y)}">${W?.ret1y != null ? pct(W.ret1y, 0) : w}</td><td class="${cls(W?.revGrowth)}">${W?.revGrowth != null ? pct(W.revGrowth, 0) : w}</td><td>${W?.per ? xS(W.per) : W?.loss ? (EN ? 'Loss' : '적자') : w}</td><td>${W?.psr ? xS(W.psr) : w}</td></tr>`;
+      return `<tr${me ? ' class="me"' : ''}><th scope="row">${me ? esc(x) : `<button type="button" class="pr-go" data-peer="${esc(x)}" aria-label="${esc(x)} ${EN ? 'open' : '열기'}">${esc(x)}<i aria-hidden="true">›</i></button>`}</th><td class="${cls(W?.ret1y)}">${W?.ret1y != null ? pct(W.ret1y, 0) : w}</td><td class="${cls(W?.revGrowth)}">${W?.revGrowth != null ? pct(W.revGrowth, 0) : w}</td><td>${W?.per ? xS(W.per) : W?.loss ? (EN ? 'Loss' : '적자') : w}</td><td>${W?.psr ? xS(W.psr) : w}</td></tr>`;
     };
     card(pId, {
       title: EN ? '🆚 vs competitors' : '🆚 경쟁사와 비교', sub: EN ? 'Same-industry companies · SEC filings + Yahoo price' : '같은 업종 회사 · SEC 재무제표 + Yahoo 주가',
       body: `<div class="pr-wrap"><table class="pr-tbl"><thead><tr><th scope="col">${EN ? 'Stock' : '종목'}</th><th scope="col">${EN ? '1Y' : '1년 주가'}</th><th scope="col">${EN ? 'Sales' : '매출 성장'}</th><th scope="col">PER</th><th scope="col">PSR</th></tr></thead>
         <tbody>${row(sym, true)}${peers.map((x) => row(x, false)).join('')}</tbody></table></div>
-        <p class="note">${EN ? 'Sales = last 12 months vs the 12 months before. Lower PER/PSR means the price is lower relative to profit/sales. “–” = no data (e.g. foreign filers).' : '매출 성장 = 최근 1년 매출이 그 전 1년보다 늘어난 비율. PER·PSR은 낮을수록 이익·매출에 비해 주가가 덜 비싸다는 뜻이에요. ‘–’는 자료 없음(외국 기업 등).'}</p>`,
+        <p class="note">${EN ? 'Tap a ticker to open it (it is added to your list if needed). ' : '종목을 누르면 그 종목 화면이 열려요(관심 종목에 없으면 추가돼요). '}${EN ? 'Sales = last 12 months vs the 12 months before. Lower PER/PSR means the price is lower relative to profit/sales. “–” = no data (e.g. foreign filers).' : '매출 성장 = 최근 1년 매출이 그 전 1년보다 늘어난 비율. PER·PSR은 낮을수록 이익·매출에 비해 주가가 덜 비싸다는 뜻이에요. ‘–’는 자료 없음(외국 기업 등).'}</p>`,
     });
+  }
+
+  // 경쟁사 표에서 누르면: 관심 종목에 없으면 이름을 찾아 추가하고, 그 종목의 실적 탭(비싼가 싼가·경쟁사)으로
+  async function openPeer(sym, btn) {
+    if (!WATCH.includes(sym)) { if (btn) btn.disabled = true; await addPopular(sym); }
+    if (WATCH.includes(sym)) goTarget({ sym, v: 'earn' });
+    else if (btn) btn.disabled = false;
   }
 
   // ---- 🔍 왜 움직였나: 최근 3개월 중 크게 오르내린 날 → 누르면 그날 뉴스(/api/movenews, AI 없음)
@@ -8744,6 +8768,7 @@ ${what.join(' · ')}
     if (ev.target.closest('[data-fsave]')) { saveFolder(); return; }
     if (ev.target.closest('[data-fdel]')) { deleteFolder(); return; }
     { const b = ev.target.closest('[data-mv]'); if (b) { toggleMove(b.dataset.mv); return; } }
+    { const b = ev.target.closest('[data-peer]'); if (b) { openPeer(b.dataset.peer, b); return; } }
     if (ev.target.closest('[data-gltoggle]')) { savePref('glOpen', loadPref('glOpen', '0') === '1' ? '0' : '1'); renderGlance(state.stock); if (state.stock !== 'CRCL') renderGlance('CRCL'); return; }
     if (ev.target.closest('[data-sstoggle]')) { savePref('ssExpand', ssExpanded() ? '0' : '1'); renderStockSwitch(); return; }
     if (ev.target.closest('[data-homeedit]')) { openHomeEdit(); return; }

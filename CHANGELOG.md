@@ -11,6 +11,14 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🆚 경쟁사 표에서 종목을 누르면 그 종목 화면이 바로 열려요(관심 종목에 없으면 추가돼요).
+- 🔔 실적 발표 전날·당일 카드에 '이번에 확인할 회사 약속'이 함께 나와요.
+- 첫 화면을 막던 로고 목록(약 30KB)을 따로 받게 해 처음 열 때 조금 더 빨라졌어요. <!-- internal -->
+<!-- EN
+- Tap a ticker in the competitor table to open that stock (it is added to your list if needed).
+- The earnings-eve card now lists the company promises to check this time.
+-->
+
 ## v2026.10.27-3 — 2026-10-27
 
 [이 버전 보기](https://22647739.my-fire-portfolio.pages.dev) · 커밋 `116607a`
