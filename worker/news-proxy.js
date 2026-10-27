@@ -1099,15 +1099,93 @@ export function valuationOf(sec, px, now = Date.now()) {
     hist: hist.slice(-20),
   };
 }
-export async function handleValuation(url, cache, cors, ctx) {
-  const s = (url.searchParams.get('s') || '').toUpperCase();
-  if (!SYM_RE.test(s)) return json({ error: 'bad request' }, cors, 400); // 미국 상장 종목만(SEC 재무제표)
+// ---------------------------------------------------------------- 🇰🇷 한국 종목 밸류에이션 — 금감원 DART 공식 API(비밀값 DART_KEY)
+// 종목코드 → DART 고유번호 표(corpCode.xml, 상장사만 추려 KV에 30일 보관) · 분기 재무(fnlttSinglAcnt) · 발행주식수(stockTotqySttus)
+const DART = 'https://opendart.fss.or.kr/api';
+async function dartCodes(env) {
+  try { const m = await env.SUMS.get('dart:codes', { type: 'json' }); if (m && Object.keys(m).length > 1000) return m; } catch {}
+  const r = await fetch(`${DART}/corpCode.xml?crtfc_key=${env.DART_KEY}`, { signal: AbortSignal.timeout(20000) });
+  if (!r.ok) throw new Error('dart corpCode ' + r.status);
+  const zip = new Uint8Array(await r.arrayBuffer()), dv = new DataView(zip.buffer);
+  // ZIP 끝(중앙 디렉터리)에서 첫 파일의 압축 크기·위치를 읽는다
+  let eocd = zip.length - 22;
+  while (eocd >= 0 && dv.getUint32(eocd, true) !== 0x06054b50) eocd--;
+  if (eocd < 0) throw new Error('dart corpCode: zip 아님(키 확인)');
+  const cd = dv.getUint32(eocd + 16, true), size = dv.getUint32(cd + 20, true), loc = dv.getUint32(cd + 42, true);
+  const start = loc + 30 + dv.getUint16(loc + 26, true) + dv.getUint16(loc + 28, true);
+  const xml = await new Response(new Blob([zip.subarray(start, start + size)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  const map = {};
+  for (const blk of xml.split('</list>')) {
+    const sc = blk.match(/<stock_code>\s*(\d{6})\s*<\/stock_code>/);
+    const cc = sc && blk.match(/<corp_code>(\d{8})<\/corp_code>/);
+    if (cc) map[sc[1]] = cc[1];
+  }
+  if (Object.keys(map).length < 1000) throw new Error('dart corpCode: 목록이 너무 적음');
+  await env.SUMS.put('dart:codes', JSON.stringify(map), { expirationTtl: 30 * 86400 }).catch(() => {});
+  return map;
+}
+const DART_RPT = [['11013', '03-31'], ['11012', '06-30'], ['11014', '09-30'], ['11011', '12-31']]; // 1분기·반기·3분기·사업보고서
+const dartNum = (s) => { const t = String(s ?? '').replace(/,/g, '').trim(); if (!t || t === '-') return null; const n = Number(t.replace(/^\((.*)\)$/, '-$1')); return isFinite(n) ? n : null; };
+async function dartJson(env, path, params) {
+  const r = await fetch(`${DART}/${path}?crtfc_key=${env.DART_KEY}&${new URLSearchParams(params)}`, { signal: AbortSignal.timeout(9000) });
+  if (!r.ok) throw new Error('dart ' + r.status);
+  const j = await r.json();
+  if (j.status === '013') return []; // 자료 없음(아직 안 낸 보고서)
+  if (j.status !== '000') throw new Error(`dart ${j.status} ${j.message || ''}`);
+  return j.list || [];
+}
+// SEC 정리본과 같은 모양({ q: { revenue, netIncome }, coverShares })으로 만든다 → valuationOf 를 그대로 쓴다
+export async function dartQuarterly(env, sym) {
+  if (!env?.DART_KEY || !env?.SUMS) throw new Error('DART 키 없음');
+  const corp = (await dartCodes(env))[sym.slice(0, 6)];
+  if (!corp) throw new Error('DART에 없는 종목(ETF 등)');
+  const key = new Request(`https://cache.internal/dartq/${sym}?v=1`);
+  try { const h = await caches.default.match(key); if (h) return await h.json(); } catch {}
+  const y0 = new Date().getUTCFullYear(), jobs = [];
+  for (let y = y0 - 4; y <= y0; y++) for (const [rc, md] of DART_RPT) jobs.push({ y, rc, end: `${y}-${md}` });
+  const today = new Date().toISOString().slice(0, 10);
+  const got = await Promise.all(jobs.filter((j) => j.end < today).map(async (j) => ({ ...j, list: await dartJson(env, 'fnlttSinglAcnt.json', { corp_code: corp, bsns_year: j.y, reprt_code: j.rc }).catch(() => []) })));
+  const pick = (list, re) => {
+    const L = list.filter((x) => x.sj_div === 'IS' || x.sj_div === 'CIS');
+    const fs = L.some((x) => x.fs_div === 'CFS') ? 'CFS' : 'OFS'; // 연결 재무제표 우선
+    return L.find((x) => x.fs_div === fs && re.test(String(x.account_nm).replace(/\s/g, '')));
+  };
+  const q = { revenue: {}, netIncome: {} }, fy = { revenue: {}, netIncome: {} };
+  for (const g of got) {
+    for (const [k, re] of [['revenue', /^(매출액|수익\(매출액\)|영업수익|매출)$/], ['netIncome', /^당기순이익(\(손실\))?$/]]) {
+      const v = dartNum(pick(g.list, re)?.thstrm_amount);
+      if (v == null) continue;
+      if (g.rc === '11011') fy[k][g.end] = v; else q[k][g.end] = v; // 분기·반기 보고서의 당기 금액 = 그 3개월
+    }
+  }
+  // 4분기 = 사업보고서(1년) − 1~3분기
+  for (const k of ['revenue', 'netIncome']) for (const [end, total] of Object.entries(fy[k])) {
+    const y = end.slice(0, 4), p = [`${y}-03-31`, `${y}-06-30`, `${y}-09-30`];
+    if (p.every((e) => q[k][e] != null)) q[k][end] = total - p.reduce((t, e) => t + q[k][e], 0);
+  }
+  // 발행 주식 수(보통주) — 최근 보고서 몇 개만
+  const coverShares = {};
+  for (const g of got.filter((x) => x.list.length).slice(-6)) {
+    const L = await dartJson(env, 'stockTotqySttus.json', { corp_code: corp, bsns_year: g.y, reprt_code: g.rc }).catch(() => []);
+    const c = L.find((x) => /보통주/.test(x.se || '')), n = dartNum(c?.istc_totqy);
+    if (n > 0) coverShares[g.end] = n - (dartNum(c?.tesstk_co) || 0); // 자기주식은 뺀다
+  }
+  const out = { q, coverShares, dilShares: {} };
+  if (!Object.keys(q.revenue).length) throw new Error('DART 재무 자료 없음');
+  try { await caches.default.put(key, new Response(JSON.stringify(out), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=43200' } })); } catch {}
+  return out;
+}
+
+export async function handleValuation(url, cache, cors, ctx, env) {
+  const s = (url.searchParams.get('s') || '').toUpperCase(), kr = KR_RE.test(s);
+  if (!SYM_RE.test(s) && !kr) return json({ error: 'bad request' }, cors, 400); // 미국: SEC 재무제표 · 한국: DART
+  if (kr && !env?.DART_KEY) return json({ error: 'no dart key' }, cors, 404);
   if (!(await knownSym(s, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=4`, {
+  return swr(cache, ctx, `${url.origin}/valuation?s=${s}&v=5`, {
     freshSec: 6 * 3600, keepSec: 7 * 86400, maxStaleSec: 2 * 86400, cors,
     build: async () => {
-      const [sec, px] = await Promise.all([secQuarterly(s), yahooWeekly(s)]);
-      return JSON.stringify({ at: new Date().toISOString(), symbol: s, ...valuationOf(sec, px) });
+      const [fin, px] = await Promise.all([kr ? dartQuarterly(env, s) : secQuarterly(s), yahooWeekly(s)]);
+      return JSON.stringify({ at: new Date().toISOString(), symbol: s, src: kr ? 'DART' : 'SEC', ...valuationOf(fin, px) });
     },
   });
 }
@@ -2508,7 +2586,7 @@ export default {
     if (url.pathname === '/krinfo') return handleKrInfo(url, cache, cors, ctx);
     if (url.pathname === '/mnews') return handleMarketNews(url, cache, cors, ctx, env);
     if (url.pathname === '/series') return handleSeries(url, cache, cors, ctx);
-    if (url.pathname === '/valuation') return handleValuation(url, cache, cors, ctx);
+    if (url.pathname === '/valuation') return handleValuation(url, cache, cors, ctx, env);
     if (url.pathname === '/movenews') return handleMoveNews(url, cache, cors, ctx);
     return handleNews(url, cache, cors, ctx, env);
   },

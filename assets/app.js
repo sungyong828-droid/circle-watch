@@ -7788,11 +7788,11 @@ ${what.join(' · ')}
       let A = null; try { A = analystView(sym); } catch {}
       if (A?.n && A.T?.mean) rows.push({ ic: '🎯', lb: EN ? 'Analysts' : '시장의 시선', tx: `<span class="tone ${A.tone}">${EN ? ({ '매수 우위': 'Mostly buy', '매도 우위': 'Mostly sell', '중립': 'Mixed' }[A.label] || A.label) : A.label}</span> ${EN ? 'avg target' : '목표가 평균'} <b>${price(A.T.mean)}</b>${A.up != null ? ` (<span class="${cls(A.up)}">${pct(A.up, 0)}</span>)` : ''} · ${EN ? `${A.n} brokers` : `증권사 ${A.n}곳`}`, go: V('crcl:c-analyst', 'sprice:c-sanalyst') });
     }
-    // 5-1) 비싼가 싼가(미국 상장 기업)
-    if (!kr && !etf) {
+    // 5-1) 비싼가 싼가(미국 SEC · 한국 DART)
+    if (!etf) {
       const P = valPos(st(sym).val);
       if (P && !P.short) rows.push({ ic: '💰', lb: EN ? 'Valuation' : '비싼가 싼가', tx: `${P.k} <b>${xS(P.now)}</b> · <span class="vl-tag ${P.tone}">${EN ? `${P.lab} (last ${P.yrs}y)` : `지난 ${P.yrs}년 중 ${P.lab}`}</span>`, go: V('earn:c-val', 'searn:c-sval') });
-      else if (st(sym).val === undefined && !valLoad[sym] && /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym)) ensureVal(sym).then(() => renderGlance(sym)).catch(() => {});
+      else if (st(sym).val === undefined && !valLoad[sym] && (kr || /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym))) ensureVal(sym).then(() => renderGlance(sym)).catch(() => {});
     }
     // 6) 업황(업종 키트가 있는 종목)
     const kl = document.getElementById('kit-line');
@@ -7857,7 +7857,7 @@ ${what.join(' · ')}
     const crcl = sym === 'CRCL', vId = crcl ? 'val' : 'sval', pId = crcl ? 'peers' : 'speers';
     const vEl = document.getElementById('c-' + vId), pEl = document.getElementById('c-' + pId);
     if (!vEl || !pEl) return;
-    const ok = !isKR(sym) && !isEtf(sym) && /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym);
+    const ok = isKR(sym) || (!isEtf(sym) && /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym)); // 한국은 DART(ETF 등 자료 없는 종목은 카드가 숨는다)
     if (!ok) { vEl.hidden = pEl.hidden = true; return; }
     const V = st(sym).val;
     if (V === undefined && !valLoad[sym]) ensureVal(sym).then(() => { if (sym === 'CRCL' || state.stock === sym) { renderValCards(sym); renderGlance(sym); } }).catch(() => {});
@@ -7869,7 +7869,7 @@ ${what.join(' · ')}
       const what = P.k === 'PER' ? (EN ? 'PER = market value ÷ last 12 months of profit.' : 'PER = 회사 가치(시가총액) ÷ 최근 1년 순이익. 이익의 몇 배 값에 사고파는지예요.')
         : (EN ? 'PSR = market value ÷ last 12 months of sales (used when profit is negative or its history is short).' : 'PSR = 회사 가치(시가총액) ÷ 최근 1년 매출. 적자이거나 이익 기록이 짧으면 매출로 봐요.');
       card(vId, {
-        title: EN ? '💰 Cheap or expensive?' : '💰 비싼가 싼가', sub: `${EN ? 'vs its own history · SEC filings + Yahoo price' : '과거의 자기 자신과 비교 · SEC 재무제표 + Yahoo 주가'}${V.asOf ? ` · ${EN ? 'financials as of' : '재무 기준'} ${V.asOf}` : ''}`,
+        title: EN ? '💰 Cheap or expensive?' : '💰 비싼가 싼가', sub: `${EN ? `vs its own history · ${V.src || 'SEC'} filings + Yahoo price` : `과거의 자기 자신과 비교 · ${V.src || 'SEC'} 재무제표 + Yahoo 주가`}${V.asOf ? ` · ${EN ? 'financials as of' : '재무 기준'} ${V.asOf}` : ''}`,
         body: `<div class="vl-main"><b>${P.k} ${xS(P.now)}</b>${P.short ? `<span class="vl-tag mid">${EN ? 'history too short to compare' : '비교할 기록이 아직 짧아요'}</span>` : `<span class="vl-tag ${P.tone}">${EN ? `${P.lab} (last ${P.yrs}y)` : `지난 ${P.yrs}년 중 ${P.lab}`}</span>`}</div>
           ${P.short ? '' : `<div class="vl-bar" role="img" aria-label="${P.k} ${xS(P.lo)} – ${xS(P.hi)}"><i class="vl-med" style="left:${(mp * 100).toFixed(1)}%"></i><i class="vl-now" style="left:${(pos * 100).toFixed(1)}%"></i></div>
           <div class="vl-ends"><span>${EN ? 'Low' : '최저'} ${xS(P.lo)}</span><span>${EN ? 'Typical' : '보통'} ${xS(P.med)}</span><span>${EN ? 'High' : '최고'} ${xS(P.hi)}</span></div>`}
