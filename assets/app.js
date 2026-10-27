@@ -7792,7 +7792,7 @@ ${what.join(' · ')}
     if (!etf) {
       const P = valPos(st(sym).val);
       if (P && !P.short) rows.push({ ic: '💰', lb: EN ? 'Valuation' : '비싼가 싼가', tx: `${P.k} <b>${xS(P.now)}</b> · <span class="vl-tag ${P.tone}">${EN ? `${P.lab} (last ${P.yrs}y)` : `지난 ${P.yrs}년 중 ${P.lab}`}</span>`, go: V('earn:c-val', 'searn:c-sval') });
-      else if (st(sym).val === undefined && !valLoad[sym] && (kr || /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym))) ensureVal(sym).then(() => renderGlance(sym)).catch(() => {});
+      else if (st(sym).val === undefined && !valLoad[sym] && ((kr && VAL_KR) || /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym))) ensureVal(sym).then(() => renderGlance(sym)).catch(() => {});
     }
     // 6) 업황(업종 키트가 있는 종목)
     const kl = document.getElementById('kit-line');
@@ -7832,6 +7832,7 @@ ${what.join(' · ')}
   const PEER_US_SEMI = ['NVDA', 'AMD', 'AVGO', 'QCOM', 'MU', 'INTC', 'TXN', 'MRVL'], PEER_BIG = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NFLX', 'ORCL'];
   const peersOf = (sym) => (PEERS[sym] || (SEMI_ALL.has(sym) ? PEER_US_SEMI : BIGTECH.has(sym) ? PEER_BIG : [])).filter((x) => x !== sym).slice(0, 4);
   const valLoad = {};
+  const VAL_KR = false; // 한국 종목(DART): DART가 해외·클라우드 서버 접속을 막아 아직 꺼 둔다(서버 코드는 준비됨)
   function ensureVal(sym) {
     const x = st(sym);
     if (x.val !== undefined && Date.now() - (x.valAt || 0) < 3 * 3600000) return Promise.resolve(x.val);
@@ -7857,7 +7858,7 @@ ${what.join(' · ')}
     const crcl = sym === 'CRCL', vId = crcl ? 'val' : 'sval', pId = crcl ? 'peers' : 'speers';
     const vEl = document.getElementById('c-' + vId), pEl = document.getElementById('c-' + pId);
     if (!vEl || !pEl) return;
-    const ok = isKR(sym) || (!isEtf(sym) && /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym)); // 한국은 DART(ETF 등 자료 없는 종목은 카드가 숨는다)
+    const ok = (isKR(sym) && VAL_KR) || (!isEtf(sym) && /^[A-Z]{1,5}(\.[A-Z])?$/.test(sym)); // 한국은 DART(ETF 등 자료 없는 종목은 카드가 숨는다)
     if (!ok) { vEl.hidden = pEl.hidden = true; return; }
     const V = st(sym).val;
     if (V === undefined && !valLoad[sym]) ensureVal(sym).then(() => { if (sym === 'CRCL' || state.stock === sym) { renderValCards(sym); renderGlance(sym); } }).catch(() => {});
