@@ -1948,7 +1948,7 @@ export async function pushTick(env, at = Date.now()) {
   }
 }
 async function kickCollector(env) {
-  await fetch('https://api.github.com/repos/sungyong828-droid/circle-watch/actions/workflows/update.yml/dispatches', {
+  return fetch('https://api.github.com/repos/sungyong828-droid/circle-watch/actions/workflows/update.yml/dispatches', {
     method: 'POST',
     headers: { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'circle-watch-worker', 'content-type': 'application/json' },
     body: JSON.stringify({ ref: 'main' }),
