@@ -1859,7 +1859,7 @@ export async function handleFacts(url, cache, cors, ctx, env) {
 }
 
 // ---------------------------------------------------------------- USDC·EURC·USYC 일별 공급량 (DefiLlama — 응답 헤더 문제로 브라우저가 직접 못 받음)
-// 서버 데이터 감시(15분마다): 14분 넘게 묵었으면 수집을 깨우고(GH_TOKEN), 오래 멈춘 게 있으면 디스코드로 알린다(ALERT_WEBHOOK)
+// 서버 데이터 감시(15분마다): 14분 넘게 묵었으면 수집을 깨운다(GH_TOKEN). dataIssues는 남겨 두지만 알림은 보내지 않는다
 export function dataIssues(d, now = Date.now()) {
   const out = [];
   const at = Date.parse(d?.updatedAt || 0) || 0;
@@ -1875,27 +1875,13 @@ export function dataIssues(d, now = Date.now()) {
   for (const k of Object.keys(d?.errors || {})) out.push(`수집 실패: ${k}`);
   return out;
 }
+// 디스코드 알림은 보내지 않는다(사용자 요청) — 멈추면 조용히 수집을 깨우고, 깨우기 결과만 KV 'kick:last'에 남긴다
 async function watchData(env) {
   let d = null;
   try { const r = await fetch(`https://sungyong828-droid.github.io/circle-watch/data/latest.json?t=${Date.now()}`, { cf: { cacheTtl: 0 } }); if (r.ok) d = await r.json(); } catch {}
-  if (env.GH_TOKEN && !(Date.now() - Date.parse(d?.updatedAt || 0) < 14 * 60000)) await kickCollector(env).catch(() => {});
-  if (!env.ALERT_WEBHOOK || !env.SUMS) return;
-  // 수집 실패 한 번은 다음 수집에서 풀리는 일이 많아 30분(두 번 연속) 이어질 때만 알린다
-  const issues = d ? dataIssues(d) : ['서버 데이터(latest.json)를 받지 못했어요'];
-  const prev = (await env.SUMS.get('alert:data', 'json')) || { sig: '', since: 0, sent: 0 };
-  const sig = issues.join('|'), now = Date.now();
-  if (!issues.length) {
-    if (prev.sent) await postAlert(env, '✅ Fire Portfolio 데이터가 다시 정상이에요');
-    if (prev.sig || prev.sent) await env.SUMS.put('alert:data', JSON.stringify({ sig: '', since: 0, sent: 0 }));
-    return;
-  }
-  const since = prev.sig === sig ? prev.since || now : now;
-  const due = now - since >= 25 * 60000 && (prev.sentSig !== sig || now - prev.sent > 12 * 3600000);
-  if (due) await postAlert(env, `⚠️ Fire Portfolio 데이터 확인 필요\n${issues.map((x) => `• ${x}`).join('\n')}`);
-  await env.SUMS.put('alert:data', JSON.stringify({ sig, since, sent: due ? now : prev.sent, sentSig: due ? sig : prev.sentSig }));
-}
-async function postAlert(env, content) {
-  await fetch(env.ALERT_WEBHOOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: content.slice(0, 1900) }) }).catch(() => {});
+  if (!env.GH_TOKEN || Date.now() - Date.parse(d?.updatedAt || 0) < 14 * 60000) return;
+  const status = await kickCollector(env).catch((e) => String(e.message || e));
+  if (env.SUMS) await env.SUMS.put('kick:last', JSON.stringify({ at: new Date().toISOString(), status, dataAt: d?.updatedAt || null }));
 }
 // ---------------------------------------------------------------- 📲 폰 알림(웹 푸시) — 구독은 /api/push(Pages)가 KV에 'push:…'로 저장한다
 // 5분마다: 목표가에 닿은 종목을 알리고 그 목표가는 지운다(한 번만 알림). 매일 한국 시각 20시: 오늘(미국 날짜) 실적 발표가 확정된 종목을 알린다.
@@ -1966,7 +1952,7 @@ async function kickCollector(env) {
     method: 'POST',
     headers: { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'circle-watch-worker', 'content-type': 'application/json' },
     body: JSON.stringify({ ref: 'main' }),
-  });
+  }).then((r) => r.status);
 }
 
 export async function handleSeries(url, cache, cors, ctx) {
@@ -2531,8 +2517,8 @@ export default {
     if (event.cron === '2-59/5 * * * *') { ctx.waitUntil(pushTick(env, event.scheduledTime).catch(() => {})); return; }
     // 15분마다: GitHub 예약 실행은 실제로 3~5시간씩 밀리므로, 데이터가 14분 넘게 묵었으면 수집을 직접 깨운다
     // (GH_TOKEN 비밀값이 있을 때만 — 저장소 Actions 쓰기 권한 토큰)
-    // 같은 때 데이터 멈춤 감시도 한다(ALERT_WEBHOOK 비밀값이 있을 때 디스코드로 알림)
-    if ((env.GH_TOKEN || env.ALERT_WEBHOOK) && Math.floor(event.scheduledTime / 300000) % 3 === 0) ctx.waitUntil(watchData(env).catch(() => {}));
+    // 같은 때 데이터 멈춤 감시도 한다(멈췄으면 조용히 수집을 깨움, 알림 없음)
+    if (env.GH_TOKEN && Math.floor(event.scheduledTime / 300000) % 3 === 0) ctx.waitUntil(watchData(env).catch(() => {}));
     const sym = STOCKS[Math.floor(event.scheduledTime / 300000) % STOCKS.length];
     ctx.waitUntil((async () => {
       const data = await buildNews(sym);
