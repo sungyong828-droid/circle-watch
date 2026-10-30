@@ -1118,7 +1118,7 @@ async function krIstmt(sym, env) {
 export async function handleIstmt(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  if (KR_RE.test(sym)) return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=kr1`, { freshSec: 3 * 3600, keepSec: 30 * 86400, cors, build: async () => JSON.stringify((await krIstmt(sym, env)) || { none: true }) });
+  if (KR_RE.test(sym)) return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=kr2`, { freshSec: 3 * 3600, keepSec: 30 * 86400, cors, build: async () => JSON.stringify((await krIstmt(sym, env)) || { none: true }) });
   const live = url.searchParams.has('live');
   return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=3`, {
     freshSec: live ? 120 : 3 * 3600, keepSec: 30 * 86400, cors,
