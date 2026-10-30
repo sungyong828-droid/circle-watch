@@ -14,6 +14,7 @@
 - 워커: 데이터 멈춤 디스코드 알림(⚠️ 데이터 확인 필요) 끔 — 멈추면 조용히 수집만 깨우고 결과를 KV kick:last에 기록 · 워커 배포 필요 <!-- internal -->
 - 💸 **돈의 흐름**(새 기능): 실적 탭에서 '매출 100원이 어디로 갔나'(원가 40원 · 연구개발 16원 … 순이익 21원)를 막대 하나로 먼저 보여 주고, 그 아래 흐름도로 매출이 원가·영업비용·세금으로 나가고 얼마가 순이익으로 남는지 단계별로 보여 줘요. 남은 돈(이익)은 초록, 나간 돈(비용)은 항목마다 다른 색이에요.
 - 📢 실적 발표가 나오면 바로 반영돼요: 서버가 5분마다 미국 SEC의 새 실적 공시를 확인해서, 내 종목 실적이 나오면 실적 숫자와 흐름도를 곧바로 새로 받아요(휴대폰·PC를 켜 두지 않아도). 실적 알림을 켠 종목은 폰 알림과 🔔 알림 목록에도 '매출·순이익'이 함께 와요.
+- 💸 적자 회사도 돈의 흐름이 나와요: '매출 + 영업손실 → 쓴 돈 → 어디에 썼나'로 왜 적자인지 보여 주고, 맨 위에 '비용이 매출의 몇 배 · 가장 큰 비용'을 한 줄로 알려 줘요. 평가이익이 큰 회사(비트코인 보유 등)는 한 줄씩 목록으로 보여 줘요.
 - 📊 종목의 실적 탭에서 '실적' 카드가 맨 위로 올라왔어요. 실적이 나오면 사업 현황의 '분기별 주요 소식' 맨 위에 새 분기 숫자와 요약이 자동으로 붙고, 실적 카드의 AI 3줄 요약은 발표 뒤 일주일만 보여요.
 - 🔥 퇴사까지 탭의 '보유 정보 수정'이 맨 위로 올라왔어요(추가 매수 뒤 바로 고칠 수 있게).
 - 📈 차트를 눌러 뜬 설명 상자는 차트 밖을 누르면 닫혀요.
@@ -24,6 +25,7 @@
 - New earnings show up right away: the server checks SEC filings every 5 minutes, so when one of your stocks reports, the numbers and the flow chart refresh on their own — no need to keep your phone or PC on. Stocks with earnings alerts also get a push with revenue and net income.
 - The earnings card now sits at the top of a stock's earnings tab. New results are added automatically to "What happened each quarter", and the AI summary on the earnings card stays for a week after the release.
 - "Edit holdings" is now at the top of the FIRE tab.
+- Loss-making companies now get the flow too: revenue + operating loss → total costs → where it went, with a one-line reason (costs as a multiple of revenue and the biggest cost).
 - Tapping outside a chart closes its info bubble.
 - Short links like "10-Q filing (10/29)" no longer break across lines, and the earnings tag, numbers and table headers fit on narrow screens.
 -->
