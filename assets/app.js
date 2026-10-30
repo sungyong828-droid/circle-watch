@@ -2832,9 +2832,10 @@
       if (tax > R * 0.002) { node('tax', col, tax, C.neg, EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}${EN ? ' of rev.' : ''}`); link('op', 'tax', tax); }
       if (-other > R * 0.002) { node('oth', col, -other, C.neg, EN ? 'Other' : '기타 비용', fu(-other), EN ? 'interest etc.' : '이자 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
     }
-    // 영업비용 항목: 큰 순서로 4개 + 나머지는 '기타'
+    // 영업비용 항목: 큰 순서로(좁은 화면 3개, 넓으면 4개) + 나머지는 '기타'
     let items = (I.opex || []).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
-    if (items.length > 5) items = [...items.slice(0, 4), { k: 'other', v: items.slice(4).reduce((a, b) => a + b.v, 0) }];
+    const keep = narrow ? 3 : 4;
+    if (items.length > keep + 1) items = [...items.slice(0, keep), { k: 'other', v: items.slice(keep).reduce((a, b) => a + b.v, 0) }];
     if (items.length >= 2) items.forEach((o, i) => { node('x' + i, col, o.v, C.neg, flName(o.k), fu(o.v), `${EN ? '' : '매출의 '}${pc(o.v)}${EN ? ' of rev.' : ''}`); link('opex', 'x' + i, o.v); });
     const ncol = col + 1, byCol = [...Array(ncol)].map((_, c) => N.filter((n) => n.col === c));
     const gap = 8, plotH = H - TOP - BOT;
@@ -2859,7 +2860,9 @@
     const over = last.length ? last.at(-1).y + LH(last.at(-1).n) / 2 - (H - 4) : 0;
     if (over > 0) for (let i = last.length - 1; i >= 0; i--) { last[i].y -= over; if (i && last[i - 1].y > last[i].y - LH(last[i - 1].n) + 2) last[i - 1].y = last[i].y - LH(last[i - 1].n) + 2; }
     for (const { n, y } of last) {
-      const x = n.x + nw + 6, y0 = y - (n.sub ? 12 : 6);
+      const x = n.x + nw + 6, y0 = y - (n.sub ? 12 : 6), cy = n.y + n.h / 2;
+      // 이름표가 막대에서 밀려났으면 가는 선으로 이어 준다
+      if (Math.abs(y0 + 1 - cy) > 8) labels += `<path d="M${n.x + nw + 1},${cy}L${x - 2},${y0 + 1}" stroke="${n.color}" stroke-width="1" opacity=".55" fill="none"/>`;
       // 오른쪽 끝을 넘지 않게(한글은 글자당 약 11px, 영문·숫자 약 6.3px로 어림)
       const clip = (v) => { let w = 0, i = 0; for (; i < v.length; i++) { w += /[ㄱ-힝]/.test(v[i]) ? 11 : 6.3; if (w > W - x - 4) break; } return i < v.length ? v.slice(0, Math.max(1, i - 1)) + '…' : v; };
       n.name = clip(n.name); n.sub = clip(n.sub || '');
