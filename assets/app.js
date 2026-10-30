@@ -2796,8 +2796,8 @@
     return state.istmt[sym]?.d || null;
   }
   const earnDayLive = (sym) => { try { const D = earnDay(sym); return D && (D.phase === 'pre' && dday(D.N?.date) <= 0 || D.phase === 'post' && Date.now() - (D.repMs || 0) < 2 * 864e5); } catch { return false; } };
-  // 흐름도를 그릴 수 있는 실적인지(매출보다 영업손실이 크면 막대가 거의 안 보여 그리지 않는다)
-  const flowOk = (I) => I && I.rev > 0 && I.op != null && I.net != null && Math.abs(I.op) <= I.rev && (I.gross == null || I.gross >= 0);
+  // 흐름도를 그릴 수 있는 실적인지
+  const flowOk = (I) => I && I.rev > 0 && I.op != null && I.net != null; // 적자가 매출보다 커도 그린다(왜 적자인지 보이게)
   // 나간 돈(비용) 항목별 색 — 흐름도 막대와 '100원으로 보면'이 같은 색을 쓴다. 남은 돈(이익)은 초록
   const FL_PAL = ['#e0707a', '#f0925a', '#d9ae3c', '#d77fb3', '#9f8be6'];
   function flowParts(I, keep) {
@@ -2831,6 +2831,18 @@
       ${net?.extra ? `<p class="f100-n">${EN ? `Plus ${won(net.extra)} from outside the business (interest etc.) → net income ${won(I.net)}` : `여기에 이자 등 영업 밖 수익 ${won(net.extra)}이 더해져 순이익은 ${won(I.net)}이에요`}</p>` : ''}
       ${loss ? `<p class="f100-n">${EN ? `The marker is $100 of revenue — everything past it is the loss (${won(-I.op)}).` : `세로선이 매출 100원이에요. 넘어간 만큼(${won(-I.op)})이 영업손실이에요.`}</p>` : ''}</div>`;
   }
+  // 적자 한 줄: 비용이 매출의 몇 배인지 + 가장 큰 비용(왜 적자인지)
+  function lossHead(I) {
+    const P = flowParts(I, 3).filter((p) => !p.pos && p.id !== 'tax' && p.id !== 'oth'), spent = P.reduce((a, p) => a + p.v, 0);
+    const top = [...P].sort((a, b) => b.v - a.v)[0], x = spent / I.rev, net = I.net;
+    const many = x >= 2 ? (EN ? ` (${x.toFixed(1)}x revenue)` : `(매출의 ${x.toFixed(1)}배)`) : '';
+    const topS = top && top.id !== 'opexAll' ? (EN ? ` · biggest cost: ${esc(top.k)} ${fu(top.v)}` : ` · 가장 큰 비용은 <span class="nw">${esc(top.k)} ${fu(top.v)}</span>`) : '';
+    return EN ? `Costs of ${fu(spent)}${many} exceeded revenue of ${fu(I.rev)}: <b class="nw">operating loss ${fu(-I.op)}</b>${topS}${net >= 0 ? ` · net income ${fu(net)}` : ''}`
+      : `비용 <span class="nw">${fu(spent)}${many}</span>이 매출 ${fu(I.rev)}보다 커서 <b class="nw">영업손실 ${fu(-I.op)}</b>${topS}${net >= 0 ? ` · <span class="nw">순이익은 ${fu(net)}</span>` : ''}`;
+  }
+  // 영업이익에 매출 밖의 이익(평가이익 등)이 들어 있는 회사(예: 비트코인을 가진 회사) — 매출총이익 − 비용보다 영업이익이 크다
+  const flowOpex = (I) => (I.opex || []).filter((o) => o.v > 0).reduce((a, o) => a + o.v, 0) || Math.max(0, I.opexTotal ?? 0);
+  const flowGain = (I) => (I.op > 0 ? Math.max(0, I.op - ((I.gross ?? I.rev) - flowOpex(I))) : 0);
   function flowBlock(sym) {
     const I = istmtOf(sym);
     if (!flowOk(I)) return `<div class="flow-box" data-fl="${esc(sym)}" hidden></div>`;
@@ -2839,13 +2851,13 @@
     const head = op >= 0
       ? (net >= 0 ? (EN ? `Of ${revS} in revenue, <b>${fu(net)} (${pctPlain(m(net), 0)})</b> was left as profit` : `매출 ${revS} 중 <span class="nw"><b>${fu(net)}(${pctPlain(m(net), 0)})</b>가</span> 순이익으로 남았어요`)
         : (EN ? `Operating profit ${fu(op)}, but a <b>net loss of ${fu(-net)}</b>` : `영업이익 <span class="nw">${fu(op)}을</span> 냈지만 <b class="nw">순손실 ${fu(-net)}</b>`))
-      : (EN ? `Costs exceeded revenue: <b>operating loss ${fu(-op)}</b>${net >= 0 ? ` · net income ${fu(net)}` : ''}` : `비용이 매출보다 커서 <b class="nw">영업손실 ${fu(-op)}</b>${net >= 0 ? ` · <span class="nw">순이익은 ${fu(net)}</span>` : ''}`);
+      : lossHead(I);
     const segs = (I.segs || []).filter((s) => s.v > 0);
     const segBar = segs.length >= 2 ? `<div class="flow-seg"><div class="fs-bar">${segs.map((s, i) => `<i style="width:${(s.v / I.rev) * 100}%;opacity:${1 - i * 0.16}"></i>`).join('')}</div><div class="fs-lg">${segs.map((s, i) => `<span><i style="opacity:${1 - i * 0.16}"></i>${esc(flName(s.k))} <b>${pctPlain(s.v / I.rev, 0)}</b></span>`).join('')}</div></div>` : '';
-    const src = I.src === 'pr' ? `${EN ? 'From the earnings release (SEC 8-K), read automatically after the release' : '실적 발표문(SEC 8-K) 숫자 · 발표 직후 자동 반영'}${I.url ? ` · <a href="${esc(I.url)}" target="_blank" rel="noopener">${EN ? 'source' : '원문'}</a>` : ''}` : (EN ? 'Nasdaq quarterly income statement' : 'Nasdaq 분기 손익계산서 기준');
+    const src = I.src === 'pr' ? `${EN ? 'From the earnings release (SEC 8-K), read automatically after the release' : '실적 발표문(SEC 8-K) 숫자 · 발표 직후 자동 반영'}${I.url ? ` · <a href="${esc(I.url)}" target="_blank" rel="noopener">${EN ? 'source' : '원문'}</a>` : ''}` : I.src === 'sec' ? (EN ? 'SEC quarterly financials (XBRL)' : 'SEC 분기 재무제표 기준') : (EN ? 'Nasdaq quarterly income statement' : 'Nasdaq 분기 손익계산서 기준');
     paintFlows();
     const legend = `<div class="flow-lg"><span class="pos"><i></i>${EN ? 'Money kept (profit)' : '남은 돈(이익)'}</span><span class="neg"><i></i>${EN ? 'Money spent (costs)' : '나간 돈(비용)'}</span></div>`;
-    return `<div class="flow-box" data-fl="${esc(sym)}"><div class="flow-h"><b>💸 ${EN ? 'Where the money went' : '돈의 흐름'} · ${qLabelLong(I.end)}</b><p>${head}</p></div>${flow100(I)}${segBar ? `<div class="f-sub">${EN ? 'Revenue by business' : '사업별 매출'}</div>${segBar}` : ''}<div class="f-sub">${EN ? 'Step by step' : '단계별 흐름'}</div>${legend}<div class="flow-svg" data-fls="${esc(sym)}" role="img" aria-label="${EN ? 'Income statement flow chart' : '손익 흐름도'}"></div><small>${src}</small></div>`;
+    return `<div class="flow-box" data-fl="${esc(sym)}"><div class="flow-h"><b>💸 ${EN ? 'Where the money went' : '돈의 흐름'} · ${qLabelLong(I.end)}</b><p>${head}</p></div>${flowGain(I) > I.rev * 0.05 ? `<p class="f100-n">${EN ? `Operating income includes ${fu(flowGain(I))} of gains outside sales (e.g. fair-value gains), so it is bigger than revenue.` : `영업이익에 매출 밖의 이익(평가이익 등) ${fu(flowGain(I))}이 들어 있어서 매출보다 커요.`}</p>` : flow100(I)}${segBar ? `<div class="f-sub">${EN ? 'Revenue by business' : '사업별 매출'}</div>${segBar}` : ''}<div class="f-sub">${EN ? 'Step by step' : '단계별 흐름'}</div>${legend}<div class="flow-svg" data-fls="${esc(sym)}" role="img" aria-label="${EN ? 'Income statement flow chart' : '손익 흐름도'}"></div><small>${src}</small></div>`;
   }
   function paintFlows() {
     cancelAnimationFrame(paintFlows.raf);
@@ -2860,10 +2872,23 @@
     const R = I.rev, pc = (v) => pctPlain(v / R, 0);
     const N = [], L = [];
     const node = (id, col, v, color, name, val, sub) => { N.push({ id, col, v: Math.max(0, v), color, name, val, sub }); return id; };
-    const link = (s, t, v) => { if (v > 0) L.push({ s, t, v }); };
+    const link = (s, t, v, c) => { if (v > 0) L.push({ s, t, v, c }); };
     const yoy = I.prev?.rev ? I.rev / I.prev.rev - 1 : null;
     let col = 0;
-    node('rev', col, R, C.rev, EN ? 'Revenue' : '매출', fu(R), yoy != null && !narrow ? (EN ? `${pct(yoy, 0)} Y/Y` : `전년비 ${pct(yoy, 0)}`) : ''); // 좁으면 전년비는 맨 위 한 줄에
+    const revSub = yoy != null && !narrow ? (EN ? `${pct(yoy, 0)} Y/Y` : `전년비 ${pct(yoy, 0)}`) : ''; // 좁으면 전년비는 맨 위 한 줄에
+    const ofRev = (v) => `${EN ? '' : '매출의 '}${pc(v)}${EN ? ' of rev.' : ''}`;
+    if (I.op < 0) {
+      // 적자: 매출 + 모자란 돈(영업손실) → 쓴 돈 → 어디에 썼나 — 무엇 때문에 적자인지 보이게
+      const loss = -I.op, P = flowParts(I, 3).filter((p) => !p.pos && p.id !== 'tax' && p.id !== 'oth'), spent = P.reduce((a, p) => a + p.v, 0);
+      node('rev', 0, R, C.rev, EN ? 'Revenue' : '매출', fu(R), revSub);
+      node('loss', 0, loss, 'url(#fl-hatch)', nm('영업손실', 'Operating loss', 'Loss'), fu(loss), loss >= R * 2 ? (EN ? `${(loss / R).toFixed(1)}x revenue` : `매출의 ${(loss / R).toFixed(1)}배`) : ofRev(loss));
+      N.at(-1).tc = 'var(--flow-cost)';
+      node('spent', 1, spent, C.neg, nm('쓴 돈(비용)', 'Total costs', 'Costs'), fu(spent), ofRev(spent));
+      link('rev', 'spent', R, C.rev); link('loss', 'spent', loss, 'var(--flow-cost)');
+      P.forEach((p) => { node(p.id, 2, p.v, p.color, p.k, fu(p.v), ofRev(p.v)); link('spent', p.id, p.v); });
+      col = 2;
+    } else {
+    node('rev', col, R, C.rev, EN ? 'Revenue' : '매출', fu(R), revSub);
     let base = 'rev', baseV = R;
     if (I.gross != null && I.cost > 0) {
       col++;
@@ -2872,11 +2897,13 @@
       link('rev', 'gross', I.gross); link('rev', 'cost', I.cost);
       base = 'gross'; baseV = I.gross;
     }
+    // 매출 밖의 이익(평가이익 등)이 영업이익에 들어 있으면 매출총이익 옆에서 따로 들어오게
+    const gain = flowGain(I) > R * 0.01 ? flowGain(I) : 0, opexT = gain ? flowOpex(I) : Math.max(0, I.opexTotal ?? baseV - I.op);
+    if (gain) { node('gain', col, gain, '#6fd6a8', nm('기타 영업이익', 'Other operating gains', 'Gains'), fu(gain), EN ? 'fair-value gains etc.' : '평가이익 등'); N.at(-1).tc = 'var(--good)'; }
     col++;
-    const opexT = Math.max(0, I.opexTotal ?? baseV - I.op);
-    if (I.op > 0) { node('op', col, I.op, C.pos, nm('영업이익', 'Operating profit', 'Op. profit'), fu(I.op), `${EN ? 'margin' : '이익률'} ${pc(I.op)}`); link(base, 'op', I.op); }
-    node('opex', col, opexT, C.neg, nm('영업비용', 'Operating expenses', 'OpEx'), fu(opexT), I.op < 0 ? (EN ? `loss ${fu(-I.op)}` : `영업손실 ${fu(-I.op)}`) : `${EN ? '' : '매출의 '}${pc(opexT)}${EN ? ' of rev.' : ''}`);
-    link(base, 'opex', Math.min(opexT, baseV - Math.max(0, I.op)));
+    if (I.op > 0) { node('op', col, I.op, C.pos, nm('영업이익', 'Operating profit', 'Op. profit'), fu(I.op), `${EN ? 'margin' : '이익률'} ${pc(I.op)}`); link(base, 'op', I.op - gain); if (gain) link('gain', 'op', gain, '#6fd6a8'); }
+    node('opex', col, opexT, C.neg, nm('영업비용', 'Operating expenses', 'OpEx'), fu(opexT), ofRev(opexT));
+    link(base, 'opex', Math.min(opexT, baseV - Math.max(0, I.op - gain)));
     col++;
     if (I.op > 0) {
       const tax = Math.max(0, I.tax || 0), other = I.net + (I.tax || 0) - I.op; // 기타 = 이자·투자 손익 등 영업 밖의 것
@@ -2890,6 +2917,7 @@
     const keep = 3; // '100원으로 보면'과 같은 묶음·색
     if (items.length > keep + 1) items = [...items.slice(0, keep), { k: 'other', v: items.slice(keep).reduce((a, b) => a + b.v, 0) }];
     if (items.length >= 2) items.forEach((o, i) => { node('x' + i, col, o.v, FL_PAL[Math.min(i + (I.cost > 0 && I.gross != null ? 1 : 0), FL_PAL.length - 1)], flName(o.k), fu(o.v), `${EN ? '' : '매출의 '}${pc(o.v)}${EN ? ' of rev.' : ''}`); link('opex', 'x' + i, o.v); });
+    }
     const ncol = col + 1, byCol = [...Array(ncol)].map((_, c) => N.filter((n) => n.col === c));
     const gap = 12, plotH = H - TOP - BOT;
     const k = Math.min(...byCol.map((ns) => (plotH - gap * (ns.length - 1)) / Math.max(1, ns.reduce((a, n) => a + n.v, 0))));
@@ -2901,7 +2929,7 @@
       const a = byId[l.s], b = byId[l.t]; if (!a || !b) continue;
       const h = Math.max(1, l.v * k), x0 = a.x + nw, x1 = b.x, y0 = a.oy, y1 = b.iy, mx = (x0 + x1) / 2;
       a.oy += h; b.iy += h;
-      paths += `<path d="M${x0},${y0}C${mx},${y0} ${mx},${y1} ${x1},${y1}L${x1},${y1 + h}C${mx},${y1 + h} ${mx},${y0 + h} ${x0},${y0 + h}Z" fill="${b.color}" opacity="${b.color === C.pos ? '.4' : '.3'}"/>`;
+      paths += `<path d="M${x0},${y0}C${mx},${y0} ${mx},${y1} ${x1},${y1}L${x1},${y1 + h}C${mx},${y1 + h} ${mx},${y0 + h} ${x0},${y0 + h}Z" fill="${l.c || b.color}" opacity="${(l.c || b.color) === C.pos ? '.4' : '.3'}"/>`;
     }
     const t = (x, y, s, cls, anchor = 'start') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${esc(s)}</text>`;
     let rects = '', labels = '';
@@ -2919,7 +2947,7 @@
       // 오른쪽 끝을 넘지 않게(한글은 글자당 약 11px, 영문·숫자 약 6.3px로 어림)
       const clip = (v) => { let w = 0, i = 0; for (; i < v.length; i++) { w += /[ㄱ-힝]/.test(v[i]) ? 11 : 6.3; if (w > W - x - 4) break; } return i < v.length ? v.slice(0, Math.max(1, i - 1)) + '…' : v; };
       n.name = clip(n.name); n.sub = clip(n.sub || '');
-      labels += `<text x="${x}" y="${y0 + 4}" class="fl-n" style="fill:${n.color === C.rev ? 'var(--ink)' : n.color}">${esc(n.name)}</text>` + t(x, y0 + 18, n.val, 'fl-v') + (n.sub ? t(x, y0 + 31, n.sub, 'fl-s') : '');
+      labels += `<text x="${x}" y="${y0 + 4}" class="fl-n" style="fill:${n.tc || (n.color === C.rev ? 'var(--ink)' : n.color)}">${esc(n.name)}</text>` + t(x, y0 + 18, n.val, 'fl-v') + (n.sub ? t(x, y0 + 31, n.sub, 'fl-s') : '');
     }
     // 앞 열: 맨 위 막대는 위에, 아래 막대는 아래에 이름표
     // 좁은 화면: 열 사이가 좁아 이름·금액만(매출의 전년비는 남김) — 이익률은 오른쪽 이름표와 맨 위 한 줄에
@@ -2929,9 +2957,10 @@
       const below = i > 0, x = n.x, y = below ? n.y + n.h + 15 : n.y - (n.sub ? 34 : 21);
       const room = xAt(n.col + 1) - x - 6, est = (v, f) => [...v].reduce((a, ch) => a + (/[ㄱ-힝]/.test(ch) ? f * 0.98 : f * 0.6), 0);
       const fs = (v, f) => Math.max(10, Math.min(f, Math.floor((f * room) / Math.max(1, est(v, f)) * 10) / 10));
-      labels += `<text x="${x}" y="${y}" class="fl-n" style="fill:${n.color === C.rev ? 'var(--ink)' : n.color};font-size:${fs(n.name, 12)}px">${esc(n.name)}</text>` + `<text x="${x}" y="${y + 14}" class="fl-v" style="font-size:${fs(n.val, 12)}px">${esc(n.val)}</text>` + (n.sub ? t(x, y + 27, n.sub, 'fl-s') : '');
+      labels += `<text x="${x}" y="${y}" class="fl-n" style="fill:${n.tc || (n.color === C.rev ? 'var(--ink)' : n.color)};font-size:${fs(n.name, 12)}px">${esc(n.name)}</text>` + `<text x="${x}" y="${y + 14}" class="fl-v" style="font-size:${fs(n.val, 12)}px">${esc(n.val)}</text>` + (n.sub ? t(x, y + 27, n.sub, 'fl-s') : '');
     });
-    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${paths}${rects}${labels}</svg>`;
+    const hatch = '<defs><pattern id="fl-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--flow-cost)" opacity=".3"/><rect width="3" height="6" fill="var(--flow-cost)"/></pattern></defs>';
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${hatch}${paths}${rects}${labels}</svg>`;
   }
 
   // ---------------------------------------------------------------- 📢 새 실적 공시(서버가 5분마다 SEC 확인) — 내 종목에 실적이 나오면 실적·흐름도를 바로 다시 받는다
@@ -7625,7 +7654,7 @@ ${what.join(' · ')}
           <div><span>순손실</span><b class="down">${usdS2(last.netIncome)}</b><small>영업손실 ${usdS2(last.opIncome)}</small></div>
           <div><span>EPS(주당순이익)</span><b>${last.eps != null ? '$' + last.eps.toFixed(2) : '–'}</b><small>${sur ? `예상 $${sur.consensus.toFixed(2)} · ${sur.surprise >= 0 ? '예상보다 양호' : '예상보다 부진'} ${sp(sur.eps >= 0 ? sur.surprise : -sur.surprise)}` : '예상치 없음'}</small></div>
           <div><span>연구개발비</span><b>${usdS2(last.rnd)}</b><small>인증·생산 준비 비용 · 판관비 ${usdS2(last.sga)}</small></div>
-        </div>` : ''}
+        </div>` : ''}${flowBlock(sym)}
         <div class="mini-h er-h">현금·단기투자 잔고</div>
         <div class="chart short"><canvas id="cv-ser-cash" role="img" aria-label="분기별 현금 잔고"></canvas></div>
         <div class="pair er-pair">

@@ -1071,10 +1071,24 @@ async function buildIstmt(sym, origin, cache, env, fresh = false) {
     const f = list.find((x) => /^8-K/.test(x.form) && /2\.02/.test(x.items) && Date.now() - Date.parse(x.d) < 120 * 864e5);
     if (f) pr = await istmtFromFiling(sym, cik, f, env).catch(() => null);
   }
-  const nq = await nasdaqIstmt(sym).catch(() => null);
-  // 보도자료가 Nasdaq보다 옛 분기가 아니면 보도자료(사업별 매출·1년 전 비교가 있어서)
-  if (pr && !pr.fail && (!nq || Date.parse(pr.end) >= Date.parse(nq.end) - 20 * 864e5)) return pr;
-  return nq ? { ...nq, sym, at: new Date().toISOString() } : null;
+  const [nq, sq] = await Promise.all([nasdaqIstmt(sym).catch(() => null), secIstmt(sym).catch(() => null)]);
+  // 보도자료가 다른 자료보다 옛 분기가 아니면 보도자료(사업별 매출·1년 전 비교가 있어서). 아니면 Nasdaq·SEC 중 더 최근 분기
+  const alt = nq && (!sq || Date.parse(nq.end) >= Date.parse(sq.end) - 20 * 864e5) ? nq : sq;
+  if (pr && !pr.fail && (!alt || Date.parse(pr.end) >= Date.parse(alt.end) - 20 * 864e5)) return pr;
+  return alt ? { ...alt, sym, at: new Date().toISOString() } : null;
+}
+// SEC 분기 재무제표(XBRL) — 보도자료도 Nasdaq 표도 없는 회사(신규 상장 등). 매출·원가·연구개발·영업이익·순이익만 있다
+async function secIstmt(sym) {
+  const Q = (await secQuarterly(sym))?.q || {};
+  const end = Object.keys(Q.revenue || {}).filter((e) => Q.opIncome?.[e] != null && Q.netIncome?.[e] != null).sort().at(-1);
+  if (!end) return null;
+  const rev = Q.revenue[end], op = Q.opIncome[end], net = Q.netIncome[end];
+  if (!(rev > 0)) return null;
+  const cost = Q.cost?.[end] > 0 ? Q.cost[end] : null, gross = cost != null ? rev - cost : null;
+  const opexTotal = (gross ?? rev) - op, rnd = Q.rnd?.[end];
+  const opex = rnd > 0 && rnd < opexTotal ? [{ k: 'research and development', v: rnd }, { k: 'other', v: opexTotal - rnd }] : [];
+  const ya = Object.keys(Q.revenue).find((e) => Math.abs(Date.parse(end) - Date.parse(e) - 365 * 864e5) < 15 * 864e5);
+  return { src: 'sec', end, rev, cost, gross, opex, opexTotal, op, tax: null, net, segs: [], prev: ya ? { rev: Q.revenue[ya] } : null };
 }
 // GET /istmt?s=SYM — 💸 실적 흐름도 자료(3시간 캐시, live=1이면 2분 — 실적 발표 직후)
 export async function handleIstmt(url, cache, cors, ctx, env) {
@@ -1082,7 +1096,7 @@ export async function handleIstmt(url, cache, cors, ctx, env) {
   if (KR_RE.test(sym)) return json({ none: true }, cors);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   const live = url.searchParams.has('live');
-  return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=2`, {
+  return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=3`, {
     freshSec: live ? 120 : 3 * 3600, keepSec: 30 * 86400, cors,
     build: async () => JSON.stringify((await buildIstmt(sym, url.origin, cache, env, live)) || { none: true }),
   });
