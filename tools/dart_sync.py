@@ -10,6 +10,8 @@
 - 발행주식수(보통주 − 자기주식): 회사별 주식총수 현황(stockTotqySttus) — 새 보고서가 나왔을 때만 다시 받는다
 - KV 키: valkr:<0~127 칸>(biz_auto 와 같은 칸 계산) · valkr:meta — 한 번에 129번 쓰기(무료 한도 하루 1,000번 안)
 - 서버(worker/news-proxy.js handleValuation)는 이 값 + Yahoo 주가로 PER·PSR을 계산한다
+- 💸 돈의 흐름(자세히): 회사별 전체 재무제표(fnlttSinglAcntAll) 최근 분기 손익 — 매출·매출원가·매출총이익·판관비·영업이익·법인세·순이익
+  새 보고서가 나온 회사만 다시 받는다(tools/cache/dart_is.json). 사업보고서(1년)면 4분기 = 1년 − 3분기 누적. KV 키 iskr:<칸>
 """
 import datetime
 import io
@@ -90,6 +92,42 @@ REV = re.compile(r'^(매출액|수익\(매출액\)|영업수익|매출)$')
 NI = re.compile(r'^당기순이익(\(손실\))?$')
 
 
+# 손익계산서 항목: 표준 계정 ID가 먼저, 없으면(회사 자체 계정) 이름으로
+IS_MAP = {
+    'rev': (('ifrs-full_Revenue',), r'^(매출액|수익\(매출액\)|영업수익|매출)$'),
+    'cost': (('ifrs-full_CostOfSales',), r'^(매출원가|영업원가)$'),
+    'gross': (('ifrs-full_GrossProfit',), r'^매출총이익(\(손실\))?$'),
+    'sga': (('dart_TotalSellingGeneralAdministrativeExpenses', 'dart_TotalSellingGeneralAdministrativeExpense'), r'^판매비와관리비$'),
+    'op': (('dart_OperatingIncomeLoss',), r'^영업이익(\(손실\))?$'),
+    'pretax': (('ifrs-full_ProfitLossBeforeTax',), r'^법인세비용차감전(순이익|계속사업이익)(\(손실\))?$'),
+    'tax': (('ifrs-full_IncomeTaxExpenseContinuingOperations', 'ifrs-full_IncomeTaxExpenseContinuingOperation'), r'^법인세비용(\(수익\))?$'),
+    'net': (('ifrs-full_ProfitLoss',), r'^(당기|분기|반기)순이익(\(손실\))?$'),
+}
+
+
+def is_detail(corp, y, rc, col='thstrm_amount'):
+    """한 보고서의 손익 항목(원). 연결이 있으면 연결, 없으면 별도"""
+    for fs in ('CFS', 'OFS'):
+        try:
+            L = call('fnlttSinglAcntAll.json', {'corp_code': corp, 'bsns_year': y, 'reprt_code': rc, 'fs_div': fs})
+        except RuntimeError:
+            L = []
+        rows = [x for x in L if x.get('sj_div') in ('IS', 'CIS')]
+        if not rows:
+            continue
+        out = {}
+        for k, (ids, rx) in IS_MAP.items():
+            hit = next((x for x in rows if x.get('account_id') in ids), None)
+            if hit is None:  # 표준 계정이 아니면 이름으로(같은 이름이 여러 번이면 첫 줄)
+                hit = next((x for x in rows if not str(x.get('account_id', '')).startswith(('ifrs', 'dart')) and re.match(rx, re.sub(r'\s', '', x.get('account_nm', '')))), None)
+            v = num(hit and hit.get(col))
+            if v is not None:
+                out[k] = v
+        out['fs'] = fs
+        return out
+    return {}
+
+
 def num(s):
     t = str(s or '').replace(',', '').strip()
     if not t or t == '-':
@@ -165,6 +203,34 @@ def main():
             json.dump(shares, open(sp, 'w', encoding='utf-8'))
             print(f'  {i + 1}/{len(todo)}')
     json.dump(shares, open(sp, 'w', encoding='utf-8'))
+    # 💸 돈의 흐름(자세히): 새 보고서가 나온 회사만 전체 손익을 다시 받는다
+    ip = os.path.join(CACHE, 'dart_is.json')
+    isc = json.load(open(ip, encoding='utf-8')) if os.path.exists(ip) else {}
+    todo = [s for s in fin if fin[s]['q']['revenue'] and isc.get(s, {}).get('end') != latest[s][2]]
+    print(f'손익 자세히 받기: {len(todo)}개 회사')
+    for i, s in enumerate(todo):
+        y, rc, end = latest[s]
+        try:
+            d = is_detail(inv[s], y, rc)
+            if rc == '11011' and d:  # 사업보고서는 1년 값 — 4분기 = 1년 − 3분기 누적
+                c3 = is_detail(inv[s], y, '11014', 'thstrm_add_amount')
+                d = {k: d[k] - c3[k] for k in d if k != 'fs' and k in c3} | {'fs': d['fs']} if c3 else {}
+        except RuntimeError as e:
+            print('  ', s, e)
+            continue
+        ok = d.get('rev', 0) > 0 and d.get('op') is not None and d.get('net') is not None
+        isc[s] = {'end': end, 'v': d if ok else None}
+        if i % 200 == 199:
+            json.dump(isc, open(ip, 'w', encoding='utf-8'))
+            print(f'  {i + 1}/{len(todo)}')
+    json.dump(isc, open(ip, 'w', encoding='utf-8'))
+    is_out = {}
+    for s, c in isc.items():
+        if not c.get('v') or s not in fin:
+            continue
+        end = c['end']
+        ya = f'{int(end[:4]) - 1}{end[4:]}'
+        is_out[s] = {'end': end, **{k: round(v) if isinstance(v, float) else v for k, v in c['v'].items()}, 'prevRev': round(fin[s]['q']['revenue'][ya]) if ya in fin[s]['q']['revenue'] else None}
     out = {}
     for s, F in fin.items():
         q = {k: {e: round(v) for e, v in sorted(F['q'][k].items())[-20:]} for k in ('revenue', 'netIncome')}
@@ -175,6 +241,11 @@ def main():
         shards.setdefault(bucket(s), {})[s] = v
     items = [{'key': f'valkr:{k}', 'value': json.dumps(v, separators=(',', ':'))} for k, v in sorted(shards.items())]
     items.append({'key': 'valkr:meta', 'value': json.dumps({'at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'n': len(out)})})
+    is_shards = {}
+    for s, v in is_out.items():
+        is_shards.setdefault(bucket(s), {})[s] = v
+    items += [{'key': f'iskr:{k}', 'value': json.dumps(v, separators=(',', ':'))} for k, v in sorted(is_shards.items())]
+    print(f'손익 자세히: 회사 {len(is_out)}개')
     json.dump(out, open(os.path.join(CACHE, 'valkr_all.json'), 'w', encoding='utf-8'))
     print(f'회사 {len(out)}개 · 키 {len(items)}개 · 가장 큰 키 {max(len(it["value"]) for it in items) // 1024}KB')
     if DRY:

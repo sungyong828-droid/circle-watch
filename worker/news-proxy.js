@@ -1090,11 +1090,35 @@ async function secIstmt(sym) {
   const ya = Object.keys(Q.revenue).find((e) => Math.abs(Date.parse(end) - Date.parse(e) - 365 * 864e5) < 15 * 864e5);
   return { src: 'sec', end, rev, cost, gross, opex, opexTotal, op, tax: null, net, segs: [], prev: ya ? { rev: Q.revenue[ya] } : null };
 }
+// 한국 종목: B) DART 분기보고서 손익(원가·판관비·법인세까지 — PC가 매주 KV iskr:<칸>에 올림)이 최신이면 그것,
+// 아니면 A) 네이버 증권 분기 실적(매출·영업이익·순이익만 — 실적 발표 뒤 바로 반영). 금액은 원
+const krEnd = (k) => `${k.slice(0, 4)}-${k.slice(4, 6)}-${new Date(Date.UTC(+k.slice(0, 4), +k.slice(4, 6), 0)).getUTCDate()}`;
+async function krIstmt(sym, env) {
+  const [D, nv] = await Promise.all([
+    env?.SUMS ? env.SUMS.get(`iskr:${kvBucket(sym)}`, { type: 'json', cacheTtl: 3600 }).then((a) => a?.[sym] || null).catch(() => null) : null,
+    buildKrInfo(sym).catch(() => null),
+  ]);
+  let A = null;
+  const F = nv?.finance, R = F?.rows || {};
+  const k = (F?.periods || []).filter((x) => !x.cns).map((x) => x.key).sort().at(-1);
+  if (k && R['매출액']?.[k] > 0 && R['영업이익']?.[k] != null && R['당기순이익']?.[k] != null) {
+    const rev = R['매출액'][k] * 1e8, op = R['영업이익'][k] * 1e8, ya = R['매출액'][`${+k.slice(0, 4) - 1}${k.slice(4)}`];
+    A = { src: 'naver', end: krEnd(k), rev, op, net: R['당기순이익'][k] * 1e8, cost: null, gross: null, opex: [], opexTotal: rev - op, tax: null, mix: true, segs: [], prev: ya ? { rev: ya * 1e8 } : null };
+  }
+  let B = null;
+  if (D?.rev > 0 && D.op != null && D.net != null) {
+    const gross = D.gross ?? (D.cost != null ? D.rev - D.cost : null), opexTotal = (gross ?? D.rev) - D.op;
+    const opex = D.sga > 0 && D.sga <= opexTotal + D.rev * 0.01 ? [{ k: 'selling, general and administrative', v: D.sga }, ...(opexTotal - D.sga > D.rev * 0.005 ? [{ k: 'other', v: opexTotal - D.sga }] : [])] : [];
+    B = { src: 'dart', end: D.end, rev: D.rev, cost: D.cost ?? (gross != null ? D.rev - gross : null), gross, opex, opexTotal, op: D.op, tax: D.tax ?? null, net: D.net, segs: [], prev: D.prevRev ? { rev: D.prevRev } : null };
+  }
+  const out = B && (!A || B.end >= A.end) ? B : A || B;
+  return out ? { ...out, sym, cur: 'KRW', at: new Date().toISOString() } : null;
+}
 // GET /istmt?s=SYM — 💸 실적 흐름도 자료(3시간 캐시, live=1이면 2분 — 실적 발표 직후)
 export async function handleIstmt(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
-  if (KR_RE.test(sym)) return json({ none: true }, cors);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
+  if (KR_RE.test(sym)) return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=kr1`, { freshSec: 3 * 3600, keepSec: 30 * 86400, cors, build: async () => JSON.stringify((await krIstmt(sym, env)) || { none: true }) });
   const live = url.searchParams.has('live');
   return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=3`, {
     freshSec: live ? 120 : 3 * 3600, keepSec: 30 * 86400, cors,
