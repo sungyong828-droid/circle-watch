@@ -2818,6 +2818,14 @@
     }
     return out;
   }
+  // 평가이익이 매출보다 훨씬 큰 회사: 그림 대신 위에서 아래로 한 줄씩
+  function flowList(I) {
+    const g = flowGain(I), tax = I.tax || 0, other = I.net + tax - I.op;
+    const rows = [[EN ? 'Revenue' : '매출', I.rev, ''], I.gross != null && I.cost > 0 ? [EN ? 'Cost of revenue' : '매출원가', -I.cost, 'neg'] : null, [EN ? 'Operating expenses' : '영업비용', -flowOpex(I), 'neg'],
+      [EN ? 'Gains outside sales (fair value etc.)' : '평가이익 등(매출 밖의 이익)', g, 'pos'], [EN ? 'Operating income' : '영업이익', I.op, 'sum'], tax ? [EN ? 'Tax' : '세금', -tax, 'neg'] : null,
+      Math.abs(other) > I.rev * 0.01 ? [EN ? 'Non-operating' : '영업 외 손익', other, other < 0 ? 'neg' : 'pos'] : null, [EN ? 'Net income' : '순이익', I.net, 'sum']].filter(Boolean);
+    return `<ul class="flist">${rows.map(([k, v, c]) => `<li class="${c}"><span>${esc(k)}</span><b>${v > 0 && c !== 'sum' && c !== '' ? '+' : ''}${fu(v)}</b></li>`).join('')}</ul>`;
+  }
   // 매출 100원이 어디로 갔나: 막대 하나 + 항목별 '몇 원' — 흐름도보다 먼저 한눈에
   function flow100(I) {
     const R = I.rev, P = flowParts(I, 3), spent = P.filter((p) => !p.pos).reduce((a, p) => a + p.v, 0), total = Math.max(R, spent);
@@ -2848,7 +2856,10 @@
     if (!flowOk(I)) return `<div class="flow-box" data-fl="${esc(sym)}" hidden></div>`;
     const m = (v) => (v / I.rev), net = I.net, op = I.op, yy = I.prev?.rev ? I.rev / I.prev.rev - 1 : null;
     const revS = `${fu(I.rev)}${yy != null ? (EN ? ` (${pct(yy, 0)} Y/Y)` : `(전년비 ${pct(yy, 0)})`) : ''}`;
-    const head = op >= 0
+    const bigGain = flowGain(I) > I.rev * 0.5; // 영업이익 대부분이 매출 밖의 이익(평가이익 등) — 흐름도 대신 목록으로
+    const head = bigGain
+      ? (EN ? `Most of the profit came from outside sales: <b class="nw">${fu(flowGain(I))} of gains</b> (e.g. fair-value gains) on revenue of ${fu(I.rev)} → net income ${fu(net)}` : `매출은 ${fu(I.rev)}이지만 <b class="nw">평가이익 등 ${fu(flowGain(I))}</b>이 더해져 순이익이 ${fu(net)}이에요`)
+      : op >= 0
       ? (net >= 0 ? (EN ? `Of ${revS} in revenue, <b>${fu(net)} (${pctPlain(m(net), 0)})</b> was left as profit` : `매출 ${revS} 중 <span class="nw"><b>${fu(net)}(${pctPlain(m(net), 0)})</b>가</span> 순이익으로 남았어요`)
         : (EN ? `Operating profit ${fu(op)}, but a <b>net loss of ${fu(-net)}</b>` : `영업이익 <span class="nw">${fu(op)}을</span> 냈지만 <b class="nw">순손실 ${fu(-net)}</b>`))
       : lossHead(I);
@@ -2857,7 +2868,7 @@
     const src = I.src === 'pr' ? `${EN ? 'From the earnings release (SEC 8-K), read automatically after the release' : '실적 발표문(SEC 8-K) 숫자 · 발표 직후 자동 반영'}${I.url ? ` · <a href="${esc(I.url)}" target="_blank" rel="noopener">${EN ? 'source' : '원문'}</a>` : ''}` : I.src === 'sec' ? (EN ? 'SEC quarterly financials (XBRL)' : 'SEC 분기 재무제표 기준') : (EN ? 'Nasdaq quarterly income statement' : 'Nasdaq 분기 손익계산서 기준');
     paintFlows();
     const legend = `<div class="flow-lg"><span class="pos"><i></i>${EN ? 'Money kept (profit)' : '남은 돈(이익)'}</span><span class="neg"><i></i>${EN ? 'Money spent (costs)' : '나간 돈(비용)'}</span></div>`;
-    return `<div class="flow-box" data-fl="${esc(sym)}"><div class="flow-h"><b>💸 ${EN ? 'Where the money went' : '돈의 흐름'} · ${qLabelLong(I.end)}</b><p>${head}</p></div>${flowGain(I) > I.rev * 0.05 ? `<p class="f100-n">${EN ? `Operating income includes ${fu(flowGain(I))} of gains outside sales (e.g. fair-value gains), so it is bigger than revenue.` : `영업이익에 매출 밖의 이익(평가이익 등) ${fu(flowGain(I))}이 들어 있어서 매출보다 커요.`}</p>` : flow100(I)}${segBar ? `<div class="f-sub">${EN ? 'Revenue by business' : '사업별 매출'}</div>${segBar}` : ''}<div class="f-sub">${EN ? 'Step by step' : '단계별 흐름'}</div>${legend}<div class="flow-svg" data-fls="${esc(sym)}" role="img" aria-label="${EN ? 'Income statement flow chart' : '손익 흐름도'}"></div><small>${src}</small></div>`;
+    return `<div class="flow-box" data-fl="${esc(sym)}"><div class="flow-h"><b>💸 ${EN ? 'Where the money went' : '돈의 흐름'} · ${qLabelLong(I.end)}</b><p>${head}</p></div>${bigGain ? flowList(I) : flow100(I)}${segBar ? `<div class="f-sub">${EN ? 'Revenue by business' : '사업별 매출'}</div>${segBar}` : ''}${bigGain ? '' : `<div class="f-sub">${EN ? 'Step by step' : '단계별 흐름'}</div>${legend}<div class="flow-svg" data-fls="${esc(sym)}" role="img" aria-label="${EN ? 'Income statement flow chart' : '손익 흐름도'}"></div>`}<small>${src}</small></div>`;
   }
   function paintFlows() {
     cancelAnimationFrame(paintFlows.raf);
@@ -2866,7 +2877,7 @@
   addEventListener('resize', () => paintFlows(), { passive: true });
   // 산키(흐름) 그림: 열마다 막대(노드)를 쌓고, 막대 사이를 굵기 = 금액인 띠로 잇는다
   function flowSvg(I, W) {
-    const narrow = W < 460, H = narrow ? 380 : 400, TOP = 50, BOT = 48, nw = 10, LW = narrow ? 86 : 136;
+    const narrow = W < 460, TOP = 50, BOT = 48, nw = 10, LW = narrow ? 86 : 136;
     const nm = (ko, en, enShort) => (EN ? (narrow ? enShort : en) : ko); // 좁은 화면 영어는 짧은 이름
     const C = { rev: 'var(--muted)', pos: 'var(--good)', neg: 'var(--flow-cost)' };
     const R = I.rev, pc = (v) => pctPlain(v / R, 0);
@@ -2919,6 +2930,8 @@
     if (items.length >= 2) items.forEach((o, i) => { node('x' + i, col, o.v, FL_PAL[Math.min(i + (I.cost > 0 && I.gross != null ? 1 : 0), FL_PAL.length - 1)], flName(o.k), fu(o.v), `${EN ? '' : '매출의 '}${pc(o.v)}${EN ? ' of rev.' : ''}`); link('opex', 'x' + i, o.v); });
     }
     const ncol = col + 1, byCol = [...Array(ncol)].map((_, c) => N.filter((n) => n.col === c));
+    // 오른쪽 이름표가 많으면 그만큼 그림을 길게(이름표가 그림 밖으로 밀려나지 않게)
+    const H = Math.max(narrow ? 380 : 400, TOP + byCol[ncol - 1].reduce((a, n) => a + (n.sub ? 44 : 30), 0) + 16);
     const gap = 12, plotH = H - TOP - BOT;
     const k = Math.min(...byCol.map((ns) => (plotH - gap * (ns.length - 1)) / Math.max(1, ns.reduce((a, n) => a + n.v, 0))));
     const xAt = (c) => (c === ncol - 1 ? W - LW - nw : Math.round((c * (W - LW - nw)) / (ncol - 1)));
