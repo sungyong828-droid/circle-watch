@@ -2876,7 +2876,7 @@
     const yoy = I.prev?.rev ? I.rev / I.prev.rev - 1 : null;
     let col = 0;
     const revSub = yoy != null && !narrow ? (EN ? `${pct(yoy, 0)} Y/Y` : `전년비 ${pct(yoy, 0)}`) : ''; // 좁으면 전년비는 맨 위 한 줄에
-    const ofRev = (v) => `${EN ? '' : '매출의 '}${pc(v)}${EN ? ' of rev.' : ''}`;
+    const ofRev = (v) => (v >= R * 2 ? (EN ? `${(v / R).toFixed(1)}x revenue` : `매출의 ${(v / R).toFixed(1)}배`) : `${EN ? '' : '매출의 '}${pc(v)}${EN ? ' of rev.' : ''}`); // 매출보다 훨씬 크면 '몇 배'로
     if (I.op < 0) {
       // 적자: 매출 + 모자란 돈(영업손실) → 쓴 돈 → 어디에 썼나 — 무엇 때문에 적자인지 보이게
       const loss = -I.op, P = flowParts(I, 3).filter((p) => !p.pos && p.id !== 'tax' && p.id !== 'oth'), spent = P.reduce((a, p) => a + p.v, 0);
