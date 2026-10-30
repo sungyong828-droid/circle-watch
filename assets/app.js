@@ -2919,7 +2919,8 @@
     if (gain) { node('gain', col, gain, '#6fd6a8', nm('기타 영업이익', 'Other operating gains', 'Gains'), fu(gain), EN ? 'fair-value gains etc.' : '평가이익 등'); N.at(-1).tc = 'var(--good)'; }
     col++;
     if (I.op > 0) { node('op', col, I.op, C.pos, nm('영업이익', 'Operating profit', 'Op. profit'), fu(I.op), `${EN ? 'margin' : '이익률'} ${pc(I.op)}`); link(base, 'op', I.op - gain); if (gain) link('gain', 'op', gain, '#6fd6a8'); }
-    node('opex', col, opexT, C.neg, nm('영업비용', 'Operating expenses', 'OpEx'), fu(opexT), ofRev(opexT));
+    const one = (I.opex || []).filter((o) => o.v > 0); // 비용 항목이 하나뿐이면(한국 DART: 판관비) 그 이름으로
+    node('opex', col, opexT, C.neg, one.length === 1 && one[0].v >= opexT * 0.95 ? flName(one[0].k) : nm('영업비용', 'Operating expenses', 'OpEx'), fu(opexT), ofRev(opexT));
     link(base, 'opex', Math.min(opexT, baseV - Math.max(0, I.op - gain)));
     col++;
     if (I.op > 0) {
