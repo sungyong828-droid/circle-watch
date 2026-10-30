@@ -1081,7 +1081,7 @@ async function buildIstmt(sym, origin, cache, env, fresh = false) {
 async function secIstmt(sym) {
   const Q = (await secQuarterly(sym))?.q || {};
   const end = Object.keys(Q.revenue || {}).filter((e) => Q.opIncome?.[e] != null && Q.netIncome?.[e] != null).sort().at(-1);
-  if (!end) return null;
+  if (!end || Date.now() - Date.parse(end) > 200 * 864e5) return null; // 옛 분기만 남은 회사(항목 이름이 바뀐 은행 등)는 쓰지 않는다
   const rev = Q.revenue[end], op = Q.opIncome[end], net = Q.netIncome[end];
   if (!(rev > 0)) return null;
   const cost = Q.cost?.[end] > 0 ? Q.cost[end] : null, gross = cost != null ? rev - cost : null;
