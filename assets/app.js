@@ -2812,7 +2812,7 @@
     if (I.op > 0) {
       const tax = Math.max(0, I.tax || 0), other = I.net + (I.tax || 0) - I.op;
       if (tax > R * 0.002) out.push({ id: 'tax', k: EN ? 'Tax' : '세금', v: tax, color: '#8fa3bf' });
-      if (-other > R * 0.002) out.push({ id: 'oth', k: EN ? 'Other costs' : '기타 비용', v: -other, color: '#8b95a5' });
+      if (-other > R * 0.002) out.push({ id: 'oth', k: EN ? 'Non-operating' : '영업 외 비용', v: -other, color: '#8b95a5' });
       const toNet = I.op - tax - Math.max(0, -other);
       if (toNet > 0) out.push({ id: 'net', k: EN ? 'Net income' : '순이익', v: toNet, color: 'var(--good)', pos: true, extra: other > R * 0.005 ? other : 0 });
     }
@@ -2854,7 +2854,7 @@
   addEventListener('resize', () => paintFlows(), { passive: true });
   // 산키(흐름) 그림: 열마다 막대(노드)를 쌓고, 막대 사이를 굵기 = 금액인 띠로 잇는다
   function flowSvg(I, W) {
-    const narrow = W < 460, H = narrow ? 370 : 400, TOP = 50, BOT = 48, nw = 10, LW = narrow ? 96 : 136;
+    const narrow = W < 460, H = narrow ? 390 : 400, TOP = narrow ? 70 : 50, BOT = 48, nw = 10, LW = narrow ? 96 : 136;
     const nm = (ko, en, enShort) => (EN ? (narrow ? enShort : en) : ko); // 좁은 화면 영어는 짧은 이름
     const C = { rev: 'var(--muted)', pos: 'var(--good)', neg: 'var(--flow-cost)' };
     const R = I.rev, pc = (v) => pctPlain(v / R, 0);
@@ -2883,7 +2883,7 @@
       const toNet = Math.max(0, I.op - tax - Math.max(0, -other));
       if (I.net > 0) { node('net', col, toNet, C.pos, EN ? 'Net income' : '순이익', fu(I.net), `${EN ? 'margin' : '이익률'} ${pc(I.net)}${other > R * 0.005 && !narrow ? (EN ? ` · incl. +${fu(other)} other` : ` · 기타 수익 ${fu(other)} 포함`) : ''}`); link('op', 'net', toNet); }
       if (tax > R * 0.002) { node('tax', col, tax, '#8fa3bf', EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}${EN ? ' of rev.' : ''}`); link('op', 'tax', tax); }
-      if (-other > R * 0.002) { node('oth', col, -other, '#8b95a5', EN ? 'Other' : '기타 비용', fu(-other), EN ? 'interest etc.' : '이자 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
+      if (-other > R * 0.002) { node('oth', col, -other, '#8b95a5', EN ? 'Non-operating' : '영업 외 비용', fu(-other), EN ? 'investments etc.' : '투자 손익 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
     }
     // 영업비용 항목: 큰 순서로 3개 + 나머지는 '기타'
     let items = (I.opex || []).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
@@ -2925,7 +2925,8 @@
     // 좁은 화면: 열 사이가 좁아 이름·금액만(매출의 전년비는 남김) — 이익률은 오른쪽 이름표와 맨 위 한 줄에
     for (const ns of byCol.slice(0, -1)) ns.forEach((n, i) => {
       if (narrow) n.sub = '';
-      const below = i > 0, x = n.x, y = below ? n.y + n.h + 15 : n.y - (n.sub ? 34 : 21);
+      // 좁은 화면: 열 사이가 좁아 이웃 열 이름이 붙으니 홀수 열의 위 이름표는 한 칸 더 위로(엇갈리게)
+      const below = i > 0, x = n.x, y = below ? n.y + n.h + 15 : n.y - (n.sub ? 34 : 21) - (narrow && n.col % 2 ? 30 : 0);
       labels += `<text x="${x}" y="${y}" class="fl-n" style="fill:${n.color === C.rev ? 'var(--ink)' : n.color}">${esc(n.name)}</text>` + t(x, y + 14, n.val, 'fl-v') + (n.sub ? t(x, y + 27, n.sub, 'fl-s') : '');
     });
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${paths}${rects}${labels}</svg>`;
