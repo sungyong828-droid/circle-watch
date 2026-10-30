@@ -2760,7 +2760,9 @@
     [/^amortization/, '무형자산 상각'], [/^restructuring/, '구조조정'], [/^it infrastructure/, 'IT 인프라'], [/^transaction expense/, '거래 비용'], [/^other$/, '기타'],
     [/^products?$/, '제품'], [/^services?$|^service and other$/, '서비스'], [/^product revenues?$/, '제품'], [/^service revenues?$/, '서비스'], [/^subscription/, '구독']];
   const fu = (v) => { if (v == null) return '–'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e9 ? `${s}$${(a / 1e9).toFixed(a >= 1e11 ? 0 : 1)}B` : a >= 1e6 ? `${s}$${nf(0).format(a / 1e6)}M` : `${s}$${nf(0).format(a / 1e3)}K`; }; // 흐름도는 $383M·$92.3B로
-  const flName = (k) => { const s = String(k || '').toLowerCase(); if (!EN) for (const [re, ko] of FL_KO) if (re.test(s)) return ko; const t = s.replace(/\s*\(.*?\)\s*/g, ' ').trim(); return EN && t === 'other' ? 'Other' : t.charAt(0).toUpperCase() + t.slice(1); };
+  const FL_EN = [[/^technology research and development/, 'Tech R&D'], [/^research and development/, 'R&D'], [/marketing and sales|sales and marketing/, 'Sales & marketing'], [/^selling, general,? and administrative|^sales, general and administrative/, 'SG&A'],
+    [/^marketing, general,? and administrative/, 'MG&A'], [/^general and administrative/, 'G&A'], [/^technology and infrastructure/, 'Tech & infra'], [/^technology and development/, 'Tech & dev'], [/^depreciation and amortization/, 'D&A'], [/^amortization/, 'Amortization'], [/^restructuring/, 'Restructuring']];
+  const flName = (k) => { const s = String(k || '').toLowerCase(); for (const [re, nm] of EN ? FL_EN : FL_KO) if (re.test(s)) return nm; const t = s.replace(/\s*\(.*?\)\s*/g, ' ').trim(); return EN && t === 'other' ? 'Other' : t.charAt(0).toUpperCase() + t.slice(1); };
   function istmtOf(sym) {
     if (isKR(sym) || isEtf(sym)) return null;
     const X = state.istmt[sym], live = !!(state.earnLive?.find((y) => y.sym === sym && y.acc !== X?.d?.acc && Date.now() - y.t < 2 * 864e5)) || !!earnDayLive(sym);
@@ -2780,9 +2782,10 @@
   function flowBlock(sym) {
     const I = istmtOf(sym);
     if (!flowOk(I)) return `<div class="flow-box" data-fl="${esc(sym)}" hidden></div>`;
-    const m = (v) => (v / I.rev), net = I.net, op = I.op;
+    const m = (v) => (v / I.rev), net = I.net, op = I.op, yy = I.prev?.rev ? I.rev / I.prev.rev - 1 : null;
+    const revS = `${fu(I.rev)}${yy != null ? (EN ? ` (${pct(yy, 0)} Y/Y)` : `(전년비 ${pct(yy, 0)})`) : ''}`;
     const head = op >= 0
-      ? (net >= 0 ? (EN ? `Of ${fu(I.rev)} in revenue, <b>${fu(net)} (${pctPlain(m(net), 0)})</b> was left as profit` : `매출 ${fu(I.rev)} 중 <b>${fu(net)}(${pctPlain(m(net), 0)})</b>가 순이익으로 남았어요`)
+      ? (net >= 0 ? (EN ? `Of ${revS} in revenue, <b>${fu(net)} (${pctPlain(m(net), 0)})</b> was left as profit` : `매출 ${revS} 중 <b>${fu(net)}(${pctPlain(m(net), 0)})</b>가 순이익으로 남았어요`)
         : (EN ? `Operating profit ${fu(op)}, but a <b>net loss of ${fu(-net)}</b>` : `영업이익 ${fu(op)}을 냈지만 <b>순손실 ${fu(-net)}</b>`))
       : (EN ? `Costs exceeded revenue: <b>operating loss ${fu(-op)}</b>${net >= 0 ? ` · net income ${fu(net)}` : ''}` : `비용이 매출보다 커서 <b>영업손실 ${fu(-op)}</b>${net >= 0 ? ` · 순이익은 ${fu(net)}` : ''}`);
     const segs = (I.segs || []).filter((s) => s.v > 0);
@@ -2798,7 +2801,8 @@
   addEventListener('resize', () => paintFlows(), { passive: true });
   // 산키(흐름) 그림: 열마다 막대(노드)를 쌓고, 막대 사이를 굵기 = 금액인 띠로 잇는다
   function flowSvg(I, W) {
-    const narrow = W < 460, H = narrow ? 300 : 330, TOP = 46, BOT = 44, nw = 9, LW = narrow ? 96 : 128;
+    const narrow = W < 460, H = narrow ? 300 : 330, TOP = 46, BOT = 44, nw = 9, LW = narrow ? 90 : 128;
+    const nm = (ko, en, enShort) => (EN ? (narrow ? enShort : en) : ko); // 좁은 화면 영어는 짧은 이름
     const C = { rev: 'var(--muted)', pos: 'var(--good)', neg: 'var(--flow-cost)' };
     const R = I.rev, pc = (v) => pctPlain(v / R, 0);
     const N = [], L = [];
@@ -2806,25 +2810,25 @@
     const link = (s, t, v) => { if (v > 0) L.push({ s, t, v }); };
     const yoy = I.prev?.rev ? I.rev / I.prev.rev - 1 : null;
     let col = 0;
-    node('rev', col, R, C.rev, EN ? 'Revenue' : '매출', fu(R), yoy != null ? (EN ? `${pct(yoy, 0)} Y/Y` : `전년비 ${pct(yoy, 0)}`) : '');
+    node('rev', col, R, C.rev, EN ? 'Revenue' : '매출', fu(R), yoy != null && !narrow ? (EN ? `${pct(yoy, 0)} Y/Y` : `전년비 ${pct(yoy, 0)}`) : ''); // 좁으면 전년비는 맨 위 한 줄에
     let base = 'rev', baseV = R;
     if (I.gross != null && I.cost > 0) {
       col++;
-      node('gross', col, I.gross, C.pos, EN ? 'Gross profit' : '매출총이익', fu(I.gross), `${EN ? 'margin' : '이익률'} ${pc(I.gross)}`);
-      node('cost', col, I.cost, C.neg, EN ? 'Cost of revenue' : '매출원가', fu(I.cost), `${EN ? '' : '매출의 '}${pc(I.cost)}`);
+      node('gross', col, I.gross, C.pos, nm('매출총이익', 'Gross profit', 'Gross'), fu(I.gross), `${EN ? 'margin' : '이익률'} ${pc(I.gross)}`);
+      node('cost', col, I.cost, C.neg, nm('매출원가', 'Cost of revenue', 'Cost'), fu(I.cost), `${EN ? '' : '매출의 '}${pc(I.cost)}`);
       link('rev', 'gross', I.gross); link('rev', 'cost', I.cost);
       base = 'gross'; baseV = I.gross;
     }
     col++;
     const opexT = Math.max(0, I.opexTotal ?? baseV - I.op);
-    if (I.op > 0) { node('op', col, I.op, C.pos, EN ? 'Operating profit' : '영업이익', fu(I.op), `${EN ? 'margin' : '이익률'} ${pc(I.op)}`); link(base, 'op', I.op); }
-    node('opex', col, opexT, C.neg, EN ? 'Operating expenses' : '영업비용', fu(opexT), I.op < 0 ? (EN ? `loss ${fu(-I.op)}` : `영업손실 ${fu(-I.op)}`) : `${EN ? '' : '매출의 '}${pc(opexT)}`);
+    if (I.op > 0) { node('op', col, I.op, C.pos, nm('영업이익', 'Operating profit', 'Op. profit'), fu(I.op), `${EN ? 'margin' : '이익률'} ${pc(I.op)}`); link(base, 'op', I.op); }
+    node('opex', col, opexT, C.neg, nm('영업비용', 'Operating expenses', 'OpEx'), fu(opexT), I.op < 0 ? (EN ? `loss ${fu(-I.op)}` : `영업손실 ${fu(-I.op)}`) : `${EN ? '' : '매출의 '}${pc(opexT)}`);
     link(base, 'opex', Math.min(opexT, baseV - Math.max(0, I.op)));
     col++;
     if (I.op > 0) {
       const tax = Math.max(0, I.tax || 0), other = I.net + (I.tax || 0) - I.op; // 기타 = 이자·투자 손익 등 영업 밖의 것
       const toNet = Math.max(0, I.op - tax - Math.max(0, -other));
-      if (I.net > 0) { node('net', col, toNet, C.pos, EN ? 'Net income' : '순이익', fu(I.net), `${EN ? 'margin' : '이익률'} ${pc(I.net)}${other > R * 0.005 ? (EN ? ` · incl. +${fu(other)} other` : ` · 기타 수익 ${fu(other)} 포함`) : ''}`); link('op', 'net', toNet); }
+      if (I.net > 0) { node('net', col, toNet, C.pos, EN ? 'Net income' : '순이익', fu(I.net), `${EN ? 'margin' : '이익률'} ${pc(I.net)}${other > R * 0.005 && !narrow ? (EN ? ` · incl. +${fu(other)} other` : ` · 기타 수익 ${fu(other)} 포함`) : ''}`); link('op', 'net', toNet); }
       if (tax > R * 0.002) { node('tax', col, tax, C.neg, EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}`); link('op', 'tax', tax); }
       if (-other > R * 0.002) { node('oth', col, -other, C.neg, EN ? 'Other' : '기타 비용', fu(-other), EN ? 'interest etc.' : '이자 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
     }
@@ -2856,12 +2860,15 @@
     if (over > 0) for (let i = last.length - 1; i >= 0; i--) { last[i].y -= over; if (i && last[i - 1].y > last[i].y - LH(last[i - 1].n) + 2) last[i - 1].y = last[i].y - LH(last[i - 1].n) + 2; }
     for (const { n, y } of last) {
       const x = n.x + nw + 6, y0 = y - (n.sub ? 12 : 6);
+      // 오른쪽 끝을 넘지 않게(한글은 글자당 약 11px, 영문·숫자 약 6.3px로 어림)
+      const clip = (v) => { let w = 0, i = 0; for (; i < v.length; i++) { w += /[ㄱ-힝]/.test(v[i]) ? 11 : 6.3; if (w > W - x - 4) break; } return i < v.length ? v.slice(0, Math.max(1, i - 1)) + '…' : v; };
+      n.name = clip(n.name); n.sub = clip(n.sub || '');
       labels += t(x, y0 + 4, n.name, 'fl-n ' + (n.color === C.pos ? 'fl-pos' : n.color === C.neg ? 'fl-neg' : '')) + t(x, y0 + 17, n.val, 'fl-v') + (n.sub ? t(x, y0 + 29, n.sub, 'fl-s') : '');
     }
     // 앞 열: 맨 위 막대는 위에, 아래 막대는 아래에 이름표
     // 좁은 화면: 열 사이가 좁아 이름·금액만(매출의 전년비는 남김) — 이익률은 오른쪽 이름표와 맨 위 한 줄에
     for (const ns of byCol.slice(0, -1)) ns.forEach((n, i) => {
-      if (narrow && n.id !== 'rev') n.sub = '';
+      if (narrow) n.sub = '';
       const below = i > 0, x = n.x, y = below ? n.y + n.h + 14 : n.y - (n.sub ? 32 : 19);
       const cls = 'fl-n ' + (n.color === C.pos ? 'fl-pos' : n.color === C.neg ? 'fl-neg' : '');
       labels += t(x, y, n.name, cls) + t(x, y + 13, n.val, 'fl-v') + (n.sub ? t(x, y + 25, n.sub, 'fl-s') : '');
