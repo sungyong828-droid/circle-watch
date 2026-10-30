@@ -888,7 +888,7 @@ const IS_R = {
   gross: /^(total )?gross (profit|margin)( \(loss\))?$/,
   opTot: /^total (operating )?(costs? and )?expenses$|^total operating expenses$|^operating expenses$|^total costs? and operating expenses$/,
   op: /^(total )?(operating (income|loss|income \(loss\)|\(loss\) income)|(income|loss|income \(loss\)|\(loss\) income) from operations)( from continuing operations)?$/,
-  pretax: /before (provision for |\(benefit from\) |benefit from |\(provision for\) )?(\(benefit\) |provision for )?income tax/,
+  pretax: /before (provision for |\(benefit from\) |benefit from |\(provision for\) )?(\(benefit\) |provision for |benefit from )?income tax/,
   tax: /income tax(es)?( expense| provision| benefit| \(benefit\)| expense \(benefit\)| \(expense\) benefit)?$|^(provision for|benefit from|\(benefit from\) provision for|provision for \(benefit from\)) income tax/,
   net: /^net (income|loss|earnings|income \(loss\)|\(loss\) income)( attributable to [a-z .,']+?)?( \(gaap\))?$/,
   eps: /per share|^basic|^diluted|earnings per/,
@@ -942,7 +942,7 @@ function statementAt(lines, s, col) {
       continue;
     }
     if (IS_R.pretax.test(L.lbl)) { out.pretax = x; continue; }
-    if (IS_R.tax.test(L.lbl) && out.tax == null) { out.tax = x; continue; }
+    if (IS_R.tax.test(L.lbl) && out.tax == null) { out.tax = /^\(provision|\(expense\) benefit/.test(L.lbl) ? -x : x; continue; } // '(비용) 이익' 표기는 부호가 반대
     if (IS_R.net.test(L.lbl) && !/noncontrolling|non-controlling|per share/.test(L.lbl) && !/including/.test(L.lbl)) { out.net = x; if (/attributable to (common|.*stockholders|.*shareholders)/.test(L.lbl)) break; continue; }
   }
   if (out.cost == null && costSum) out.cost = costSum;
