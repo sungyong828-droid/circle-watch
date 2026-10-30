@@ -12,12 +12,20 @@
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
 - 워커: 데이터 멈춤 디스코드 알림(⚠️ 데이터 확인 필요) 끔 — 멈추면 조용히 수집만 깨우고 결과를 KV kick:last에 기록 · 워커 배포 필요 <!-- internal -->
-- 💸 **돈의 흐름**(새 기능): 실적 탭에서 매출이 원가·영업비용(연구개발·마케팅 등)·세금으로 어떻게 나가고 얼마가 순이익으로 남는지 흐름도 한 장으로 보여 줘요. 맨 위에 '매출 중 몇 %가 순이익으로 남았는지' 한 줄 결론이 먼저 나와요.
+- 💸 **돈의 흐름**(새 기능): 실적 탭에서 '매출 100원이 어디로 갔나'(원가 40원 · 연구개발 16원 … 순이익 21원)를 막대 하나로 먼저 보여 주고, 그 아래 흐름도로 매출이 원가·영업비용·세금으로 나가고 얼마가 순이익으로 남는지 단계별로 보여 줘요. 남은 돈(이익)은 초록, 나간 돈(비용)은 항목마다 다른 색이에요.
 - 📢 실적 발표가 나오면 바로 반영돼요: 서버가 5분마다 미국 SEC의 새 실적 공시를 확인해서, 내 종목 실적이 나오면 실적 숫자와 흐름도를 곧바로 새로 받아요(휴대폰·PC를 켜 두지 않아도). 실적 알림을 켠 종목은 폰 알림과 🔔 알림 목록에도 '매출·순이익'이 함께 와요.
+- 📊 종목의 실적 탭에서 '실적' 카드가 맨 위로 올라왔어요. 실적이 나오면 사업 현황의 '분기별 주요 소식' 맨 위에 새 분기 숫자와 요약이 자동으로 붙고, 실적 카드의 AI 3줄 요약은 발표 뒤 일주일만 보여요.
+- 🔥 퇴사까지 탭의 '보유 정보 수정'이 맨 위로 올라왔어요(추가 매수 뒤 바로 고칠 수 있게).
+- 📈 차트를 눌러 뜬 설명 상자는 차트 밖을 누르면 닫혀요.
+- '10-Q 원문(10/29)' 같은 링크가 중간에서 줄바꿈되지 않게, 종목 칩의 '실적' 표시와 좁은 화면의 숫자·표 제목이 칸을 넘지 않게 정리했어요.
 <!-- internal --> 워커 cron(*/5) earnWatch: EDGAR 최신 8-K 목록 + 발표일 ±1일 종목은 회사별 목록 → 2.02 공시면 보도자료 손익계산서 해석(표·글자 흐름 둘 다, 검산·1년 전 매출 대조 통과분만) → KV istmt3:/earnlive · /istmt(없으면 Nasdaq 분기 손익) · /earnlive?s=내 종목만 · 감시 목록 KV earnwatch(실적을 본 미국 종목 30일) · 워커 배포 필요
 <!-- EN
-- Where the money went (new): the earnings tab now shows one flow chart of how revenue turns into cost, operating expenses (R&D, marketing…), tax and finally net income, with a one-line takeaway on top.
+- Where the money went (new): the earnings tab shows where every $100 of revenue went (cost, R&D, marketing… and what's left as profit) in one bar, then a step-by-step flow chart from revenue to net income. Profit is green; each cost has its own color.
 - New earnings show up right away: the server checks SEC filings every 5 minutes, so when one of your stocks reports, the numbers and the flow chart refresh on their own — no need to keep your phone or PC on. Stocks with earnings alerts also get a push with revenue and net income.
+- The earnings card now sits at the top of a stock's earnings tab. New results are added automatically to "What happened each quarter", and the AI summary on the earnings card stays for a week after the release.
+- "Edit holdings" is now at the top of the FIRE tab.
+- Tapping outside a chart closes its info bubble.
+- Short links like "10-Q filing (10/29)" no longer break across lines, and the earnings tag, numbers and table headers fit on narrow screens.
 -->
 
 ## v2026.10.27-4 — 2026-10-27
