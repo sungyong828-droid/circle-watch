@@ -2927,7 +2927,7 @@
       const toNet = Math.max(0, I.op - tax - Math.max(0, -other));
       if (I.net > 0) { node('net', col, toNet, C.pos, EN ? 'Net income' : '순이익', fu(I.net), `${EN ? 'margin' : '이익률'} ${pc(I.net)}${other > R * 0.005 && !narrow ? (EN ? ` · incl. +${fu(other)} other` : ` · 기타 수익 ${fu(other)} 포함`) : ''}`); link('op', 'net', toNet); }
       if (tax > R * 0.002) { node('tax', col, tax, '#8fa3bf', EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}${EN ? ' of rev.' : ''}`); link('op', 'tax', tax); }
-      if (-other > R * 0.002) { node('oth', col, -other, '#8b95a5', I.mix ? (EN ? 'Tax & other' : '세금·영업 외') : EN ? 'Non-operating' : '영업 외 비용', fu(-other), I.mix ? (EN ? 'tax, interest etc.' : '법인세·이자 등') : EN ? 'investments etc.' : '투자 손익 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
+      if (-other > R * 0.002) { node('oth', col, -other, '#8b95a5', I.mix ? (EN ? 'Tax & other' : '세금·영업 외') : EN ? 'Non-operating' : '영업 외 비용', fu(-other), I.mix ? (EN ? 'tax etc.' : '법인세 등') : EN ? 'investments etc.' : '투자 손익 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
     }
     // 영업비용 항목: 큰 순서로 3개 + 나머지는 '기타'
     let items = (I.opex || []).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
