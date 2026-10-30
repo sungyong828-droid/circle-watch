@@ -19,6 +19,7 @@
   --down: #5b9bff;
   --flat: #8b95a5;
   --good: #3fbf7f;
+  --flow-cost: #e0707a;
   --usdc-row: rgba(79, 143, 247, 0.09);
   --radius: 10px;
   --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
@@ -1873,6 +1874,27 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .es-box ul { margin: 6px 0 4px; padding-left: 18px; font-size: 13.5px; line-height: 1.7; }
 .es-box small { font-size: 11.5px; color: var(--muted); }
 .es-box.loading small { display: block; margin-top: 4px; }
+/* 💸 돈의 흐름(실적 흐름도) */
+.flow-box { margin-top: 12px; padding: 12px 12px 10px; border-radius: 14px; background: var(--surface-2); }
+.flow-h b { font-size: 14px; }
+.flow-h p { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); word-break: keep-all; }
+.flow-h p b { color: var(--ink); font-size: inherit; }
+.flow-svg { width: 100%; min-height: 300px; }
+.flow-svg svg { display: block; overflow: visible; }
+.flow-svg text { font-family: var(--sans); font-size: 11px; fill: var(--ink-2); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px; stroke-linejoin: round; }
+.flow-svg .fl-n { font-weight: 700; fill: var(--ink); }
+.flow-svg .fl-pos { fill: var(--good); }
+.flow-svg .fl-neg { fill: var(--flow-cost); }
+.flow-svg .fl-v { font-weight: 600; }
+.flow-svg .fl-s { fill: var(--muted); font-size: 10.5px; }
+.flow-box > small { display: block; margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+.flow-box > small a { color: inherit; text-decoration: underline; }
+.flow-seg { margin-bottom: 6px; }
+.fs-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; }
+.fs-bar i, .fs-lg span i { background: var(--c-blue); }
+.fs-lg { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 5px; font-size: 12px; color: var(--ink-2); }
+.fs-lg span { white-space: nowrap; }
+.fs-lg span i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
 
 /* 배당금 보기 3개 */
 .div-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2114,6 +2136,7 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
    색 토큰만 바꾸고, 다크 표면을 전제로 직접 적은 색(유리 헤더·흰색 반투명 선·그림자)만 따로 덮어쓴다
    ===================================================================== */
 :root[data-theme="light"] {
+  --flow-cost: #d6545f;
   color-scheme: light;
   --ground: #f3f5f8;
   --surface: #ffffff;

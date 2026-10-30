@@ -787,14 +787,400 @@ export async function buildEarnings(sym = 'CRCL', origin = null) {
 }
 
 // 실적: 1시간 캐시, 새로고침 버튼(fresh)은 10분 넘은 캐시를 다시 받는다(실적 발표 당일에도 금방 반영)
-export async function handleEarnings(url, cache, cors, ctx) {
+export async function handleEarnings(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   // 1시간마다 새로(새로고침 버튼은 10분), 그 사이엔 즉시 응답
   return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr3`, {
     freshSec: url.searchParams.has('live') ? 120 : url.searchParams.has('fresh') ? 600 : 3600, keepSec: 7 * 86400, cors,
-    build: async () => JSON.stringify(await buildEarnings(sym, url.origin)),
+    build: async () => {
+      const E = await buildEarnings(sym, url.origin);
+      ctx.waitUntil(noteWatch(env, cache, url.origin, sym, E.next?.date).catch(() => {})); // 실적 공시 감시 목록에 올린다
+      return JSON.stringify(E);
+    },
   });
+}
+
+// ---------------------------------------------------------------- 💸 실적 흐름도(매출 → 원가 → 영업이익 → 순이익) · 📢 실적 공시 감시
+// 1순위: 실적 발표 8-K(2.02) 첨부 보도자료의 손익계산서(발표 즉시) — 검산 + 1년 전 매출이 SEC·Nasdaq 기록과 맞을 때만
+// 2순위: Nasdaq 분기 손익계산서(발표 1~3일 뒤 반영)
+// 실적 발표문(8-K 첨부 99.x)에서 이번 분기 손익계산서를 읽는다 — 표(<table>) 형식과 글자 흐름(그림 위 글자) 형식 둘 다
+// 숫자끼리 맞는지(매출 − 원가 = 매출총이익, 매출총이익 − 영업비용 = 영업이익) 검산을 통과할 때만 돌려준다
+const IS_MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+const isEnt = (s) => s.replace(/&nbsp;|&#160;|&#xa0;|&#8203;|&#x200b;/gi, ' ').replace(/&amp;/g, '&').replace(/&#8217;|&#x2019;|&rsquo;|&#39;/gi, "'").replace(/&#8212;|&#8211;|&mdash;|&ndash;|&#x2014;|&#x2013;/gi, '—').replace(/&#\d+;|&#x[0-9a-f]+;|&[a-z]+;/gi, ' ');
+const NUM_RE = /^\(?-?\$?\(?\s?[\d,]*\d(?:\.\d+)?\)?$/;
+const isNum = (c) => NUM_RE.test(c) || /^[—–-]+$/.test(c);
+const toNum = (c) => { if (/^[—–-]+$/.test(c)) return 0; const neg = /\(/.test(c) || /^-/.test(c); const v = +c.replace(/[^\d.]/g, ''); return isFinite(v) ? (neg ? -v : v) : null; };
+const cleanLbl = (s) => s.replace(/\(\d\)|\*+/g, ' ').replace(/^(?:[^a-z]*%[^a-z]*\s)+/i, '').replace(/\s+\d$/, '').replace(/[:\s]+$/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+// 머리글(기간)들 → 정렬 가능한 값 목록. 날짜(9월 30일 2026) > 분기 표기(Q3'26·Q3-2026·Q2 FY27) > 연도 순
+function periods(h) {
+  const t = h.replace(/\b(?:vs\.?|versus)\s+Q\d[^\s,]*(?:\s+(?:FY)?\d{2,4})?/gi, ' ').replace(/Q\d['’]?\s?\d{2}\s+(?:Forecast|Outlook|Guidance)/gi, ' ');
+  const dates = [...t.matchAll(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s+(20\d\d)\b/gi)].map((m) => Date.UTC(+m[3], IS_MON[m[1].slice(0, 3).toLowerCase()] - 1, +m[2]));
+  if (dates.length >= 2) return { kind: 'date', v: dates };
+  const qs = [...t.matchAll(/\bQ([1-4])\s?(?:[-'’ ]\s?|\s?FY)(20)?(\d{2})\b/gi)].map((m) => (2000 + +m[3]) * 4 + +m[1]);
+  if (qs.length >= 2) return { kind: 'q', v: qs };
+  // "Quarter Ended September 30, 2025 2026" 처럼 월·일이 한 번만 나오면 연도만
+  const ys = [...t.matchAll(/(?<![\d,.$])(20\d\d)(?![\d,])/g)].map((m) => +m[1]);
+  if (ys.length >= 2) return { kind: 'y', v: ys };
+  return null;
+}
+// 이번 분기 열·1년 전 같은 분기 열
+function pickCols(P) {
+  if (!P) return null;
+  const v = P.v, max = Math.max(...v), cur = v.indexOf(max);
+  const yearAgo = P.kind === 'date' ? v.findIndex((x) => Math.abs(max - x - 365.25 * 864e5) < 25 * 864e5) : P.kind === 'q' ? v.indexOf(max - 4) : v.indexOf(max - 1);
+  return { cur, prev: yearAgo, n: v.length };
+}
+function unitOf(t) {
+  const m = t.match(/(?:in|\$\s?in|amounts in|of usd)[^.]{0,30}?\b(thousands|millions|billions)\b|\b(thousands|millions|billions) of (?:u\.?s\.? )?dollars|\(\$?(?:in )?(thousands|millions|billions)/i);
+  const w = (m && (m[1] || m[2] || m[3]) || '').toLowerCase();
+  return w === 'thousands' ? 1e3 : w === 'millions' ? 1e6 : w === 'billions' ? 1e9 : null;
+}
+
+// 문서 → 줄 목록 [{ lbl, nums, hdr }] 묶음들(표 하나 = 묶음 하나, 표가 없으면 글자 흐름 전체가 한 묶음)
+function tableBlocks(html) {
+  const out = [];
+  for (const m of html.matchAll(/<table[\s\S]*?<\/table>/gi)) {
+    const rows = [];
+    for (const tr of m[0].matchAll(/<tr[\s\S]*?<\/tr>/gi)) {
+      const cells = [...tr[0].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((c) => isEnt(c[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()).filter((c) => c && !/^[$)%]$/.test(c));
+      if (cells.length) rows.push(cells);
+    }
+    const before = isEnt(html.slice(Math.max(0, m.index - 3000), m.index).replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').slice(-500);
+    const lines = [];
+    let head = '';
+    for (const r of rows) {
+      const i = r.findIndex((c, k) => k > 0 && isNum(c));
+      // 숫자 없는 맨 위 줄은 머리글(기간·단위). 단 'Net sales'처럼 매출 제목이면 줄로 둔다(아래가 사업별 매출)
+      if (i < 0 || !/[a-z]/i.test(r[0])) { if (!lines.length && !(r.length === 1 && /^(net )?(revenues?|sales)$/.test(cleanLbl(r[0])))) head += ' ' + r.join(' '); else lines.push({ lbl: cleanLbl(r.join(' ')), nums: [] }); continue; }
+      lines.push({ lbl: cleanLbl(r.slice(0, i).join(' ')), nums: r.slice(i).filter(isNum).map(toNum) });
+    }
+    // 기간은 표 머리글에서 먼저 찾고, 없으면 표 바로 위 글에서
+    out.push({ hdr: periods(head) ? head : before.slice(-300), lines, unitText: before + ' ' + head });
+  }
+  return out;
+}
+function textBlock(html) {
+  const t = isEnt(html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
+  const tok = t.split(' ');
+  const lines = [];
+  let lbl = [], nums = [], at = 0, pos = 0;
+  const flush = () => { if (lbl.length) lines.push({ lbl: cleanLbl(lbl.join(' ')), nums, at }); lbl = []; nums = []; };
+  for (const w of tok) {
+    pos += w.length + 1;
+    if (/^\(\d\)$/.test(w) || /^[$€)]$/.test(w) || !w) continue; // 각주 표시·떨어진 $ 기호
+    if (isNum(w) && lbl.length) { nums.push(toNum(w)); continue; }
+    if (nums.length) flush();
+    if (!lbl.length) at = pos;
+    lbl.push(w);
+    if (lbl.length > 14) lbl.shift();
+  }
+  flush();
+  return { t, lines };
+}
+
+const IS_R = {
+  revHdr: /^(net )?(revenues?|sales)$/,
+  rev: /^(total )?(net )?(revenues?|sales)( net)?$|^(total )?revenues?, net$|^total revenue and reserve income$|^total revenues? and other income$/,
+  cost: /^(total )?cost of (net )?(revenues?|sales|goods sold|products? and services?)( sold)?$|^(total )?costs? of (revenues?|sales)|^total distribution, transaction and other costs$/,
+  costHdr: /^cost of (revenues?|sales)$|^distribution, transaction and other costs$/,
+  gross: /^(total )?gross (profit|margin)( \(loss\))?$/,
+  opTot: /^total (operating )?(costs? and )?expenses$|^total operating expenses$|^operating expenses$|^total costs? and operating expenses$/,
+  op: /^(total )?(operating (income|loss|income \(loss\)|\(loss\) income)|(income|loss|income \(loss\)|\(loss\) income) from operations)( from continuing operations)?$/,
+  pretax: /before (provision for |\(benefit from\) |benefit from |\(provision for\) )?(\(benefit\) |provision for )?income tax/,
+  tax: /income tax(es)?( expense| provision| benefit| \(benefit\)| expense \(benefit\)| \(expense\) benefit)?$|^(provision for|benefit from|\(benefit from\) provision for|provision for \(benefit from\)) income tax/,
+  net: /^net (income|loss|earnings|income \(loss\)|\(loss\) income)( attributable to [a-z .,']+?)?( \(gaap\))?$/,
+  eps: /per share|^basic|^diluted|earnings per/,
+};
+const IS_TOTAL = /^total /;
+
+// 한 줄 목록에서 손익계산서 하나를 읽는다(col: 이번 분기 열 번호)
+function statementAt(lines, s, col) {
+  const v = (L) => (L && L.nums.length > col ? L.nums[col] : null);
+  const out = { segs: [], opex: [] };
+  // 매출 줄: s부터. 위에 '매출' 제목 줄이 있으면 그 아래 줄들이 사업별 매출
+  let i = s;
+  const segStart = lines[s].nums.length ? s : s + 1;
+  if (!lines[s].nums.length) { i = s + 1; while (i < lines.length && i < s + 25 && !(IS_R.rev.test(lines[i].lbl) && IS_TOTAL.test(lines[i].lbl)) && !IS_R.cost.test(lines[i].lbl) && !IS_R.costHdr.test(lines[i].lbl)) i++; if (!lines[i] || !IS_R.rev.test(lines[i].lbl)) { // '매출' 제목 아래 합계 줄 없이 끝나면 그 위까지 합
+      return null; } }
+  out.rev = v(lines[i]);
+  if (!(out.rev > 0)) return null;
+  // 사업별 매출(소계가 있으면 소계로 묶는다)
+  if (segStart < i) {
+    let segs = [];
+    for (let k = segStart; k < i; k++) {
+      const L = lines[k], x = v(L);
+      if (x == null) continue;
+      if (IS_TOTAL.test(L.lbl)) { // 소계: 앞의 묶음과 합이 맞으면 묶음을 소계로 바꾼다
+        let sum = 0, j = segs.length;
+        while (j > 0 && Math.abs(sum - x) > Math.abs(x) * 0.002 + 1) { j--; if (segs[j].sub) break; sum += segs[j].v; }
+        if (Math.abs(sum - x) <= Math.abs(x) * 0.002 + 1) segs = [...segs.slice(0, j), { k: L.lbl.replace(IS_TOTAL, ''), v: x, sub: true }];
+      } else segs.push({ k: L.lbl, v: x });
+    }
+    if (segs.length >= 2 && Math.abs(segs.reduce((a, b) => a + b.v, 0) - out.rev) <= out.rev * 0.005) out.segs = segs.map(({ k, v: x }) => ({ k, v: x }));
+  }
+  // 아래로 내려가며 항목을 모은다
+  let costSum = null, inCost = false, after = i + 1, opIdx = -1;
+  for (let k = i + 1; k < Math.min(lines.length, i + 60); k++) {
+    const L = lines[k], x = v(L);
+    if (IS_R.eps.test(L.lbl) && out.net != null) break;
+    if (IS_R.costHdr.test(L.lbl) && x == null) { inCost = true; costSum = 0; continue; }
+    if (inCost) { if (x == null) { inCost = false; } else if (IS_R.cost.test(L.lbl) && IS_TOTAL.test(L.lbl)) { out.cost = x; inCost = false; continue; } else { costSum += x; continue; } }
+    if (x == null) continue;
+    if (out.op == null) {
+      if (IS_R.cost.test(L.lbl) && out.gross == null) {
+        // 원가 줄이 여러 개(사업별)면 더하고, '원가 합계' 줄이 나오면 그 값으로 — 그 앞에 모은 항목은 원가의 일부였던 것
+        if (IS_TOTAL.test(L.lbl)) { out.cost = x; out.opex = []; } else out.cost = (out.cost || 0) + x;
+        continue;
+      }
+      if (IS_R.gross.test(L.lbl)) { if (out.gross == null) out.gross = x; continue; } // 두 번째 'gross margin' 줄은 % 값
+      if (IS_R.opTot.test(L.lbl)) { out.opTot = x; continue; }
+      if (IS_R.op.test(L.lbl)) { out.op = x; opIdx = k; continue; }
+      if (IS_R.rev.test(L.lbl) || IS_R.eps.test(L.lbl)) return null; // 다른 표로 넘어감
+      if (!IS_TOTAL.test(L.lbl)) out.opex.push({ k: L.lbl, v: x });
+      continue;
+    }
+    if (IS_R.pretax.test(L.lbl)) { out.pretax = x; continue; }
+    if (IS_R.tax.test(L.lbl) && out.tax == null) { out.tax = x; continue; }
+    if (IS_R.net.test(L.lbl) && !/noncontrolling|non-controlling|per share/.test(L.lbl) && !/including/.test(L.lbl)) { out.net = x; if (/attributable to (common|.*stockholders|.*shareholders)/.test(L.lbl)) break; continue; }
+  }
+  if (out.cost == null && costSum) out.cost = costSum;
+  if (out.op == null || out.net == null) return null;
+  return out;
+}
+// 검산: 통과하면 정리한 값, 아니면 null
+function isCheck(S) {
+  const tol = S.rev * 0.006 + 1;
+  if (S.gross == null && S.cost != null) S.gross = S.rev - S.cost;
+  if (S.cost == null && S.gross != null) S.cost = S.rev - S.gross;
+  if (S.gross != null && Math.abs(S.rev - S.cost - S.gross) > tol) return null;
+  // '비용 합계'에 원가가 들어 있는 회사(구글·메타: Costs and expenses 아래 Cost of revenues)
+  let items = S.opex.filter((o) => !IS_R.cost.test(o.k));
+  let opexTot = S.opTot;
+  if (opexTot != null && S.cost != null && Math.abs(S.rev - opexTot - S.op) <= tol) opexTot -= S.cost;
+  if (opexTot == null) opexTot = items.reduce((a, b) => a + b.v, 0);
+  const base = S.gross ?? S.rev;
+  if (Math.abs(base - opexTot - S.op) > tol) return null;
+  const sumItems = items.reduce((a, b) => a + b.v, 0);
+  if (sumItems > opexTot + tol) items = []; // 항목이 합계보다 크면 표를 잘못 읽은 것 → 합계만
+  else if (opexTot - sumItems > tol && items.length) items.push({ k: 'other', v: opexTot - sumItems });
+  const tax = S.tax ?? (S.pretax != null ? S.pretax - S.net : null);
+  return { rev: S.rev, cost: S.cost ?? null, gross: S.gross ?? null, opex: items.filter((o) => Math.abs(o.v) > tol / 6).map((o) => ({ ...o, k: o.k.replace(/^(?:total )?(?:operating expenses|costs? and (?:operating )?expenses)\s+/, '') })), opexTotal: opexTot, op: S.op, pretax: S.pretax ?? null, tax, net: S.net, segs: S.segs };
+}
+
+export function parseIncome(html, ok = () => true) {
+  html = String(html);
+  const tries = [];
+  for (const B of tableBlocks(html)) tries.push(B);
+  const T = textBlock(html);
+  for (let k = 0; k < T.lines.length; k++) {
+    if (!IS_R.rev.test(T.lines[k].lbl.split(' ').slice(-5).join(' ')) && !/revenues?$|sales$/.test(T.lines[k].lbl)) continue;
+    let before = T.t.slice(Math.max(0, T.lines[k].at - 1500), T.lines[k].at);
+    // 기간 머리글: 표 제목(… Statements of Operations) 뒤 글만 — 앞 표(재무상태표)의 날짜가 섞이지 않게
+    const h = [...before.matchAll(/statements? of (?:consolidated )?(?:operations|income|earnings)|income statements?/gi)].at(-1);
+    before = h ? before.slice(h.index) : before.slice(-300);
+    // 글자 흐름에서는 줄 이름이 앞 문장과 붙어 있어 끝부분만 이름으로 쓴다
+    const lines = T.lines.slice(k, k + 70).map((L) => ({ ...L, lbl: L.lbl }));
+    tries.push({ hdr: before, lines, unitText: before, text: true });
+  }
+  let best = null;
+  for (const X of tries) {
+    const P = pickCols(periods(X.hdr));
+    const unit = unitOf(X.unitText) || unitOf(html.replace(/<[^>]+>/g, ' ').slice(0, 20000));
+    if (!unit) continue;
+    for (let s = 0; s < X.lines.length; s++) {
+      let L = X.lines[s];
+      // 글자 흐름: 줄 이름 끝부분이 패턴과 맞으면 그 부분만
+      // '매출원가(cost of revenues)'의 끝 단어 revenues를 매출로 읽지 않게
+      const tail = (re) => { const w = L.lbl.split(' '); for (let n = Math.min(6, w.length); n >= 1; n--) { const t = w.slice(-n).join(' '); if (re.test(t) && !/(of|cost|costs|deferred|unearned)$/.test(w[w.length - n - 1] || '')) return t; } return null; };
+      if (X.text) { const t = tail(IS_R.rev) || tail(IS_R.revHdr); if (!t) continue; X.lines[s] = L = { ...L, lbl: t }; for (let j = s + 1; j < Math.min(X.lines.length, s + 70); j++) { const M = X.lines[j]; const w = M.lbl.split(' '); for (let n = Math.min(8, w.length); n >= 1; n--) { const t2 = w.slice(-n).join(' '); if (Object.values(IS_R).some((re) => re.test(t2))) { X.lines[j] = { ...M, lbl: t2 }; break; } } } }
+      else if (!IS_R.rev.test(L.lbl) && !(IS_R.revHdr.test(L.lbl) && !L.nums.length)) continue;
+      const n = L.nums.length || X.lines[s + 1]?.nums.length || 0;
+      if (!P && n > 2) continue; // 열이 여러 개인데 어느 게 이번 분기인지 모르면 쓰지 않는다
+      const cols = P || { cur: 0, prev: n === 2 ? 1 : -1, n };
+      const S = statementAt(X.lines, s, cols.cur);
+      const C = S && isCheck(S);
+      if (!C) continue;
+      const Sp = cols.prev >= 0 ? statementAt(X.lines, s, cols.prev) : null;
+      const prev = Sp ? { rev: Sp.rev, op: Sp.op, net: Sp.net, gross: Sp.gross ?? (Sp.cost != null ? Sp.rev - Sp.cost : null) } : null;
+      const m = (o) => (o == null ? null : Math.round(o * unit));
+      if (!ok({ rev: m(C.rev), prevRev: prev ? m(prev.rev) : null })) continue;
+      const score = (C.cost != null ? 2 : 0) + Math.min(C.opex.length, 4) + (C.tax != null ? 1 : 0) + (C.segs.length ? 1 : 0) + (prev ? 1 : 0);
+      if (best && best.score >= score) continue;
+      best = { score, r: {
+        unit,
+        rev: m(C.rev), cost: m(C.cost), gross: m(C.gross), opexTotal: m(C.opexTotal), op: m(C.op), pretax: m(C.pretax), tax: m(C.tax), net: m(C.net),
+        opex: C.opex.map((o) => ({ k: o.k, v: m(o.v) })), segs: C.segs.map((o) => ({ k: o.k, v: m(o.v) })),
+        prev: prev ? { rev: m(prev.rev), gross: m(prev.gross), op: m(prev.op), net: m(prev.net) } : null,
+      } };
+    }
+  }
+  return best?.r || null;
+}
+
+// Nasdaq 분기 손익계산서(발표 1~3일 뒤 반영) — 보도자료를 못 읽은 회사용
+async function nasdaqIstmt(sym) {
+  const t = (await nasdaqJson(`company/${sym}/financials?frequency=2`))?.incomeStatementTable;
+  const col = Object.entries(t?.headers || {}).find(([k]) => k !== 'value1');
+  if (!col) return null;
+  const row = (n) => money(t.rows.find((r) => r.value1 === n)?.[col[0]]);
+  const rev = row('Total Revenue'), op = row('Operating Income'), net = row('Net Income');
+  if (!(rev > 0) || op == null || net == null) return null;
+  let cost = row('Cost of Revenue'), gross = row('Gross Profit');
+  if (gross == null && cost != null) gross = rev - cost;
+  if (cost == null && gross != null) cost = rev - gross;
+  if (gross != null && Math.abs(rev - cost - gross) > rev * 0.01) return null;
+  const opexTotal = (gross ?? rev) - op;
+  const opex = [['research and development', row('Research and Development')], ['selling, general and administrative', row('Sales, General and Admin.')], ['restructuring and other', row('Non-Recurring Items')], ['other', row('Other Operating Items')]]
+    .filter(([, v]) => v > 0).map(([k, v]) => ({ k, v }));
+  const sum = opex.reduce((a, b) => a + b.v, 0);
+  if (sum > opexTotal + rev * 0.01) opex.length = 0; // 항목 합이 합계보다 크면 합계만
+  else if (opexTotal - sum > rev * 0.005 && opex.length) opex.push({ k: 'other', v: opexTotal - sum });
+  return { src: 'nasdaq', end: mdy(col[1]), rev, cost, gross, opex, opexTotal, op, tax: row('Income Tax'), net, segs: [], prev: null };
+}
+// 실적 발표 공시 하나(8-K 2.02)의 보도자료를 읽는다 — 공시마다 한 번만(KV), 못 읽었으면 6시간 뒤 다시
+async function istmtFromFiling(sym, cik, f, env, E) {
+  const key = `istmt2:${sym}:${f.acc}`;
+  const kept = env?.SUMS ? await env.SUMS.get(key, 'json').catch(() => null) : null;
+  if (kept && (!kept.fail || Date.now() - Date.parse(kept.at) < 6 * 3600000)) return kept;
+  E ||= await buildEarnings(sym).catch(() => null);
+  const Q = E?.quarters || [], fd = Date.parse(f.d);
+  // 검증: 이번 분기 매출이 지난 분기 기록과 같으면(다른 열을 읽음) 버리고, 1년 전 매출은 SEC·Nasdaq 기록과 1.5% 안에서 맞아야 한다
+  const old = Q.filter((q) => q.revenue > 0 && fd - Date.parse(q.end) > 75 * 864e5);
+  const ya = old.filter((q) => { const g = fd - Date.parse(q.end); return g > 360 * 864e5 && g < 440 * 864e5; }).at(-1);
+  const ok = (c) => !old.some((q) => Math.abs(q.revenue - c.rev) <= q.revenue * 0.001) && (!ya || c.prevRev == null || Math.abs(c.prevRev - ya.revenue) <= ya.revenue * 0.015);
+  let r = null, url = null;
+  for (const nm of (await exhibits(cik, f).catch(() => [])).slice(0, 3)) {
+    try { r = parseIncome(await secGet(secBase(cik, f) + nm, 'text'), ok); } catch {}
+    if (r) { url = secBase(cik, f) + nm; break; }
+  }
+  const sur = (E?.surprises || []).find((s) => s.reported && Math.abs(Date.parse(s.reported) - fd) < 4 * 864e5);
+  const qe = (E?.quarters || []).find((q) => q.reportedOn && Math.abs(Date.parse(q.reportedOn) - fd) < 4 * 864e5);
+  // 분기 말일: Nasdaq 기록에 있으면 그 날, 없으면 공시일 앞의 달력 분기 말
+  const calEnd = () => { const d = new Date(fd - 10 * 864e5), m = d.getUTCMonth(), qm = m - (m % 3); return new Date(Date.UTC(d.getUTCFullYear(), qm, 0)).toISOString().slice(0, 10); };
+  const out = r ? { src: 'pr', sym, acc: f.acc, filed: f.d, url, end: sur?.end || qe?.end || calEnd(), ...r, at: new Date().toISOString() } : { fail: true, sym, acc: f.acc, filed: f.d, at: new Date().toISOString() };
+  if (env?.SUMS) await env.SUMS.put(key, JSON.stringify(out), { expirationTtl: r ? 400 * 86400 : 7 * 86400 });
+  return out;
+}
+async function buildIstmt(sym, origin, cache, env, fresh = false) {
+  const cik = await cikOf(sym, cache, origin);
+  let pr = null;
+  if (cik) {
+    const list = await secRecent(cik, cache, origin, fresh).catch(() => []);
+    const f = list.find((x) => /^8-K/.test(x.form) && /2\.02/.test(x.items) && Date.now() - Date.parse(x.d) < 120 * 864e5);
+    if (f) pr = await istmtFromFiling(sym, cik, f, env).catch(() => null);
+  }
+  const nq = await nasdaqIstmt(sym).catch(() => null);
+  // 보도자료가 Nasdaq보다 옛 분기가 아니면 보도자료(사업별 매출·1년 전 비교가 있어서)
+  if (pr && !pr.fail && (!nq || Date.parse(pr.end) >= Date.parse(nq.end) - 20 * 864e5)) return pr;
+  return nq ? { ...nq, sym, at: new Date().toISOString() } : null;
+}
+// GET /istmt?s=SYM — 💸 실적 흐름도 자료(3시간 캐시, live=1이면 2분 — 실적 발표 직후)
+export async function handleIstmt(url, cache, cors, ctx, env) {
+  const sym = pickSym(url);
+  if (KR_RE.test(sym)) return json({ none: true }, cors);
+  if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
+  const live = url.searchParams.has('live');
+  return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=1`, {
+    freshSec: live ? 120 : 3 * 3600, keepSec: 30 * 86400, cors,
+    build: async () => JSON.stringify((await buildIstmt(sym, url.origin, cache, env, live)) || { none: true }),
+  });
+}
+
+// ---------------------------------------------------------------- 📢 실적 공시 감시(5분마다, PC가 꺼져 있어도 클라우드에서)
+// SEC 최신 8-K 목록에서 '실적 발표(2.02)' 공시가 나오면: 보도자료 손익계산서를 바로 읽어 두고(KV),
+// 그 종목 실적 알림을 켠 사람에게 폰 알림을 보내고, 화면이 새 실적을 바로 다시 받도록 'earnlive'에 남긴다.
+// 감시 종목: 기본 종목 + 최근 30일 안에 누군가 실적을 본 미국 종목(KV 'earnwatch', 하루 한 번만 적음)
+export async function noteWatch(env, cache, origin, sym, next) {
+  if (!env?.SUMS || KR_RE.test(sym) || EARN_CFG[sym]) return;
+  const mk = new Request(`${origin}/ewnote?s=${sym}&d=${next || ''}`);
+  if (await cache.match(mk)) return;
+  await cache.put(mk, new Response('1', { headers: { 'cache-control': 'public, max-age=86400' } }));
+  const cik = await cikOf(sym, cache, origin);
+  if (!cik) return;
+  const W = (await env.SUMS.get('earnwatch', 'json').catch(() => null)) || {};
+  W[sym] = { c: cik, t: Date.now(), d: next || null };
+  for (const [k, v] of Object.entries(W)) if (Date.now() - v.t > 30 * 864e5) delete W[k];
+  await env.SUMS.put('earnwatch', JSON.stringify(W));
+}
+// EDGAR 목록(atom) → [{ cik, acc, items, d }] — 전체 최신 목록과 회사별 목록 둘 다
+export function parseEdgarAtom(xml, cik = null) {
+  const out = [];
+  for (const m of String(xml).matchAll(/<entry>([\s\S]*?)<\/entry>/g)) {
+    const e = m[1], acc = (e.match(/accession-number=([\d-]+)/) || [])[1];
+    const c = cik || (e.match(/\((\d{10})\)/) || [])[1];
+    if (!c || !acc) continue;
+    out.push({ cik: c, acc: acc.replace(/-/g, ''), form: (e.match(/term="([^"]+)"/) || [])[1] || '', items: [...e.matchAll(/Item (\d\.\d\d)/g)].map((x) => x[1]).join(','), d: ((e.match(/Filed:(?:&lt;\/b&gt;)?\s*(\d{4}-\d\d-\d\d)/) || e.match(/<filing-date>(\d{4}-\d\d-\d\d)/) || e.match(/<updated>(\d{4}-\d\d-\d\d)/) || [])[1]) || null });
+  }
+  return out;
+}
+const EDGAR_8K = 'https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&company=&dateb=&owner=include&start=0&count=100&output=atom';
+export async function earnWatch(env, at = Date.now()) {
+  if (!env?.SUMS) return;
+  const W = (await env.SUMS.get('earnwatch', 'json').catch(() => null)) || {};
+  const bySym = { ...Object.fromEntries(Object.entries(EARN_CFG).map(([s, c]) => [s, { c: c.cik }])), ...W };
+  const byCik = new Map(Object.entries(bySym).map(([s, v]) => [String(v.c).padStart(10, '0'), s]));
+  const found = [];
+  try { for (const x of parseEdgarAtom(await secGet(EDGAR_8K, 'text'))) if (byCik.has(x.cik)) found.push(x); } catch {}
+  // 발표 예정일 앞뒤 하루인 종목은 회사별 목록도 확인(장 마감 직후처럼 공시가 몰려 전체 목록 100건을 넘길 때 대비) — 한 번에 4곳씩 돌아가며
+  const et = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(at);
+  const near = Object.entries(bySym).filter(([, v]) => v.d && Math.abs(Date.parse(v.d) - Date.parse(et)) <= 864e5).map(([s]) => s).sort();
+  const turn = Math.floor(at / 300000);
+  for (const s of near.length > 4 ? near.filter((_, i) => i % Math.ceil(near.length / 4) === turn % Math.ceil(near.length / 4)) : near) {
+    const cik = String(bySym[s].c).padStart(10, '0');
+    try { found.push(...parseEdgarAtom(await secGet(`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=8-K&dateb=&owner=include&count=3&output=atom`, 'text'), cik)); } catch {}
+  }
+  const hits = found.filter((x) => /^8-K/.test(x.form) && x.items.split(',').includes('2.02') && x.d && Date.parse(et) - Date.parse(x.d) <= 2 * 864e5);
+  if (!hits.length) return;
+  const L = (await env.SUMS.get('earnlive', 'json').catch(() => null)) || { items: [], seen: [] };
+  const seen = new Set(L.seen || []);
+  const fresh = [];
+  for (const x of hits) {
+    if (seen.has(x.acc) || fresh.some((y) => y.acc === x.acc)) continue;
+    const sym = byCik.get(x.cik);
+    const r = await istmtFromFiling(sym, x.cik, { acc: x.acc, form: x.form, d: x.d, doc: '', items: x.items }, env).catch(() => null);
+    fresh.push({ sym, acc: x.acc, filed: x.d, t: Date.now(), ...(r && !r.fail ? { end: r.end, rev: r.rev, prevRev: r.prev?.rev ?? null, op: r.op, net: r.net } : {}) });
+    seen.add(x.acc);
+  }
+  if (!fresh.length) return;
+  L.items = [...fresh, ...(L.items || [])].filter((y) => Date.now() - y.t < 14 * 864e5).slice(0, 80);
+  L.seen = [...seen].slice(-400);
+  await env.SUMS.put('earnlive', JSON.stringify(L));
+  await earnPush(env, fresh).catch(() => {});
+}
+// 실적 알림(🔔 실적 발표 알림)을 켠 사람에게: "📊 MSFT 실적 발표 · 매출 $92.3B(+19%) · 순이익 $36.6B"
+async function earnPush(env, fresh) {
+  if (!env.VAPID_JWK) return;
+  const L = await env.SUMS.list({ prefix: 'push:' });
+  const big = (v) => { const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e9 ? `${s}$${(a / 1e9).toFixed(a >= 1e11 ? 0 : 1)}B` : `${s}$${Math.round(a / 1e6)}M`; };
+  for (const k of L.keys.slice(0, 200)) {
+    const r = await env.SUMS.get(k.name, 'json').catch(() => null);
+    if (!r?.sub) continue;
+    const en = r.lang === 'en';
+    for (const x of fresh.filter((y) => (r.e || []).includes(y.sym))) {
+      const yoy = x.rev && x.prevRev ? x.rev / x.prevRev - 1 : null, pc = yoy == null ? '' : `(${yoy >= 0 ? '+' : ''}${Math.round(yoy * 100)}%)`;
+      const body = x.rev ? (en ? `Revenue ${big(x.rev)}${pc} · Net income ${big(x.net)}. See where the money went.` : `매출 ${big(x.rev)}${pc} · 순이익 ${big(x.net)} — 돈의 흐름을 그림으로 확인해 보세요.`) : (en ? 'The results are out. Tap to see them.' : '실적 공시가 나왔어요. 눌러서 확인해 보세요.');
+      const st = await sendWebPush(r.sub, { title: en ? `📊 ${x.sym} earnings are out` : `📊 ${x.sym} 실적 발표`, body, url: `/?from=push&s=${encodeURIComponent(x.sym)}#${x.sym === 'CRCL' ? 'earn' : 'searn'}`, tag: 'erl-' + x.acc }, env.VAPID_JWK).catch(() => 0);
+      if (st === 404 || st === 410) { await env.SUMS.delete(k.name); break; }
+    }
+  }
+}
+// GET /earnlive?s=AAPL,MSFT — 최근 7일 안에 나온 실적 공시 중 내 종목 것만(다른 사람이 어떤 종목을 보는지 드러나지 않게)
+export async function handleEarnLive(url, cache, cors, ctx, env) {
+  const want = [...new Set(String(url.searchParams.get('s') || '').toUpperCase().split(',').filter((s) => SYM_RE.test(s)))].slice(0, 40).sort();
+  if (!want.length) return json({ items: [] }, cors);
+  const key = new Request(`${url.origin}/earnlive?s=${want.join(',')}&v=1`);
+  let res = await cache.match(key);
+  if (!res) {
+    const L = env?.SUMS ? (await env.SUMS.get('earnlive', 'json').catch(() => null)) || {} : {};
+    const items = (L.items || []).filter((x) => want.includes(x.sym) && Date.now() - x.t < 7 * 864e5);
+    res = new Response(JSON.stringify({ at: new Date().toISOString(), items }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' } });
+    ctx.waitUntil(cache.put(key, res.clone()));
+  }
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(cors)) out.headers.set(k, v);
+  return out;
 }
 
 // ---------------------------------------------------------------- 주식 시세 · 환율 (Fire 탭)
@@ -2174,9 +2560,9 @@ async function cikOf(sym, cache, origin) {
   return cik;
 }
 // 최근 공시 목록(SEC submissions, 30분 캐시)
-async function secRecent(cik, cache, origin) {
+async function secRecent(cik, cache, origin, fresh = false) {
   const key = new Request(`${origin}/secrecent?c=${cik}&v=2`);
-  const hit = await cache.match(key);
+  const hit = fresh ? null : await cache.match(key); // 실적 발표 직후(fresh)엔 목록을 새로
   if (hit) return hit.json();
   const r = (await secGet(`https://data.sec.gov/submissions/CIK${cik}.json`)).filings.recent;
   const list = [];
@@ -2471,7 +2857,7 @@ export default {
     const cors = corsHeaders(origin);
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
-    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/valuation', '/movenews', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo', '/flow', '/calendar', '/earnsum', '/filesum', '/promises', '/semi', '/bigtech', '/etfkit'].includes(url.pathname)) return new Response('not found', { status: 404 });
+    if (!['/news', '/circle', '/earnings', '/quote', '/chart', '/holders', '/facts', '/series', '/valuation', '/movenews', '/analyst', '/options', '/short', '/lookup', '/market', '/mnews', '/dividends', '/feargreed', '/krquote', '/krinfo', '/flow', '/calendar', '/earnsum', '/filesum', '/promises', '/semi', '/bigtech', '/etfkit', '/istmt', '/earnlive'].includes(url.pathname)) return new Response('not found', { status: 404 });
     // 등록된 화면에서 온 요청만 받는다(브라우저는 다른 주소로 요청할 때 항상 Origin을 붙임)
     if (!ALLOWED_ORIGINS.includes(origin)) return new Response('forbidden', { status: 403 });
     // Origin은 프로그램이 흉내 낼 수 있으니 IP마다 분당 호출 수도 제한한다(Pages /api 는 _middleware.js 가 같은 일을 함)
@@ -2480,7 +2866,9 @@ export default {
     }
     const cache = caches.default;
     if (url.pathname === '/circle') return circleSupply(url, cache, cors, ctx);
-    if (url.pathname === '/earnings') return handleEarnings(url, cache, cors, ctx);
+    if (url.pathname === '/earnings') return handleEarnings(url, cache, cors, ctx, env);
+    if (url.pathname === '/istmt') return handleIstmt(url, cache, cors, ctx, env);
+    if (url.pathname === '/earnlive') return handleEarnLive(url, cache, cors, ctx, env);
     if (url.pathname === '/quote') return handleQuote(url, cache, cors, ctx);
     if (url.pathname === '/chart') return handleChart(url, cache, cors, ctx);
     if (url.pathname === '/holders') return handleHolders(url, cache, cors, ctx);
@@ -2519,6 +2907,8 @@ export default {
     // (GH_TOKEN 비밀값이 있을 때만 — 저장소 Actions 쓰기 권한 토큰)
     // 같은 때 데이터 멈춤 감시도 한다(멈췄으면 조용히 수집을 깨움, 알림 없음)
     if (env.GH_TOKEN && Math.floor(event.scheduledTime / 300000) % 3 === 0) ctx.waitUntil(watchData(env).catch(() => {}));
+    // 5분마다: SEC 새 실적 공시(8-K 2.02) 확인 → 보도자료 손익계산서 읽기·폰 알림
+    ctx.waitUntil(earnWatch(env, event.scheduledTime).catch(() => {}));
     const sym = STOCKS[Math.floor(event.scheduledTime / 300000) % STOCKS.length];
     ctx.waitUntil((async () => {
       const data = await buildNews(sym);
