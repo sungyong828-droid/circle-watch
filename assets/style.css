@@ -703,11 +703,11 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 .ss-edit small { font-size: 10.5px; }
 .ss-letter { display: inline-grid; place-items: center; font: 800 11px var(--mono); font-style: normal; color: #0d1015; background: var(--sc) !important; }
 /* 실적 태그: 등락률 옆 작은 알약(내일=조용히, 당일=점 깜빡임, 발표 직후=체크 색) */
-.ss-bot { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.ss-bot { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 5px; min-width: 0; } /* 등락률이 길면 '실적' 태그는 다음 줄로(칸 밖으로 밀리지 않게) */
 .ss-ed {
   display: inline-flex; align-items: center; gap: 4px; flex: none; font-style: normal; font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: -0.01em;
   color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 32%, transparent);
-  border-radius: 999px; padding: 2px 6px 2px 5px; margin: -2px 0;
+  border-radius: 999px; padding: 2px 6px 2px 5px; margin: 0;
 }
 .ss-ed[hidden] { display: none; }
 .ss-ed b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
@@ -1880,16 +1880,37 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .flow-h p { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); word-break: keep-all; }
 .flow-h p b { color: var(--ink); font-size: inherit; }
 .flow-h .nw { white-space: nowrap; }
-.flow-svg { width: 100%; min-height: 300px; }
+.flow-svg { width: 100%; min-height: 370px; }
 .flow-svg svg { display: block; overflow: visible; }
-.flow-svg text { font-family: var(--sans); font-size: 11px; fill: var(--ink-2); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px; stroke-linejoin: round; }
+.flow-svg text { font-family: var(--sans); font-size: 12px; fill: var(--ink-2); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px; stroke-linejoin: round; }
 .flow-svg .fl-n { font-weight: 700; fill: var(--ink); }
 .flow-svg .fl-pos { fill: var(--good); }
 .flow-svg .fl-neg { fill: var(--flow-cost); }
 .flow-svg .fl-v { font-weight: 600; }
-.flow-svg .fl-s { fill: var(--muted); font-size: 10.5px; }
+.flow-svg .fl-s { fill: var(--muted); font-size: 11px; }
+.f-sub { margin: 14px 0 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.flow-lg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 2px; font-size: 12px; color: var(--ink-2); }
+.flow-lg span { white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.flow-lg i { width: 10px; height: 10px; border-radius: 3px; }
+.flow-lg .pos i { background: var(--good); }
+.flow-lg .neg i { background: linear-gradient(90deg, #e0707a 0 50%, #f0925a 50%); }
+/* 매출 100원이 어디로 갔나 */
+.f100 { margin: 4px 0 2px; padding: 10px 12px 8px; border-radius: 12px; background: var(--surface); }
+.f100-h { font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 8px; word-break: keep-all; }
+.f100-bar { position: relative; display: flex; gap: 2px; height: 16px; border-radius: 6px; overflow: hidden; }
+.f100-bar i { display: block; height: 100%; min-width: 2px; }
+.f100-bar em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); }
+.f100-lg { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.f100-lg li { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); min-width: 0; }
+.f100-lg li i { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+.f100-lg li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f100-lg li b { flex: none; font-variant-numeric: tabular-nums; color: var(--ink); }
+.f100-lg li.pos span, .f100-lg li.pos b { color: var(--good); font-weight: 700; }
+.f100-n { margin: 8px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; word-break: keep-all; }
 .flow-box > small { display: block; margin-top: 4px; font-size: 11.5px; color: var(--muted); }
 .flow-box > small a { color: inherit; text-decoration: underline; }
+/* '10-Q 원문(8/5)'·'원문'·'출처: …' 같은 짧은 링크는 한 덩어리로(중간에서 줄바꿈하지 않게) */
+.card .sub a, .card .note a, .tem-ms a, .biz-flash a, .flow-box small a, .fs-list a { display: inline-block; }
 .flow-seg { margin-bottom: 6px; }
 .fs-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; }
 .fs-bar i, .fs-lg span i { background: var(--c-blue); }

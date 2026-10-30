@@ -627,6 +627,14 @@
     charts[id] = new Chart(cv, cfg);
     after?.(charts[id]);
   }
+  // 휴대폰: 차트를 눌러 뜬 말풍선은 차트 밖(빈 곳·다른 카드)을 누르면 닫는다
+  document.addEventListener('pointerdown', (ev) => {
+    if (!window.Chart) return;
+    for (const c of Object.values(Chart.instances || {})) {
+      if (c.canvas === ev.target || !c.tooltip?.getActiveElements?.().length) continue;
+      c.tooltip.setActiveElements([], { x: 0, y: 0 }); c.setActiveElements([]); c.update('none');
+    }
+  }, { capture: true, passive: true });
   function flushCharts() {
     for (const [id, { cfg, after }] of Object.entries(pendingCharts)) {
       const cv = document.getElementById('cv-' + id);
@@ -2669,7 +2677,7 @@
         <ul class="mx-list">${rows.map((r, i) => `<li><i style="background:${MIX_COLORS[i % MIX_COLORS.length]}"></i><b>${esc(name(r.t))}</b><span>${pctPlain(r.krw / tot, 0)}</span><small>${wonFull(r.krw)}</small></li>`).join('')}</ul></div>
         ${topShare >= 0.5 && rows.length > 1 ? `<p class="mx-warn">⚠ ${EN ? `${esc(name(top.t))} is ${pctPlain(topShare, 0)} of your portfolio — if it falls 30%, your total drops about ${pctPlain(topShare * 0.3, 0)}.` : `${esc(name(top.t))} 비중이 ${pctPlain(topShare, 0)}예요. 이 종목이 30% 빠지면 전체가 약 ${pctPlain(topShare * 0.3, 0)} 빠져요.`}</p>` : ''}
         ${us.length ? (bfx ? `<div class="mx-fx"><div><span>${EN ? 'From stock prices' : '주가로 번 돈'}</span><b class="${cls(stockFx)}">${signed(stockFx, wonFull)}</b><small>${EN ? 'at your average buy FX' : '평균 매수 환율 기준'}</small></div><div><span>${EN ? 'From the exchange rate' : '환율로 번 돈'}</span><b class="${cls(fxFx)}">${signed(fxFx, wonFull)}</b><small>${EN ? `₩${nf(0).format(bfx)} → ₩${nf(0).format(fx)}` : `${nf(0).format(bfx)}원 → ${nf(0).format(fx)}원`}</small></div></div>`
-          : `<p class="note">💱 ${EN ? 'Enter your average buy exchange rate in the holdings form below to split gains into stock vs. FX.' : '아래 보유 정보에 <b>평균 매수 환율</b>을 넣으면 미국 주식 손익을 \'주가로 번 돈\'과 \'환율로 번 돈\'으로 나눠 보여드려요.'}</p>`) : ''}`,
+          : `<p class="note">💱 ${EN ? 'Enter your average buy exchange rate in the holdings form at the top to split gains into stock vs. FX.' : '맨 위 보유 정보에 <b>평균 매수 환율</b>을 넣으면 미국 주식 손익을 \'주가로 번 돈\'과 \'환율로 번 돈\'으로 나눠 보여드려요.'}</p>`) : ''}`,
     });
     draw('firemix', { type: 'doughnut', data: { labels: rows.map((r) => name(r.t)), datasets: [{ data: rows.map((r) => r.krw), backgroundColor: rows.map((_, i) => MIX_COLORS[i % MIX_COLORS.length]), borderWidth: 0 }] },
       options: { cutout: '62%', plugins: { ...noLegend, tooltip: { callbacks: { label: (it) => ` ${it.label}: ${pctPlain(it.raw / tot, 1)} · ${wonFull(it.raw)}` } } } } });
@@ -2735,17 +2743,28 @@
 
   // ---------------------------------------------------------------- 🤖 실적 발표 AI 3줄 요약(발표 뒤 10일) — 서버가 종목·분기마다 한 번 만들어 둔다
   state.earnsum = {};
-  function earnSumBlock(sym) {
-    if (isKR(sym)) return '';
+  // 가장 최근 발표 분기(발표 직후에는 EPS 서프라이즈가 재무제표보다 먼저 들어온다)
+  function earnLast(sym) {
     const E = earnOf(sym), qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((y) => y.reported);
-    const last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
-    if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 10) return '';
+    return sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
+  }
+  // AI 3줄 요약 받기(서버가 분기마다 한 번 만들어 40일 보관) — 실적 카드(발표 뒤 7일)와 사업 현황 '분기별 주요 소식'이 같이 쓴다
+  function earnSumGet(sym, last = earnLast(sym)) {
+    if (isKR(sym) || !last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 40) return null;
     const S = state.earnsum[sym];
     if (!S || (S.pending && Date.now() - S.t > 20000) || (S.q && S.q !== last.end)) {
       state.earnsum[sym] = { ...(S || {}), t: Date.now(), loading: true };
-      getJ(`${NEWS_API}/earnsum?s=${sym}`, 25000).then((j) => { state.earnsum[sym] = { ...j, t: Date.now() }; for (const el of document.querySelectorAll(`.es-box[data-es="${CSS.escape(sym)}"]`)) el.outerHTML = earnSumBlock(sym); }).catch(() => { state.earnsum[sym] = { none: true, t: Date.now() }; });
+      getJ(`${NEWS_API}/earnsum?s=${sym}`, 25000).then((j) => { state.earnsum[sym] = { ...j, t: Date.now() }; }).catch(() => { state.earnsum[sym] = { none: true, t: Date.now() }; })
+        .then(() => { for (const el of document.querySelectorAll(`.es-box[data-es="${CSS.escape(sym)}"]`)) el.outerHTML = earnSumBlock(sym); if (state.stock === sym) try { renderBiz(sym); } catch (e) { console.error(e); } });
     }
-    const X = state.earnsum[sym];
+    return state.earnsum[sym];
+  }
+  function earnSumBlock(sym) {
+    if (isKR(sym)) return '';
+    const last = earnLast(sym);
+    // 발표 뒤 일주일만 실적 카드 맨 위에 — 그 뒤엔 사업 현황의 '분기별 주요 소식'에 남는다
+    if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 7) return '';
+    const X = earnSumGet(sym, last);
     if (X?.lines?.length) return `<div class="es-box" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'} · ${qLabelLong(X.q)}</b><ul>${X.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${EN ? 'Written by AI from the reported numbers and news around the release — may contain mistakes.' : '실적 숫자와 발표 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</small></div>`;
     if (X?.none) return `<div class="es-box" data-es="${esc(sym)}" hidden></div>`;
     return `<div class="es-box loading" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'}</b><small>${EN ? 'Writing the summary…' : '요약을 만드는 중…'}</small></div>`;
@@ -2772,13 +2791,46 @@
       getJ(`${NEWS_API}/istmt?s=${encodeURIComponent(sym)}${live ? '&live=1' : ''}`, 25000)
         .then((j) => { state.istmt[sym] = { d: j?.rev ? j : null, t: Date.now() }; })
         .catch(() => { state.istmt[sym] = { ...(X || {}), loading: false, t: Date.now() }; })
-        .then(() => { for (const el of document.querySelectorAll(`.flow-box[data-fl="${CSS.escape(sym)}"]`)) el.outerHTML = flowBlock(sym); paintFlows(); });
+        .then(() => { for (const el of document.querySelectorAll(`.flow-box[data-fl="${CSS.escape(sym)}"]`)) el.outerHTML = flowBlock(sym); paintFlows(); if (state.stock === sym) try { renderBiz(sym); } catch (e) { console.error(e); } });
     }
     return state.istmt[sym]?.d || null;
   }
   const earnDayLive = (sym) => { try { const D = earnDay(sym); return D && (D.phase === 'pre' && dday(D.N?.date) <= 0 || D.phase === 'post' && Date.now() - (D.repMs || 0) < 2 * 864e5); } catch { return false; } };
   // 흐름도를 그릴 수 있는 실적인지(매출보다 영업손실이 크면 막대가 거의 안 보여 그리지 않는다)
   const flowOk = (I) => I && I.rev > 0 && I.op != null && I.net != null && Math.abs(I.op) <= I.rev && (I.gross == null || I.gross >= 0);
+  // 나간 돈(비용) 항목별 색 — 흐름도 막대와 '100원으로 보면'이 같은 색을 쓴다. 남은 돈(이익)은 초록
+  const FL_PAL = ['#e0707a', '#f0925a', '#d9ae3c', '#d77fb3', '#9f8be6'];
+  function flowParts(I, keep) {
+    const R = I.rev, out = [];
+    if (I.cost > 0 && I.gross != null) out.push({ id: 'cost', k: EN ? 'Cost of revenue' : '매출원가', v: I.cost });
+    const opexT = Math.max(0, I.opexTotal ?? (I.gross ?? R) - I.op);
+    let items = (I.opex || []).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
+    if (items.length > keep + 1) items = [...items.slice(0, keep), { k: 'other', v: items.slice(keep).reduce((a, b) => a + b.v, 0) }];
+    if (items.length >= 2) items.forEach((o, i) => out.push({ id: 'x' + i, k: flName(o.k), v: o.v }));
+    else if (opexT > 0) out.push({ id: 'opexAll', k: EN ? 'Operating expenses' : '영업비용', v: opexT });
+    out.forEach((o, i) => { o.color = FL_PAL[Math.min(i, FL_PAL.length - 1)]; });
+    if (I.op > 0) {
+      const tax = Math.max(0, I.tax || 0), other = I.net + (I.tax || 0) - I.op;
+      if (tax > R * 0.002) out.push({ id: 'tax', k: EN ? 'Tax' : '세금', v: tax, color: '#8fa3bf' });
+      if (-other > R * 0.002) out.push({ id: 'oth', k: EN ? 'Other costs' : '기타 비용', v: -other, color: '#8b95a5' });
+      const toNet = I.op - tax - Math.max(0, -other);
+      if (toNet > 0) out.push({ id: 'net', k: EN ? 'Net income' : '순이익', v: toNet, color: 'var(--good)', pos: true, extra: other > R * 0.005 ? other : 0 });
+    }
+    return out;
+  }
+  // 매출 100원이 어디로 갔나: 막대 하나 + 항목별 '몇 원' — 흐름도보다 먼저 한눈에
+  function flow100(I) {
+    const R = I.rev, P = flowParts(I, 3), spent = P.filter((p) => !p.pos).reduce((a, p) => a + p.v, 0), total = Math.max(R, spent);
+    const won = (v) => { const n = (v / R) * 100; return EN ? (n < 0.5 ? '<$1' : `$${Math.round(n)}`) : n < 0.5 ? '1원 미만' : `${Math.round(n)}원`; };
+    const loss = I.op < 0;
+    const h = loss ? (EN ? `To earn $100 of revenue, it spent <b>${won(spent)}</b>` : `매출 100원을 벌려고 <b>${won(spent)}</b>을 썼어요`) : (EN ? 'Out of every $100 of revenue' : '매출 100원이 어디로 갔나');
+    const net = P.find((p) => p.pos);
+    return `<div class="f100"><div class="f100-h">${h}</div>
+      <div class="f100-bar">${P.map((p) => `<i style="width:${((p.v / total) * 100).toFixed(2)}%;background:${p.color}"></i>`).join('')}${loss ? `<em style="left:${((R / total) * 100).toFixed(1)}%"></em>` : ''}</div>
+      <ul class="f100-lg">${P.map((p) => `<li${p.pos ? ' class="pos"' : ''}><i style="background:${p.color}"></i><span>${esc(p.k)}</span><b>${won(p.v)}</b></li>`).join('')}</ul>
+      ${net?.extra ? `<p class="f100-n">${EN ? `Plus ${won(net.extra)} from outside the business (interest etc.) → net income ${won(I.net)}` : `여기에 이자 등 영업 밖 수익 ${won(net.extra)}이 더해져 순이익은 ${won(I.net)}이에요`}</p>` : ''}
+      ${loss ? `<p class="f100-n">${EN ? `The marker is $100 of revenue — everything past it is the loss (${won(-I.op)}).` : `세로선이 매출 100원이에요. 넘어간 만큼(${won(-I.op)})이 영업손실이에요.`}</p>` : ''}</div>`;
+  }
   function flowBlock(sym) {
     const I = istmtOf(sym);
     if (!flowOk(I)) return `<div class="flow-box" data-fl="${esc(sym)}" hidden></div>`;
@@ -2792,7 +2844,8 @@
     const segBar = segs.length >= 2 ? `<div class="flow-seg"><div class="fs-bar">${segs.map((s, i) => `<i style="width:${(s.v / I.rev) * 100}%;opacity:${1 - i * 0.16}"></i>`).join('')}</div><div class="fs-lg">${segs.map((s, i) => `<span><i style="opacity:${1 - i * 0.16}"></i>${esc(flName(s.k))} <b>${pctPlain(s.v / I.rev, 0)}</b></span>`).join('')}</div></div>` : '';
     const src = I.src === 'pr' ? `${EN ? 'From the earnings release (SEC 8-K), read automatically after the release' : '실적 발표문(SEC 8-K) 숫자 · 발표 직후 자동 반영'}${I.url ? ` · <a href="${esc(I.url)}" target="_blank" rel="noopener">${EN ? 'source' : '원문'}</a>` : ''}` : (EN ? 'Nasdaq quarterly income statement' : 'Nasdaq 분기 손익계산서 기준');
     paintFlows();
-    return `<div class="flow-box" data-fl="${esc(sym)}"><div class="flow-h"><b>💸 ${EN ? 'Where the money went' : '돈의 흐름'} · ${qLabelLong(I.end)}</b><p>${head}</p></div>${segBar}<div class="flow-svg" data-fls="${esc(sym)}" role="img" aria-label="${EN ? 'Income statement flow chart' : '손익 흐름도'}"></div><small>${src}</small></div>`;
+    const legend = `<div class="flow-lg"><span class="pos"><i></i>${EN ? 'Money kept (profit)' : '남은 돈(이익)'}</span><span class="neg"><i></i>${EN ? 'Money spent (costs)' : '나간 돈(비용)'}</span></div>`;
+    return `<div class="flow-box" data-fl="${esc(sym)}"><div class="flow-h"><b>💸 ${EN ? 'Where the money went' : '돈의 흐름'} · ${qLabelLong(I.end)}</b><p>${head}</p></div>${flow100(I)}${segBar ? `<div class="f-sub">${EN ? 'Revenue by business' : '사업별 매출'}</div>${segBar}` : ''}<div class="f-sub">${EN ? 'Step by step' : '단계별 흐름'}</div>${legend}<div class="flow-svg" data-fls="${esc(sym)}" role="img" aria-label="${EN ? 'Income statement flow chart' : '손익 흐름도'}"></div><small>${src}</small></div>`;
   }
   function paintFlows() {
     cancelAnimationFrame(paintFlows.raf);
@@ -2801,7 +2854,7 @@
   addEventListener('resize', () => paintFlows(), { passive: true });
   // 산키(흐름) 그림: 열마다 막대(노드)를 쌓고, 막대 사이를 굵기 = 금액인 띠로 잇는다
   function flowSvg(I, W) {
-    const narrow = W < 460, H = narrow ? 300 : 330, TOP = 46, BOT = 44, nw = 9, LW = narrow ? 90 : 128;
+    const narrow = W < 460, H = narrow ? 370 : 400, TOP = 50, BOT = 48, nw = 10, LW = narrow ? 96 : 136;
     const nm = (ko, en, enShort) => (EN ? (narrow ? enShort : en) : ko); // 좁은 화면 영어는 짧은 이름
     const C = { rev: 'var(--muted)', pos: 'var(--good)', neg: 'var(--flow-cost)' };
     const R = I.rev, pc = (v) => pctPlain(v / R, 0);
@@ -2815,7 +2868,7 @@
     if (I.gross != null && I.cost > 0) {
       col++;
       node('gross', col, I.gross, C.pos, nm('매출총이익', 'Gross profit', 'Gross'), fu(I.gross), `${EN ? 'margin' : '이익률'} ${pc(I.gross)}`);
-      node('cost', col, I.cost, C.neg, nm('매출원가', 'Cost of revenue', 'Cost'), fu(I.cost), `${EN ? '' : '매출의 '}${pc(I.cost)}${EN ? ' of rev.' : ''}`);
+      node('cost', col, I.cost, FL_PAL[0], nm('매출원가', 'Cost of revenue', 'Cost'), fu(I.cost), `${EN ? '' : '매출의 '}${pc(I.cost)}${EN ? ' of rev.' : ''}`);
       link('rev', 'gross', I.gross); link('rev', 'cost', I.cost);
       base = 'gross'; baseV = I.gross;
     }
@@ -2829,16 +2882,16 @@
       const tax = Math.max(0, I.tax || 0), other = I.net + (I.tax || 0) - I.op; // 기타 = 이자·투자 손익 등 영업 밖의 것
       const toNet = Math.max(0, I.op - tax - Math.max(0, -other));
       if (I.net > 0) { node('net', col, toNet, C.pos, EN ? 'Net income' : '순이익', fu(I.net), `${EN ? 'margin' : '이익률'} ${pc(I.net)}${other > R * 0.005 && !narrow ? (EN ? ` · incl. +${fu(other)} other` : ` · 기타 수익 ${fu(other)} 포함`) : ''}`); link('op', 'net', toNet); }
-      if (tax > R * 0.002) { node('tax', col, tax, C.neg, EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}${EN ? ' of rev.' : ''}`); link('op', 'tax', tax); }
-      if (-other > R * 0.002) { node('oth', col, -other, C.neg, EN ? 'Other' : '기타 비용', fu(-other), EN ? 'interest etc.' : '이자 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
+      if (tax > R * 0.002) { node('tax', col, tax, '#8fa3bf', EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}${EN ? ' of rev.' : ''}`); link('op', 'tax', tax); }
+      if (-other > R * 0.002) { node('oth', col, -other, '#8b95a5', EN ? 'Other' : '기타 비용', fu(-other), EN ? 'interest etc.' : '이자 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
     }
-    // 영업비용 항목: 큰 순서로(좁은 화면 3개, 넓으면 4개) + 나머지는 '기타'
+    // 영업비용 항목: 큰 순서로 3개 + 나머지는 '기타'
     let items = (I.opex || []).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
-    const keep = narrow ? 3 : 4;
+    const keep = 3; // '100원으로 보면'과 같은 묶음·색
     if (items.length > keep + 1) items = [...items.slice(0, keep), { k: 'other', v: items.slice(keep).reduce((a, b) => a + b.v, 0) }];
-    if (items.length >= 2) items.forEach((o, i) => { node('x' + i, col, o.v, C.neg, flName(o.k), fu(o.v), `${EN ? '' : '매출의 '}${pc(o.v)}${EN ? ' of rev.' : ''}`); link('opex', 'x' + i, o.v); });
+    if (items.length >= 2) items.forEach((o, i) => { node('x' + i, col, o.v, FL_PAL[Math.min(i + (I.cost > 0 && I.gross != null ? 1 : 0), FL_PAL.length - 1)], flName(o.k), fu(o.v), `${EN ? '' : '매출의 '}${pc(o.v)}${EN ? ' of rev.' : ''}`); link('opex', 'x' + i, o.v); });
     const ncol = col + 1, byCol = [...Array(ncol)].map((_, c) => N.filter((n) => n.col === c));
-    const gap = 8, plotH = H - TOP - BOT;
+    const gap = 12, plotH = H - TOP - BOT;
     const k = Math.min(...byCol.map((ns) => (plotH - gap * (ns.length - 1)) / Math.max(1, ns.reduce((a, n) => a + n.v, 0))));
     const xAt = (c) => (c === ncol - 1 ? W - LW - nw : Math.round((c * (W - LW - nw)) / (ncol - 1)));
     for (const ns of byCol) { let y = TOP; for (const n of ns) { n.x = xAt(n.col); n.y = y; n.h = Math.max(2, n.v * k); y += n.h + gap; n.oy = n.y; n.iy = n.y; } }
@@ -2848,14 +2901,14 @@
       const a = byId[l.s], b = byId[l.t]; if (!a || !b) continue;
       const h = Math.max(1, l.v * k), x0 = a.x + nw, x1 = b.x, y0 = a.oy, y1 = b.iy, mx = (x0 + x1) / 2;
       a.oy += h; b.iy += h;
-      paths += `<path d="M${x0},${y0}C${mx},${y0} ${mx},${y1} ${x1},${y1}L${x1},${y1 + h}C${mx},${y1 + h} ${mx},${y0 + h} ${x0},${y0 + h}Z" fill="${b.color}" opacity=".32"/>`;
+      paths += `<path d="M${x0},${y0}C${mx},${y0} ${mx},${y1} ${x1},${y1}L${x1},${y1 + h}C${mx},${y1 + h} ${mx},${y0 + h} ${x0},${y0 + h}Z" fill="${b.color}" opacity="${b.color === C.pos ? '.4' : '.3'}"/>`;
     }
     const t = (x, y, s, cls, anchor = 'start') => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${esc(s)}</text>`;
     let rects = '', labels = '';
     for (const n of N) rects += `<rect x="${n.x}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.color}"/>`;
     // 마지막 열 이름표: 막대 오른쪽, 겹치지 않게 위아래로 밀어 둔다
     const last = byCol[ncol - 1].map((n) => ({ n, y: n.y + n.h / 2 }));
-    const LH = (n) => (n.sub ? 40 : 28);
+    const LH = (n) => (n.sub ? 44 : 30);
     for (let i = 1; i < last.length; i++) last[i].y = Math.max(last[i].y, last[i - 1].y + LH(last[i - 1].n) - 2);
     const over = last.length ? last.at(-1).y + LH(last.at(-1).n) / 2 - (H - 4) : 0;
     if (over > 0) for (let i = last.length - 1; i >= 0; i--) { last[i].y -= over; if (i && last[i - 1].y > last[i].y - LH(last[i - 1].n) + 2) last[i - 1].y = last[i].y - LH(last[i - 1].n) + 2; }
@@ -2866,15 +2919,14 @@
       // 오른쪽 끝을 넘지 않게(한글은 글자당 약 11px, 영문·숫자 약 6.3px로 어림)
       const clip = (v) => { let w = 0, i = 0; for (; i < v.length; i++) { w += /[ㄱ-힝]/.test(v[i]) ? 11 : 6.3; if (w > W - x - 4) break; } return i < v.length ? v.slice(0, Math.max(1, i - 1)) + '…' : v; };
       n.name = clip(n.name); n.sub = clip(n.sub || '');
-      labels += t(x, y0 + 4, n.name, 'fl-n ' + (n.color === C.pos ? 'fl-pos' : n.color === C.neg ? 'fl-neg' : '')) + t(x, y0 + 17, n.val, 'fl-v') + (n.sub ? t(x, y0 + 29, n.sub, 'fl-s') : '');
+      labels += `<text x="${x}" y="${y0 + 4}" class="fl-n" style="fill:${n.color === C.rev ? 'var(--ink)' : n.color}">${esc(n.name)}</text>` + t(x, y0 + 18, n.val, 'fl-v') + (n.sub ? t(x, y0 + 31, n.sub, 'fl-s') : '');
     }
     // 앞 열: 맨 위 막대는 위에, 아래 막대는 아래에 이름표
     // 좁은 화면: 열 사이가 좁아 이름·금액만(매출의 전년비는 남김) — 이익률은 오른쪽 이름표와 맨 위 한 줄에
     for (const ns of byCol.slice(0, -1)) ns.forEach((n, i) => {
       if (narrow) n.sub = '';
-      const below = i > 0, x = n.x, y = below ? n.y + n.h + 14 : n.y - (n.sub ? 32 : 19);
-      const cls = 'fl-n ' + (n.color === C.pos ? 'fl-pos' : n.color === C.neg ? 'fl-neg' : '');
-      labels += t(x, y, n.name, cls) + t(x, y + 13, n.val, 'fl-v') + (n.sub ? t(x, y + 25, n.sub, 'fl-s') : '');
+      const below = i > 0, x = n.x, y = below ? n.y + n.h + 15 : n.y - (n.sub ? 34 : 21);
+      labels += `<text x="${x}" y="${y}" class="fl-n" style="fill:${n.color === C.rev ? 'var(--ink)' : n.color}">${esc(n.name)}</text>` + t(x, y + 14, n.val, 'fl-v') + (n.sub ? t(x, y + 27, n.sub, 'fl-s') : '');
     });
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${paths}${rects}${labels}</svg>`;
   }
@@ -7448,6 +7500,20 @@ ${what.join(' · ')}
         <div class="tem-chart biz-chart">${CQ.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col"><b>${bizFmt(B, valOf(x)).replace(/억원$|조원$/, (m) => m[0])}</b><div class="tem-stack biz-stack">${stack && x.seg ? (B.seg || []).map((s, i) => { const sx = (B.seg || []).reduce((a, t) => a + (x.seg[t.k] || 0), 0) || 1; return `<i style="height:${(((x.seg[s.k] || 0) / sx) * (valOf(x) / mx) * 100).toFixed(2)}%;background:${BIZ_COLORS[i % 4]}"></i>`; }).join('') : `<i style="height:${h(valOf(x))};background:${BIZ_COLORS[0]}"></i>`}</div><span>${bizQs(B, x)}</span><small class="${cls(x.op)}">${x.op != null ? bizFmt(B, x.op).replace(/억원$|조원$/, (m) => m[0]) : '–'}</small></div>`; }).join('')}</div>
         <p class="note">${stack ? `${EN ? 'Bars' : '막대'}: ${(B.seg || []).map((s, i) => `<span class="biz-dot" style="background:${BIZ_COLORS[i % 4]}"></span>${esc(tx(s))}`).join(' + ')} · ` : ''}${EN ? 'number below' : '아래 숫자'}: ${esc(tx(B.profit))}</p>` : '';
     const hlQ = Q.filter((x) => x.hl?.length).slice(0, 4);
+    // 새 분기 실적이 나왔는데 이 카드(직접 확인해 넣는 값·매주 자동 정리)에 아직 없으면: 발표 숫자 + AI 요약을 '분기별 주요 소식' 맨 위에 붙인다
+    const NL = !isKR(sym) ? earnLast(sym) : null;
+    let autoLi = '';
+    if (NL?.reportedOn && (!L.filed || daysBetween(L.filed, NL.reportedOn) > 20) && daysBetween(NL.reportedOn, today) <= 120) {
+      const E = earnOf(sym), q = (E?.quarters || []).find((x) => x.end === NL.end) || {}, ya = (E?.quarters || []).find((x) => x.end === `${+NL.end.slice(0, 4) - 1}${NL.end.slice(4)}`);
+      const sur = (E?.surprises || []).find((x) => x.end === NL.end), I0 = istmtOf(sym), I = I0 && Math.abs(Date.parse(I0.end) - Date.parse(NL.end)) < 40 * 864e5 ? I0 : null;
+      const rev = I?.rev ?? q.revenue, revYa = I?.prev?.rev ?? ya?.revenue, op = I?.op ?? q.opIncome, net = I?.net ?? q.netIncome;
+      const nums = [rev != null ? `${EN ? 'Revenue' : '매출'} ${fu(rev)}${revYa ? ` (${EN ? 'YoY' : '전년 대비'} ${pct(rev / revYa - 1, 0)})` : ''}` : '', op != null ? `${EN ? 'operating income' : '영업이익'} ${fu(op)}` : '', net != null ? `${EN ? 'net income' : '순이익'} ${fu(net)}` : '',
+        sur?.consensus != null && isFinite(sur.consensus) ? `EPS $${(+sur.eps).toFixed(2)} (${EN ? `est. $${(+sur.consensus).toFixed(2)}` : `예상 $${(+sur.consensus).toFixed(2)} ${sur.eps >= sur.consensus ? '상회' : '하회'}`})` : ''].filter(Boolean).join(' · ');
+      const X = earnSumGet(sym, NL), ai = X?.q === NL.end && X.lines?.length ? X.lines : [];
+      const lines = [nums, ...ai].filter(Boolean);
+      const qn = Math.ceil(+NL.end.slice(5, 7) / 3), yy = NL.end.slice(2, 4), fresh = daysBetween(NL.reportedOn, today) <= 7;
+      if (lines.length) autoLi = `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${qn} '${yy}` : `'${yy} ${qn}분기`}</b> <em class="biz-new">${fresh ? (EN ? 'Just reported' : '방금 발표') : (EN ? 'Auto summary' : '자동 요약')}</em>${I?.url ? ` <a href="${safeUrl(I.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${lines.map((h) => `<li>${esc(h)}</li>`).join('')}</ul><p class="note">${ai.length ? (EN ? 'Reported numbers + an AI summary of the release and news — may contain mistakes; replaced once reviewed.' : '발표 숫자와 AI가 발표·뉴스로 정리한 요약이에요. 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.') : (EN ? 'Reported numbers, added automatically.' : '발표 숫자를 자동으로 붙였어요.')}</p></div></li>`;
+    }
     const sub = `${B.auto ? `<span class="biz-auto">${EN ? 'Auto' : '자동 정리'}</span>` : ''}${bizQ(B, L)} ${EN ? 'results' : '실적'}${L.filed ? ` (${md(isoToTs(L.filed))})` : ''} · ${esc(tx(B.src))}${nx && nx >= today ? ` · ${EN ? 'next' : '다음 실적'} ${md(isoToTs(nx))}` : ''}`;
     card('biz', {
       title, sub, easy: esc(tx(B.easy)),
@@ -7455,8 +7521,8 @@ ${what.join(' · ')}
         <div class="ns-grid h-grid biz-n${tiles.length <= 4 ? tiles.length : tiles.length <= 6 ? 3 : 4}">${tiles.map(([l, v, s, c]) => `<div><span>${esc(l)}</span><b class="${c}">${v}</b><small>${s || '&nbsp;'}</small></div>`).join('')}</div>
         ${B.guide ? `<p class="biz-guide">🎯 <b>${EN ? 'Company outlook' : '회사 전망'}</b> ${esc(tx(B.guide))}</p>` : ''}
         ${chart}
-        ${hlQ.length ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>
-        <ul class="faa-ms tem-ms">${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}</ul>` : ''}
+        ${hlQ.length || autoLi ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>
+        <ul class="faa-ms tem-ms">${autoLi}${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}</ul>` : ''}
         <p class="note">${stale ? `${EN ? 'A newer quarter may already be out — it will be added after review. ' : '새 분기 실적이 나왔을 수 있어요 — 확인 후 더할게요. '}` : ''}${B.fy ? esc(tx(B.fy)) + '. ' : ''}${B.auto ? (EN ? 'Compiled automatically from reported quarterly financials and refreshed weekly. Business mix and quarterly highlights are hand-checked for featured stocks only. Not investment advice.' : '회사가 공시한 분기 재무제표를 자동으로 정리했고 매주 새로 받아요. 사업별 비중·분기별 소식은 대표 종목만 직접 확인해 정리해요. 투자 조언이 아니에요.') : EN ? 'Figures are from the company’s own earnings releases (see Source); new quarters are added after review. Not investment advice.' : '숫자는 회사가 낸 실적 발표 기준이에요(원문 링크). 새 분기는 확인 후 더해요. 투자 조언이 아니에요.'}</p>`,
     });
   }

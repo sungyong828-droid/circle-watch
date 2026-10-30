@@ -2506,10 +2506,12 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   // 발표 직후에는 EPS 서프라이즈(Nasdaq)가 재무제표보다 먼저 들어온다 → 더 최근 것을 기준 분기로
   const qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((x) => x.reported);
   const last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
-  if (!last?.reportedOn || Date.now() - Date.parse(last.reportedOn + 'T00:00:00Z') > 10 * 86400000) return json({ none: true }, cors);
+  if (!last?.reportedOn) return json({ none: true }, cors);
   const key = `earnsum:${sym}:${last.end}`;
+  // 만들어 둔 요약은 보관 기간(40일) 동안 계속 준다 — 사업 현황 '분기별 주요 소식'이 쓴다. 새로 만드는 건 발표 뒤 10일까지만
   const kept = env?.SUMS ? await env.SUMS.get(key, 'json').catch(() => null) : null;
   if (kept?.lines?.length) return json(kept, { ...cors, 'cache-control': 'no-store' });
+  if (Date.now() - Date.parse(last.reportedOn + 'T00:00:00Z') > 10 * 86400000) return json({ none: true }, cors);
   if (!env?.AI) return json({ none: true, error: 'AI 없음' }, cors);
   const lock = new Request(`${url.origin}/earnsumlock?k=${encodeURIComponent(key)}`);
   if (await cache.match(lock)) return json({ pending: true }, cors);
