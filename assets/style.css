@@ -489,6 +489,7 @@ button.kpi:active { background: var(--surface-2); }
 .btn-ghost { border: 1px solid var(--line); background: transparent; color: var(--ink-2); }
 
 /* 스테이블코인 표: 달러 스테이블코인 ↔ 서클 자체 상품 구분선 */
+tr.sub-h th:first-child { white-space: normal; word-break: keep-all; } /* 'Circle's own products · comparison'이 옆 칸과 겹치지 않게 */
 tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(--line); padding-top: 14px; color: var(--ink); font-weight: 700; }
 #c-stables thead th { border-bottom: 2px solid var(--ink-2); color: var(--ink); font-weight: 700; }
 /* 뉴스: 암호화폐 */
@@ -789,7 +790,7 @@ details.more .more-close::after { content: ''; width: 7px; height: 7px; border-r
 .mk-st.pre, .mk-st.post { color: var(--warn); background: rgba(224, 164, 58, 0.12); }
 .mk-st.closed { color: var(--muted); background: var(--surface-2); }
 .mk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 12px; background: var(--line-soft); border-radius: 10px; overflow: hidden; }
-@media (max-width: 480px) { .mk-t { grid-template-areas: 'n' 'v' 'p'; grid-template-columns: 1fr; padding: 7px 8px; } .mk-spark { display: none; } .mk-t b { font-size: 13px; } .mk-t em { font-size: 11px; } }
+@media (max-width: 480px) { .mk-t { grid-template-areas: 'n' 'v' 'p'; grid-template-columns: 1fr; padding: 7px 8px; } .mk-spark { display: none; } .mk-grid .mk-t b { font-size: 13px; } .mk-grid .mk-t em { font-size: 11px; } } /* 좁은 화면: 큰 숫자($76,850)가 칸을 넘지 않게 — 아래 기본 규칙보다 우선 */
 .mk-t { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'n s' 'v v' 'p p'; gap: 1px 4px; padding: 8px 10px; background: var(--surface); min-width: 0; }
 .mk-t span { grid-area: n; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mk-t b { grid-area: v; font: 600 14.5px var(--mono); white-space: nowrap; }
