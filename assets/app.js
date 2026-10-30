@@ -2854,7 +2854,7 @@
   addEventListener('resize', () => paintFlows(), { passive: true });
   // 산키(흐름) 그림: 열마다 막대(노드)를 쌓고, 막대 사이를 굵기 = 금액인 띠로 잇는다
   function flowSvg(I, W) {
-    const narrow = W < 460, H = narrow ? 390 : 400, TOP = narrow ? 70 : 50, BOT = 48, nw = 10, LW = narrow ? 96 : 136;
+    const narrow = W < 460, H = narrow ? 380 : 400, TOP = 50, BOT = 48, nw = 10, LW = narrow ? 86 : 136;
     const nm = (ko, en, enShort) => (EN ? (narrow ? enShort : en) : ko); // 좁은 화면 영어는 짧은 이름
     const C = { rev: 'var(--muted)', pos: 'var(--good)', neg: 'var(--flow-cost)' };
     const R = I.rev, pc = (v) => pctPlain(v / R, 0);
@@ -2925,9 +2925,11 @@
     // 좁은 화면: 열 사이가 좁아 이름·금액만(매출의 전년비는 남김) — 이익률은 오른쪽 이름표와 맨 위 한 줄에
     for (const ns of byCol.slice(0, -1)) ns.forEach((n, i) => {
       if (narrow) n.sub = '';
-      // 좁은 화면: 열 사이가 좁아 이웃 열 이름이 붙으니 홀수 열의 위 이름표는 한 칸 더 위로(엇갈리게)
-      const below = i > 0, x = n.x, y = below ? n.y + n.h + 15 : n.y - (n.sub ? 34 : 21) - (narrow && n.col % 2 ? 30 : 0);
-      labels += `<text x="${x}" y="${y}" class="fl-n" style="fill:${n.color === C.rev ? 'var(--ink)' : n.color}">${esc(n.name)}</text>` + t(x, y + 14, n.val, 'fl-v') + (n.sub ? t(x, y + 27, n.sub, 'fl-s') : '');
+      // 이름표는 모두 같은 높이에 두고, 다음 열까지 남은 폭보다 길면 글자 크기만 조금 줄인다(서로 닿지 않게)
+      const below = i > 0, x = n.x, y = below ? n.y + n.h + 15 : n.y - (n.sub ? 34 : 21);
+      const room = xAt(n.col + 1) - x - 6, est = (v, f) => [...v].reduce((a, ch) => a + (/[ㄱ-힝]/.test(ch) ? f * 0.98 : f * 0.6), 0);
+      const fs = (v, f) => Math.max(10, Math.min(f, Math.floor((f * room) / Math.max(1, est(v, f)) * 10) / 10));
+      labels += `<text x="${x}" y="${y}" class="fl-n" style="fill:${n.color === C.rev ? 'var(--ink)' : n.color};font-size:${fs(n.name, 12)}px">${esc(n.name)}</text>` + `<text x="${x}" y="${y + 14}" class="fl-v" style="font-size:${fs(n.val, 12)}px">${esc(n.val)}</text>` + (n.sub ? t(x, y + 27, n.sub, 'fl-s') : '');
     });
     return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${paths}${rects}${labels}</svg>`;
   }

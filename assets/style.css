@@ -1877,6 +1877,7 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .es-box.loading small { display: block; margin-top: 4px; }
 /* 💸 돈의 흐름(실적 흐름도) */
 .flow-box { margin-top: 12px; padding: 12px 12px 10px; border-radius: 14px; background: var(--surface-2); }
+@media (max-width: 420px) { .flow-box { padding-left: 10px; padding-right: 10px; } } /* 좁은 화면: 흐름도 열 사이를 조금이라도 넓게 */
 .flow-h b { font-size: 14px; }
 .flow-h p { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); word-break: keep-all; }
 .flow-h p b { color: var(--ink); font-size: inherit; }
