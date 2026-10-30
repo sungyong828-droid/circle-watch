@@ -1041,7 +1041,7 @@ async function nasdaqIstmt(sym) {
 }
 // 실적 발표 공시 하나(8-K 2.02)의 보도자료를 읽는다 — 공시마다 한 번만(KV), 못 읽었으면 6시간 뒤 다시
 async function istmtFromFiling(sym, cik, f, env, E) {
-  const key = `istmt2:${sym}:${f.acc}`;
+  const key = `istmt3:${sym}:${f.acc}`; // 해석기를 고치면 숫자를 바꿔 다시 읽게
   const kept = env?.SUMS ? await env.SUMS.get(key, 'json').catch(() => null) : null;
   if (kept && (!kept.fail || Date.now() - Date.parse(kept.at) < 6 * 3600000)) return kept;
   E ||= await buildEarnings(sym).catch(() => null);
@@ -1082,7 +1082,7 @@ export async function handleIstmt(url, cache, cors, ctx, env) {
   if (KR_RE.test(sym)) return json({ none: true }, cors);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   const live = url.searchParams.has('live');
-  return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=1`, {
+  return swr(cache, ctx, `${url.origin}/istmt?s=${sym}&v=2`, {
     freshSec: live ? 120 : 3 * 3600, keepSec: 30 * 86400, cors,
     build: async () => JSON.stringify((await buildIstmt(sym, url.origin, cache, env, live)) || { none: true }),
   });

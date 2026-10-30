@@ -1879,6 +1879,7 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .flow-h b { font-size: 14px; }
 .flow-h p { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); word-break: keep-all; }
 .flow-h p b { color: var(--ink); font-size: inherit; }
+.flow-h .nw { white-space: nowrap; }
 .flow-svg { width: 100%; min-height: 300px; }
 .flow-svg svg { display: block; overflow: visible; }
 .flow-svg text { font-family: var(--sans); font-size: 11px; fill: var(--ink-2); paint-order: stroke; stroke: var(--surface-2); stroke-width: 3px; stroke-linejoin: round; }

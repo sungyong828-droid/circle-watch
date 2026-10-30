@@ -14,7 +14,7 @@
 - 워커: 데이터 멈춤 디스코드 알림(⚠️ 데이터 확인 필요) 끔 — 멈추면 조용히 수집만 깨우고 결과를 KV kick:last에 기록 · 워커 배포 필요 <!-- internal -->
 - 💸 **돈의 흐름**(새 기능): 실적 탭에서 매출이 원가·영업비용(연구개발·마케팅 등)·세금으로 어떻게 나가고 얼마가 순이익으로 남는지 흐름도 한 장으로 보여 줘요. 맨 위에 '매출 중 몇 %가 순이익으로 남았는지' 한 줄 결론이 먼저 나와요.
 - 📢 실적 발표가 나오면 바로 반영돼요: 서버가 5분마다 미국 SEC의 새 실적 공시를 확인해서, 내 종목 실적이 나오면 실적 숫자와 흐름도를 곧바로 새로 받아요(휴대폰·PC를 켜 두지 않아도). 실적 알림을 켠 종목은 폰 알림과 🔔 알림 목록에도 '매출·순이익'이 함께 와요.
-<!-- internal --> 워커 cron(*/5) earnWatch: EDGAR 최신 8-K 목록 + 발표일 ±1일 종목은 회사별 목록 → 2.02 공시면 보도자료 손익계산서 해석(표·글자 흐름 둘 다, 검산·1년 전 매출 대조 통과분만) → KV istmt2:/earnlive · /istmt(없으면 Nasdaq 분기 손익) · /earnlive?s=내 종목만 · 감시 목록 KV earnwatch(실적을 본 미국 종목 30일) · 워커 배포 필요
+<!-- internal --> 워커 cron(*/5) earnWatch: EDGAR 최신 8-K 목록 + 발표일 ±1일 종목은 회사별 목록 → 2.02 공시면 보도자료 손익계산서 해석(표·글자 흐름 둘 다, 검산·1년 전 매출 대조 통과분만) → KV istmt3:/earnlive · /istmt(없으면 Nasdaq 분기 손익) · /earnlive?s=내 종목만 · 감시 목록 KV earnwatch(실적을 본 미국 종목 30일) · 워커 배포 필요
 <!-- EN
 - Where the money went (new): the earnings tab now shows one flow chart of how revenue turns into cost, operating expenses (R&D, marketing…), tax and finally net income, with a one-line takeaway on top.
 - New earnings show up right away: the server checks SEC filings every 5 minutes, so when one of your stocks reports, the numbers and the flow chart refresh on their own — no need to keep your phone or PC on. Stocks with earnings alerts also get a push with revenue and net income.

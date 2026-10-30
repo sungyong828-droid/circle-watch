@@ -2785,9 +2785,9 @@
     const m = (v) => (v / I.rev), net = I.net, op = I.op, yy = I.prev?.rev ? I.rev / I.prev.rev - 1 : null;
     const revS = `${fu(I.rev)}${yy != null ? (EN ? ` (${pct(yy, 0)} Y/Y)` : `(전년비 ${pct(yy, 0)})`) : ''}`;
     const head = op >= 0
-      ? (net >= 0 ? (EN ? `Of ${revS} in revenue, <b>${fu(net)} (${pctPlain(m(net), 0)})</b> was left as profit` : `매출 ${revS} 중 <b>${fu(net)}(${pctPlain(m(net), 0)})</b>가 순이익으로 남았어요`)
-        : (EN ? `Operating profit ${fu(op)}, but a <b>net loss of ${fu(-net)}</b>` : `영업이익 ${fu(op)}을 냈지만 <b>순손실 ${fu(-net)}</b>`))
-      : (EN ? `Costs exceeded revenue: <b>operating loss ${fu(-op)}</b>${net >= 0 ? ` · net income ${fu(net)}` : ''}` : `비용이 매출보다 커서 <b>영업손실 ${fu(-op)}</b>${net >= 0 ? ` · 순이익은 ${fu(net)}` : ''}`);
+      ? (net >= 0 ? (EN ? `Of ${revS} in revenue, <b>${fu(net)} (${pctPlain(m(net), 0)})</b> was left as profit` : `매출 ${revS} 중 <span class="nw"><b>${fu(net)}(${pctPlain(m(net), 0)})</b>가</span> 순이익으로 남았어요`)
+        : (EN ? `Operating profit ${fu(op)}, but a <b>net loss of ${fu(-net)}</b>` : `영업이익 <span class="nw">${fu(op)}을</span> 냈지만 <b class="nw">순손실 ${fu(-net)}</b>`))
+      : (EN ? `Costs exceeded revenue: <b>operating loss ${fu(-op)}</b>${net >= 0 ? ` · net income ${fu(net)}` : ''}` : `비용이 매출보다 커서 <b class="nw">영업손실 ${fu(-op)}</b>${net >= 0 ? ` · <span class="nw">순이익은 ${fu(net)}</span>` : ''}`);
     const segs = (I.segs || []).filter((s) => s.v > 0);
     const segBar = segs.length >= 2 ? `<div class="flow-seg"><div class="fs-bar">${segs.map((s, i) => `<i style="width:${(s.v / I.rev) * 100}%;opacity:${1 - i * 0.16}"></i>`).join('')}</div><div class="fs-lg">${segs.map((s, i) => `<span><i style="opacity:${1 - i * 0.16}"></i>${esc(flName(s.k))} <b>${pctPlain(s.v / I.rev, 0)}</b></span>`).join('')}</div></div>` : '';
     const src = I.src === 'pr' ? `${EN ? 'From the earnings release (SEC 8-K), read automatically after the release' : '실적 발표문(SEC 8-K) 숫자 · 발표 직후 자동 반영'}${I.url ? ` · <a href="${esc(I.url)}" target="_blank" rel="noopener">${EN ? 'source' : '원문'}</a>` : ''}` : (EN ? 'Nasdaq quarterly income statement' : 'Nasdaq 분기 손익계산서 기준');
@@ -2815,27 +2815,27 @@
     if (I.gross != null && I.cost > 0) {
       col++;
       node('gross', col, I.gross, C.pos, nm('매출총이익', 'Gross profit', 'Gross'), fu(I.gross), `${EN ? 'margin' : '이익률'} ${pc(I.gross)}`);
-      node('cost', col, I.cost, C.neg, nm('매출원가', 'Cost of revenue', 'Cost'), fu(I.cost), `${EN ? '' : '매출의 '}${pc(I.cost)}`);
+      node('cost', col, I.cost, C.neg, nm('매출원가', 'Cost of revenue', 'Cost'), fu(I.cost), `${EN ? '' : '매출의 '}${pc(I.cost)}${EN ? ' of rev.' : ''}`);
       link('rev', 'gross', I.gross); link('rev', 'cost', I.cost);
       base = 'gross'; baseV = I.gross;
     }
     col++;
     const opexT = Math.max(0, I.opexTotal ?? baseV - I.op);
     if (I.op > 0) { node('op', col, I.op, C.pos, nm('영업이익', 'Operating profit', 'Op. profit'), fu(I.op), `${EN ? 'margin' : '이익률'} ${pc(I.op)}`); link(base, 'op', I.op); }
-    node('opex', col, opexT, C.neg, nm('영업비용', 'Operating expenses', 'OpEx'), fu(opexT), I.op < 0 ? (EN ? `loss ${fu(-I.op)}` : `영업손실 ${fu(-I.op)}`) : `${EN ? '' : '매출의 '}${pc(opexT)}`);
+    node('opex', col, opexT, C.neg, nm('영업비용', 'Operating expenses', 'OpEx'), fu(opexT), I.op < 0 ? (EN ? `loss ${fu(-I.op)}` : `영업손실 ${fu(-I.op)}`) : `${EN ? '' : '매출의 '}${pc(opexT)}${EN ? ' of rev.' : ''}`);
     link(base, 'opex', Math.min(opexT, baseV - Math.max(0, I.op)));
     col++;
     if (I.op > 0) {
       const tax = Math.max(0, I.tax || 0), other = I.net + (I.tax || 0) - I.op; // 기타 = 이자·투자 손익 등 영업 밖의 것
       const toNet = Math.max(0, I.op - tax - Math.max(0, -other));
       if (I.net > 0) { node('net', col, toNet, C.pos, EN ? 'Net income' : '순이익', fu(I.net), `${EN ? 'margin' : '이익률'} ${pc(I.net)}${other > R * 0.005 && !narrow ? (EN ? ` · incl. +${fu(other)} other` : ` · 기타 수익 ${fu(other)} 포함`) : ''}`); link('op', 'net', toNet); }
-      if (tax > R * 0.002) { node('tax', col, tax, C.neg, EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}`); link('op', 'tax', tax); }
+      if (tax > R * 0.002) { node('tax', col, tax, C.neg, EN ? 'Tax' : '세금', fu(tax), `${EN ? '' : '매출의 '}${pc(tax)}${EN ? ' of rev.' : ''}`); link('op', 'tax', tax); }
       if (-other > R * 0.002) { node('oth', col, -other, C.neg, EN ? 'Other' : '기타 비용', fu(-other), EN ? 'interest etc.' : '이자 등'); link('op', 'oth', Math.min(-other, I.op - tax)); }
     }
     // 영업비용 항목: 큰 순서로 4개 + 나머지는 '기타'
     let items = (I.opex || []).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
     if (items.length > 5) items = [...items.slice(0, 4), { k: 'other', v: items.slice(4).reduce((a, b) => a + b.v, 0) }];
-    if (items.length >= 2) items.forEach((o, i) => { node('x' + i, col, o.v, C.neg, flName(o.k), fu(o.v), `${EN ? '' : '매출의 '}${pc(o.v)}`); link('opex', 'x' + i, o.v); });
+    if (items.length >= 2) items.forEach((o, i) => { node('x' + i, col, o.v, C.neg, flName(o.k), fu(o.v), `${EN ? '' : '매출의 '}${pc(o.v)}${EN ? ' of rev.' : ''}`); link('opex', 'x' + i, o.v); });
     const ncol = col + 1, byCol = [...Array(ncol)].map((_, c) => N.filter((n) => n.col === c));
     const gap = 8, plotH = H - TOP - BOT;
     const k = Math.min(...byCol.map((ns) => (plotH - gap * (ns.length - 1)) / Math.max(1, ns.reduce((a, n) => a + n.v, 0))));
