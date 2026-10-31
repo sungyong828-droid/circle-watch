@@ -2852,8 +2852,12 @@
     const top = [...P].sort((a, b) => b.v - a.v)[0], x = spent / I.rev, net = I.net;
     const many = x >= 2 ? (EN ? ` (${x.toFixed(1)}x revenue)` : `(매출의 ${x.toFixed(1)}배)`) : '';
     const topS = top && top.id !== 'opexAll' ? (EN ? ` · biggest cost: ${esc(top.k)} ${fu(top.v)}` : ` · 가장 큰 비용은 <span class="nw">${esc(top.k)} ${fu(top.v)}</span>`) : '';
-    return EN ? `Costs of ${fu(spent)}${many} exceeded revenue of ${fu(I.rev)}: <b class="nw">operating loss ${fu(-I.op)}</b>${topS}${net >= 0 ? ` · net income ${fu(net)}` : ''}`
-      : `비용 <span class="nw">${fu(spent)}${many}</span>이 매출 ${fu(I.rev)}보다 커서 <b class="nw">영업손실 ${fu(-I.op)}</b>${topS}${net >= 0 ? ` · <span class="nw">순이익은 ${fu(net)}</span>` : ''}`;
+    // 순이익: 영업 밖 손익(투자·이자·평가손익 등)이 크면 순손익이 영업손익과 많이 달라서 함께 적는다
+    const nonOp = net - I.op, big = Math.abs(nonOp) > Math.max(Math.abs(I.op) * 0.1, I.rev * 0.05);
+    const netS = net >= 0 ? (EN ? ` · net income ${fu(net)}` : ` · <span class="nw">순이익은 ${fu(net)}</span>`)
+      : big ? (EN ? ` · net loss ${fu(-net)} (incl. ${fu(Math.abs(nonOp))} non-operating ${nonOp < 0 ? 'loss' : 'gain'})` : ` · <span class="nw">순손실 ${fu(-net)}</span>(영업 밖 ${nonOp < 0 ? '손실' : '이익'} ${fu(Math.abs(nonOp))} 반영)`) : '';
+    return EN ? `Costs of ${fu(spent)}${many} exceeded revenue of ${fu(I.rev)}: <b class="nw">operating loss ${fu(-I.op)}</b>${topS}${netS}`
+      : `비용 <span class="nw">${fu(spent)}${many}</span>이 매출 ${fu(I.rev)}보다 커서 <b class="nw">영업손실 ${fu(-I.op)}</b>${topS}${netS}`;
   }
   // 영업이익에 매출 밖의 이익(평가이익 등)이 들어 있는 회사(예: 비트코인을 가진 회사) — 매출총이익 − 비용보다 영업이익이 크다
   const flowOpex = (I) => (I.opex || []).filter((o) => o.v > 0).reduce((a, o) => a + o.v, 0) || Math.max(0, I.opexTotal ?? 0);
@@ -6912,7 +6916,7 @@ ${what.join(' · ')}
   const EARN_CHECK = {
     CRCL: 'USDC 유통량·준비금 이자수익, 금리 민감도, 유통 비용(Coinbase 등) 비중, 다음 분기 가이던스',
     JOBY: '주주서한의 <b>FAA 인증 단계별 %</b>(서버가 자동으로 읽어 반영), 현금 소진 속도, 상업 운항 일정',
-    SPCX: '스타링크 매출 성장, 설비투자 규모 — 발표 <b>2거래일 뒤 보호예수 최대 13억 주 해제</b>(3분기)',
+    SPCX: '스타링크 매출 성장, 설비투자 규모, 스타십 일정 — 남은 보호예수 해제 일정은 보호예수 카드에서 확인',
     TEM: '매출 성장률, 흑자 유지 여부, 유전체 검사 건수·데이터 사업 성장',
   };
   // 발표 전날·당일 카드: 지난 발표에서 회사가 한 약속 중 이번에 확인할 것(저장된 약속 추적 결과를 그대로 씀)
@@ -7465,7 +7469,7 @@ ${what.join(' · ')}
           <div><span>종양 검사 건수 증가율</span><b>${L.oncologyGrowth != null ? `+${Math.round(L.oncologyGrowth * 100)}%` : '–'}</b><small>${pv?.oncologyGrowth != null ? `직전 분기 +${Math.round(pv.oncologyGrowth * 100)}%` : '전년 같은 분기 대비'}</small></div>
           <div><span>MRD(재발 감시) 검사</span><b>${L.mrdTests != null ? nf(0).format(L.mrdTests) + '건' : '–'}</b><small>${pv?.mrdTests != null ? `직전 분기 ${nf(0).format(pv.mrdTests)}건` : '분기 검사 건수'}</small></div>
           <div><span>조정 EBITDA</span><b class="${cls(L.adjEbitda)}">${L.adjEbitda != null ? (L.adjEbitda < 0 ? '-' : '+') + usdM(Math.abs(L.adjEbitda)) : '–'}</b><small>${pv?.adjEbitda != null ? `직전 분기 ${pv.adjEbitda < 0 ? '-' : '+'}${usdM(Math.abs(pv.adjEbitda))}` : ''}</small></div>
-          <div><span>올해 회사 전망</span><b>${G ? `<span class="nw">$${(G.revenueLow / 1000).toFixed(3)}~</span><span class="nw">${(G.revenueHigh / 1000).toFixed(3)}B</span>` : '–'}</b><small>${G ? (EN ? `revenue · adj. EBITDA ~$${G.adjEbitda}M` : `매출 · 조정 EBITDA 약 $${G.adjEbitda}M`) : ''}</small></div>
+          <div><span>올해 회사 전망</span><b>${G ? `<span class="nw">$${(G.revenueLow / 1000).toFixed(3)}~</span><span class="nw">${(G.revenueHigh / 1000).toFixed(3)}B</span>` : '–'}</b><small>${G ? (EN ? `revenue · adj. EBITDA ~$${G.adjEbitda}M${G.asOf ? ` · as of ${md(isoToTs(G.asOf))}` : ''}` : `매출 · 조정 EBITDA 약 $${G.adjEbitda}M${G.asOf ? ` · ${md(isoToTs(G.asOf))} 발표 기준` : ''}`) : ''}</small></div>
         </div>
         <div class="mini-h er-h">분기별 매출과 수익성</div>
         <div class="tem-chart">${bars.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col" title="${temQ(x.q)} 매출 ${usdM(x.revenue)}"><b>${usdM(x.revenue)}</b><div class="tem-stack"><i style="height:${h(x.diagnostics)}"></i><em style="height:${h(x.dataApps)}"></em></div><span>${temQ(x.q).replace('분기', 'Q')}</span><small class="${cls(x.adjEbitda)}">${x.adjEbitda != null ? (x.adjEbitda < 0 ? '−' : '+') + Math.abs(x.adjEbitda).toFixed(1) : '–'}</small></div>`; }).join('')}</div>
