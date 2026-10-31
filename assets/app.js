@@ -2832,13 +2832,17 @@
   // 매출 100원이 어디로 갔나: 막대 하나 + 항목별 '몇 원' — 흐름도보다 먼저 한눈에
   function flow100(I) {
     const R = I.rev, P = flowParts(I, 3), spent = P.filter((p) => !p.pos).reduce((a, p) => a + p.v, 0), total = Math.max(R, spent);
-    const cs = I.cur === 'KRW' ? '₩' : '$', won = (v) => { const n = (v / R) * 100; return EN ? (n < 0.5 ? `<${cs}1` : `${cs}${nf(0).format(n)}`) : n < 0.5 ? '1원 미만' : `${nf(0).format(n)}원`; };
+    const cs = I.cur === 'KRW' ? '₩' : '$', fmtN = (n) => (EN ? (n < 0.5 ? `<${cs}1` : `${cs}${nf(0).format(n)}`) : n < 0.5 ? '1원 미만' : `${nf(0).format(n)}원`), won = (v) => fmtN((v / R) * 100);
+    // 항목별 '몇 원'은 반올림해도 합이 정확히 100원(적자면 쓴 돈 전체)이 되게 — 소수점이 큰 항목부터 1원씩 더한다
+    const raw = P.map((p) => (p.v / R) * 100), tgt = Math.round(raw.reduce((a, b) => a + b, 0)), fl = raw.map(Math.floor);
+    raw.map((x, i) => [x - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, Math.max(0, tgt - fl.reduce((a, b) => a + b, 0))).forEach(([, i]) => { fl[i] += 1; });
+    const wonP = (i) => (fl[i] >= 1 ? fmtN(fl[i]) : fmtN(raw[i]));
     const loss = I.op < 0;
     const h = loss ? (EN ? `To earn ${cs}100 of revenue, it spent <b>${won(spent)}</b>` : `매출 100원을 벌려고 <b>${won(spent)}</b>을 썼어요`) : (EN ? `Out of every ${cs}100 of revenue` : '매출 100원이 어디로 갔나');
     const net = P.find((p) => p.pos);
     return `<div class="f100"><div class="f100-h">${h}</div>
       <div class="f100-bar">${P.map((p) => `<i style="width:${((p.v / total) * 100).toFixed(2)}%;background:${p.color}"></i>`).join('')}${loss ? `<em style="left:${((R / total) * 100).toFixed(1)}%"></em>` : ''}</div>
-      <ul class="f100-lg">${P.map((p) => `<li${p.pos ? ' class="pos"' : ''}><i style="background:${p.color}"></i><span>${esc(p.k)}</span><b>${won(p.v)}</b></li>`).join('')}</ul>
+      <ul class="f100-lg">${P.map((p, i) => `<li${p.pos ? ' class="pos"' : ''}><i style="background:${p.color}"></i><span>${esc(p.k)}</span><b>${wonP(i)}</b></li>`).join('')}</ul>
       ${net?.extra ? `<p class="f100-n">${EN ? `Plus ${won(net.extra)} from outside the business (interest etc.) → net income ${won(I.net)}` : `여기에 이자 등 영업 밖 수익 ${won(net.extra)}이 더해져 순이익은 ${won(I.net)}이에요`}</p>` : ''}
       ${loss ? `<p class="f100-n">${EN ? `The marker is ${cs}100 of revenue — everything past it is the loss (${won(-I.op)}).` : `세로선이 매출 100원이에요. 넘어간 만큼(${won(-I.op)})이 영업손실이에요.`}</p>` : ''}</div>`;
   }
@@ -5548,8 +5552,12 @@ ${what.join(' · ')}
   }
 
   // ---------------------------------------------------------------- 서클 실적 (뉴스 탭 상단)
-  const qLabel = (end) => { const [y, m] = end.split('-'); return `'${y.slice(2)} ${Math.ceil(+m / 3)}Q`; };
-  const qLabelLong = (end) => { const [y, m] = end.split('-'); return EN ? `Q${Math.ceil(+m / 3)} ${y}` : `${y}년 ${Math.ceil(+m / 3)}분기`; };
+  // 분기 이름은 분기 말일에서 45일 앞(분기 한가운데)의 달력 분기 — 회계연도가 다른 회사(엔비디아 7/26 마감 = 5~7월)도 대부분 걸친 분기로
+  const qMid = (end) => new Date(Date.parse(end + 'T12:00:00Z') - 45 * 864e5);
+  const qLabel = (end) => { const d = qMid(end); return `'${String(d.getUTCFullYear()).slice(2)} ${Math.floor(d.getUTCMonth() / 3) + 1}Q`; };
+  const qLabelLong = (end) => { const d = qMid(end), y = d.getUTCFullYear(), q = Math.floor(d.getUTCMonth() / 3) + 1; return EN ? `Q${q} ${y}` : `${y}년 ${q}분기`; };
+  // 1년 전 같은 분기(52·53주 회계연도는 말일이 하루이틀 달라서 20일 안이면 같은 분기로)
+  const qYa = (Q, end) => { const t = Date.parse(end) - 365 * 864e5; return (Q || []).find((x) => Math.abs(Date.parse(x.end) - t) < 20 * 864e5) || null; };
   const dday = (iso) => Math.ceil((Date.parse(iso + 'T00:00:00') - new Date(new Date().toDateString()).getTime()) / 86400000);
   const krDate = (iso) => { const d = new Date(iso + 'T00:00:00'); if (EN) return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`; };
   const usdS = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
@@ -5564,7 +5572,7 @@ ${what.join(' · ')}
     }
     const Q = E.quarters || [];
     const last = Q.at(-1), prev = Q.at(-2);
-    const yearAgo = last ? Q.find((q) => q.end === `${+last.end.slice(0, 4) - 1}${last.end.slice(4)}`) : null;
+    const yearAgo = last ? qYa(Q, last.end) : null;
     const chg = (a, b) => (a != null && b ? a / b - 1 : null);
     const N = E.next;
     const dd = N?.date ? dday(N.date) : null;
@@ -5586,7 +5594,7 @@ ${what.join(' · ')}
         <div><span>매출(총수익)</span><b>${usdS(last.revenue)}</b><small>전년 ${sp(chg(last.revenue, yearAgo?.revenue)) || '–'} · 전분기 ${sp(chg(last.revenue, prev?.revenue)) || '–'}</small></div>
         <div><span>준비금 이자수익</span><b>${usdS(last.reserve)}</b><small>${last.reserve && last.revenue ? `매출의 ${pctPlain(last.reserve / last.revenue, 0)}` : 'USDC 준비금 이자'}</small></div>
         <div><span>순이익</span><b class="${last.netIncome < 0 ? 'down' : ''}">${usdS(last.netIncome)}</b><small>순이익률 ${last.netIncome != null && last.revenue ? pctPlain(last.netIncome / last.revenue) : '–'} · 전년 ${spTurn(last.netIncome, yearAgo?.netIncome)}</small></div>
-        <div><span>EPS(주당순이익)</span><b>${last.eps != null ? '$' + last.eps.toFixed(2) : '–'}</b><small>${lastSur ? `예상 $${lastSur.consensus.toFixed(2)} · ${lastSur.surprise >= 0 ? '상회' : '하회'} ${sp(lastSur.surprise)}` : '예상치 없음'}</small></div>
+        <div><span>EPS(주당순이익)</span><b>${epsMain(last)}</b><small>${lastSur ? `${epsAdjNote(last, lastSur)}예상 $${lastSur.consensus.toFixed(2)} · ${lastSur.surprise >= 0 ? '상회' : '하회'} ${sp(lastSur.surprise)}` : '예상치 없음'}</small></div>
       </div>` : '';
 
     card('earnings', {
@@ -5605,10 +5613,10 @@ ${what.join(' · ')}
         <div class="tbl-wrap"><table>
           <thead><tr><th>분기</th><th>매출</th><th>전년 대비</th><th>순이익</th><th>EPS</th></tr></thead>
           <tbody>${Q.slice().reverse().map((q, i) => {
-            const ya = Q.find((x) => x.end === `${+q.end.slice(0, 4) - 1}${q.end.slice(4)}`);
+            const ya = qYa(Q, q.end);
             const y = chg(q.revenue, ya?.revenue);
             return `<tr${i === 0 ? ' class="today"' : ''}><td>${qLabel(q.end)}</td><td class="strong">${usdS(q.revenue)}</td><td class="${cls(y)}">${y == null ? '–' : pct(y)}</td>
-              <td class="${q.netIncome < 0 ? 'down' : ''}">${usdS(q.netIncome)}</td><td>${q.eps != null ? '$' + q.eps.toFixed(2) : '–'}${q.consensus != null ? `<span class="dim" style="display:block;font-size:10.5px">예상 ${q.consensus.toFixed(2)}</span>` : ''}</td></tr>`;
+              <td class="${q.netIncome < 0 ? 'down' : ''}">${usdS(q.netIncome)}</td><td>${epsCell(q)}</td></tr>`;
           }).join('')}</tbody></table></div>
         <p class="note">EPS 칸 아래 회색 숫자는 발표 전 시장 예상치. '25 2Q 적자는 상장(IPO) 관련 일회성 비용 영향입니다.</p>`,
     });
@@ -7556,7 +7564,7 @@ ${what.join(' · ')}
     const NL = !isKR(sym) ? earnLast(sym) : null;
     let autoLi = '';
     if (NL?.reportedOn && (!L.filed || daysBetween(L.filed, NL.reportedOn) > 20) && daysBetween(NL.reportedOn, today) <= 120) {
-      const E = earnOf(sym), q = (E?.quarters || []).find((x) => x.end === NL.end) || {}, ya = (E?.quarters || []).find((x) => x.end === `${+NL.end.slice(0, 4) - 1}${NL.end.slice(4)}`);
+      const E = earnOf(sym), q = (E?.quarters || []).find((x) => x.end === NL.end) || {}, ya = qYa((E?.quarters || []), NL.end);
       const sur = (E?.surprises || []).find((x) => x.end === NL.end), I0 = istmtOf(sym), I = I0 && Math.abs(Date.parse(I0.end) - Date.parse(NL.end)) < 40 * 864e5 ? I0 : null;
       const rev = I?.rev ?? q.revenue, revYa = I?.prev?.rev ?? ya?.revenue, op = I?.op ?? q.opIncome, net = I?.net ?? q.netIncome;
       const nums = [rev != null ? `${EN ? 'Revenue' : '매출'} ${fu(rev)}${revYa ? ` (${EN ? 'YoY' : '전년 대비'} ${pct(rev / revYa - 1, 0)})` : ''}` : '', op != null ? `${EN ? 'operating income' : '영업이익'} ${fu(op)}` : '', net != null ? `${EN ? 'net income' : '순이익'} ${fu(net)}` : '',
@@ -7655,7 +7663,11 @@ ${what.join(' · ')}
       </div>${sym ? voteBlock(sym) : ''}`;
   }
   const earnSkeleton = (sym, id) => card(id, { title: `${STOCK_INFO[sym].short} 실적`, info: INFO.searnings, body: `<p class="skeleton">${st(sym).earnErr ? '실적을 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` });
-  const epsCell = (q) => `${q.eps != null ? '$' + q.eps.toFixed(2) : '–'}${q.consensus != null ? `<span class="dim" style="display:block;font-size:10.5px">예상 ${q.consensus.toFixed(2)}</span>` : ''}`;
+  // EPS: 회계 기준(SEC)을 먼저, 시장 예상과 비교하는 조정 EPS(Nasdaq)가 다르면 함께 — 일회성 이익·손실 때문에 크게 다를 수 있다
+  const epsAdjDiff = (q, a = q?.epsAdj) => a != null && q?.eps != null && Math.abs(a - q.eps) > 0.01;
+  const epsMain = (q) => (q?.eps != null ? '$' + q.eps.toFixed(2) : q?.epsAdj != null ? `$${q.epsAdj.toFixed(2)}${EN ? ' (adj.)' : '(조정)'}` : '–');
+  const epsAdjNote = (q, sur) => (sur && epsAdjDiff(q, sur.eps) ? `${EN ? 'adj. EPS' : '조정 EPS'} $${(+sur.eps).toFixed(2)} · ` : '');
+  const epsCell = (q) => `${epsMain(q)}${q.consensus != null || epsAdjDiff(q) ? `<span class="dim" style="display:block;font-size:10.5px">${epsAdjDiff(q) ? `${EN ? 'adj.' : '조정'} ${q.epsAdj.toFixed(2)} · ` : ''}${q.consensus != null ? `${EN ? 'est.' : '예상'} ${q.consensus.toFixed(2)}` : ''}</span>` : ''}`;
 
   function renderBurnEarnings(sym = 'JOBY') {
     const E = st(sym).earn;
@@ -7672,7 +7684,7 @@ ${what.join(' · ')}
           <div><span>분기 현금 소진</span><b class="down">${usdS2(last.burn)}</b><small>영업현금흐름 + 설비투자 · 전분기 ${usdS2(prev?.burn)}</small></div>
           <div><span>매출</span><b>${usdS2(last.revenue)}</b><small>전분기 ${sp(last.revenue != null && prev?.revenue ? last.revenue / prev.revenue - 1 : null)} · 헬기 여객(Blade) 포함</small></div>
           <div><span>순손실</span><b class="down">${usdS2(last.netIncome)}</b><small>영업손실 ${usdS2(last.opIncome)}</small></div>
-          <div><span>EPS(주당순이익)</span><b>${last.eps != null ? '$' + last.eps.toFixed(2) : '–'}</b><small>${sur ? `예상 $${sur.consensus.toFixed(2)} · ${sur.surprise >= 0 ? '예상보다 양호' : '예상보다 부진'} ${sp(sur.eps >= 0 ? sur.surprise : -sur.surprise)}` : '예상치 없음'}</small></div>
+          <div><span>EPS(주당순이익)</span><b>${epsMain(last)}</b><small>${sur ? `${epsAdjNote(last, sur)}예상 $${sur.consensus.toFixed(2)} · ${sur.surprise >= 0 ? '예상보다 양호' : '예상보다 부진'} ${sp(sur.eps >= 0 ? sur.surprise : -sur.surprise)}` : '예상치 없음'}</small></div>
           <div><span>연구개발비</span><b>${usdS2(last.rnd)}</b><small>인증·생산 준비 비용 · 판관비 ${usdS2(last.sga)}</small></div>
         </div>` : ''}${flowBlock(sym)}
         <div class="mini-h er-h">현금·단기투자 잔고</div>
@@ -7710,7 +7722,7 @@ ${what.join(' · ')}
   }
 
   // ---------------------------------------------------------------- 실적: 성장 기업(SPCX·TEM) — 매출 성장·이익률 중심
-  const yoyQ = (Q, q) => { if (!q) return null; const ya = Q.find((x) => x.end === `${+q.end.slice(0, 4) - 1}${q.end.slice(4)}`); return q.revenue != null && ya?.revenue ? q.revenue / ya.revenue - 1 : null; };
+  const yoyQ = (Q, q) => { if (!q) return null; const ya = qYa(Q, q.end); return q.revenue != null && ya?.revenue ? q.revenue / ya.revenue - 1 : null; };
   const gmQ = (q) => (!q?.revenue ? null : q.grossProfit != null ? q.grossProfit / q.revenue : q.cost != null ? (q.revenue - q.cost) / q.revenue : null);
   function renderGrowthEarnings(sym) {
     const S = STOCK_INFO[sym], E = st(sym).earn;
@@ -7734,7 +7746,7 @@ ${what.join(' · ')}
           <div><span>매출총이익률</span><b>${g != null ? pctPlain(g) : '–'}</b><small>${g != null && gPrev != null ? `전분기 ${pctPlain(gPrev)} → <span class="${cls(g - gPrev)}">${pp(g - gPrev, 1)}</span>` : '매출 − 매출원가'}</small></div>
           <div><span>영업이익</span><b class="${cls(last.opIncome)}">${usdS2(last.opIncome)}</b><small>영업이익률 ${opm != null ? pctPlain(opm) : '–'}</small></div>
           <div><span>순이익</span><b class="${cls(last.netIncome)}">${usdS2(last.netIncome)}</b><small>${turn || `전분기 ${usdS2(prev?.netIncome)}`}</small></div>
-          <div><span>EPS(주당순이익)</span><b>${last.eps != null ? '$' + last.eps.toFixed(2) : '–'}</b><small>${sur ? `예상 $${sur.consensus.toFixed(2)} · ${sur.eps >= sur.consensus ? '예상보다 양호' : '예상보다 부진'}` : '예상치 없음'}</small></div>
+          <div><span>EPS(주당순이익)</span><b>${epsMain(last)}</b><small>${sur ? `${epsAdjNote(last, sur)}예상 $${sur.consensus.toFixed(2)} · ${sur.eps >= sur.consensus ? '예상보다 양호' : '예상보다 부진'}` : '예상치 없음'}</small></div>
           <div><span>현금·단기투자</span><b>${usdS2(last.liquidity ?? last.cash)}</b><small>${cashSmall}</small></div>
         </div>` : ''}${flowBlock(sym)}
         <div class="pair er-pair">
@@ -8050,7 +8062,7 @@ ${what.join(' · ')}
     // 3) 최근 실적 · 4) 다음 일정 (미국 상장 기업)
     const E = !kr && !etf ? earnOf(sym) : null;
     if (E) {
-      const q = (E.quarters || []).at(-1), sur = q && (E.surprises || []).find((x) => x.end === q.end), ya = q && (E.quarters || []).find((x) => x.end === `${+q.end.slice(0, 4) - 1}${q.end.slice(4)}`);
+      const q = (E.quarters || []).at(-1), sur = q && (E.surprises || []).find((x) => x.end === q.end), ya = q && qYa((E.quarters || []), q.end);
       const yoy0 = q?.revenue && ya?.revenue ? q.revenue / ya.revenue - 1 : null, yoy = yoy0 != null && ya.revenue >= 5e6 && Math.abs(yoy0) <= 3 ? yoy0 : null; // 1년 전 매출이 아주 작으면 % 대신 금액으로
       const revAbs = yoy == null && q?.revenue ? `${EN ? 'revenue' : '매출'} <b>${usdS2(q.revenue)}</b>` : '', beat = sur?.eps != null && sur?.consensus != null ? sur.eps >= sur.consensus : null;
       if (q && (yoy != null || revAbs || beat != null)) rows.push({ ic: '📊', lb: `${EN ? 'Last results' : '최근 실적'} · ${qLabelLong(q.end)}`, tx: [yoy != null ? `${EN ? 'revenue' : '매출'} <b class="${cls(yoy)}">${pct(yoy, 0)}</b> ${EN ? 'YoY' : '(1년 전보다)'}` : revAbs, beat != null ? `EPS ${EN ? (beat ? 'beat' : 'missed') : (beat ? '예상 상회' : '예상 하회')} ($${(+sur.eps).toFixed(2)} vs $${(+sur.consensus).toFixed(2)})` : ''].filter(Boolean).join(' · '), go: V('earn:c-earnings', 'searn:c-searnings') });
