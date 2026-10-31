@@ -796,7 +796,7 @@ export async function handleEarnings(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   // 1시간마다 새로(새로고침 버튼은 10분), 그 사이엔 즉시 응답
-  return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr3`, {
+  return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr4`, {
     freshSec: url.searchParams.has('live') ? 120 : url.searchParams.has('fresh') ? 600 : 3600, keepSec: 7 * 86400, cors,
     build: async () => {
       const E = await buildEarnings(sym, url.origin);
@@ -2545,7 +2545,7 @@ const EARNSUM_SYS = '너는 한국 개인투자자에게 미국 기업 실적을
 export async function handleEarnSum(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  const E = await (async () => { try { const r = await cache.match(new Request(`${url.origin}/earnings?s=${sym}&v=swr3`)); if (r) return await r.json(); } catch {} return buildEarnings(sym).catch(() => null); })();
+  const E = await (async () => { try { const r = await cache.match(new Request(`${url.origin}/earnings?s=${sym}&v=swr4`)); if (r) return await r.json(); } catch {} return buildEarnings(sym).catch(() => null); })();
   // 발표 직후에는 EPS 서프라이즈(Nasdaq)가 재무제표보다 먼저 들어온다 → 더 최근 것을 기준 분기로
   const qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((x) => x.reported);
   const last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
