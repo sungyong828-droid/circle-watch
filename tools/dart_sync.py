@@ -1,7 +1,7 @@
 """한국 종목 '비싼가 싼가'용 분기 재무 → Cloudflare KV(SUMS). GitHub Actions(.github/workflows/dart-sync.yml)가 매일 돌린다 — PC가 꺼져 있어도 된다.
 (Cloudflare 서버에서는 DART가 접속을 막지만 GitHub 서버에서는 된다 — 2026-11-03 확인)
 
-  python tools/dart_sync.py          # 받아서 KV에 올리기
+  python tools/dart_sync.py          # 받아서 KV에 올리기(PC에서 직접 돌려도 된다)
   python tools/dart_sync.py --dry    # 받기만(tools/cache/valkr_*.json 확인용)
   분기 보고서가 나오는 5·8·11·3월에 값이 바뀐다. 새 보고서가 없는 날은 바뀐 KV 칸이 없어 아무것도 올리지 않는다.
 
