@@ -1,8 +1,9 @@
-"""한국 종목 '비싼가 싼가'용 분기 재무 → Cloudflare KV(SUMS). 이 PC에서 돌린다(DART는 해외·클라우드 서버 접속을 막음).
+"""한국 종목 '비싼가 싼가'용 분기 재무 → Cloudflare KV(SUMS). GitHub Actions(.github/workflows/dart-sync.yml)가 매일 돌린다 — PC가 꺼져 있어도 된다.
+(Cloudflare 서버에서는 DART가 접속을 막지만 GitHub 서버에서는 된다 — 2026-11-03 확인)
 
   python tools/dart_sync.py          # 받아서 KV에 올리기
   python tools/dart_sync.py --dry    # 받기만(tools/cache/valkr_*.json 확인용)
-  윈도우 작업 스케줄러가 매주 월요일 아침에 돌린다(PC가 켜져 있을 때). 분기 보고서가 나오는 5·8·11·3월에 값이 바뀐다.
+  분기 보고서가 나오는 5·8·11·3월에 값이 바뀐다. 새 보고서가 없는 날은 바뀐 KV 칸이 없어 아무것도 올리지 않는다.
 
 - DART 인증키: 환경 변수 DART_KEY 또는 %USERPROFILE%\\.fire-portfolio\\dart_key.txt (저장소 밖 — 깃에 올리지 않는다)
 - 상장사 전체(ETF 제외): 다중회사 주요계정(fnlttMultiAcnt, 한 번에 100개 회사) 5년 × 4개 보고서 → 매출액·당기순이익(연결 우선)
@@ -251,7 +252,20 @@ def main():
     if DRY:
         print('(--dry) KV에 올리지 않았어요')
         return
+    # 지난번에 올린 값과 같은 칸은 다시 올리지 않는다(KV 쓰기 한도 절약 — 매일 돌아도 새 보고서가 없으면 0번)
+    import hashlib
+    hp = os.path.join(CACHE, 'dart_kv_hash.json')
+    old = json.load(open(hp, encoding='utf-8')) if os.path.exists(hp) else {}
+    h = {it['key']: hashlib.sha1(it['value'].encode('utf-8')).hexdigest() for it in items if it['key'] != 'valkr:meta'}
+    items = [it for it in items if it['key'] != 'valkr:meta' and old.get(it['key']) != h[it['key']]]
+    if not items:
+        print('바뀐 칸이 없어 KV에 올리지 않았어요')
+        return
+    items.append({'key': 'valkr:meta', 'value': json.dumps({'at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'n': len(out)})})
+    print(f'바뀐 칸 {len(items) - 1}개 올리기')
     ok = kv_put(items)
+    if ok:
+        json.dump({**old, **h}, open(hp, 'w', encoding='utf-8'))
     print('KV 올리기:', 'OK' if ok else '실패')
     if not ok:
         sys.exit(1)
