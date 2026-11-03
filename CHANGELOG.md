@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🇰🇷 한국 종목도 실적 AI 요약이 자동으로 만들어져요: 네이버 증권에 새 분기 실적이 올라오면 매출·영업이익 증감과 관련 뉴스로 3줄 요약을 만들고, 실적 탭 맨 위(일주일)와 사업 현황 '분기별 주요 소식'에 남겨요.
+<!-- internal --> earnsum 한국 경로(handleKrEarnSum: 네이버 분기 실적 + 한국 뉴스, krseen 첫 발견일 = 발표일, 분기 말 100일 넘으면 새로 안 만듦) · krinfo 본 종목 KV krwatch · 3시간 크론 fillKrSums(4개씩 순환) · 워커 배포 필요
+<!-- EN
+- Korean stocks now get an automatic AI earnings summary too: when Naver Finance posts a new quarter, a 3-line summary of revenue and operating income changes plus related news appears at the top of the earnings tab (for a week) and in "What happened each quarter".
+-->
+
 ## v2026.11.03-2 — 2026-11-03
 
 [이 버전 보기](https://5040cf63.my-fire-portfolio.pages.dev) · 커밋 `14d1036`

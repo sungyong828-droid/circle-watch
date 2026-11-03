@@ -2749,8 +2749,13 @@
     return sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
   }
   // AI 3줄 요약 받기(서버가 분기마다 한 번 만들어 40일 보관) — 실적 카드(발표 뒤 7일)와 사업 현황 '분기별 주요 소식'이 같이 쓴다
-  function earnSumGet(sym, last = earnLast(sym)) {
-    if (isKR(sym) || !last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 120) return null; // 지난 분기 요약 기록(hist)도 같이 받는다
+  // 한국 종목: 네이버 분기 실적에서 예상치가 아닌 마지막 분기(발표일은 서버가 처음 본 날로 알려 줌)
+  function krLastEnd(sym) {
+    const F = st(sym).krinfo?.finance, k = (F?.periods || []).filter((p) => !p.cns).map((p) => p.key).sort().at(-1);
+    return k ? `${k.slice(0, 4)}-${k.slice(4, 6)}-${new Date(Date.UTC(+k.slice(0, 4), +k.slice(4, 6), 0)).getUTCDate()}` : null;
+  }
+  function earnSumGet(sym, last = isKR(sym) ? (krLastEnd(sym) ? { end: krLastEnd(sym), reportedOn: isoToday() } : null) : earnLast(sym)) {
+    if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 120) return null; // 지난 분기 요약 기록(hist)도 같이 받는다
     const S = state.earnsum[sym];
     if (!S || (S.pending && Date.now() - S.t > 20000) || (S.q && S.q !== last.end)) {
       state.earnsum[sym] = { ...(S || {}), t: Date.now(), loading: true };
@@ -2760,8 +2765,7 @@
     return state.earnsum[sym];
   }
   function earnSumBlock(sym) {
-    if (isKR(sym)) return '';
-    const last = earnLast(sym);
+    const last = isKR(sym) ? (() => { const X = earnSumGet(sym); return X?.lines?.length && X.q ? { end: X.q, reportedOn: X.reportedOn } : null; })() : earnLast(sym);
     // 발표 뒤 일주일만 실적 카드 맨 위에 — 그 뒤엔 사업 현황의 '분기별 주요 소식'에 남는다
     if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 7) return '';
     const X = earnSumGet(sym, last);
@@ -7569,6 +7573,17 @@ ${what.join(' · ')}
     // 새 분기 실적이 나왔는데 이 카드(직접 확인해 넣는 값·매주 자동 정리)에 아직 없으면: 발표 숫자 + AI 요약을 '분기별 주요 소식' 맨 위에 붙인다
     const NL = !isKR(sym) ? earnLast(sym) : null;
     let autoLi = '', histLi = '';
+    // 한국 종목: 네이버 분기 실적의 새 분기가 이 카드보다 최근이면 숫자 + AI 요약을 맨 위에
+    if (isKR(sym)) {
+      const F = st(sym).krinfo?.finance, Rw = F?.rows || {}, ks = (F?.periods || []).filter((p) => !p.cns).map((p) => p.key).sort(), k = ks.at(-1);
+      const kEnd = krLastEnd(sym), lEnd = L?.q ? `${L.q.slice(0, 4)}-${String(+L.q.slice(5) * 3).padStart(2, '0')}-28` : null;
+      if (k && kEnd && (!lEnd || Date.parse(kEnd) - Date.parse(lEnd) > 30 * 864e5) && Rw['매출액']?.[k] != null) {
+        const ya = `${+k.slice(0, 4) - 1}${k.slice(4)}`, won = (eok) => (eok == null ? '–' : fuKrw(Math.abs(eok) * 1e8, eok < 0 ? '-' : '')), yy = (nm) => (Rw[nm]?.[k] != null && Rw[nm]?.[ya] > 0 ? ` (${EN ? 'YoY' : '전년 대비'} ${pct(Rw[nm][k] / Rw[nm][ya] - 1, 0)})` : '');
+        const nums = [`${EN ? 'Revenue' : '매출'} ${won(Rw['매출액'][k])}${yy('매출액')}`, Rw['영업이익']?.[k] != null ? `${EN ? 'operating income' : '영업이익'} ${won(Rw['영업이익'][k])}${yy('영업이익')}` : '', Rw['당기순이익']?.[k] != null ? `${EN ? 'net income' : '순이익'} ${won(Rw['당기순이익'][k])}` : ''].filter(Boolean).join(' · ');
+        const X = earnSumGet(sym), ai = X?.q === kEnd && X.lines?.length ? X.lines : [], qn = Math.ceil(+k.slice(4, 6) / 3), yy2 = k.slice(2, 4);
+        autoLi = `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${qn} '${yy2}` : `'${yy2} ${qn}분기`}</b> <em class="biz-new">${X?.reportedOn && daysBetween(X.reportedOn, today) <= 7 ? (EN ? 'Just reported' : '방금 발표') : (EN ? 'Auto summary' : '자동 요약')}</em><ul class="tem-hl">${[nums, ...ai].map((h) => `<li>${esc(h)}</li>`).join('')}</ul><p class="note">${ai.length ? (EN ? 'Numbers from Naver Finance + an AI summary of the news — may contain mistakes; replaced once reviewed.' : '네이버 증권 분기 실적 숫자와 AI가 뉴스로 정리한 요약이에요. 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.') : (EN ? 'Numbers from Naver Finance, added automatically.' : '네이버 증권 분기 실적 숫자를 자동으로 붙였어요.')}</p></div></li>`;
+      }
+    }
     if (NL?.reportedOn && (!L.filed || daysBetween(L.filed, NL.reportedOn) > 20) && daysBetween(NL.reportedOn, today) <= 120) {
       const E = earnOf(sym), q = (E?.quarters || []).find((x) => x.end === NL.end) || {}, ya = qYa((E?.quarters || []), NL.end);
       const sur = (E?.surprises || []).find((x) => x.end === NL.end), I0 = istmtOf(sym), I = I0 && Math.abs(Date.parse(I0.end) - Date.parse(NL.end)) < 40 * 864e5 ? I0 : null;
@@ -7581,8 +7596,8 @@ ${what.join(' · ')}
       if (lines.length) autoLi = `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${qn} '${yy}` : `'${yy} ${qn}분기`}</b> <em class="biz-new">${fresh ? (EN ? 'Just reported' : '방금 발표') : (EN ? 'Auto summary' : '자동 요약')}</em>${I?.url ? ` <a href="${safeUrl(I.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${lines.map((h) => `<li>${esc(h)}</li>`).join('')}</ul><p class="note">${ai.length ? (EN ? 'Reported numbers + an AI summary of the release and news — may contain mistakes; replaced once reviewed.' : '발표 숫자와 AI가 발표·뉴스로 정리한 요약이에요. 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.') : (EN ? 'Reported numbers, added automatically.' : '발표 숫자를 자동으로 붙였어요.')}</p></div></li>`;
     }
     {
-      const X = !isKR(sym) ? earnSumGet(sym) : null, qOf = (end) => { const d = new Date(Date.parse(end + 'T12:00:00Z') - 45 * 864e5); return `${d.getUTCFullYear()}Q${Math.floor(d.getUTCMonth() / 3) + 1}`; };
-      const have = new Set([...hlQ.map((x) => x.q), ...(autoLi && NL ? [qOf(NL.end)] : [])]);
+      const X = earnSumGet(sym), qOf = (end) => { const d = new Date(Date.parse(end + 'T12:00:00Z') - 45 * 864e5); return `${d.getUTCFullYear()}Q${Math.floor(d.getUTCMonth() / 3) + 1}`; };
+      const have = new Set([...hlQ.map((x) => x.q), ...(autoLi && NL ? [qOf(NL.end)] : []), ...(autoLi && isKR(sym) && krLastEnd(sym) ? [qOf(krLastEnd(sym))] : [])]);
       histLi = (X?.hist || []).filter((h) => h.lines?.length && !have.has(qOf(h.end))).slice(0, 4).map((h) => { const k = qOf(h.end); return `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${k.slice(5)} '${k.slice(2, 4)}` : `'${k.slice(2, 4)} ${k.slice(5)}분기`}</b> <em class="biz-new">${EN ? 'Auto summary' : '자동 요약'}</em><ul class="tem-hl">${h.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></li>`; }).join('');
       if (histLi) histLi += `<li class="faa-note"><p class="note">${EN ? 'Auto summaries are written by AI from each release and the news around it — they may contain mistakes.' : '자동 요약은 실적 발표 숫자와 그 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</p></li>`;
     }
@@ -7968,7 +7983,7 @@ ${what.join(' · ')}
     card('searnings', {
       title: `${esc(ttlName(sym))}분기 실적`, sub: '연결 기준 · 단위 억원(조) · 네이버 증권(FnGuide)',
       easy: '분기마다 회사가 얼마를 팔고(매출액) 얼마를 남겼는지(영업이익·순이익)예요. (예상)은 아직 발표 전이라 증권사 예상치 평균(컨센서스)이에요.',
-      body: `${krNextEarn(sym)}${flowBlock(sym)}<div class="div-scroll"><table class="div-tbl kr-earn"><thead><tr><th>분기</th><th>매출액</th><th>영업이익</th><th>이익률</th><th>순이익</th></tr></thead><tbody>
+      body: `${earnSumBlock(sym)}${krNextEarn(sym)}${flowBlock(sym)}<div class="div-scroll"><table class="div-tbl kr-earn"><thead><tr><th>분기</th><th>매출액</th><th>영업이익</th><th>이익률</th><th>순이익</th></tr></thead><tbody>
         ${F.periods.map((pd, i) => `<tr${pd.cns ? ' class="kr-cns"' : ''}><td>${esc(pd.title.replace(/\.$/, ''))}${pd.cns ? '<small>예상</small>' : ''}</td><td>${cell('매출액', pd.key, eok)}${growth('매출액', pd.key, i)}</td><td>${cell('영업이익', pd.key, (v) => `<span class="${cls(v)}">${eok(v)}</span>`)}</td><td>${cell('영업이익률', pd.key, (v) => v.toFixed(1) + '%')}</td><td>${cell('당기순이익', pd.key, eok)}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="note">작은 숫자는 1년 전 같은 분기 대비. 한국 종목은 실적 발표일 자동 알림(실적 당일 모드)은 아직 없어요.</p>`,
