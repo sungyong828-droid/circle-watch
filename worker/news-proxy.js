@@ -798,8 +798,17 @@ export async function handleEarnings(url, cache, cors, ctx, env) {
   // 1시간마다 새로(새로고침 버튼은 10분), 그 사이엔 즉시 응답
   return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr4`, {
     freshSec: url.searchParams.has('live') ? 120 : url.searchParams.has('fresh') ? 600 : 3600, keepSec: 7 * 86400, cors,
-    build: async () => {
+    build: async (prev) => {
       const E = await buildEarnings(sym, url.origin);
+      // Nasdaq이 잠깐 응답하지 않으면 EPS 예상·발표일이 빠진 채 저장된다 → 직전에 받아 둔 값을 그대로 쓴다
+      if (!E.surprises?.length || !E.next?.date) {
+        const P = prev ? await prev.json().catch(() => null) : null;
+        if (P && !E.surprises?.length && P.surprises?.length) {
+          E.surprises = P.surprises;
+          for (const q of E.quarters) { const o = (P.quarters || []).find((x) => x.end === q.end); if (o) for (const k of ['epsAdj', 'consensus', 'reportedOn']) if (q[k] == null && o[k] != null) q[k] = o[k]; }
+        }
+        if (P && !E.next?.date && P.next?.date && P.next.date >= new Date().toISOString().slice(0, 10)) E.next = P.next;
+      }
       ctx.waitUntil(noteWatch(env, cache, url.origin, sym, E.next?.date).catch(() => {})); // 실적 공시 감시 목록에 올린다
       return JSON.stringify(E);
     },
@@ -1048,7 +1057,9 @@ async function nasdaqIstmt(sym) {
 async function istmtFromFiling(sym, cik, f, env, E) {
   const key = `istmt3:${sym}:${f.acc}`; // 해석기를 고치면 숫자를 바꿔 다시 읽게
   const kept = env?.SUMS ? await env.SUMS.get(key, 'json').catch(() => null) : null;
-  if (kept && (!kept.fail || Date.now() - Date.parse(kept.at) < 6 * 3600000)) return kept;
+  // 못 읽었으면 다시: 공시 직후(2일 안)는 첨부 파일이 늦게 올라오기도 해서 20분 뒤, 그 뒤엔 6시간 뒤
+  const retry = Date.now() - Date.parse(f.d) < 2 * 864e5 ? 20 * 60000 : 6 * 3600000;
+  if (kept && (!kept.fail || Date.now() - Date.parse(kept.at) < retry)) return kept;
   E ||= await buildEarnings(sym).catch(() => null);
   const Q = E?.quarters || [], fd = Date.parse(f.d);
   // 검증: 이번 분기 매출이 지난 분기 기록과 같으면(다른 열을 읽음) 버리고, 1년 전 매출은 SEC·Nasdaq 기록과 1.5% 안에서 맞아야 한다
@@ -1175,8 +1186,17 @@ export async function earnWatch(env, at = Date.now()) {
     try { found.push(...parseEdgarAtom(await secGet(`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=8-K&dateb=&owner=include&count=3&output=atom`, 'text'), cik)); } catch {}
   }
   const hits = found.filter((x) => /^8-K/.test(x.form) && x.items.split(',').includes('2.02') && x.d && Date.parse(et) - Date.parse(x.d) <= 2 * 864e5);
-  if (!hits.length) return;
   const L = (await env.SUMS.get('earnlive', 'json').catch(() => null)) || { items: [], seen: [] };
+  // 발표 숫자를 아직 못 읽은 최근 공시(12시간 안)는 다시 읽어 채운다(첨부 파일이 늦게 올라온 경우)
+  let filled = false;
+  for (const y of (L.items || []).filter((x) => x.rev == null && Date.now() - x.t < 12 * 3600000).slice(0, 3)) {
+    const cik = String(bySym[y.sym]?.c || '').padStart(10, '0');
+    if (!+cik) continue;
+    const r = await istmtFromFiling(y.sym, cik, { acc: y.acc, form: '8-K', d: y.filed, doc: '', items: '2.02' }, env).catch(() => null);
+    if (r && !r.fail) { Object.assign(y, { end: r.end, rev: r.rev, prevRev: r.prev?.rev ?? null, op: r.op, net: r.net }); filled = true; }
+  }
+  if (filled) await env.SUMS.put('earnlive', JSON.stringify(L));
+  if (!hits.length) return;
   const seen = new Set(L.seen || []);
   const fresh = [];
   for (const x of hits) {
