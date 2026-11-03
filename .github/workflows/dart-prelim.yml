@@ -27,7 +27,7 @@ jobs:
           python-version: '3.12'
 
       - name: 지난번에 읽은 공시 기록 불러오기
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: tools/cache/dart_prelim.json
           key: dart-prelim-${{ github.run_id }}
@@ -42,6 +42,13 @@ jobs:
           if [ -z "$DART_KEY" ]; then echo "DART_KEY 비밀값이 없어요"; exit 0; fi
           mkdir -p tools/cache
           python tools/dart_prelim.py
+
+      - name: 읽은 공시 기록 저장
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: tools/cache/dart_prelim.json
+          key: dart-prelim-${{ github.run_id }}
 
       - name: 실패하면 디스코드 알림
         if: failure()

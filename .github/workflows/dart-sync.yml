@@ -18,7 +18,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 340   # 첫 실행(상장사 전체)은 미국 서버에서 한국 DART까지 느려 몇 시간 걸릴 수 있다 — 그 뒤엔 새 보고서만이라 몇 분
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +27,7 @@ jobs:
           python-version: '3.12'
 
       - name: 지난번에 받은 기록 불러오기
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             tools/cache/dart_codes.json
@@ -46,6 +46,18 @@ jobs:
           if [ -z "$DART_KEY" ]; then echo "DART_KEY 비밀값이 아직 없어요 — 저장소 Settings → Secrets에 넣으면 다음부터 돌아요"; exit 0; fi
           mkdir -p tools/cache
           python tools/dart_sync.py
+
+      # 중간에 시간이 다 돼 멈춰도 받은 만큼은 저장해 다음 실행이 이어서 받게(성공·실패와 상관없이)
+      - name: 받은 기록 저장
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            tools/cache/dart_codes.json
+            tools/cache/dart_shares.json
+            tools/cache/dart_is.json
+            tools/cache/dart_kv_hash.json
+          key: dart-cache-${{ github.run_id }}
 
       - name: 실패하면 디스코드 알림
         if: failure()
