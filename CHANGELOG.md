@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.03-1 — 2026-11-03
+
+[이 버전 보기](https://811b58d1.my-fire-portfolio.pages.dev) · 커밋 `614ed4c`
+
 - 📊 실적 발표 직후에도 실적 카드가 바로 새 분기로 바뀌어요(SEC 분기보고서·Nasdaq 표가 며칠 늦어도 발표문 숫자로 먼저 채움).
 <!-- EN
 - Right after a release the earnings card switches to the new quarter, using the earnings release before the 10-Q and Nasdaq tables catch up.
