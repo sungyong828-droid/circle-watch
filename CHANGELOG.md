@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🇰🇷 한국 종목 잠정 실적 반영: 회사가 금감원 DART에 '영업(잠정)실적'을 공시하면 3시간 안에 돈의 흐름·실적 AI 요약·사업 현황이 새 분기로 바뀌어요(분기보고서보다 한 달쯤 빨라요). 잠정 실적이라는 표시와 함께 보여 줘요.
+<!-- internal --> tools/dart_prelim.py + .github/workflows/dart-prelim.yml(3시간마다, 공시 서식 표 해석 · 회사가 적은 증감율로 검산 · 연결 우선 · 정정 처리) → KV krprelim:<0~31 칸> · 서버 krIstmt/한국 earnsum이 네이버보다 새 분기면 잠정 실적 사용 · 워커 배포 필요
+<!-- EN
+- Korean preliminary results: when a company files preliminary earnings with DART, the money flow, AI earnings summary and business snapshot switch to the new quarter within 3 hours (about a month before the quarterly report), marked as preliminary.
+-->
+
 ## v2026.11.03-3 — 2026-11-03
 
 [이 버전 보기](https://f2043440.my-fire-portfolio.pages.dev) · 커밋 `c268b29`

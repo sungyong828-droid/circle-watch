@@ -1119,10 +1119,17 @@ async function secIstmt(sym) {
 // 한국 종목: B) DART 분기보고서 손익(원가·판관비·법인세까지 — PC가 매주 KV iskr:<칸>에 올림)이 최신이면 그것,
 // 아니면 A) 네이버 증권 분기 실적(매출·영업이익·순이익만 — 실적 발표 뒤 바로 반영). 금액은 원
 const krEnd = (k) => `${k.slice(0, 4)}-${k.slice(4, 6)}-${new Date(Date.UTC(+k.slice(0, 4), +k.slice(4, 6), 0)).getUTCDate()}`;
+// DART 영업(잠정)실적 공시(GitHub Actions tools/dart_prelim.py가 3시간마다 KV krprelim:<0~31 칸>에 올림) — 분기보고서보다 한 달쯤 빠르다
+const prelimBucket = (sym) => { let h = 0; for (const ch of sym) h = (h * 31 + ch.charCodeAt(0)) % 1000003; return h % 32; };
+async function krPrelimOf(env, sym) {
+  const all = env?.SUMS ? await env.SUMS.get(`krprelim:${prelimBucket(sym)}`, { type: 'json', cacheTtl: 600 }).catch(() => null) : null;
+  return all?.[sym] || null;
+}
 async function krIstmt(sym, env) {
-  const [D, nv] = await Promise.all([
+  const [D, nv, P] = await Promise.all([
     env?.SUMS ? env.SUMS.get(`iskr:${kvBucket(sym)}`, { type: 'json', cacheTtl: 3600 }).then((a) => a?.[sym] || null).catch(() => null) : null,
     buildKrInfo(sym).catch(() => null),
+    krPrelimOf(env, sym),
   ]);
   let A = null;
   const F = nv?.finance, R = F?.rows || {};
@@ -1137,7 +1144,14 @@ async function krIstmt(sym, env) {
     const opex = D.sga > 0 && D.sga <= opexTotal + D.rev * 0.01 ? [{ k: 'selling, general and administrative', v: D.sga }, ...(opexTotal - D.sga > D.rev * 0.005 ? [{ k: 'other', v: opexTotal - D.sga }] : [])] : [];
     B = { src: 'dart', end: D.end, rev: D.rev, cost: D.cost ?? (gross != null ? D.rev - gross : null), gross, opex, opexTotal, op: D.op, tax: D.tax ?? null, net: D.net, segs: [], prev: D.prevRev ? { rev: D.prevRev } : null };
   }
-  const out = B && (!A || B.end >= A.end) ? B : A || B;
+  // 잠정 실적: 매출·영업이익·세전이익·순이익 → 세금 = 세전 − 순이익, 영업 밖 손익 = 세전 − 영업이익
+  let C = null;
+  if (P?.rev?.cur > 0 && P.op?.cur != null && P.net?.cur != null) {
+    const tax = P.pretax?.cur != null ? P.pretax.cur - P.net.cur : null;
+    C = { src: 'prelim', end: P.end, rev: P.rev.cur, op: P.op.cur, net: P.net.cur, cost: null, gross: null, opex: [], opexTotal: P.rev.cur - P.op.cur, tax, mix: tax == null, segs: [], prev: P.rev.ya ? { rev: P.rev.ya } : null, filed: P.d, cons: P.cons };
+  }
+  // 가장 최근 분기 · 같은 분기면 DART 분기보고서(원가·판관비까지) > 잠정 실적(세금까지) > 네이버
+  const out = [B, C, A].filter(Boolean).reduce((m, x) => (!m || x.end > m.end ? x : m), null);
   return out ? { ...out, sym, cur: 'KRW', at: new Date().toISOString() } : null;
 }
 // GET /istmt?s=SYM — 💸 실적 흐름도 자료(3시간 캐시, live=1이면 2분 — 실적 발표 직후)
@@ -1234,39 +1248,45 @@ async function handleKrEarnSum(url, cache, cors, ctx, env, sym) {
   if (!K?.finance) K = await buildKrInfo(sym).catch(() => null);
   const F = K?.finance, R = F?.rows || {};
   const ks = (F?.periods || []).filter((p) => !p.cns).map((p) => p.key).sort(), k = ks.at(-1);
-  if (!k || R['매출액']?.[k] == null) return json(withHist({ none: true }), cors);
-  const end = krEnd(k), key = `earnsum2:${sym}:${end}`;
+  const P = await krPrelimOf(env, sym), usePre = !!(P?.rev?.cur && P.op?.cur != null && (!k || P.end > krEnd(k)));
+  if (!usePre && (!k || R['매출액']?.[k] == null)) return json(withHist({ none: true }), cors);
+  // 숫자(원): 잠정 실적이 새 분기면 그것, 아니면 네이버(억원 → 원)
+  const pk = ks.at(-2), ya = k ? `${+k.slice(0, 4) - 1}${k.slice(4)}` : null, e8 = (v) => (v == null ? null : v * 1e8);
+  const nv = (nm) => ({ cur: e8(R[nm]?.[k]), prev: e8(R[nm]?.[pk]), ya: e8(R[nm]?.[ya]) });
+  const Nm = usePre ? { src: 'prelim', end: P.end, rev: P.rev, op: P.op, net: P.net || null } : { src: 'naver', end: krEnd(k), rev: nv('매출액'), op: nv('영업이익'), net: R['당기순이익']?.[k] != null ? nv('당기순이익') : null };
+  const nums = { src: Nm.src, end: Nm.end, rev: Nm.rev.cur, revYa: Nm.rev.ya, op: Nm.op?.cur ?? null, opYa: Nm.op?.ya ?? null, net: Nm.net?.cur ?? null, d: usePre ? P.d : null };
+  const end = Nm.end, key = `earnsum2:${sym}:${end}`;
   const kept = env?.SUMS ? await env.SUMS.get(key, 'json').catch(() => null) : null;
   if (kept?.lines?.length) {
     if (!H.items.some((x) => x.end === kept.q)) { H.items = [{ end: kept.q, reportedOn: kept.reportedOn, lines: kept.lines }, ...H.items].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 8); ctx.waitUntil(env.SUMS.put(`bizhl:${sym}`, JSON.stringify(H)).catch(() => {})); }
-    return json(withHist(kept), { ...cors, 'cache-control': 'no-store' });
+    return json(withHist({ ...kept, nums }), { ...cors, 'cache-control': 'no-store' });
   }
-  if (!env?.SUMS || !env?.AI || Date.now() - Date.parse(end) > 100 * 864e5) return json(withHist({ none: true }), cors);
-  // 새 분기를 처음 본 날 = 발표일(네이버가 잠정·확정 실적을 올린 날 무렵)
+  if (!env?.SUMS || !env?.AI || Date.now() - Date.parse(end) > 100 * 864e5) return json(withHist({ none: true, nums }), cors);
+  // 발표일: 잠정 실적은 공시일, 네이버는 새 분기를 처음 본 날(잠정·확정 실적을 올린 날 무렵)
   const today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-  let seen = await env.SUMS.get(`krseen:${sym}:${end}`).catch(() => null);
+  let seen = usePre ? P.d : await env.SUMS.get(`krseen:${sym}:${end}`).catch(() => null);
   if (!seen) { seen = today; ctx.waitUntil(env.SUMS.put(`krseen:${sym}:${end}`, seen, { expirationTtl: 400 * 86400 }).catch(() => {})); }
-  if (Date.now() - Date.parse(seen) > 10 * 864e5) return json(withHist({ none: true, reportedOn: seen }), cors);
+  if (Date.now() - Date.parse(seen) > 10 * 864e5) return json(withHist({ none: true, reportedOn: seen, nums }), cors);
   if (!(await aiLock(cache, url.origin, key, 120))) return json(withHist({ pending: true }), cors);
   if (!(await takeAiBudget(1))) return json(withHist({ pending: true, budget: true }), cors);
-  const pk = ks.at(-2), ya = `${+k.slice(0, 4) - 1}${k.slice(4)}`;
   const chg = (a, b) => (a != null && b ? `${a / Math.abs(b) - (b < 0 ? -1 : 1) >= 0 ? '+' : ''}${Math.round((a / Math.abs(b) - (b < 0 ? -1 : 1)) * 100)}%` : '비교 없음');
-  const row = (nm) => `${nm} ${krWon(R[nm]?.[k])} (1년 전 ${krWon(R[nm]?.[ya])}, ${chg(R[nm]?.[k], R[nm]?.[ya])} · 직전 분기 ${krWon(R[nm]?.[pk])}, ${chg(R[nm]?.[k], R[nm]?.[pk])})`;
+  const w8 = (v) => (v == null ? null : v / 1e8);
+  const row = (nm, x) => (x ? `${nm} ${krWon(w8(x.cur))} (1년 전 ${krWon(w8(x.ya))}, ${chg(x.cur, x.ya)} · 직전 분기 ${krWon(w8(x.prev))}, ${chg(x.cur, x.prev)})` : '');
   const base = `${url.origin}${url.pathname.startsWith('/api/') ? '/api' : ''}`;
   if (!(await cache.match(new Request(`${url.origin}/news?s=${sym}&v=swr`)))) await fetch(`${base}/news?s=${sym}`).catch(() => null);
   const news = (await newsFor(sym, url.origin, cache, env, 12 * 86400000)).filter((n) => /실적|영업이익|매출|분기|잠정|어닝|흑자|적자|earn|profit|revenue|quarter/i.test(n.title || '')).slice(0, 6);
-  const user = [`회사: ${K.name || sym} (${sym.slice(0, 6)}) · ${k.slice(0, 4)}년 ${Math.ceil(+k.slice(4, 6) / 3)}분기 실적(${k.slice(4, 6)}월 말 기준, 연결)`,
-    row('매출액'), row('영업이익'), R['당기순이익']?.[k] != null ? `당기순이익 ${krWon(R['당기순이익'][k])}` : '',
+  const user = [`회사: ${K?.name || P?.name || sym} (${sym.slice(0, 6)}) · ${end.slice(0, 4)}년 ${Math.ceil(+end.slice(5, 7) / 3)}분기 실적(${end.slice(5, 7)}월 말 기준${usePre ? `, ${P.cons ? '연결' : '별도'} 잠정 실적 공시 ${P.d}` : ''})`,
+    row('매출액', Nm.rev), row('영업이익', Nm.op), Nm.net?.cur != null ? `당기순이익 ${krWon(w8(Nm.net.cur))}` : '',
     news.length ? '관련 뉴스 제목:\n' + news.map((n) => `- ${n.ko || n.title}`).join('\n') : '관련 뉴스 없음'].filter(Boolean).join('\n');
   try {
     const lines = aiLines(await aiLine(env, KR_EARNSUM_SYS, user, 360));
     if (lines.length < 2) throw new Error('요약 줄 부족');
-    const out = { sym, q: end, reportedOn: seen, lines, at: new Date().toISOString() };
+    const out = { sym, q: end, reportedOn: seen, lines, at: new Date().toISOString(), src: Nm.src };
     const rich = news.length >= 2;
     ctx.waitUntil(env.SUMS.put(key, JSON.stringify(out), { expirationTtl: rich ? 40 * 86400 : 7200 }));
     if (rich) { H.items = [{ end, reportedOn: seen, lines }, ...H.items.filter((x) => x.end !== end)].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 8); ctx.waitUntil(env.SUMS.put(`bizhl:${sym}`, JSON.stringify(H)).catch(() => {})); }
-    return json(withHist(out), cors);
-  } catch (e) { return json(withHist({ none: true, error: String(e.message || e) }), cors); }
+    return json(withHist({ ...out, nums }), cors);
+  } catch (e) { return json(withHist({ none: true, error: String(e.message || e), nums }), cors); }
 }
 // 자동 요약 대상 한국 종목: 누군가 본 종목(30일) — 하루 한 번만 KV에 적는다
 const KR_CORE = ['005930.KS', '000660.KS', '005380.KS', '000270.KS', '086280.KS'];
