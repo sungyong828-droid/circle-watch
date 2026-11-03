@@ -1221,6 +1221,21 @@ export async function earnWatch(env, at = Date.now()) {
   await env.SUMS.put('earnlive', JSON.stringify(L));
   await earnPush(env, fresh).catch(() => {});
 }
+// 실적 발표 뒤 18시간~6일 사이 공시는 아무도 안 봤어도 AI 3줄 요약을 만들어 둔다(한 번에 4개, 공시마다 한 번) → 사업 현황 '분기별 주요 소식' 기록
+export async function fillEarnSums(env, ctx) {
+  if (!env?.SUMS || !env?.AI) return;
+  const L = await env.SUMS.get('earnlive', 'json').catch(() => null);
+  const todo = (L?.items || []).filter((x) => !x.sum && Date.now() - x.t > 18 * 3600000 && Date.now() - x.t < 6 * 864e5).slice(0, 4);
+  if (!todo.length) return;
+  for (const x of todo) {
+    try {
+      const r = await handleEarnSum(new URL(`https://my-fire-portfolio.pages.dev/api/earnsum?s=${encodeURIComponent(x.sym)}`), caches.default, {}, ctx, env);
+      const j = await r.json();
+      if (j?.lines?.length) x.sum = true;
+    } catch {}
+  }
+  await env.SUMS.put('earnlive', JSON.stringify(L));
+}
 // 실적 알림(🔔 실적 발표 알림)을 켠 사람에게: "📊 MSFT 실적 발표 · 매출 $92.3B(+19%) · 순이익 $36.6B"
 async function earnPush(env, fresh) {
   if (!env.VAPID_JWK) return;
@@ -2578,12 +2593,18 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   // 발표 직후에는 EPS 서프라이즈(Nasdaq)가 재무제표보다 먼저 들어온다 → 더 최근 것을 기준 분기로
   const qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((x) => x.reported);
   const last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
-  if (!last?.reportedOn) return json({ none: true }, cors);
+  // 분기별 요약 기록(사업 현황 '분기별 주요 소식'이 쓴다 — 기간 제한 없이 최근 8개 분기)
+  const H = env?.SUMS ? (await env.SUMS.get(`bizhl:${sym}`, 'json').catch(() => null)) || { items: [] } : { items: [] };
+  const withHist = (o) => ({ ...o, hist: H.items });
+  if (!last?.reportedOn) return json(withHist({ none: true }), cors);
   const key = `earnsum2:${sym}:${last.end}`; // 지침을 바꾸면 숫자를 올려 다시 만든다
-  // 만들어 둔 요약은 보관 기간(40일) 동안 계속 준다 — 사업 현황 '분기별 주요 소식'이 쓴다. 새로 만드는 건 발표 뒤 10일까지만
+  // 만들어 둔 요약은 보관 기간(40일) 동안 계속 준다. 새로 만드는 건 발표 뒤 10일까지만
   const kept = env?.SUMS ? await env.SUMS.get(key, 'json').catch(() => null) : null;
-  if (kept?.lines?.length) return json(kept, { ...cors, 'cache-control': 'no-store' });
-  if (Date.now() - Date.parse(last.reportedOn + 'T00:00:00Z') > 10 * 86400000) return json({ none: true }, cors);
+  if (kept?.lines?.length) {
+    if (!H.items.some((x) => x.end === kept.q)) { H.items = [{ end: kept.q, reportedOn: kept.reportedOn, lines: kept.lines }, ...H.items].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 8); ctx.waitUntil(env.SUMS.put(`bizhl:${sym}`, JSON.stringify(H)).catch(() => {})); }
+    return json(withHist(kept), { ...cors, 'cache-control': 'no-store' });
+  }
+  if (Date.now() - Date.parse(last.reportedOn + 'T00:00:00Z') > 10 * 86400000) return json(withHist({ none: true }), cors);
   if (!env?.AI) return json({ none: true, error: 'AI 없음' }, cors);
   const lock = new Request(`${url.origin}/earnsumlock?k=${encodeURIComponent(key)}`);
   if (await cache.match(lock)) return json({ pending: true }, cors);
@@ -2612,7 +2633,8 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
     // 근거(뉴스·매출)가 충분할 때만 오래 보관 — 부족하면 2시간 뒤 다시 만든다
     const rich = news.length >= 2 && (Q.revenue != null || fv?.sales != null);
     if (env?.SUMS) ctx.waitUntil(env.SUMS.put(key, JSON.stringify(out), { expirationTtl: rich ? 40 * 86400 : 7200 }));
-    return json(out, cors);
+    if (env?.SUMS && rich) { H.items = [{ end: out.q, reportedOn: out.reportedOn, lines: out.lines }, ...H.items.filter((x) => x.end !== out.q)].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 8); ctx.waitUntil(env.SUMS.put(`bizhl:${sym}`, JSON.stringify(H)).catch(() => {})); }
+    return json(withHist(out), cors);
   } catch (e) { return json({ none: true, error: String(e.message || e) }, cors); }
 }
 
@@ -2974,7 +2996,7 @@ export default {
   async scheduled(event, env, ctx) {
     // 3시간마다: FAA 인증 %·스페이스X 보호예수 공시 자동 확인
     // (같은 때 D램 현물가도 받아 둔다 — 아무도 반도체 종목을 안 봐도 매일 기록이 쌓이게)
-    if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); ctx.waitUntil(buildSemi(env).catch(() => {})); return; }
+    if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); ctx.waitUntil(buildSemi(env).catch(() => {})); ctx.waitUntil(fillEarnSums(env, ctx).catch(() => {})); return; }
     // 5분마다(요약과 다른 때): 폰 알림 — 목표가 도달·실적 발표일
     if (event.cron === '2-59/5 * * * *') { ctx.waitUntil(pushTick(env, event.scheduledTime).catch(() => {})); return; }
     // 15분마다: GitHub 예약 실행은 실제로 3~5시간씩 밀리므로, 데이터가 14분 넘게 묵었으면 수집을 직접 깨운다

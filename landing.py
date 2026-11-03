@@ -134,9 +134,9 @@ def page(slug, title, desc, body, ld, lang='ko', alt=None, og='og.png?v=3', noin
 '''
 
 
-FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/fireportfolio" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="https://www.instagram.com/myfireportfolio/" target="_blank" rel="noopener me">📷 인스타그램</a><a href="https://x.com/myfireportfolio" target="_blank" rel="noopener me">𝕏 X</a><a href="about">사이트 소개</a><a href="stablecoin">스테이블코인 한눈에</a><a href="daily">오늘의 스테이블코인</a><a href="dividend">배당금 계산기</a><a href="portfolio">배당 포트폴리오 계산기</a><a href="grow">적립식 배당 시뮬레이터</a><a href="etf-tax">미국 ETF 세금 비교</a><a href="dividend-etf">배당 ETF 비교</a><a href="calendar">이번 주 경제 일정</a><a href="money-flow">빚투 지표</a><a href="bonus">성과급 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="updates">업데이트 소식</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a></nav>
+FOOT_KO = '''<nav aria-label="소개 페이지"><a href="https://blog.naver.com/fireportfolio" target="_blank" rel="noopener" referrerpolicy="origin">📝 돼용 블로그</a><a href="https://www.instagram.com/myfireportfolio/" target="_blank" rel="noopener me">📷 인스타그램</a><a href="https://x.com/myfireportfolio" target="_blank" rel="noopener me">𝕏 X</a><a href="about">사이트 소개</a><a href="stablecoin">스테이블코인 한눈에</a><a href="daily">오늘의 스테이블코인</a><a href="dividend">배당금 계산기</a><a href="portfolio">배당 포트폴리오 계산기</a><a href="grow">적립식 배당 시뮬레이터</a><a href="etf-tax">미국 ETF 세금 비교</a><a href="dividend-etf">배당 ETF 비교</a><a href="calendar">이번 주 경제 일정</a><a href="money-flow">빚투 지표</a><a href="bonus">성과급 계산기</a><a href="fire">퇴사 계산기</a><a href="crcl">서클(CRCL)</a><a href="joby">조비(JOBY)</a><a href="spcx">스페이스X(SPCX)</a><a href="tem">템퍼스 AI(TEM)</a><a href="updates">업데이트 소식</a><a href="en" hreflang="en">English</a><a href="feedback">💬 문의·개선 제안</a><a href="terms">이용 안내·면책</a><a href="privacy">개인정보 처리방침</a></nav>
   <p>투자 조언이 아닌 개인 모니터링 도구예요. 데이터는 공개 출처(Nasdaq·SEC·Yahoo Finance·Binance·FINRA·CBOE 등)에서 가져오며 지연·오류가 있을 수 있어요.</p>'''
-FOOT_EN = '''<nav aria-label="Pages"><a href="about" hreflang="ko">한국어</a><a href="en">About</a><a href="./?lang=en&ref=page-en#dividend">Dividend tracker</a><a href="./?lang=en&ref=page-en#quit">FIRE calculator</a><a href="https://www.instagram.com/myfireportfolio/" target="_blank" rel="noopener me">📷 Instagram</a><a href="https://x.com/myfireportfolio" target="_blank" rel="noopener me">𝕏 X</a><a href="feedback?lang=en">💬 Feedback</a></nav>
+FOOT_EN = '''<nav aria-label="Pages"><a href="about" hreflang="ko">한국어</a><a href="en">About</a><a href="./?lang=en&ref=page-en#dividend">Dividend tracker</a><a href="./?lang=en&ref=page-en#quit">FIRE calculator</a><a href="https://www.instagram.com/myfireportfolio/" target="_blank" rel="noopener me">📷 Instagram</a><a href="https://x.com/myfireportfolio" target="_blank" rel="noopener me">𝕏 X</a><a href="feedback?lang=en">💬 Feedback</a><a href="terms">Terms &amp; disclaimer</a><a href="privacy">Privacy</a></nav>
   <p>A personal monitoring tool, not investment advice. Data comes from public sources (Nasdaq, SEC, Yahoo Finance, Binance, FINRA, CBOE and others) and may be delayed or wrong.</p>'''
 
 
@@ -793,8 +793,84 @@ def biz_page(B, all_biz):
     ]
     return page(B['slug'], title, desc, body, ld)
 
+# ---------------------------------------------------------------- 이용 안내·면책 · 개인정보 처리방침(앱 스토어 등록에도 쓰는 주소: /terms · /privacy)
+LEGAL_DATE = '2026-11-03'
+
+
+def _legal(slug, title, desc, sections, en_note):
+    secs = ''.join(f'<section class="lp-sec"><h2>{esc(h)}</h2>{b}</section>' for h, b in sections)
+    body = f'''<section class="lp-hero"><h1>{esc(title)}</h1><p class="lp-lead">{esc(desc)}</p><p class="lp-sub">시행일 {LEGAL_DATE}</p></section>
+{secs}
+<section class="lp-sec"><h2>English summary</h2><p class="lp-note">{esc(en_note)}</p></section>
+<section class="lp-sec lp-end"><p class="lp-note"><a href="feedback">💬 문의·권리 침해 신고</a> · <a href="terms">이용 안내·면책</a> · <a href="privacy">개인정보 처리방침</a> · <a href="./?ref=page-{slug}">대시보드로 돌아가기</a></p></section>'''
+    ld = {'@context': 'https://schema.org', '@type': 'WebPage', 'name': title, 'url': SITE + slug, 'inLanguage': 'ko', 'dateModified': LEGAL_DATE}
+    return page(slug, title, desc, body, ld)
+
+
+def _ul(items):
+    return '<ul class="lp-list">' + ''.join(f'<li>{x}</li>' for x in items) + '</ul>'
+
+
+def terms_page():
+    return _legal('terms', '이용 안내 · 면책 고지', 'Fire Portfolio를 쓰기 전에 알아 두실 점이에요. 웹사이트와 안드로이드 앱에 똑같이 적용돼요.', [
+        ('서비스 성격', _ul([
+            'Fire Portfolio는 개인이 만든 <b>무료 정보 모니터링 도구</b>예요. 금융투자업자(투자자문·투자일임·증권사)가 아니고, 주식을 사고팔 수 있는 기능도 없어요.',
+            '화면의 모든 정보·계산·AI 요약은 참고용이며 <b>투자 권유나 자문이 아니에요</b>. 투자 판단과 그 결과의 책임은 이용자 본인에게 있어요.',
+            '세금·성과급·배당 계산은 단순화한 추정이라 실제 금액과 다를 수 있어요. 세무 판단은 전문가와 상의해 주세요.',
+        ])),
+        ('데이터 출처와 정확성', _ul([
+            '숫자는 공개 출처에서 자동으로 모아 보여 줘요: 미국 SEC EDGAR(공시·재무제표), 금융감독원 DART(전자공시), 네이버 증권, Nasdaq, Yahoo Finance, Binance, DefiLlama, Circle 공식 API, FINRA, 미 재무부, 각 회사 보도자료, 구글 뉴스·언론사 RSS.',
+            '시세·자료는 <b>지연되거나 틀릴 수 있어요</b>. 중요한 결정 전에는 원문(공시 링크)과 증권사 자료로 꼭 확인해 주세요.',
+            '각 자료의 권리는 해당 제공자에게 있어요. 이 서비스는 출처를 밝히고 개인 모니터링 용도로 보여 줄 뿐, 원자료를 판매하거나 재배포하지 않아요. 제공자의 요청이 있으면 해당 자료를 바로 빼거나 바꿔요.',
+            '공공데이터포털 자료를 쓰는 화면에는 출처를 표시하고, 이용 조건(출처 표시·비상업적 이용)을 지켜요.',
+        ])),
+        ('AI 요약', _ul([
+            '뉴스 한 줄 요약, 실적 3줄 요약, 공시 한국어 요약, 회사 약속 추적은 AI(Cloudflare Workers AI)가 원문을 바탕으로 자동으로 만든 글이에요. <b>틀리거나 빠진 내용이 있을 수 있어요</b>.',
+        ])),
+        ('상표·로고', _ul([
+            '회사 이름·로고·티커는 각 회사의 상표이며, 어떤 종목인지 알아보기 쉽게 하려고만 써요. 이 서비스는 해당 회사들과 제휴·후원 관계가 없어요.',
+            '로고나 이름 사용에 문제가 있으면 문의 페이지로 알려 주세요. 확인 후 바로 빼요.',
+        ])),
+        ('요금·광고', _ul([
+            '현재 모든 기능이 무료이고 광고나 유료 기능이 없어요. 바뀌게 되면 이 페이지와 업데이트 소식에 먼저 알려요.',
+        ])),
+        ('서비스 변경·중단', _ul([
+            '자료 제공처 사정이나 운영 사정으로 기능이 바뀌거나 멈출 수 있어요. 이 기기에 저장한 보유 정보는 백업 파일로 저장해 둘 수 있어요(설정의 백업).',
+        ])),
+    ], 'Fire Portfolio is a free personal monitoring tool, not a financial advisor or broker, and offers no trading. All figures come from public sources (SEC EDGAR, Korea FSS DART, Naver Finance, Nasdaq, Yahoo Finance, Binance, DefiLlama, Circle, FINRA, US Treasury, company releases, news feeds) and may be delayed or wrong; rights remain with each provider. AI summaries may contain mistakes. Company names and logos are trademarks of their owners, used only for identification; no affiliation. Currently free with no ads.')
+
+
+def privacy_page():
+    return _legal('privacy', '개인정보 처리방침', 'Fire Portfolio(웹사이트·안드로이드 앱)가 어떤 정보를 받고, 어떤 정보는 받지 않는지 정리했어요.', [
+        ('받지 않는 정보', _ul([
+            '이름·전화번호·이메일·주민등록번호·증권 계좌·비밀번호를 받지 않아요. 회원가입과 로그인이 없어요.',
+            '보유 종목·수량·평균 단가·매수 기록·목표 금액·메모·관심 종목은 <b>이 기기(브라우저·앱) 안에만</b> 저장되고 서버로 보내지 않아요. 증권 앱 캡처와 CSV 파일도 기기 안에서만 읽어요.',
+        ])),
+        ('자동으로 받는 익명 정보', _ul([
+            '방문 집계: 기기마다 무작위로 만든 ID, 방문 날짜, 유입 경로(어느 사이트·링크에서 왔는지), 국가, 휴대폰/PC 구분, 화면 언어, IP를 비밀값과 섞은 해시(원래 IP는 저장하지 않음).',
+            '쓴 화면·기능 종류(어떤 종목·금액인지는 보내지 않음), 화면 오류 메시지.',
+            '인기 종목 순위: 관심 종목에 새로 추가한 티커 이름만(수량·금액 없음). 3대 이상의 기기가 추가한 종목만 순위에 보여요.',
+        ])),
+        ('직접 켜거나 보낼 때만 받는 정보', _ul([
+            '폰 알림: 알림을 켜면 브라우저가 만든 알림 주소, 목표가를 정한 종목과 가격, 실적 알림을 켠 종목, 화면 언어를 저장해요. 90일 동안 앱을 열지 않거나 알림을 끄면 지워요.',
+            '문의·개선 제안: 적은 내용과 (원하는 경우) 연락처.',
+            '실적 예측 투표: 투표한 선택과 무작위 기기 ID.',
+            '다른 기기로 옮기기: 암호화한 내 설정을 10분 동안만 보관하고, 받으면 바로 지워요.',
+        ])),
+        ('보관·처리 위탁', _ul([
+            '정보는 Cloudflare(미국) 서버에 저장되고 처리돼요. 방문 기록은 통계용으로 보관하며, 삭제를 원하면 문의 페이지로 요청해 주세요.',
+            '받은 정보를 팔거나 광고 목적으로 다른 회사에 넘기지 않아요.',
+        ])),
+        ('이용자의 권리', _ul([
+            '기기에 저장된 정보는 설정에서 지우거나, 브라우저·앱 데이터를 지우면 바로 사라져요.',
+            '알림은 🔔 알림함에서 언제든 끌 수 있어요.',
+            '그 밖의 확인·삭제 요청과 문의는 <a href="feedback">문의 페이지</a>로 보내 주세요.',
+        ])),
+    ], 'We do not collect names, contacts, accounts or passwords, and there is no sign-up. Holdings, watchlists and notes stay on your device only. We record anonymous visit statistics (random device ID, date, referrer, country, device type, language, salted IP hash), anonymous feature usage and errors, and newly added ticker names for popularity rankings. Push notifications store the browser push endpoint, target prices and tickers you chose (deleted after 90 days of inactivity or when turned off). Data is processed on Cloudflare; it is never sold. Contact us via the feedback page.')
+
+
 def build(dist):
-    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'bonus': bonus_page(), 'portfolio': portfolio_page(), 'etf-tax': etftax_page(), 'grow': grow_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
+    out = {'about': about_page(), 'dividend': dividend_page(), 'fire': fire_page(), 'bonus': bonus_page(), 'portfolio': portfolio_page(), 'etf-tax': etftax_page(), 'grow': grow_page(), 'en': en_page(), 'feedback': feedback_page(), 'updates': updates_page(), 'terms': terms_page(), 'privacy': privacy_page(), **{slug: stock_page(slug, S) for slug, S in STOCKS.items()}}
     biz = load_biz()
     out.update({B['slug']: biz_page(B, biz) for B in biz})
     for slug, text in out.items():

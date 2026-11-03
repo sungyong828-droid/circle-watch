@@ -2750,7 +2750,7 @@
   }
   // AI 3줄 요약 받기(서버가 분기마다 한 번 만들어 40일 보관) — 실적 카드(발표 뒤 7일)와 사업 현황 '분기별 주요 소식'이 같이 쓴다
   function earnSumGet(sym, last = earnLast(sym)) {
-    if (isKR(sym) || !last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 40) return null;
+    if (isKR(sym) || !last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 120) return null; // 지난 분기 요약 기록(hist)도 같이 받는다
     const S = state.earnsum[sym];
     if (!S || (S.pending && Date.now() - S.t > 20000) || (S.q && S.q !== last.end)) {
       state.earnsum[sym] = { ...(S || {}), t: Date.now(), loading: true };
@@ -3615,6 +3615,8 @@
   // ---- 📲 폰 알림(웹 푸시): 앱을 닫아 둬도 목표가 도달·실적 발표일을 알린다
   // 서버(/api/push)에는 푸시 주소·목표가·종목 이름만 보낸다(보유 수량·평단·금액은 보내지 않음). 서비스 워커(sw.js)는 알림만 받고 화면 파일은 저장하지 않는다.
   const PUSH_OK = !!SITE_API && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  // 서비스 워커는 알림을 켜지 않아도 등록해 둔다(안드로이드 앱·홈 화면 앱에서 인터넷이 끊겼을 때 안내 화면) — 첫 화면을 다 그린 뒤 조용히
+  if (ON_PAGES && 'serviceWorker' in navigator) { const regSw = () => setTimeout(() => navigator.serviceWorker.register('/sw.js').catch(() => {}), 4000); if (document.readyState === 'complete') regSw(); else addEventListener('load', regSw, { once: true }); }
   const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   let pushKey; // undefined: 아직 모름 · null: 서버에 알림 키가 없음
@@ -7566,7 +7568,7 @@ ${what.join(' · ')}
     const hlQ = Q.filter((x) => x.hl?.length).slice(0, 4);
     // 새 분기 실적이 나왔는데 이 카드(직접 확인해 넣는 값·매주 자동 정리)에 아직 없으면: 발표 숫자 + AI 요약을 '분기별 주요 소식' 맨 위에 붙인다
     const NL = !isKR(sym) ? earnLast(sym) : null;
-    let autoLi = '';
+    let autoLi = '', histLi = '';
     if (NL?.reportedOn && (!L.filed || daysBetween(L.filed, NL.reportedOn) > 20) && daysBetween(NL.reportedOn, today) <= 120) {
       const E = earnOf(sym), q = (E?.quarters || []).find((x) => x.end === NL.end) || {}, ya = qYa((E?.quarters || []), NL.end);
       const sur = (E?.surprises || []).find((x) => x.end === NL.end), I0 = istmtOf(sym), I = I0 && Math.abs(Date.parse(I0.end) - Date.parse(NL.end)) < 40 * 864e5 ? I0 : null;
@@ -7578,6 +7580,12 @@ ${what.join(' · ')}
       const qn = Math.ceil(+NL.end.slice(5, 7) / 3), yy = NL.end.slice(2, 4), fresh = daysBetween(NL.reportedOn, today) <= 7;
       if (lines.length) autoLi = `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${qn} '${yy}` : `'${yy} ${qn}분기`}</b> <em class="biz-new">${fresh ? (EN ? 'Just reported' : '방금 발표') : (EN ? 'Auto summary' : '자동 요약')}</em>${I?.url ? ` <a href="${safeUrl(I.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${lines.map((h) => `<li>${esc(h)}</li>`).join('')}</ul><p class="note">${ai.length ? (EN ? 'Reported numbers + an AI summary of the release and news — may contain mistakes; replaced once reviewed.' : '발표 숫자와 AI가 발표·뉴스로 정리한 요약이에요. 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.') : (EN ? 'Reported numbers, added automatically.' : '발표 숫자를 자동으로 붙였어요.')}</p></div></li>`;
     }
+    {
+      const X = !isKR(sym) ? earnSumGet(sym) : null, qOf = (end) => { const d = new Date(Date.parse(end + 'T12:00:00Z') - 45 * 864e5); return `${d.getUTCFullYear()}Q${Math.floor(d.getUTCMonth() / 3) + 1}`; };
+      const have = new Set([...hlQ.map((x) => x.q), ...(autoLi && NL ? [qOf(NL.end)] : [])]);
+      histLi = (X?.hist || []).filter((h) => h.lines?.length && !have.has(qOf(h.end))).slice(0, 4).map((h) => { const k = qOf(h.end); return `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${k.slice(5)} '${k.slice(2, 4)}` : `'${k.slice(2, 4)} ${k.slice(5)}분기`}</b> <em class="biz-new">${EN ? 'Auto summary' : '자동 요약'}</em><ul class="tem-hl">${h.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></li>`; }).join('');
+      if (histLi) histLi += `<li class="faa-note"><p class="note">${EN ? 'Auto summaries are written by AI from each release and the news around it — they may contain mistakes.' : '자동 요약은 실적 발표 숫자와 그 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</p></li>`;
+    }
     const sub = `${B.auto ? `<span class="biz-auto">${EN ? 'Auto' : '자동 정리'}</span>` : ''}${bizQ(B, L)} ${EN ? 'results' : '실적'}${L.filed ? ` (${md(isoToTs(L.filed))})` : ''} · ${esc(tx(B.src))}${nx && nx >= today ? ` · ${EN ? 'next' : '다음 실적'} ${md(isoToTs(nx))}` : ''}`;
     card('biz', {
       title, sub, easy: esc(tx(B.easy)),
@@ -7585,8 +7593,8 @@ ${what.join(' · ')}
         <div class="ns-grid h-grid biz-n${tiles.length <= 4 ? tiles.length : tiles.length <= 6 ? 3 : 4}">${tiles.map(([l, v, s, c]) => `<div><span>${esc(l)}</span><b class="${c}">${v}</b><small>${s || '&nbsp;'}</small></div>`).join('')}</div>
         ${B.guide ? `<p class="biz-guide">🎯 <b>${EN ? 'Company outlook' : '회사 전망'}</b> ${esc(tx(B.guide))}</p>` : ''}
         ${chart}
-        ${hlQ.length || autoLi ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>
-        <ul class="faa-ms tem-ms">${autoLi}${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}</ul>` : ''}
+        ${hlQ.length || autoLi || histLi ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>
+        <ul class="faa-ms tem-ms">${autoLi}${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}${histLi}</ul>` : ''}
         <p class="note">${stale ? `${EN ? 'A newer quarter may already be out — it will be added after review. ' : '새 분기 실적이 나왔을 수 있어요 — 확인 후 더할게요. '}` : ''}${B.fy ? esc(tx(B.fy)) + '. ' : ''}${B.auto ? (EN ? 'Compiled automatically from reported quarterly financials and refreshed weekly. Business mix and quarterly highlights are hand-checked for featured stocks only. Not investment advice.' : '회사가 공시한 분기 재무제표를 자동으로 정리했고 매주 새로 받아요. 사업별 비중·분기별 소식은 대표 종목만 직접 확인해 정리해요. 투자 조언이 아니에요.') : EN ? 'Figures are from the company’s own earnings releases (see Source); new quarters are added after review. Not investment advice.' : '숫자는 회사가 낸 실적 발표 기준이에요(원문 링크). 새 분기는 확인 후 더해요. 투자 조언이 아니에요.'}</p>`,
     });
   }

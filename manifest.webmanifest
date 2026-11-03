@@ -1,14 +1,20 @@
 {
+  "id": "/",
   "name": "Fire Portfolio",
   "short_name": "Fire Portfolio",
-  "description": "퇴사까지 진행률·내 종목 시세·뉴스를 한 화면에",
-  "start_url": "/",
+  "description": "퇴사까지 진행률·내 종목 시세·실적·뉴스를 한 화면에 — 무료 주식 대시보드",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "/?ref=app",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0d1015",
   "theme_color": "#0d1015",
+  "categories": ["finance", "news", "productivity"],
   "icons": [
+    { "src": "/assets/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/assets/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/assets/icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+    { "src": "/assets/app-icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

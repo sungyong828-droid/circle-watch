@@ -2131,7 +2131,11 @@ window.__I18N_EN = {
 "우측 상단 새로고침(↻)을 누르면 모든 데이터를 지금 시각 기준으로 다시 불러와요. 가만히 두어도 5분마다(주가·환율은 더 자주) 자동으로 업데이트돼요.": "Tap refresh (↻) at the top right to reload all data now. It also updates automatically every 5 minutes (prices and FX more often).",
 "표시는 실시간 값입니다. 투자 조언이 아닌 개인 모니터링용입니다.": "marks live values. For personal monitoring, not investment advice.",
 ")을 100으로 맞춘 공급량 지수 · DefiLlama · USYC 10/15부터 CoinGecko": ") indexed to 100 · DefiLlama · USYC from 10/15 via CoinGecko",
-"알림": "Notifications"
+"알림": "Notifications",
+"ⓘ 숫자는 공개 출처에서 자동으로 모은 것이라 지연·오류가 있을 수 있고, 각 자료의 권리는 제공자에게 있어요. AI 요약은 틀릴 수 있어요. 회사 이름·로고는 각 회사의 상표이며 식별 목적으로만 쓰고, 제휴 관계가 없어요. 자세한 내용은": "ⓘ Figures are collected automatically from public sources and may be delayed or wrong; rights stay with each provider. AI summaries may contain mistakes. Company names and logos are trademarks of their owners, used only for identification, with no affiliation. See the",
+"을 확인해 주세요.": "for details.",
+"이용 안내·면책": "Terms & disclaimer",
+"개인정보 처리방침": "Privacy policy"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

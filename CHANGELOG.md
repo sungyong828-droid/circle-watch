@@ -11,6 +11,16 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🗂️ 사업 현황의 '분기별 주요 소식'이 자동으로 쌓여요: 실적이 나오면 하루 뒤 AI가 발표 숫자와 뉴스로 요약을 만들어 분기마다 남겨요(직접 정리한 13개 종목 밖의 미국 종목도).
+- 📜 이용 안내·면책(/terms)과 개인정보 처리방침(/privacy) 페이지를 만들고, 화면 맨 아래에 데이터 출처·AI 요약·상표에 대한 안내를 더했어요.
+- 📱 앱 준비: 홈 화면·앱 아이콘을 안드로이드 모양에 맞게 다듬고, 인터넷이 끊겼을 때 빈 화면 대신 안내가 나와요.
+<!-- internal --> earnsum 응답에 hist(KV bizhl:<종목>, 최근 8분기) · 워커 3시간 크론 fillEarnSums(발표 18시간~6일, 한 번에 4개) · manifest id·maskable·192 아이콘·start_url ?ref=app · sw.js 이동 실패 시 offline.html · 서비스 워커 상시 등록(로드 4초 뒤) · 워커 배포 필요
+<!-- EN
+- "What happened each quarter" now builds up automatically: a day after each release, AI writes a summary from the reported numbers and news and keeps it per quarter — for US stocks beyond the 13 hand-checked ones too.
+- New Terms & disclaimer (/terms) and Privacy policy (/privacy) pages, plus a note at the bottom about data sources, AI summaries and trademarks.
+- App-ready: icons shaped for Android home screens, and an offline notice instead of a blank screen when there is no connection.
+-->
+
 ## v2026.11.03-1 — 2026-11-03
 
 [이 버전 보기](https://811b58d1.my-fire-portfolio.pages.dev) · 커밋 `614ed4c`
