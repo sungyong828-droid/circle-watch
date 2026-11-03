@@ -193,7 +193,8 @@ def deploy(target):
             if ans.strip().lower() != 'y':
                 sys.exit('취소했어요.')
     branch = 'main' if target == 'prod' else 'test'
-    cmd = ['npx', 'wrangler', 'pages', 'deploy', 'dist', '--project-name', PROJECT, '--branch', branch, '--commit-dirty=true']
+    # wrangler 버전을 고정: npm에 '최신'으로만 표시되고 아직 받을 수 없는 버전이 있으면 배포가 실패한다(2026-11-03)
+    cmd = ['npx', 'wrangler@4.156.2', 'pages', 'deploy', 'dist', '--project-name', PROJECT, '--branch', branch, '--commit-dirty=true']
     if target == 'test':
         run(cmd)
         os.makedirs(os.path.dirname(MARK), exist_ok=True)
