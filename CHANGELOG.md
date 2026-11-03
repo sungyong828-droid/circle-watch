@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📊 실적 발표 직후에도 실적 카드가 바로 새 분기로 바뀌어요(SEC 분기보고서·Nasdaq 표가 며칠 늦어도 발표문 숫자로 먼저 채움).
+<!-- EN
+- Right after a release the earnings card switches to the new quarter, using the earnings release before the 10-Q and Nasdaq tables catch up.
+-->
 - 서버: Nasdaq이 잠깐 응답하지 않으면 EPS 예상·발표일을 직전 값으로 유지(빈 채로 며칠 남던 문제) · 실적 공시 직후 발표문을 못 읽으면 20분 뒤 다시 읽고 알림 목록(earnlive)의 매출·순이익도 채움 · 워커 배포 필요 <!-- internal -->
 
 ## v2026.10.31-2 — 2026-10-31

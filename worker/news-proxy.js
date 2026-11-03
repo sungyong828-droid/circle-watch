@@ -809,6 +809,15 @@ export async function handleEarnings(url, cache, cors, ctx, env) {
         }
         if (P && !E.next?.date && P.next?.date && P.next.date >= new Date().toISOString().slice(0, 10)) E.next = P.next;
       }
+      // 발표 직후: SEC 분기보고서·Nasdaq 표는 며칠 늦다 → 발표문(8-K)에서 읽은 새 분기를 먼저 넣는다(검산 통과분만)
+      if (!KR_RE.test(sym)) {
+        const I = await buildIstmt(sym, url.origin, cache, env).catch(() => null), lastQ = E.quarters.at(-1);
+        if (I?.src === 'pr' && I.rev > 0 && (!lastQ || Date.parse(I.end) - Date.parse(lastQ.end) > 45 * 864e5)) {
+          E.quarters.push({ end: I.end, revenue: I.rev, cost: I.cost ?? undefined, grossProfit: I.gross ?? undefined, opIncome: I.op, netIncome: I.net, reportedOn: I.filed, fromRelease: true });
+          E.quarters = E.quarters.slice(-8);
+        } else if (I?.src === 'pr' && lastQ && !lastQ.reportedOn && Math.abs(Date.parse(I.end) - Date.parse(lastQ.end)) < 20 * 864e5) lastQ.reportedOn = I.filed; // 같은 분기인데 발표일이 아직 없으면
+        if (I?.src === 'pr' && E.next?.date && E.next.date <= I.filed && Date.parse(I.end) >= Date.parse(E.quarters.at(-1).end) - 20 * 864e5) E.next = { ...E.next, date: null, estimated: false, confirmedBy: null }; // 이미 발표한 날짜는 '다음 발표'로 두지 않는다
+      }
       ctx.waitUntil(noteWatch(env, cache, url.origin, sym, E.next?.date).catch(() => {})); // 실적 공시 감시 목록에 올린다
       return JSON.stringify(E);
     },
