@@ -1,5 +1,6 @@
 """한국 종목 '비싼가 싼가'용 분기 재무 → Cloudflare KV(SUMS). GitHub Actions(.github/workflows/dart-sync.yml)가 매일 돌린다 — PC가 꺼져 있어도 된다.
 (Cloudflare 서버에서는 DART가 접속을 막지만 GitHub 서버에서는 된다 — 2026-11-03 확인)
+이 PC의 작업 스케줄러 'FirePortfolio DART'는 2026-11-03에 껐다(GitHub Actions로 옮김). PC에서 직접 돌려도 결과는 같다.
 
   python tools/dart_sync.py          # 받아서 KV에 올리기(PC에서 직접 돌려도 된다)
   python tools/dart_sync.py --dry    # 받기만(tools/cache/valkr_*.json 확인용)
