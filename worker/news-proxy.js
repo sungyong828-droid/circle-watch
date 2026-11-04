@@ -2716,7 +2716,7 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   const usd = (v) => (v == null ? '모름' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(2)}B` : `$${(v / 1e6).toFixed(0)}M`);
   const user = [`종목: ${sym} · ${last.end} 분기 실적(발표 ${last.reportedOn})`,
     `매출 ${usd(Q.revenue ?? fv?.sales)}${fv?.salesEst ? ` (시장 예상 ${usd(fv.salesEst)})` : ''}${ya?.revenue ? ` · 1년 전 ${usd(ya.revenue)}` : ''}${Q.netIncome != null ? ` · 순이익 ${usd(Q.netIncome)}` : ''}`,
-    sur ? `EPS 실제 $${sur.eps} · 시장 예상 $${sur.consensus} (${sur.eps >= sur.consensus ? '상회' : '하회'})` : '',
+    sur ? `EPS 실제 $${sur.eps} · 시장 예상 $${sur.consensus} (${sur.eps > sur.consensus ? '상회' : sur.eps < sur.consensus ? '하회' : '부합'})` : '',
     news.length ? '관련 뉴스:\n' + news.map((n) => `- ${n.title}${n.sum ? ' — ' + n.sum : ''}`).join('\n') : '관련 뉴스 없음'].filter(Boolean).join('\n');
   try {
     const text = await aiLine(env, EARNSUM_SYS, user, 360);
