@@ -6,10 +6,7 @@ name: dart-sync (한국 종목 재무 자동 갱신)
 on:
   schedule:
     - cron: '0 22 * * *'
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['tools/dart_sync.py', '.github/workflows/dart-sync.yml']
+  workflow_dispatch:   # 스크립트를 고쳐도 자동으로 돌리지 않는다 — DART 인증키 하루 요청 한도(2만 번)를 아끼려고(하루 한 번만)
 
 concurrency:
   group: dart-sync
@@ -34,8 +31,8 @@ jobs:
             tools/cache/dart_shares.json
             tools/cache/dart_is.json
             tools/cache/dart_kv_hash.json
-          key: dart-cache-${{ github.run_id }}
-          restore-keys: dart-cache-
+          key: dart-cache2-${{ github.run_id }}
+          restore-keys: dart-cache2-
 
       - name: DART → KV
         env:
@@ -57,7 +54,7 @@ jobs:
             tools/cache/dart_shares.json
             tools/cache/dart_is.json
             tools/cache/dart_kv_hash.json
-          key: dart-cache-${{ github.run_id }}
+          key: dart-cache2-${{ github.run_id }}
 
       - name: 실패하면 디스코드 알림
         if: failure()

@@ -30,8 +30,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: tools/cache/dart_prelim.json
-          key: dart-prelim-${{ github.run_id }}
-          restore-keys: dart-prelim-
+          key: dart-prelim2-${{ github.run_id }}
+          restore-keys: dart-prelim2-
 
       - name: 잠정 실적 공시 → KV
         env:
@@ -48,7 +48,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: tools/cache/dart_prelim.json
-          key: dart-prelim-${{ github.run_id }}
+          key: dart-prelim2-${{ github.run_id }}
 
       - name: 실패하면 디스코드 알림
         if: failure()

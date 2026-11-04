@@ -48,6 +48,10 @@ def dart_key():
 KEY = dart_key()
 
 
+class DartLimit(RuntimeError):
+    """하루 요청 한도(인증키당 2만 번) 초과 — 이번 실행은 멈추고 아무것도 덮어쓰지 않는다"""
+
+
 def call(path, params, raw=False, pause=0.08):
     time.sleep(pause)
     url = f'{DART}/{path}?' + urllib.parse.urlencode({'crtfc_key': KEY, **params})
@@ -60,9 +64,9 @@ def call(path, params, raw=False, pause=0.08):
             j = json.loads(b)
             if j.get('status') == '013':  # 자료 없음
                 return []
-            if j.get('status') == '020':  # 요청 제한 초과 — 잠시 쉬었다가
-                time.sleep(30)
-                continue
+            # 요청 한도 초과: '자료 없음'으로 넘어가면 멀쩡한 값을 빈 값으로 덮어쓰게 된다 → 바로 멈춘다
+            if j.get('status') == '020':
+                raise DartLimit('DART 하루 요청 한도 초과 — 내일 다시 받아요(KV는 그대로)')
             if j.get('status') != '000':
                 raise RuntimeError(f"DART {path.split('.')[0]} {j.get('status')} {j.get('message')}")  # 주소(키)는 넣지 않는다
             return j.get('list') or []
@@ -112,6 +116,8 @@ def is_detail(corp, y, rc, col='thstrm_amount'):
     for fs in ('CFS', 'OFS'):
         try:
             L = call('fnlttSinglAcntAll.json', {'corp_code': corp, 'bsns_year': y, 'reprt_code': rc, 'fs_div': fs})
+        except DartLimit:
+            raise
         except RuntimeError:
             L = []
         rows = [x for x in L if x.get('sj_div') in ('IS', 'CIS')]
@@ -194,6 +200,9 @@ def main():
         y, rc, end = latest[s]
         try:
             L = call('stockTotqySttus.json', {'corp_code': inv[s], 'bsns_year': y, 'reprt_code': rc})
+        except DartLimit:
+            json.dump(shares, open(sp, 'w', encoding='utf-8'))
+            raise
         except RuntimeError as e:
             print('  ', s, e)
             continue
@@ -217,6 +226,9 @@ def main():
             if rc == '11011' and d:  # 사업보고서는 1년 값 — 4분기 = 1년 − 3분기 누적
                 c3 = is_detail(inv[s], y, '11014', 'thstrm_add_amount')
                 d = {k: d[k] - c3[k] for k in d if k != 'fs' and k in c3} | {'fs': d['fs']} if c3 else {}
+        except DartLimit:
+            json.dump(isc, open(ip, 'w', encoding='utf-8'))  # 받은 만큼 저장 → 다음 실행이 이어서
+            raise
         except RuntimeError as e:
             print('  ', s, e)
             continue
@@ -257,6 +269,9 @@ def main():
     import hashlib
     hp = os.path.join(CACHE, 'dart_kv_hash.json')
     old = json.load(open(hp, encoding='utf-8')) if os.path.exists(hp) else {}
+    # 안전장치: 이번에 받은 회사 수가 지난번보다 10% 넘게 줄었으면(접속 문제로 덜 받은 것) 올리지 않는다
+    if old.get('_n') and len(out) < old['_n'] * 0.9 or old.get('_is') and len(is_out) < old['_is'] * 0.9:
+        sys.exit(f'받은 회사 수가 지난번보다 크게 줄었어요(재무 {len(out)}/{old.get("_n")} · 손익 {len(is_out)}/{old.get("_is")}) — KV에 올리지 않았어요')
     h = {it['key']: hashlib.sha1(it['value'].encode('utf-8')).hexdigest() for it in items if it['key'] != 'valkr:meta'}
     items = [it for it in items if it['key'] != 'valkr:meta' and old.get(it['key']) != h[it['key']]]
     if not items:
@@ -266,7 +281,7 @@ def main():
     print(f'바뀐 칸 {len(items) - 1}개 올리기')
     ok = kv_put(items)
     if ok:
-        json.dump({**old, **h}, open(hp, 'w', encoding='utf-8'))
+        json.dump({**old, **h, '_n': len(out), '_is': len(is_out)}, open(hp, 'w', encoding='utf-8'))
     print('KV 올리기:', 'OK' if ok else '실패')
     if not ok:
         sys.exit(1)

@@ -53,11 +53,25 @@ def get(path, params, raw=False):
         try:
             with urllib.request.urlopen(url, timeout=60) as r:
                 b = r.read()
-            return b if raw else json.loads(b)
+            if raw and b[:1] == b'{':  # 문서 대신 오류 JSON(한도 초과 등)
+                j = json.loads(b)
+                if j.get('status') == '020':
+                    raise LimitError()
+                raise RuntimeError(f"DART {path.split('.')[0]} {j.get('status')}")
+            j = b if raw else json.loads(b)
+            if not raw and j.get('status') == '020':
+                raise LimitError()
+            return j
+        except LimitError:
+            raise
         except Exception as e:  # 주소(키)는 남기지 않는다
             if i == 2:
                 raise RuntimeError(f'DART {path.split(".")[0]} 접속 실패: {type(e).__name__}') from None
             time.sleep(3)
+
+
+class LimitError(RuntimeError):
+    """DART 하루 요청 한도 초과"""
 
 
 def pbucket(sym):
@@ -145,13 +159,16 @@ def main():
         rno = x['rcept_no']
         if rno in seen:
             continue
-        seen.add(rno)
         try:
             z = zipfile.ZipFile(io.BytesIO(get('document.xml', {'rcept_no': rno}, raw=True)))
             doc = z.read(z.namelist()[0]).decode('utf-8', errors='replace')
+        except LimitError:
+            print('DART 하루 요청 한도 초과 — 나머지는 다음 실행에서 읽어요')
+            break
         except Exception as e:
-            print('  읽기 실패', x['corp_name'], e)
+            print('  읽기 실패(다음 실행에 다시)', x['corp_name'], type(e).__name__)
             continue
+        seen.add(rno)
         p = parse(doc)
         if p == 'skip':
             continue
