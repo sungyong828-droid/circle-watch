@@ -11,6 +11,11 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 실적 발표 직후에도 '실적 3줄 요약'이 보도자료 기준 최신 분기로 나와요(애플·AMD처럼 숫자 정리가 늦은 종목도)
+<!-- EN Earnings 3-line summaries now appear right after the release, using the press-release quarter even when official figures lag -->
+- 요약 문장 다듬기: 뉴스에 없는 내용은 줄을 비우고, 앞이 잘린 문장은 걸러요 <!-- internal -->
+- DART 하루 요청 한도에 걸리면 바로 멈추고 기존 값을 지키도록 <!-- internal -->
+
 ## v2026.11.03-4 — 2026-11-03
 
 [이 버전 보기](https://667904d6.my-fire-portfolio.pages.dev) · 커밋 `4e70277`
