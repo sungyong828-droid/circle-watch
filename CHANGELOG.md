@@ -16,6 +16,7 @@
 - 실적 요약 아래에 '🎙️ 컨퍼런스콜 핵심'이 붙어요 — 회사 전망(가이던스)·경영진이 강조한 점·걱정거리를 녹취록 요점으로 정리하고, 녹취록이 나오기 전엔 뉴스로 먼저 보여 줘요
 <!-- EN An "Earnings call" section now follows the earnings summary — guidance, management highlights and concerns from the call transcript (news first, until the transcript is out) -->
 - 실적 요약의 EPS를 화면과 같은 기준(Finviz)으로 맞췄어요 <!-- internal -->
+- 영어 화면에서 AI 요약(한국어)이 단어마다 엉뚱하게 바뀌던 문제를 고쳤어요 <!-- internal -->
 
 - 실적 발표 직후에도 '실적 3줄 요약'이 보도자료 기준 최신 분기로 나와요(애플·AMD처럼 숫자 정리가 늦은 종목도)
 <!-- EN Earnings 3-line summaries now appear right after the release, using the press-release quarter even when official figures lag -->
