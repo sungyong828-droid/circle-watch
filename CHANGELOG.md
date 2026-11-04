@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 화면을 좌우로 밀어서 아래 탭(Home · 차트 · 실적 · 뉴스)을 넘길 수 있어요
+<!-- EN Swipe left or right to move between the bottom tabs (Home · Chart · Earnings · News) -->
+- 실적 요약 아래에 '🎙️ 컨퍼런스콜 핵심'이 붙어요 — 회사 전망(가이던스)·경영진이 강조한 점·걱정거리를 녹취록 요점으로 정리하고, 녹취록이 나오기 전엔 뉴스로 먼저 보여 줘요
+<!-- EN An "Earnings call" section now follows the earnings summary — guidance, management highlights and concerns from the call transcript (news first, until the transcript is out) -->
+- 실적 요약의 EPS를 화면과 같은 기준(Finviz)으로 맞췄어요 <!-- internal -->
+
 - 실적 발표 직후에도 '실적 3줄 요약'이 보도자료 기준 최신 분기로 나와요(애플·AMD처럼 숫자 정리가 늦은 종목도)
 <!-- EN Earnings 3-line summaries now appear right after the release, using the press-release quarter even when official figures lag -->
 - 요약 문장 다듬기: 뉴스에 없는 내용은 줄을 비우고, 앞이 잘린 문장은 걸러요 <!-- internal -->

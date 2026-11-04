@@ -2757,19 +2757,30 @@
   function earnSumGet(sym, last = isKR(sym) ? (krLastEnd(sym) ? { end: krLastEnd(sym), reportedOn: isoToday() } : null) : earnLast(sym)) {
     if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 120) return null; // 지난 분기 요약 기록(hist)도 같이 받는다
     const S = state.earnsum[sym];
-    if (!S || (S.pending && Date.now() - S.t > 20000) || (S.q && S.q !== last.end)) {
+    // callPending: 컨퍼런스콜 핵심을 서버가 뒤에서 만드는 중 → 30초 뒤 한 번 더(최대 3번)
+    if (!S || (S.pending && Date.now() - S.t > 20000) || (S.callPending && !S.call && (S.n || 0) < 3 && Date.now() - S.t > 30000) || (S.q && S.q !== last.end)) {
+      const n = S?.callPending ? (S.n || 0) + 1 : 0;
       state.earnsum[sym] = { ...(S || {}), t: Date.now(), loading: true };
-      getJ(`${NEWS_API}/earnsum?s=${sym}`, 25000).then((j) => { state.earnsum[sym] = { ...j, t: Date.now() }; }).catch(() => { state.earnsum[sym] = { none: true, t: Date.now() }; })
+      getJ(`${NEWS_API}/earnsum?s=${sym}`, 25000).then((j) => { state.earnsum[sym] = { ...j, callPending: j.callPending || (S?.callPending && !j.call), n, t: Date.now() }; if (state.earnsum[sym].callPending && !j.call && n < 3) setTimeout(() => { if (document.querySelector(`.es-box[data-es="${CSS.escape(sym)}"]`)) earnSumGet(sym, last); }, 31000); }).catch(() => { state.earnsum[sym] = { none: true, t: Date.now() }; })
         .then(() => { for (const el of document.querySelectorAll(`.es-box[data-es="${CSS.escape(sym)}"]`)) el.outerHTML = earnSumBlock(sym); if (state.stock === sym) try { renderBiz(sym); } catch (e) { console.error(e); } });
     }
     return state.earnsum[sym];
+  }
+  // 🎙️ 컨퍼런스콜 핵심(서버: 녹취록 요점 → 없으면 발표 뒤 뉴스) — 실적 3줄 요약 아래
+  function callBlock(X) {
+    const C = X?.call;
+    if (!C?.lines?.length) return X?.callPending && !(X.n >= 3) ? `<div class="es-call loading"><b>🎙️ ${EN ? 'Earnings call' : '컨퍼런스콜 핵심'}</b><small>${EN ? 'Checking the call…' : '컨퍼런스콜 내용을 확인하는 중…'}</small></div>` : '';
+    const src = C.src === 'call'
+      ? `${EN ? 'From the earnings call transcript' : '컨퍼런스콜 녹취록 요점으로 AI가 정리'}${C.url ? ` · <a href="${esc(C.url)}" target="_blank" rel="noopener">${EN ? 'Transcript (Motley Fool)' : '녹취록 원문(Motley Fool)'} ↗</a>` : ''}`
+      : (EN ? 'From news after the call — updated again when the transcript is out' : '발표 뒤 뉴스 기준이에요. 녹취록이 올라오면 다시 정리해요');
+    return `<div class="es-call"><b>🎙️ ${EN ? 'Earnings call' : '컨퍼런스콜 핵심'}${C.src === 'call' ? '' : ` <span class="es-tag">${EN ? 'news' : '뉴스 기준'}</span>`}</b><ul>${C.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${src}</small></div>`;
   }
   function earnSumBlock(sym) {
     const last = isKR(sym) ? (() => { const X = earnSumGet(sym); return X?.lines?.length && X.q ? { end: X.q, reportedOn: X.reportedOn } : null; })() : earnLast(sym);
     // 발표 뒤 일주일만 실적 카드 맨 위에 — 그 뒤엔 사업 현황의 '분기별 주요 소식'에 남는다
     if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 7) return '';
     const X = earnSumGet(sym, last);
-    if (X?.lines?.length) return `<div class="es-box" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'} · ${qLabelLong(X.q)}</b><ul>${X.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${EN ? 'Written by AI from the reported numbers and news around the release — may contain mistakes.' : '실적 숫자와 발표 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</small></div>`;
+    if (X?.lines?.length) return `<div class="es-box" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'} · ${qLabelLong(X.q)}</b><ul>${X.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${EN ? 'Written by AI from the reported numbers and news around the release — may contain mistakes.' : '실적 숫자와 발표 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</small>${callBlock(X)}</div>`;
     if (X?.none) return `<div class="es-box" data-es="${esc(sym)}" hidden></div>`;
     return `<div class="es-box loading" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'}</b><small>${EN ? 'Writing the summary…' : '요약을 만드는 중…'}</small></div>`;
   }
@@ -8838,6 +8849,39 @@ ${what.join(' · ')}
       setTimeout(() => { x.classList.remove('spin'); reset(); }, 1100);
     }, { passive: true });
     document.addEventListener('touchcancel', () => { y0 = null; reset(); }, { passive: true });
+  })();
+  // 좌우로 밀어 아래 탭 순서대로 넘기기(Home ↔ 차트 ↔ 실적 ↔ 뉴스) — 차트·옆으로 넘기는 표·입력칸 위, 화면 가장자리(뒤로 가기 동작)는 제외
+  (() => {
+    let s = null;
+    const hScroll = (t) => {
+      for (let el = t; el && el !== document.body; el = el.parentElement) {
+        if (el.scrollWidth > el.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
+      }
+      return false;
+    };
+    document.addEventListener('touchstart', (e) => {
+      s = null;
+      const t = e.touches[0], W = window.innerWidth;
+      if (e.touches.length !== 1 || t.clientX < 24 || t.clientX > W - 24 || document.body.classList.contains('sheet-open')) return;
+      if (e.target.closest?.('input, textarea, select, canvas, .tabbar, [role="slider"], .chart-tip') || hScroll(e.target)) return;
+      s = { x: t.clientX, y: t.clientY, at: Date.now() };
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (!s) return;
+      const t = e.changedTouches[0], dx = t.clientX - s.x, dy = t.clientY - s.y, dt = Date.now() - s.at;
+      s = null;
+      if (dt > 700 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+      if (window.getSelection?.().toString()) return; // 글자 고르는 중
+      const tabs = [...document.querySelectorAll('.tb-row [data-tab]')].map((b) => b.dataset.tab);
+      const i = tabs.indexOf(state.view), v = tabs[i + (dx < 0 ? 1 : -1)];
+      if (i < 0 || !v) return;
+      showView(v);
+      const el = document.getElementById('view-' + v);
+      el?.classList.remove('sw-l', 'sw-r');
+      void el?.offsetWidth;
+      el?.classList.add(dx < 0 ? 'sw-l' : 'sw-r');
+    }, { passive: true });
+    document.addEventListener('touchcancel', () => { s = null; }, { passive: true });
   })();
   // 숫자 입력칸: 0이 들어 있는 채로 숫자를 치면 앞의 0을 지운다(0에 10을 치면 "010"이 아니라 "10"), 0만 있으면 누를 때 전체 선택
   const isNumInput = (t) => t instanceof HTMLInputElement && (t.inputMode === 'numeric' || t.inputMode === 'decimal' || t.type === 'number');
