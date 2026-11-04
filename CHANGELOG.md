@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.04-1 — 2026-11-04
+
+[이 버전 보기](https://4e8ad7c4.my-fire-portfolio.pages.dev) · 커밋 `c301df4`
+
 - 화면을 좌우로 밀어서 아래 탭(Home · 차트 · 실적 · 뉴스)을 넘길 수 있어요
 <!-- EN Swipe left or right to move between the bottom tabs (Home · Chart · Earnings · News) -->
 - 실적 요약 아래에 '🎙️ 컨퍼런스콜 핵심'이 붙어요 — 회사 전망(가이던스)·경영진이 강조한 점·걱정거리를 녹취록 요점으로 정리하고, 녹취록이 나오기 전엔 뉴스로 먼저 보여 줘요
