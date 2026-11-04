@@ -2682,7 +2682,10 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   const E = await (async () => { try { const r = await cache.match(new Request(`${url.origin}/earnings?s=${sym}&v=swr4`)); if (r) return await r.json(); } catch {} return buildEarnings(sym).catch(() => null); })();
   // 발표 직후에는 EPS 서프라이즈(Nasdaq)가 재무제표보다 먼저 들어온다 → 더 최근 것을 기준 분기로
   const qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((x) => x.reported);
-  const last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
+  let last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
+  // 저장된 실적 자료가 발표 전 것이면(며칠 묵은 캐시): 발표문(8-K)에서 읽은 새 분기를 기준으로
+  const I = await buildIstmt(sym, url.origin, cache, env).catch(() => null);
+  if (I?.src === 'pr' && I.filed && (!last?.reportedOn || Date.parse(I.end) - Date.parse(last.end) > 45 * 864e5)) last = { end: I.end, reportedOn: I.filed, revenue: I.rev, netIncome: I.net, fromRelease: true };
   // 분기별 요약 기록(사업 현황 '분기별 주요 소식'이 쓴다 — 기간 제한 없이 최근 8개 분기)
   const H = env?.SUMS ? (await env.SUMS.get(`bizhl:${sym}`, 'json').catch(() => null)) || { items: [] } : { items: [] };
   const withHist = (o) => ({ ...o, hist: H.items });
@@ -2699,9 +2702,9 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   const lock = new Request(`${url.origin}/earnsumlock?k=${encodeURIComponent(key)}`);
   if (await cache.match(lock)) return json({ pending: true }, cors);
   ctx.waitUntil(cache.put(lock, new Response('1', { headers: { 'cache-control': 'public, max-age=90' } })));
-  const sur = (E.surprises || []).find((x) => x.end === last.end);
-  const ya = (E.quarters || []).find((x) => x.end === `${+last.end.slice(0, 4) - 1}${last.end.slice(4)}`);
-  const Q = (E.quarters || []).find((x) => x.end === last.end) || {};
+  const sur = (E?.surprises || []).find((x) => Math.abs(Date.parse(x.end) - Date.parse(last.end)) < 20 * 864e5);
+  const ya = (E?.quarters || []).find((x) => Math.abs(Date.parse(last.end) - 365 * 864e5 - Date.parse(x.end)) < 20 * 864e5);
+  const Q = (E?.quarters || []).find((x) => x.end === last.end) || (last.fromRelease ? last : {});
   // 매출: 재무제표가 아직이면 Finviz(애널리스트 캐시)의 발표 매출·예상 매출
   let fv = null;
   // 뉴스·애널리스트 자료가 아직 없으면(보는 사람이 없던 종목) 먼저 받아 둔다
