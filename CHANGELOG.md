@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.05-3 — 2026-11-05
+
+[이 버전 보기](https://2dfb9a0f.my-fire-portfolio.pages.dev) · 커밋 `1b73091`
+
 <!-- internal --> - 영어 화면에서 일부 설명(애널리스트·기관 보유·뉴스 요약 제목·신용 용어)이 반쯤 번역되던 문제 수정
 - 🎙️ 한국 종목도 실적 발표 뒤 '컨퍼런스콜 핵심'을 보여 줘요. 한국 회사는 녹취록을 공개하지 않아 경영진 발언 뉴스로 AI가 정리하고, 뉴스가 늘면 다시 정리해요.
 <!-- EN Korean stocks now get an "Earnings call" summary too — built from news on management's comments, since Korean companies don't publish transcripts -->
