@@ -386,7 +386,7 @@ def _parse_body(body):
     """버전 본문 → ([(소제목, [항목...])...], EN 항목들) — 내부용 줄·주석은 뺀다"""
     # EN은 '- 항목' 줄을 모은 한 덩어리(<!-- EN\n- a\n- b\n-->)든, 항목마다 한 줄(<!-- EN a -->)이든 받는다
     en = []
-    for m in _re.finditer(r'<!--\s*EN\b(.*?)-->', body, _re.S):
+    for m in _re.finditer(r'<!--\s*EN\b(.*?)-->', '\n'.join(l for l in body.splitlines() if '<!-- internal -->' not in l), _re.S):
         t = m.group(1)
         ls = [l.strip()[2:].strip() for l in t.splitlines() if l.strip().startswith('- ')]
         en += ls or ([t.strip()] if t.strip() else [])
