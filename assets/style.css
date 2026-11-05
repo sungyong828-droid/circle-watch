@@ -342,6 +342,16 @@ button.kpi:active { background: var(--surface-2); }
 .view.sw-r { animation: swIn 0.22s ease-out; --sw-x: -28px; }
 @keyframes swIn { from { opacity: 0.4; transform: translateX(var(--sw-x)); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .view.sw-l, .view.sw-r { animation: none; } }
+/* 밀고 있는 동안 옆에서 들어오는 '다음 탭' 표시 — 다 밀면(넘어갈 만큼) 강조색으로 바뀐다 */
+body { overflow-x: clip; }
+.sw-peek { position: fixed; top: 46%; z-index: 30; display: flex; align-items: center; gap: 6px; padding: 10px 15px; border-radius: 999px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35); font-size: 14px; font-weight: 800; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s, background 0.15s, color 0.15s; }
+.sw-peek.r { right: 12px; transform: translate(calc((1 - var(--p, 0)) * 70px), -50%); }
+.sw-peek.l { left: 12px; transform: translate(calc((var(--p, 0) - 1) * 70px), -50%); }
+.sw-peek.on { opacity: calc(0.3 + var(--p, 0) * 0.7); }
+.sw-peek.go { background: var(--accent); color: #fff; border-color: transparent; }
+.sw-peek.hint { transition: transform 0.35s ease-out, opacity 0.35s; }
+.sw-peek svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sw-peek b { font-size: 18px; line-height: 1; opacity: 0.8; }
 
 @media (max-width: 560px) {
   .miles { display: flex; overflow-x: auto; gap: 8px; scroll-snap-type: x mandatory; margin-inline: -16px; padding: 0 16px 4px; scrollbar-width: none; }
@@ -1384,7 +1394,10 @@ html, body { overscroll-behavior-y: contain; } /* 브라우저 기본 당김 새
 .na-kw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); font-weight: 800; }
 .na-tag { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); font-weight: 700; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .na-time { margin-left: auto; flex: none; }
-.na-x { flex: none; width: 30px; height: 30px; margin: -4px -4px -4px 2px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); font-size: 17px; line-height: 1; cursor: pointer; }
+.na-x { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; margin: -6px -6px -6px 4px; padding: 0 12px 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); color: var(--ink); font: inherit; font-size: 13px; font-weight: 800; line-height: 1; cursor: pointer; position: relative; }
+.na-x::before { content: ''; position: absolute; inset: -6px; } /* 손가락이 조금 빗나가도 닫히게 누르는 칸을 넓힌다 */
+.na-x svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.news-alert.drag { transition: none; }
 .na-body { display: grid; gap: 5px; margin-top: 10px; color: var(--ink); text-decoration: none; -webkit-tap-highlight-color: transparent; }
 .na-title { font-size: 16px; line-height: 1.42; font-weight: 800; letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .na-sum { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

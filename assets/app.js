@@ -6683,13 +6683,50 @@ ${what.join(' · ')}
   }
   // 속보 알림 카드: 헤더 아래로 내려와 10초 뒤 사라짐(누르면 기사, × 닫기, 여러 건이면 키워드 속보로 이동)
   let naTimer = null;
-  function closeNewsAlert() { const el = document.getElementById('news-alert'); if (!el) return; el.classList.remove('show'); clearTimeout(naTimer); setTimeout(() => { if (!el.classList.contains('show')) el.hidden = true; }, 300); }
+  function closeNewsAlert(fly) { const el = document.getElementById('news-alert'); if (!el) return; el.classList.remove('show'); if (!fly) { el.style.transform = ''; el.style.opacity = ''; } clearTimeout(naTimer); setTimeout(() => { if (!el.classList.contains('show')) { el.hidden = true; el.style.transform = ''; el.style.opacity = ''; } }, 300); }
+  // 속보 카드 닫기 쉽게: 위·옆으로 밀면 닫힘(손가락을 따라 움직임) · 카드 밖을 누르면 닫힘 · 만지는 동안은 저절로 사라지지 않음
+  (() => {
+    let s = null;
+    const card = () => { const el = document.getElementById('news-alert'); return el && !el.hidden && el.classList.contains('show') ? el : null; };
+    document.addEventListener('touchstart', (e) => {
+      const el = card();
+      if (!el) return;
+      if (!el.contains(e.target)) { closeNewsAlert(); return; } // 카드 밖을 누르면 닫는다(누른 곳의 동작은 그대로)
+      s = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, dy: 0, el };
+      clearTimeout(naTimer);
+    }, { passive: true, capture: true });
+    document.addEventListener('touchmove', (e) => {
+      if (!s) return;
+      s.dx = e.touches[0].clientX - s.x; s.dy = Math.min(0, e.touches[0].clientY - s.y); // 아래로는 끌리지 않게
+      if (Math.abs(s.dx) < 6 && s.dy > -6) return;
+      s.el.classList.add('drag');
+      s.el.style.transform = `translate(calc(-50% + ${s.dx.toFixed(0)}px), ${s.dy.toFixed(0)}px)`;
+      s.el.style.opacity = String(Math.max(0.2, 1 - Math.max(Math.abs(s.dx) / 220, -s.dy / 120)));
+    }, { passive: true, capture: true });
+    const end = () => {
+      if (!s) return;
+      const S = s; s = null;
+      S.el.classList.remove('drag');
+      if (S.dy < -36 || Math.abs(S.dx) > 90) {
+        S.el.style.transform = S.dy < -36 ? 'translate(-50%, -120%)' : `translate(calc(-50% + ${S.dx < 0 ? -110 : 110}%), 0)`;
+        S.el.style.opacity = '0';
+        closeNewsAlert(true); // 민 방향으로 날아가며 닫힌다
+        return;
+      }
+      S.el.style.transform = ''; S.el.style.opacity = '';
+      naTimer = setTimeout(closeNewsAlert, 6000); // 손을 떼면 6초 뒤 사라짐
+    };
+    document.addEventListener('touchend', end, { passive: true, capture: true });
+    document.addEventListener('touchcancel', end, { passive: true, capture: true });
+    // 마우스(PC): 카드 밖을 누르면 닫힘
+    document.addEventListener('mousedown', (e) => { const el = card(); if (el && !el.contains(e.target)) closeNewsAlert(); }, true);
+  })();
   function newsAlert(i, more = 0) {
     let el = document.getElementById('news-alert');
     if (!el) { el = document.createElement('div'); el.id = 'news-alert'; el.className = 'news-alert'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
     const m = Math.max(0, Math.round((Date.now() - i.t) / 60000)), when = EN ? (m < 1 ? 'just now' : m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ago`) : m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 전`;
     el.style.setProperty('--na-top', `${Math.round(document.querySelector('.top')?.getBoundingClientRect().bottom || 64)}px`);
-    el.innerHTML = `<div class="na-top"><span class="na-badge">${EN ? '🔔 Breaking' : '🔔 속보'}</span><span class="na-kw">${esc(i.hit[0])}</span>${i.tag && i.tag !== '시장' ? `<span class="na-tag">${esc(symLabel(i.tag))}</span>` : ''}<span class="na-time">${when}</span><button type="button" class="na-x" data-naclose="1" aria-label="알림 닫기">×</button></div>
+    el.innerHTML = `<div class="na-top"><span class="na-badge">${EN ? '🔔 Breaking' : '🔔 속보'}</span><span class="na-kw">${esc(i.hit[0])}</span>${i.tag && i.tag !== '시장' ? `<span class="na-tag">${esc(symLabel(i.tag))}</span>` : ''}<span class="na-time">${when}</span><button type="button" class="na-x" data-naclose="1" aria-label="${EN ? 'Close alert' : '알림 닫기'}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>${EN ? 'Close' : '닫기'}</button></div>
       <a class="na-body" href="${safeUrl(i.url)}" target="_blank" rel="noopener" data-naopen="1"><b class="na-title nt">${esc(ttl(i))}</b>${i.sum ? `<span class="na-sum nsum">${esc(i.sum)}</span>` : ''}<span class="na-src">${esc(i.source || '')} · ${EN ? 'Open article' : '기사 열기'} ›</span></a>
       ${more > 0 ? `<button type="button" class="na-more" data-nago="1">${EN ? `${more} more keyword ${more > 1 ? 'stories' : 'story'}` : `키워드 기사 ${more}건 더 보기`}</button>` : ''}<i class="na-bar"></i>`;
     el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
@@ -8850,38 +8887,99 @@ ${what.join(' · ')}
     }, { passive: true });
     document.addEventListener('touchcancel', () => { y0 = null; reset(); }, { passive: true });
   })();
-  // 좌우로 밀어 아래 탭 순서대로 넘기기(Home ↔ 차트 ↔ 실적 ↔ 뉴스) — 차트·옆으로 넘기는 표·입력칸 위, 화면 가장자리(뒤로 가기 동작)는 제외
+  // 좌우로 밀어 아래 탭 순서대로 넘기기(Home ↔ 차트 ↔ 실적 ↔ 뉴스) — 화면이 손가락을 따라 움직이고, 넘어갈 탭 이름이 옆에서 들어온다.
+  // 차트·옆으로 넘기는 표·입력칸 위, 화면 가장자리(휴대폰 뒤로 가기 동작)는 제외
   (() => {
-    let s = null;
+    const GO = 90; // 이만큼 밀면 넘어간다(빠르게 튕기면 45)
+    let s = null, peek = null;
     const hScroll = (t) => {
       for (let el = t; el && el !== document.body; el = el.parentElement) {
         if (el.scrollWidth > el.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
       }
       return false;
     };
+    const tabList = () => [...document.querySelectorAll('.tb-row [data-tab]')];
+    // 옆에서 들어오는 '다음 탭' 표시
+    const showPeek = (btn, dir, p) => {
+      if (!peek) { peek = document.createElement('div'); peek.className = 'sw-peek'; peek.setAttribute('aria-hidden', 'true'); document.body.appendChild(peek); }
+      const key = btn ? btn.dataset.tab + dir : 'end' + dir;
+      if (peek.dataset.k !== key) {
+        peek.dataset.k = key;
+        peek.innerHTML = btn ? `${dir < 0 ? '<b>‹</b>' : ''}${btn.querySelector('svg')?.outerHTML || ''}<span>${esc(btn.querySelector('span')?.textContent || '')}</span>${dir > 0 ? '<b>›</b>' : ''}` : `<span>${EN ? 'Last tab' : '마지막 탭이에요'}</span>`;
+      }
+      peek.classList.toggle('r', dir > 0);
+      peek.classList.toggle('l', dir < 0);
+      peek.classList.toggle('go', !!btn && p >= 1);
+      peek.style.setProperty('--p', Math.min(1, p).toFixed(3));
+      peek.classList.add('on');
+    };
+    const hidePeek = () => { if (peek) { peek.classList.remove('on', 'go'); peek.style.setProperty('--p', '0'); } };
+    const viewEl = () => document.getElementById('view-' + state.view);
+    const release = (v, ms = 180) => {
+      if (!v) return;
+      v.style.transition = `transform ${ms}ms ease-out, opacity ${ms}ms ease-out`;
+      v.style.transform = ''; v.style.opacity = '';
+      setTimeout(() => { v.style.transition = ''; }, ms + 20);
+    };
     document.addEventListener('touchstart', (e) => {
       s = null;
       const t = e.touches[0], W = window.innerWidth;
       if (e.touches.length !== 1 || t.clientX < 24 || t.clientX > W - 24 || document.body.classList.contains('sheet-open')) return;
-      if (e.target.closest?.('input, textarea, select, canvas, .tabbar, [role="slider"], .chart-tip') || hScroll(e.target)) return;
-      s = { x: t.clientX, y: t.clientY, at: Date.now() };
+      if (e.target.closest?.('input, textarea, select, canvas, .tabbar, [role="slider"], .chart-tip, .news-alert') || hScroll(e.target)) return;
+      const tabs = tabList(), i = tabs.findIndex((b) => b.dataset.tab === state.view);
+      if (i < 0) return;
+      s = { x: t.clientX, y: t.clientY, at: Date.now(), mode: null, tabs, i };
     }, { passive: true });
-    document.addEventListener('touchend', (e) => {
+    document.addEventListener('touchmove', (e) => {
       if (!s) return;
-      const t = e.changedTouches[0], dx = t.clientX - s.x, dy = t.clientY - s.y, dt = Date.now() - s.at;
-      s = null;
-      if (dt > 700 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
-      if (window.getSelection?.().toString()) return; // 글자 고르는 중
-      const tabs = [...document.querySelectorAll('.tb-row [data-tab]')].map((b) => b.dataset.tab);
-      const i = tabs.indexOf(state.view), v = tabs[i + (dx < 0 ? 1 : -1)];
-      if (i < 0 || !v) return;
-      showView(v);
-      const el = document.getElementById('view-' + v);
-      el?.classList.remove('sw-l', 'sw-r');
-      void el?.offsetWidth;
-      el?.classList.add(dx < 0 ? 'sw-l' : 'sw-r');
+      const t = e.touches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
+      if (!s.mode) {
+        if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5 && !window.getSelection?.().toString()) s.mode = 'h';
+        else if (Math.abs(dy) > 10) { s = null; return; } // 위아래 스크롤
+        else return;
+      }
+      const dir = dx < 0 ? 1 : -1, btn = s.tabs[s.i + dir], v = viewEl();
+      const k = btn ? dx : dx * 0.25; // 끝 탭이면 살짝만 끌린다
+      s.dx = dx; s.btn = btn; s.dir = dir;
+      if (v) { v.style.transition = 'none'; v.style.transform = `translateX(${k.toFixed(1)}px)`; v.style.opacity = String(1 - Math.min(0.35, Math.abs(k) / window.innerWidth * 0.7)); }
+      showPeek(btn, dir, Math.abs(dx) / GO);
     }, { passive: true });
-    document.addEventListener('touchcancel', () => { s = null; }, { passive: true });
+    const end = (e) => {
+      if (!s) return;
+      const S = s; s = null;
+      if (S.mode !== 'h') return;
+      hidePeek();
+      const v = viewEl(), dx = S.dx || 0, fast = Math.abs(dx) / Math.max(1, Date.now() - S.at) > 0.5;
+      if (!e || !S.btn || !(Math.abs(dx) >= GO || (fast && Math.abs(dx) >= GO / 2))) { release(v); return; }
+      // 밀던 방향으로 마저 빠져나가고 → 다음 탭이 같은 방향에서 들어온다
+      if (v) { v.style.transition = 'transform 0.14s ease-in, opacity 0.14s ease-in'; v.style.transform = `translateX(${dx < 0 ? -40 : 40}%)`; v.style.opacity = '0'; }
+      setTimeout(() => {
+        if (v) { v.style.transition = ''; v.style.transform = ''; v.style.opacity = ''; }
+        const to = S.btn.dataset.tab;
+        showView(to);
+        const el = document.getElementById('view-' + to);
+        el?.classList.remove('sw-l', 'sw-r');
+        void el?.offsetWidth;
+        el?.classList.add(dx < 0 ? 'sw-l' : 'sw-r');
+        try { navigator.vibrate?.(6); } catch {}
+      }, 130);
+    };
+    document.addEventListener('touchend', end, { passive: true });
+    document.addEventListener('touchcancel', () => end(null), { passive: true });
+    // 처음 한 번: 홈 화면이 옆으로 살짝 밀렸다 돌아오며 '옆으로 넘길 수 있어요'를 보여 준다(휴대폰에서만)
+    setTimeout(() => {
+      try {
+        if (!matchMedia('(pointer: coarse)').matches || localStorage.getItem('cw.swHint') || document.body.classList.contains('sheet-open') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const tabs = tabList(), i = tabs.findIndex((b) => b.dataset.tab === state.view), btn = tabs[i + 1], v = viewEl();
+        if (i < 0 || !btn || !v) return;
+        localStorage.setItem('cw.swHint', '1');
+        showPeek(btn, 1, 0.75);
+        peek.classList.add('hint');
+        v.style.transition = 'transform 0.35s ease-out'; v.style.transform = 'translateX(-36px)';
+        setTimeout(() => { release(v, 300); hidePeek(); }, 1300);
+        setTimeout(() => peek?.classList.remove('hint'), 1700);
+      } catch {}
+    }, 2500);
   })();
   // 숫자 입력칸: 0이 들어 있는 채로 숫자를 치면 앞의 0을 지운다(0에 10을 치면 "010"이 아니라 "10"), 0만 있으면 누를 때 전체 선택
   const isNumInput = (t) => t instanceof HTMLInputElement && (t.inputMode === 'numeric' || t.inputMode === 'decimal' || t.type === 'number');

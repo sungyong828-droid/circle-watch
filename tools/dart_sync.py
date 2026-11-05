@@ -48,6 +48,14 @@ def dart_key():
 KEY = dart_key()
 
 
+# GitHub Actions는 5시간 40분이면 강제로 끊는다(받던 것도 저장 못 함) → 그 전에 스스로 멈추고 저장한다. 다음 실행이 이어서 받는다
+T_END = time.time() + float(os.environ.get('DART_BUDGET_MIN', '300')) * 60
+
+
+class OutOfTime(RuntimeError):
+    """이번 실행에 쓸 시간을 다 씀"""
+
+
 class DartLimit(RuntimeError):
     """하루 요청 한도(인증키당 2만 번) 초과 — 이번 실행은 멈추고 아무것도 덮어쓰지 않는다"""
 
@@ -212,7 +220,10 @@ def main():
             shares[s] = {'n': n - (num(c.get('tesstk_co')) or 0), 'at': end}
         if i % 200 == 199:
             json.dump(shares, open(sp, 'w', encoding='utf-8'))
-            print(f'  {i + 1}/{len(todo)}')
+            print(f'  {i + 1}/{len(todo)}', flush=True)
+        if time.time() > T_END:
+            json.dump(shares, open(sp, 'w', encoding='utf-8'))
+            raise OutOfTime(f'발행주식수 {i + 1}/{len(todo)}에서 시간 다 씀')
     json.dump(shares, open(sp, 'w', encoding='utf-8'))
     # 💸 돈의 흐름(자세히): 새 보고서가 나온 회사만 전체 손익을 다시 받는다
     ip = os.path.join(CACHE, 'dart_is.json')
@@ -236,7 +247,10 @@ def main():
         isc[s] = {'end': end, 'v': d if ok else None}
         if i % 200 == 199:
             json.dump(isc, open(ip, 'w', encoding='utf-8'))
-            print(f'  {i + 1}/{len(todo)}')
+            print(f'  {i + 1}/{len(todo)}', flush=True)
+        if time.time() > T_END:
+            json.dump(isc, open(ip, 'w', encoding='utf-8'))
+            raise OutOfTime(f'손익 자세히 {i + 1}/{len(todo)}에서 시간 다 씀')
     json.dump(isc, open(ip, 'w', encoding='utf-8'))
     is_out = {}
     for s, c in isc.items():
@@ -288,4 +302,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (OutOfTime, DartLimit) as e:
+        # 실패가 아니다 — 받은 만큼 저장했고(Actions 캐시) 다음 실행이 이어서 받는다. KV는 다 받은 뒤에 한 번에 올린다
+        print(f'이번엔 여기까지: {e} · 다음 실행에서 이어서 받아요')
