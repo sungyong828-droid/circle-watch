@@ -2769,7 +2769,7 @@
   // 🎙️ 컨퍼런스콜 핵심(서버: 녹취록 요점 → 없으면 발표 뒤 뉴스) — 실적 3줄 요약 아래
   function callBlock(X) {
     const C = X?.call;
-    if (!C?.lines?.length) return X?.callPending && !(X.n >= 3) ? `<div class="es-call loading"><b>🎙️ ${EN ? 'Earnings call' : '컨퍼런스콜 핵심'}</b><small>${EN ? 'Checking the call…' : '컨퍼런스콜 내용을 확인하는 중…'}</small></div>` : '';
+    if (!C?.lines?.length) return ''; // 아직이면 비워 두고, 준비되면 그때 나타난다
     const src = C.src === 'call'
       ? `${EN ? 'From the earnings call transcript' : '컨퍼런스콜 녹취록 요점으로 AI가 정리'}${C.url ? ` · <a href="${esc(C.url)}" target="_blank" rel="noopener">${EN ? 'Transcript (Motley Fool)' : '녹취록 원문(Motley Fool)'} ↗</a>` : ''}`
       : (EN ? 'From news after the call — updated again when the transcript is out' : '발표 뒤 뉴스 기준이에요. 녹취록이 올라오면 다시 정리해요');
@@ -2782,7 +2782,7 @@
     const X = earnSumGet(sym, last);
     if (X?.lines?.length) return `<div class="es-box" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary (Korean)' : 'AI 3줄 요약'} · ${qLabelLong(X.q)}</b><ul data-noi18n>${X.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${EN ? 'Written by AI from the reported numbers and news around the release — may contain mistakes.' : '실적 숫자와 발표 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</small>${callBlock(X)}</div>`;
     if (X?.none) return `<div class="es-box" data-es="${esc(sym)}" hidden></div>`;
-    return `<div class="es-box loading" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary' : 'AI 3줄 요약'}</b><small>${EN ? 'Writing the summary…' : '요약을 만드는 중…'}</small></div>`;
+    return `<div class="es-box" data-es="${esc(sym)}" hidden></div>`; // 아직이면 자리만(서버가 미리 만들어 두고, 준비되면 그때 나타난다)
   }
 
   // ---------------------------------------------------------------- 💸 돈의 흐름(실적 흐름도) — 매출이 원가·비용·세금으로 나가고 얼마가 순이익으로 남는지
@@ -3078,11 +3078,11 @@
   }
   function fsumHtml(sym) {
     const X = state.fsum[sym];
-    if (!X || !X.list && (X.loading || X.more)) return `<p class="skeleton">${EN ? 'Loading filings — summaries can take a minute the first time…' : '공시 불러오는 중… 처음엔 AI 요약에 1분쯤 걸려요'}</p>`;
+    if (!X || !X.list && (X.loading || X.more)) return `<p class="skeleton">${EN ? 'Loading filings…' : '공시 불러오는 중…'}</p>`;
     if (!X.list?.length) return '';
     const kind = (f) => (/^10-Q/.test(f.form) ? (EN ? 'Quarterly report' : '분기 보고서') : /^10-K/.test(f.form) ? (EN ? 'Annual report' : '연간 보고서') : /^20-F/.test(f.form) ? (EN ? 'Annual report' : '연간 보고서') : (EN ? f.en : f.ko).join(' · ') || (EN ? 'Current report' : '수시 공시'));
     return `<ul class="fs-list">${X.list.map((f) => `<li><div class="fs-h"><span class="fs-k">${esc(f.form)}</span><b>${esc(kind(f))}</b><span class="fs-d">${md(isoToTs(f.d))}</span><a href="${safeUrl(f.url)}" target="_blank" rel="noopener">${EN ? 'Original' : '원문'} →</a></div>
-      ${f.lines ? `<ul class="fs-l" data-noi18n>${f.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : `<small class="fs-wait">${EN ? 'Summary in progress…' : '요약 만드는 중…'}</small>`}</li>`).join('')}</ul>
+      ${f.lines ? `<ul class="fs-l" data-noi18n>${f.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>
       <p class="note">${EN ? 'AI summaries (in Korean) of the SEC originals — may contain mistakes.' : 'SEC 원문을 AI가 한국어로 줄였어요. 틀릴 수 있으니 중요한 건 원문으로 확인하세요.'}</p>`;
   }
   function renderAiCards(sym = state.stock) {
@@ -8887,7 +8887,7 @@ ${what.join(' · ')}
     }, { passive: true });
     document.addEventListener('touchcancel', () => { y0 = null; reset(); }, { passive: true });
   })();
-  // 좌우로 밀어 아래 탭 순서대로 넘기기(Home ↔ 차트 ↔ 실적 ↔ 뉴스) — 화면이 손가락을 따라 움직이고, 넘어갈 탭 이름이 옆에서 들어온다.
+  // 좌우로 밀어 아래 탭 순서대로 넘기기(Home ↔ 차트 ↔ 실적 ↔ 뉴스, 끝에서 더 밀면 반대쪽 끝으로 돌아간다) — 화면이 손가락을 따라 움직이고, 넘어갈 탭 이름이 옆에서 들어온다.
   // 차트·옆으로 넘기는 표·입력칸 위, 화면 가장자리(휴대폰 뒤로 가기 동작)는 제외
   (() => {
     const GO = 90; // 이만큼 밀면 넘어간다(빠르게 튕기면 45)
@@ -8902,14 +8902,14 @@ ${what.join(' · ')}
     // 옆에서 들어오는 '다음 탭' 표시
     const showPeek = (btn, dir, p) => {
       if (!peek) { peek = document.createElement('div'); peek.className = 'sw-peek'; peek.setAttribute('aria-hidden', 'true'); document.body.appendChild(peek); }
-      const key = btn ? btn.dataset.tab + dir : 'end' + dir;
+      const key = btn.dataset.tab + dir;
       if (peek.dataset.k !== key) {
         peek.dataset.k = key;
-        peek.innerHTML = btn ? `${dir < 0 ? '<b>‹</b>' : ''}${btn.querySelector('svg')?.outerHTML || ''}<span>${esc(btn.querySelector('span')?.textContent || '')}</span>${dir > 0 ? '<b>›</b>' : ''}` : `<span>${EN ? 'Last tab' : '마지막 탭이에요'}</span>`;
+        peek.innerHTML = `${dir < 0 ? '<b>‹</b>' : ''}${btn.querySelector('svg')?.outerHTML || ''}<span>${esc(btn.querySelector('span')?.textContent || '')}</span>${dir > 0 ? '<b>›</b>' : ''}`;
       }
       peek.classList.toggle('r', dir > 0);
       peek.classList.toggle('l', dir < 0);
-      peek.classList.toggle('go', !!btn && p >= 1);
+      peek.classList.toggle('go', p >= 1);
       peek.style.setProperty('--p', Math.min(1, p).toFixed(3));
       peek.classList.add('on');
     };
@@ -8938,8 +8938,8 @@ ${what.join(' · ')}
         else if (Math.abs(dy) > 10) { s = null; return; } // 위아래 스크롤
         else return;
       }
-      const dir = dx < 0 ? 1 : -1, btn = s.tabs[s.i + dir], v = viewEl();
-      const k = btn ? dx : dx * 0.25; // 끝 탭이면 살짝만 끌린다
+      const n = s.tabs.length, dir = dx < 0 ? 1 : -1, btn = s.tabs[(s.i + dir + n) % n], v = viewEl(); // 뉴스 → Home, Home → 뉴스로 돌아간다
+      const k = dx;
       s.dx = dx; s.btn = btn; s.dir = dir;
       if (v) { v.style.transition = 'none'; v.style.transform = `translateX(${k.toFixed(1)}px)`; v.style.opacity = String(1 - Math.min(0.35, Math.abs(k) / window.innerWidth * 0.7)); }
       showPeek(btn, dir, Math.abs(dx) / GO);
@@ -8950,7 +8950,7 @@ ${what.join(' · ')}
       if (S.mode !== 'h') return;
       hidePeek();
       const v = viewEl(), dx = S.dx || 0, fast = Math.abs(dx) / Math.max(1, Date.now() - S.at) > 0.5;
-      if (!e || !S.btn || !(Math.abs(dx) >= GO || (fast && Math.abs(dx) >= GO / 2))) { release(v); return; }
+      if (!e || !S.btn || S.tabs.length < 2 || !(Math.abs(dx) >= GO || (fast && Math.abs(dx) >= GO / 2))) { release(v); return; }
       // 밀던 방향으로 마저 빠져나가고 → 다음 탭이 같은 방향에서 들어온다
       if (v) { v.style.transition = 'transform 0.14s ease-in, opacity 0.14s ease-in'; v.style.transform = `translateX(${dx < 0 ? -40 : 40}%)`; v.style.opacity = '0'; }
       setTimeout(() => {
@@ -8970,7 +8970,7 @@ ${what.join(' · ')}
     setTimeout(() => {
       try {
         if (!matchMedia('(pointer: coarse)').matches || localStorage.getItem('cw.swHint') || document.body.classList.contains('sheet-open') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const tabs = tabList(), i = tabs.findIndex((b) => b.dataset.tab === state.view), btn = tabs[i + 1], v = viewEl();
+        const tabs = tabList(), i = tabs.findIndex((b) => b.dataset.tab === state.view), btn = tabs[(i + 1) % tabs.length], v = viewEl();
         if (i < 0 || !btn || !v) return;
         localStorage.setItem('cw.swHint', '1');
         showPeek(btn, 1, 0.75);

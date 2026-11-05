@@ -1301,12 +1301,12 @@ async function noteKrWatch(env, cache, origin, sym) {
   for (const [k, t] of Object.entries(W)) if (Date.now() - t > 30 * 864e5) delete W[k];
   await env.SUMS.put('krwatch', JSON.stringify(W));
 }
-// 3시간마다 한국 종목 4개씩 돌아가며 확인 — 새 분기 실적이 보이면 요약을 만든다(아니면 저장된 값만 읽고 끝)
+// 30분마다 한국 종목 4개씩 돌아가며 확인 — 새 분기 실적이 보이면 요약을 만든다(아니면 저장된 값만 읽고 끝)
 export async function fillKrSums(env, ctx, at = Date.now()) {
   if (!env?.SUMS || !env?.AI) return;
   const W = (await env.SUMS.get('krwatch', 'json').catch(() => null)) || {};
   const all = [...new Set([...KR_CORE, ...Object.keys(W)])].sort();
-  const n = Math.ceil(all.length / 4), turn = Math.floor(at / (3 * 3600000)) % Math.max(1, n);
+  const n = Math.ceil(all.length / 4), turn = Math.floor(at / 1800000) % Math.max(1, n);
   for (const sym of all.filter((_, i) => i % n === turn).slice(0, 4)) {
     try { await handleKrEarnSum(new URL(`https://my-fire-portfolio.pages.dev/api/earnsum?s=${encodeURIComponent(sym)}`), caches.default, {}, ctx, env, sym); } catch {}
   }
@@ -1316,7 +1316,8 @@ export async function fillEarnSums(env, ctx) {
   if (!env?.SUMS || !env?.AI) return;
   const L = await env.SUMS.get('earnlive', 'json').catch(() => null);
   // 요약이 없거나, 컨퍼런스콜 핵심이 아직 녹취록 기준이 아닌 종목(녹취록은 발표 당일~다음 날 올라온다)
-  const todo = (L?.items || []).filter((x) => (!x.sum || (x.call !== 'call' && !KR_RE.test(x.sym))) && Date.now() - x.t > 18 * 3600000 && Date.now() - x.t < 6 * 864e5).slice(0, 4);
+  // 발표 1시간 뒤부터(뉴스가 조금 쌓이면) — 근거가 부족한 요약은 2시간만 보관돼 뉴스가 늘면 다시 만들어진다
+  const todo = (L?.items || []).filter((x) => (!x.sum || (x.call !== 'call' && !KR_RE.test(x.sym))) && Date.now() - x.t > 3600000 && Date.now() - x.t < 6 * 864e5).slice(0, 4);
   if (!todo.length) return;
   for (const x of todo) {
     try {
@@ -1327,6 +1328,20 @@ export async function fillEarnSums(env, ctx) {
     } catch {}
   }
   await env.SUMS.put('earnlive', JSON.stringify(L));
+}
+// 화면을 열기 전에 미리: 기본 종목 + 최근 30일 안에 누군가 본 미국 종목을 돌아가며(한 번에 3개)
+// 공시 한국어 요약·회사 약속 추적을 만들어 둔다 → 종목을 열었을 때 '요약 만드는 중'이 거의 안 보이게
+export async function prepSums(env, ctx, at = Date.now()) {
+  if (!env?.SUMS || !env?.AI) return;
+  const W = (await env.SUMS.get('earnwatch', 'json').catch(() => null)) || {};
+  const all = [...new Set([...STOCKS.filter((s) => s !== 'MKT'), ...Object.keys(W)])].filter((s) => !KR_RE.test(s)).sort();
+  if (!all.length) return;
+  const n = Math.ceil(all.length / 3), turn = Math.floor(at / 1800000) % n;
+  const base = 'https://my-fire-portfolio.pages.dev';
+  for (const sym of all.filter((_, i) => i % n === turn)) {
+    try { await handleFileSum(new URL(`${base}/api/filesum?s=${encodeURIComponent(sym)}`), caches.default, {}, ctx, env); } catch {}
+    try { await handlePromises(new URL(`${base}/api/promises?s=${encodeURIComponent(sym)}`), caches.default, {}, ctx, env); } catch {}
+  }
 }
 // 실적 알림(🔔 실적 발표 알림)을 켠 사람에게: "📊 MSFT 실적 발표 · 매출 $92.3B(+19%) · 순이익 $36.6B"
 async function earnPush(env, fresh) {
@@ -3179,13 +3194,18 @@ export default {
   async scheduled(event, env, ctx) {
     // 3시간마다: FAA 인증 %·스페이스X 보호예수 공시 자동 확인
     // (같은 때 D램 현물가도 받아 둔다 — 아무도 반도체 종목을 안 봐도 매일 기록이 쌓이게)
-    if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); ctx.waitUntil(buildSemi(env).catch(() => {})); ctx.waitUntil(fillEarnSums(env, ctx).catch(() => {})); ctx.waitUntil(fillKrSums(env, ctx, event.scheduledTime).catch(() => {})); return; }
+    if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); ctx.waitUntil(buildSemi(env).catch(() => {})); return; }
     // 5분마다(요약과 다른 때): 폰 알림 — 목표가 도달·실적 발표일
     if (event.cron === '2-59/5 * * * *') { ctx.waitUntil(pushTick(env, event.scheduledTime).catch(() => {})); return; }
     // 15분마다: GitHub 예약 실행은 실제로 3~5시간씩 밀리므로, 데이터가 14분 넘게 묵었으면 수집을 직접 깨운다
     // (GH_TOKEN 비밀값이 있을 때만 — 저장소 Actions 쓰기 권한 토큰)
     // 같은 때 데이터 멈춤 감시도 한다(멈췄으면 조용히 수집을 깨움, 알림 없음)
     if (env.GH_TOKEN && Math.floor(event.scheduledTime / 300000) % 3 === 0) ctx.waitUntil(watchData(env).catch(() => {}));
+    // 30분마다(서로 다른 때): 실적 3줄 요약·컨퍼런스콜 핵심 / 공시 요약·약속 추적을 미리 만들어 둔다
+    const slot = Math.floor(event.scheduledTime / 300000) % 6;
+    if (slot === 1) ctx.waitUntil(fillEarnSums(env, ctx).catch(() => {}));
+    if (slot === 2) ctx.waitUntil(fillKrSums(env, ctx, event.scheduledTime).catch(() => {}));
+    if (slot === 4) ctx.waitUntil(prepSums(env, ctx, event.scheduledTime).catch(() => {}));
     // 5분마다: SEC 새 실적 공시(8-K 2.02) 확인 → 보도자료 손익계산서 읽기·폰 알림
     ctx.waitUntil(earnWatch(env, event.scheduledTime).catch(() => {}));
     const sym = STOCKS[Math.floor(event.scheduledTime / 300000) % STOCKS.length];

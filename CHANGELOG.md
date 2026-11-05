@@ -13,6 +13,10 @@
 
 - 옆으로 밀 때 화면이 손가락을 따라 움직이고, 넘어갈 탭 이름이 옆에서 들어와요(처음 한 번은 살짝 움직여 알려 줘요)
 <!-- EN Swiping now moves the screen with your finger and shows the next tab's name sliding in (with a one-time hint) -->
+- 마지막 탭(뉴스)에서 더 밀면 Home으로, Home에서 반대로 밀면 뉴스로 돌아가요
+<!-- EN Swiping past the last tab (News) wraps around to Home, and the other way too -->
+- AI 요약(실적 3줄 요약·컨퍼런스콜·공시 요약)을 서버가 30분마다 미리 만들어 둬요 — 종목을 열 때 '요약 만드는 중'이 보이지 않고, 준비된 요약만 나타나요
+<!-- EN AI summaries (earnings, earnings calls, filings) are now prepared in advance every 30 minutes, so you no longer see "writing the summary" when opening a stock -->
 - 속보 알림을 닫기 쉬워졌어요: 큰 '닫기' 버튼, 위·옆으로 밀기, 카드 바깥 누르기 모두 닫혀요
 <!-- EN Breaking-news alerts are easier to dismiss: a bigger Close button, swipe up or sideways, or tap outside -->
 - 한국 재무 자동 받기가 시간 제한 전에 스스로 멈추고 다음 날 이어 받도록 <!-- internal -->
