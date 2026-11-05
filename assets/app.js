@@ -2359,11 +2359,11 @@
   const KR_EN_KEY = 'cw.kren';
   const krEn = EN ? readJSON(KR_EN_KEY, {}) : {};
   const enKr = (t, n) => (EN && krTk(t) && krEn[String(t).slice(0, 6)]) || n;
-  // 칸이 좁은 곳에 쓸 짧은 이름: 'Samsung Electronics' → 'Samsung Electr.'
+  // 칸이 좁은 곳에 쓸 짧은 이름(20자까지 그대로): 'Samsung Electro-Mechanics' → 'Samsung Electro-Mec.'
   const enShort = (n) => {
-    if (n.length <= 16) return n;
+    if (n.length <= 20) return n;
     let s = '';
-    for (const w of n.split(' ')) { const t = s ? `${s} ${w}` : w; if (t.length > 16) return s ? `${s} ${w.slice(0, Math.max(3, 15 - s.length - 1))}.` : n.slice(0, 15) + '.'; s = t; }
+    for (const w of n.split(' ')) { const t = s ? `${s} ${w}` : w; if (t.length > 20) return s ? `${s} ${w.slice(0, Math.max(3, 19 - s.length - 1))}.` : n.slice(0, 19) + '.'; s = t; }
     return s;
   };
   // 보유 종목 선택지 이름: 미국 'TSLA · 테슬라', 한국 '삼성전자 · 005930'
