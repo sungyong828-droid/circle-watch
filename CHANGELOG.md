@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.05-1 — 2026-11-05
+
+[이 버전 보기](https://32ab5e69.my-fire-portfolio.pages.dev) · 커밋 `f8b22c4`
+
 - 옆으로 밀 때 화면이 손가락을 따라 움직이고, 넘어갈 탭 이름이 옆에서 들어와요(처음 한 번은 살짝 움직여 알려 줘요)
 <!-- EN Swiping now moves the screen with your finger and shows the next tab's name sliding in (with a one-time hint) -->
 - 마지막 탭(뉴스)에서 더 밀면 Home으로, Home에서 반대로 밀면 뉴스로 돌아가요
