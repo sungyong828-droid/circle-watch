@@ -1269,7 +1269,7 @@ async function handleKrEarnSum(url, cache, cors, ctx, env, sym) {
   if (!seen) { seen = today; ctx.waitUntil(env.SUMS.put(`krseen:${sym}:${end}`, seen, { expirationTtl: 400 * 86400 }).catch(() => {})); }
   if (Date.now() - Date.parse(seen) > 10 * 864e5) return json(withHist({ none: true, reportedOn: seen, nums }), cors);
   if (!(await aiLock(cache, url.origin, key, 120))) return json(withHist({ pending: true }), cors);
-  if (!(await takeAiBudget(1))) return json(withHist({ pending: true, budget: true }), cors);
+  if (!KR_CORE.includes(sym) && !(await takeAiBudget(1))) return json(withHist({ pending: true, budget: true }), cors); // 기본 한국 종목은 미국 기본 종목처럼 추가 종목 하루 상한을 쓰지 않는다(전체 상한은 runAI가 지킨다)
   const chg = (a, b) => (a != null && b ? `${a / Math.abs(b) - (b < 0 ? -1 : 1) >= 0 ? '+' : ''}${Math.round((a / Math.abs(b) - (b < 0 ? -1 : 1)) * 100)}%` : '비교 없음');
   const w8 = (v) => (v == null ? null : v / 1e8);
   const row = (nm, x) => (x ? `${nm} ${krWon(w8(x.cur))} (1년 전 ${krWon(w8(x.ya))}, ${chg(x.cur, x.ya)} · 직전 분기 ${krWon(w8(x.prev))}, ${chg(x.cur, x.prev)})` : '');
