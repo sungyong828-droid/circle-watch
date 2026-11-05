@@ -2648,9 +2648,9 @@
     card('flowguide', {
       title: EN ? '📚 More money-flow terms' : '📚 함께 알아 두면 좋은 자금 지표',
       body: `<dl class="fl-dl">
-        <dt>${EN ? 'Unsettled receivables (미수금)' : '위탁매매 미수금'}</dt><dd>${EN ? 'Stocks bought without paying in full (due in 2 days). If unpaid, the broker sells them — another source of forced selling.' : '돈을 다 내지 않고 산 주식 대금이에요(2일 안에 갚아야 해요). 못 갚으면 증권사가 바로 팔아 버려서(반대매매) 하락장에 매물이 쏟아질 수 있어요.'}</dd>
-        <dt>${EN ? 'Forced selling (반대매매)' : '반대매매'}</dt><dd>${EN ? 'When collateral falls below the required level, brokers sell your stock at market price. Spikes usually show up after sharp drops.' : '빌린 돈의 담보(주식) 가치가 기준 아래로 떨어지면 증권사가 시장가로 강제로 파는 거예요. 급락 직후에 크게 늘어요.'}</dd>
-        <dt>${EN ? 'Futures margin deposits (선물예수금)' : '선물·옵션 예수금'}</dt><dd>${EN ? 'Cash parked for futures and options trading — a rough gauge of short-term speculative appetite.' : '선물·옵션을 하려고 넣어 둔 돈이에요. 단기 투기 심리를 대략 보여줘요.'}</dd>
+        <dt>${EN ? 'Unsettled receivables <span data-noi18n>(미수금)</span>' : '위탁매매 미수금'}</dt><dd>${EN ? 'Stocks bought without paying in full (due in 2 days). If unpaid, the broker sells them — another source of forced selling.' : '돈을 다 내지 않고 산 주식 대금이에요(2일 안에 갚아야 해요). 못 갚으면 증권사가 바로 팔아 버려서(반대매매) 하락장에 매물이 쏟아질 수 있어요.'}</dd>
+        <dt>${EN ? 'Forced selling <span data-noi18n>(반대매매)</span>' : '반대매매'}</dt><dd>${EN ? 'When collateral falls below the required level, brokers sell your stock at market price. Spikes usually show up after sharp drops.' : '빌린 돈의 담보(주식) 가치가 기준 아래로 떨어지면 증권사가 시장가로 강제로 파는 거예요. 급락 직후에 크게 늘어요.'}</dd>
+        <dt>${EN ? 'Futures margin deposits <span data-noi18n>(선물예수금)</span>' : '선물·옵션 예수금'}</dt><dd>${EN ? 'Cash parked for futures and options trading — a rough gauge of short-term speculative appetite.' : '선물·옵션을 하려고 넣어 둔 돈이에요. 단기 투기 심리를 대략 보여줘요.'}</dd>
         <dt>${EN ? 'Fear & Greed' : '공포·탐욕 지수'}</dt><dd>${EN ? 'US market sentiment on the Home screen. Read it together with this page.' : '홈 화면의 미국 증시 심리 지표예요. 이 화면과 같이 보면 분위기를 더 정확히 알 수 있어요.'}</dd>
       </dl><p class="note">${EN ? 'Source: Korea Financial Investment Association data via Naver Securities (published with a one-day lag). Not investment advice.' : '자료: 금융투자협회 집계(네이버 증권), 하루 늦게 발표돼요. 투자 조언이 아니에요.'}</p>`,
     });
@@ -5927,7 +5927,7 @@ ${what.join(' · ')}
       title, sub: `${F.length ? `공시 ${upd(N.filingsAt)} · ` : ''}뉴스 ${upd(N.newsAt)}`, info: INFO.news,
       body: `<div class="ns-grid n2">
           <div><span>새 소식</span><b>${unseen}건</b><small>지난 방문 이후</small></div>
-          ${F.length ? `<div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>` : `<div><span>회사 발표</span><b>${(N.official || []).length}건</b><small>최근 모은 것</small></div>`}
+          ${F.length ? `<div><span>최근 8-K(수시공시)</span><b>${k8 ? md(isoToTs(k8.d)) : '–'}</b><small>30일간 ${cnt(/^8-K/)}건</small></div>` : `<div><span>${EN ? 'Company releases' : '회사 발표'}</span><b>${(N.official || []).length}${EN ? '' : '건'}</b><small>${EN ? 'recently collected' : '최근 모은 것'}</small></div>`}
         </div>
         ${off ? `<a class="ns-top" href="${safeUrl(off.url)}" target="_blank" rel="noopener"><span class="nk related">최신 ${U.name} 발표</span><span class="nt">${esc(ttl(off))}</span><span class="nm">${esc(off.source)} · ${dayLabel(Date.parse(off.t))}</span></a>` : ''}
         ${F.length ? `<div class="ns-go">
@@ -6452,7 +6452,7 @@ ${what.join(' · ')}
         ${more(id + ':more', `기관별 보유 목록 ${H.top.length}곳 보기`)}
         <div class="nf h-tabs" role="group" aria-label="기관 목록 보기">${HOLD_TABS.map(([k, l]) => `<button type="button" data-htab="${k}" aria-pressed="${k === tab}">${l}</button>`).join('')}</div>
         <ul class="h-list">${list || '<li class="empty">해당하는 기관이 없어요.</li>'}</ul>
-        <p class="note">13F는 운용자산 1억 달러 이상 기관이 분기가 끝나고 45일 안에 내는 보유 보고서라 <b>최대 4개월 전 기준</b>이에요. 공매도·옵션 포지션은 빠져 있고, 일부 기관은 신고가 늦어 이전 분기 값이 보여요(지난 분기 표시).${nextDue ? ` 다음 신고 마감: ${nextDue.getMonth() + 1}/${nextDue.getDate()}경(${nextQ.getMonth() + 1}/${nextQ.getDate()} 기준).` : ''}</p></details>`,
+        <p class="note">${EN ? `13F filings are holdings reports that institutions managing $100M+ file within 45 days after each quarter, so they can be <b>up to 4 months old</b>. Short and option positions are excluded, and some institutions file late, so their prior-quarter figures show (marked “last quarter”).${nextDue ? ` Next filing deadline: around ${nextDue.getMonth() + 1}/${nextDue.getDate()} (as of ${nextQ.getMonth() + 1}/${nextQ.getDate()}).` : ''}` : `13F는 운용자산 1억 달러 이상 기관이 분기가 끝나고 45일 안에 내는 보유 보고서라 <b>최대 4개월 전 기준</b>이에요. 공매도·옵션 포지션은 빠져 있고, 일부 기관은 신고가 늦어 이전 분기 값이 보여요(지난 분기 표시).${nextDue ? ` 다음 신고 마감: ${nextDue.getMonth() + 1}/${nextDue.getDate()}경(${nextQ.getMonth() + 1}/${nextQ.getDate()} 기준).` : ''}`}</p></details>`,
     });
   }
 
@@ -6836,7 +6836,7 @@ ${what.join(' · ')}
         <div class="h-chg">${tg ? `<b>${esc(b.target.replace(/\s*→\s*/, '→'))}</b><small class="${cls(up)}">${up != null ? pct(up, 0) : ''}</small>` : '<small>목표가 없음</small>'}</div></li>`;
     }).join('');
     return `<div class="mini-h er-h br-h"><span>${showAll ? '의견 변경 기록(최근순)' : '증권사별 최근 의견'}</span><button type="button" class="chip-btn sm" data-brokers="${sym}">${showAll ? '증권사별로 보기' : '전체 기록 보기'}</button></div>
-      <ul class="h-list br-list">${rows}</ul><p class="note">출처: ${esc(state.analyst?.[sym]?.street?.brokerSrc || 'Finviz')}. 목표가 옆 %는 현재가 대비. "A→B"는 이번에 바꾼 의견·목표가예요. '목표↑·목표↓'는 의견은 그대로 두고 목표가만 바꾼 거예요.</p>`;
+      <ul class="h-list br-list">${rows}</ul><p class="note">${EN ? `Source: ${esc(state.analyst?.[sym]?.street?.brokerSrc || 'Finviz')}. The % next to a target is versus the current price. "A→B" is the rating or target changed this time; "Target↑·Target↓" means only the target changed.` : `출처: ${esc(state.analyst?.[sym]?.street?.brokerSrc || 'Finviz')}. 목표가 옆 %는 현재가 대비. "A→B"는 이번에 바꾼 의견·목표가예요. '목표↑·목표↓'는 의견은 그대로 두고 목표가만 바꾼 거예요.`}</p>`;
   }
 
   // ---------------------------------------------------------------- 옵션 시장 심리 (CBOE 지연 시세)
