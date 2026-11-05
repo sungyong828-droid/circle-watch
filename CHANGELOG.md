@@ -18,7 +18,7 @@
 <!-- EN In English mode, Korean stocks now show their English names (e.g. Samsung Electronics) -->
 <!-- internal --> - 실적 발표 직후 Nasdaq이 예상 EPS를 실제 값처럼 넣어 두는 동안(10일 안) 그 값을 실적 표·알림에 쓰지 않게
 <!-- internal --> - AI 요약 문장 끝을 해요체로 맞춤(가끔 '~합니다'로 나오던 것)
-<!-- internal --> - 영어 화면 '새로 업데이트됐어요' 카드가 항목마다 한 줄씩 적은 영어 설명(<!-- EN … -->)을 못 읽어 한국어로 나오던 문제 수정
+<!-- internal --> - 영어 화면 '새로 업데이트됐어요' 카드가 항목마다 한 줄씩 적은 영어 설명(EN 주석)을 못 읽어 한국어로 나오던 문제 수정
 
 ## v2026.11.05-2 — 2026-11-05
 
