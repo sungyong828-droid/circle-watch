@@ -12,6 +12,12 @@
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
 <!-- internal --> - 영어 화면에서 일부 설명(애널리스트·기관 보유·뉴스 요약 제목·신용 용어)이 반쯤 번역되던 문제 수정
+- 🎙️ 한국 종목도 실적 발표 뒤 '컨퍼런스콜 핵심'을 보여 줘요. 한국 회사는 녹취록을 공개하지 않아 경영진 발언 뉴스로 AI가 정리하고, 뉴스가 늘면 다시 정리해요.
+<!-- EN Korean stocks now get an "Earnings call" summary too — built from news on management's comments, since Korean companies don't publish transcripts -->
+- 🌐 영어 화면에서 한국 종목 이름이 영어로 나와요(예: 삼성전자 → Samsung Electronics).
+<!-- EN In English mode, Korean stocks now show their English names (e.g. Samsung Electronics) -->
+<!-- internal --> - 실적 발표 직후 Nasdaq이 예상 EPS를 실제 값처럼 넣어 두는 동안(10일 안) 그 값을 실적 표·알림에 쓰지 않게
+<!-- internal --> - AI 요약 문장 끝을 해요체로 맞춤(가끔 '~합니다'로 나오던 것)
 
 ## v2026.11.05-2 — 2026-11-05
 

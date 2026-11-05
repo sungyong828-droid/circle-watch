@@ -2355,14 +2355,25 @@
   const krTk = (s) => /^[0-9A-Z]{6}\.(KS|KQ)$/.test(String(s || ''));
   const I18N_KEEP = (window.__i18nKeepSet ||= new Set()); // 영어 보기에서 그대로 둘 한국 종목 이름
   const keepName = (n) => { if (n && /[가-힣]/.test(n)) I18N_KEEP.add(String(n)); return n; };
+  // 영어 보기의 한국 종목 이름(assets/krx-en.json · tools/fetch_kr_en.py) — 내 종목 것만 이 기기에 받아 두고 다음부터 바로 쓴다(못 찾으면 '')
+  const KR_EN_KEY = 'cw.kren';
+  const krEn = EN ? readJSON(KR_EN_KEY, {}) : {};
+  const enKr = (t, n) => (EN && krTk(t) && krEn[String(t).slice(0, 6)]) || n;
+  // 칸이 좁은 곳에 쓸 짧은 이름: 'Samsung Electronics' → 'Samsung Electr.'
+  const enShort = (n) => {
+    if (n.length <= 16) return n;
+    let s = '';
+    for (const w of n.split(' ')) { const t = s ? `${s} ${w}` : w; if (t.length > 16) return s ? `${s} ${w.slice(0, Math.max(3, 15 - s.length - 1))}.` : n.slice(0, 15) + '.'; s = t; }
+    return s;
+  };
   // 보유 종목 선택지 이름: 미국 'TSLA · 테슬라', 한국 '삼성전자 · 005930'
-  const fireLabel = (t, n) => (!n || n === t ? t : krTk(t) ? `${keepName(n)} · ${t.slice(0, 6)}` : `${t} · ${n}`);
-  for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (TICKER_RE.test(sym)) FIRE_TICKERS[sym] ||= krTk(sym) ? `${m?.name || sym} · ${sym.slice(0, 6)}` : `${sym} · ${m?.name || sym}`;
+  const fireLabel = (t, n) => (!n || n === t ? t : krTk(t) ? `${keepName(enKr(t, n))} · ${t.slice(0, 6)}` : `${t} · ${n}`);
+  for (const [sym, m] of Object.entries(readJSON('cw.watch', null)?.custom || {})) if (TICKER_RE.test(sym)) FIRE_TICKERS[sym] ||= krTk(sym) ? `${enKr(sym, m?.name || sym)} · ${sym.slice(0, 6)}` : `${sym} · ${m?.name || sym}`;
   // 관심 종목에서 뺐어도 보유 정보에 남아 있는 종목은 계속 고를 수 있게
   for (const p of readSaved(FIRE_KEY, null)?.positions || []) if (TICKER_RE.test(p?.ticker || '')) FIRE_TICKERS[p.ticker] ||= fireLabel(p.ticker, p.n);
   // 보유 종목 선택지: CRCA → 관심 종목 순서 → 나머지 기본 종목. 관심 종목에서 뺀 종목은 목록에서 빠진다
   // (keep: 이미 그 종목으로 저장된 행은 값이 바뀌지 않도록 그 행에만 남긴다)
-  const fireName = (t) => (krTk(t) ? keepName(STOCK_INFO[t]?.short || state.divData?.[t]?.d?.name || (FIRE_TICKERS[t] || t).split(' · ')[0].replace(/\.K[SQ]$/, '')) : t);
+  const fireName = (t) => (krTk(t) ? keepName((enKr(t, '') && enShort(enKr(t, ''))) || STOCK_INFO[t]?.short || state.divData?.[t]?.d?.name || (FIRE_TICKERS[t] || t).split(' · ')[0].replace(/\.K[SQ]$/, '')) : t);
   const fireTickerOrder = (keep) => [...new Set(['CRCA', ...WATCH, ...FIRE_BASE, ...(keep ? [keep] : [])])].filter((k) => FIRE_TICKERS[k]);
   const firePicked = (k) => FIRE_BASE.includes(k) || WATCH.includes(k);
   // Nasdaq에서 받는 시세에 따로 요청해야 하는 보유 종목(기본 5종목 외)
@@ -2772,6 +2783,7 @@
     if (!C?.lines?.length) return ''; // 아직이면 비워 두고, 준비되면 그때 나타난다
     const src = C.src === 'call'
       ? `${EN ? 'From the earnings call transcript' : '컨퍼런스콜 녹취록 요점으로 AI가 정리'}${C.url ? ` · <a href="${esc(C.url)}" target="_blank" rel="noopener">${EN ? 'Transcript (Motley Fool)' : '녹취록 원문(Motley Fool)'} ↗</a>` : ''}`
+      : C.src === 'krnews' ? (EN ? 'From Korean news on management’s comments — Korean companies don’t publish transcripts. Updated as more news comes in.' : '한국 회사는 녹취록을 공개하지 않아 발표 뒤 경영진 발언 뉴스로 AI가 정리했어요. 뉴스가 늘면 다시 정리해요')
       : (EN ? 'From news after the call — updated again when the transcript is out' : '발표 뒤 뉴스 기준이에요. 녹취록이 올라오면 다시 정리해요');
     return `<div class="es-call"><b>🎙️ ${EN ? 'Earnings call (Korean)' : '컨퍼런스콜 핵심'}${C.src === 'call' ? '' : ` <span class="es-tag">${EN ? 'news' : '뉴스 기준'}</span>`}</b><ul data-noi18n>${C.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${src}</small></div>`;
   }
@@ -3588,7 +3600,7 @@
       let D = null; try { D = earnDay(sym); } catch {}
       if (!D) continue;
       if (D.phase === 'pre' && D.N?.date) out.push({ id: `ep:${sym}:${D.N.date}`, t: Date.parse(D.N.date + 'T00:00:00Z'), ic: '🔔', title: EN ? `${nameOfSym(sym)} reports ${dday(D.N.date) <= 0 ? 'today' : 'tomorrow'}` : `${nameOfSym(sym)} 실적 발표 ${dday(D.N.date) <= 0 ? '오늘' : '내일'}`, sub: D.time ? (D.time === 'BMO' ? (EN ? 'before the US open' : '미국 장 시작 전') : (EN ? 'after the US close' : '미국 장 마감 뒤')) : (EN ? 'time TBD' : '시간 미정'), go: { sym, v: 'earn' } });
-      else if (D.phase === 'post' && !state.earnLive?.some((y) => y.sym === sym)) { const sur = (D.E.surprises || []).find((x) => x.end === D.lastQ?.end), eps = D.fq?.eps ?? sur?.eps, est = D.fq?.epsEst ?? sur?.consensus; out.push({ id: `er:${sym}:${D.lastQ?.end}`, t: D.repMs || now, ic: '📊', title: EN ? `${nameOfSym(sym)} earnings are out` : `${nameOfSym(sym)} 실적 발표됨`, sub: eps != null && est != null ? (EN ? `EPS $${(+eps).toFixed(2)} vs $${(+est).toFixed(2)} expected` : `EPS $${(+eps).toFixed(2)} · 예상 $${(+est).toFixed(2)} ${eps >= est ? '상회' : '하회'}`) : (EN ? 'See the results' : '결과 보기'), go: { sym, v: 'earn' } }); }
+      else if (D.phase === 'post' && !state.earnLive?.some((y) => y.sym === sym)) { const sur = (D.E.surprises || []).find((x) => x.end === D.lastQ?.end && x.eps != null), eps = D.fq?.eps ?? sur?.eps, est = D.fq?.epsEst ?? sur?.consensus; out.push({ id: `er:${sym}:${D.lastQ?.end}`, t: D.repMs || now, ic: '📊', title: EN ? `${nameOfSym(sym)} earnings are out` : `${nameOfSym(sym)} 실적 발표됨`, sub: eps != null && est != null ? (EN ? `EPS $${(+eps).toFixed(2)} vs $${(+est).toFixed(2)} expected` : `EPS $${(+eps).toFixed(2)} · 예상 $${(+est).toFixed(2)} ${eps >= est ? '상회' : '하회'}`) : (EN ? 'See the results' : '결과 보기'), go: { sym, v: 'earn' } }); }
     }
     for (const x of state.earnLive || []) { // 서버가 SEC에서 찾은 새 실적 공시(발표 직후)
       if (!WATCH.includes(x.sym)) continue;
@@ -3743,7 +3755,7 @@
         const t = D.time ? (D.time === 'BMO' ? (EN ? 'before open' : '장 시작 전') : (EN ? 'after close' : '장 마감 뒤')) : (EN ? 'time TBD' : '시간 미정');
         return `<span class="ss-tag pre">${when}</span><span class="se-m">${t}${D.N.consensus != null ? ` · ${EN ? 'EPS est.' : '예상 EPS'} $${D.N.consensus.toFixed(2)}` : ''}</span>`;
       }
-      const sur = (D.E.surprises || []).find((x) => x.end === D.lastQ?.end), eps = D.fq?.eps ?? sur?.eps, est = D.fq?.epsEst ?? sur?.consensus, s2 = eps != null && est ? (eps - est) / Math.abs(est) : null, p = stockPx(sym);
+      const sur = (D.E.surprises || []).find((x) => x.end === D.lastQ?.end && x.eps != null), eps = D.fq?.eps ?? sur?.eps, est = D.fq?.epsEst ?? sur?.consensus, s2 = eps != null && est ? (eps - est) / Math.abs(est) : null, p = stockPx(sym);
       return `<span class="ss-tag post">${EN ? 'Out' : '발표됨'}</span><span class="se-m">${s2 != null ? `EPS <b class="${cls(s2)}">${s2 >= 0 ? (EN ? 'beat' : '상회') : (EN ? 'miss' : '하회')} ${pct(s2, 0)}</b> · ` : ''}${EN ? 'stock' : '주가'} <b class="${cls(p?.pct)}">${p?.pct != null ? pct(p.pct, 1) : '–'}</b></span>`;
     };
     card('season', {
@@ -5601,7 +5613,7 @@ ${what.join(' · ')}
     const sp = (v) => (v == null ? '' : `<span class="${cls(v)}">${pct(v)}</span>`);
     // 기준값이 음수면 변화율이 왜곡되므로 흑자/적자 전환으로 표시
     const spTurn = (a, b) => (a == null || b == null ? '–' : b < 0 && a >= 0 ? '<span class="up">흑자 전환</span>' : b >= 0 && a < 0 ? '<span class="down">적자 전환</span>' : b < 0 ? '적자 지속' : sp(chg(a, b)));
-    const lastSur = (E.surprises || []).find((s) => s.end === last?.end);
+    const lastSur = (E.surprises || []).find((s) => s.end === last?.end && s.eps != null);
 
     const nextHtml = N?.date ? `
       <div class="er-next">
@@ -5758,13 +5770,13 @@ ${what.join(' · ')}
   const isEtf = (sym) => !isKR(sym) && !!(STOCK_INFO[sym]?.etf || state.quote?.[sym]?.asset === 'etf' || st(sym).etfDiv?.type === 'ETF');
   function customInfo(sym, meta = {}) {
     if (isKR(sym)) {
-      const name = String(meta.name || sym.slice(0, 6)), hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
-      const short = name.length > 9 ? name.slice(0, 9).trim() + '…' : name;
+      const ko = String(meta.name || sym.slice(0, 6)), en = enKr(sym, ''), name = en || ko, hue = [...sym].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
+      const short = en ? enShort(en) : name.length > 9 ? name.slice(0, 9).trim() + '…' : name;
       keepName(name); keepName(short);
       return {
         name, short, mark: name[0], color: `hsl(${hue} 62% 60%)`, logo: logoPath(sym), cik: null, peer: null, peerNote: '', mode: 'growth', custom: true, kr: true,
         exchange: meta.exchange || (sym.endsWith('.KQ') ? 'KOSDAQ' : 'KOSPI'), earnTitle: `${short} 실적`, industry: null, industryBadge: '', relBadge: short,
-        relRe: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), earnNote: '',
+        relRe: new RegExp([ko, en].filter(Boolean).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'i'), earnNote: '',
       };
     }
     const name = String(meta.name || sym).replace(/,?\s+(Inc|Corp|Corporation|Ltd|Limited|Holdings?|Group|plc|Co|Company|Incorporated)\.?$/i, '').replace(/,?\s+(Inc|Corp|Ltd)\.?$/i, '').trim() || sym;
@@ -5825,6 +5837,7 @@ ${what.join(' · ')}
       savePref(U.seenKey, String(at)); seen[sym] = { at, prev: at }; U.filter = 'all';
     }
     TAB_SETS[sym] ||= tabsFor(sym);
+    loadKrEn([sym]);
     if (!FIRE_TICKERS[sym] || FIRE_TICKERS[sym] === sym) FIRE_TICKERS[sym] = isKR(sym) ? `${STOCK_INFO[sym].name} · ${sym.slice(0, 6)}` : `${sym} · ${STOCK_INFO[sym].name}`;
     refreshFireTickers();
   }
@@ -5989,6 +6002,27 @@ ${what.join(' · ')}
   const CRCL_TABS = TAB_SETS.CRCL.slice();
   const tabsFor = (s) => (isKR(s) ? [['home', 'Home', 'home'], ['sprice', symLabel(s).replace('…', ''), 'chart'], ['searn', '실적', 'earn'], ['snews', 'News', 'news']] : [['home', 'Home', 'home'], ['sprice', s, 'chart'], ['searn', STOCK_INFO[s]?.etf ? '분배금' : 'Earnings', 'earn'], ['snews', 'News', 'news']]);
   for (const s of OTHER) TAB_SETS[s] = tabsFor(s);
+  // 영어 보기: 아직 받지 않은 한국 종목 영어 이름을 받아 종목 이름·탭·보유 종목 이름을 바꾼다(한 번 받으면 이 기기에 저장)
+  function loadKrEn(syms) {
+    const need = [...new Set(syms)].filter(krTk).map((x) => x.slice(0, 6)).filter((c) => !(c in krEn));
+    if (!EN || !need.length) return;
+    fetch('assets/krx-en.json?v=1', { cache: 'force-cache' }).then((r) => r.json()).then((all) => {
+      for (const c of need) krEn[c] = all[c] || '';
+      writeJSON(KR_EN_KEY, krEn);
+      let hit = false;
+      for (const x of Object.keys(STOCK_INFO)) if (isKR(x) && need.includes(x.slice(0, 6)) && krEn[x.slice(0, 6)]) {
+        hit = true;
+        Object.assign(STOCK_INFO[x], customInfo(x, watchCfg.custom[x] || { name: STOCK_INFO[x].name }));
+        if (NEWS_UI[x]) { const N = newsUIFor(x); Object.assign(NEWS_UI[x], { name: N.name, relRe: N.relRe, filters: N.filters, badges: N.badges }); }
+        TAB_SETS[x] = tabsFor(x);
+      }
+      for (const t of Object.keys(FIRE_TICKERS)) if (krTk(t) && need.includes(t.slice(0, 6)) && krEn[t.slice(0, 6)]) { hit = true; FIRE_TICKERS[t] = fireLabel(t, krEn[t.slice(0, 6)]); }
+      if (!hit) return;
+      refreshFireTickers();
+      try { renderTabbar(); const sw = document.getElementById('stock-switch'); if (sw) sw.dataset.built = ''; renderStockSwitch(); renderStock(); showView(state.view); } catch (e) { console.error(e); }
+    }).catch(() => {});
+  }
+  loadKrEn([...WATCH, ...Object.keys(FIRE_TICKERS), ...DEMO_FIRE.positions.map((p) => p.ticker)]);
   const OLD_VIEWS = { jprice: 'sprice', jearn: 'searn', jnews: 'snews' }; // 예전 주소(#jprice 등) 호환
   // 종목 바로가기 링크(?s=JOBY)로 들어오면 그 종목부터 보여준다
   const linkStock = (new URLSearchParams(location.search).get('s') || '').toUpperCase();
@@ -6995,7 +7029,7 @@ ${what.join(' · ')}
       const at = N?.date && D.time ? Date.parse(`${N.date}T${D.time === 'BMO' ? '08:00' : '16:05'}:00${etOffset(N.date)}`) : null;
       const left = at ? at - Date.now() : null;
       const kst = at ? new Date(at).toLocaleString(LOC, { month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null;
-      const sur = (D.E.surprises || []).slice(0, 4);
+      const sur = (D.E.surprises || []).filter((x) => x.eps != null).slice(0, 4);
       const beats = sur.filter((x) => x.eps >= x.consensus).length;
       card(id, {
         title: EN ? `🔔 ${S.short} earnings ${dday(N.date) <= 0 ? 'today' : dday(N.date) === 1 ? 'tomorrow' : `D-${dday(N.date)}`}` : `🔔 ${S.short} 실적 발표 ${dday(N.date) <= 0 ? '오늘' : dday(N.date) === 1 ? '내일' : `D-${dday(N.date)}`}`,
@@ -7640,7 +7674,7 @@ ${what.join(' · ')}
       const sur = (E?.surprises || []).find((x) => x.end === NL.end), I0 = istmtOf(sym), I = I0 && Math.abs(Date.parse(I0.end) - Date.parse(NL.end)) < 40 * 864e5 ? I0 : null;
       const rev = I?.rev ?? q.revenue, revYa = I?.prev?.rev ?? ya?.revenue, op = I?.op ?? q.opIncome, net = I?.net ?? q.netIncome;
       const nums = [rev != null ? `${EN ? 'Revenue' : '매출'} ${fu(rev)}${revYa ? ` (${EN ? 'YoY' : '전년 대비'} ${pct(rev / revYa - 1, 0)})` : ''}` : '', op != null ? `${EN ? 'operating income' : '영업이익'} ${fu(op)}` : '', net != null ? `${EN ? 'net income' : '순이익'} ${fu(net)}` : '',
-        sur?.consensus != null && isFinite(sur.consensus) && !(sur.eps === sur.consensus && !sur.surprise && daysBetween(sur.reported, today) <= 10) ? `EPS $${(+sur.eps).toFixed(2)} (${EN ? `est. $${(+sur.consensus).toFixed(2)}` : `예상 $${(+sur.consensus).toFixed(2)} ${sur.eps > sur.consensus ? '상회' : sur.eps < sur.consensus ? '하회' : '부합'}`})` : ''].filter(Boolean).join(' · '); // 실제=예상·서프라이즈 0은 Nasdaq이 발표 직후 예상치를 채워 둔 값일 수 있어 10일 동안 뺀다
+        sur?.eps != null && sur.consensus != null && isFinite(sur.consensus) && !(sur.eps === sur.consensus && !sur.surprise && daysBetween(sur.reported, today) <= 10) ? `EPS $${(+sur.eps).toFixed(2)} (${EN ? `est. $${(+sur.consensus).toFixed(2)}` : `예상 $${(+sur.consensus).toFixed(2)} ${sur.eps > sur.consensus ? '상회' : sur.eps < sur.consensus ? '하회' : '부합'}`})` : ''].filter(Boolean).join(' · '); // 실제=예상·서프라이즈 0은 Nasdaq이 발표 직후 예상치를 채워 둔 값일 수 있어 10일 동안 뺀다
       const X = earnSumGet(sym, NL), ai = X?.q === NL.end && X.lines?.length ? X.lines : [];
       const lines = [nums, ...ai].filter(Boolean);
       const qn = Math.ceil(+NL.end.slice(5, 7) / 3), yy = NL.end.slice(2, 4), fresh = daysBetween(NL.reportedOn, today) <= 7;
@@ -7752,7 +7786,7 @@ ${what.join(' · ')}
     if (!E) return earnSkeleton(sym, 'searnings');
     const Q = E.quarters || [];
     const last = Q.at(-1), prev = Q.at(-2);
-    const sur = (E.surprises || []).find((s) => s.end === last?.end);
+    const sur = (E.surprises || []).find((s) => s.end === last?.end && s.eps != null);
     const rw = sRunway(E);
     card('searnings', {
       title: '조비 실적', sub: (last ? `최근 발표 ${last.reportedOn ? md(isoToTs(last.reportedOn)) : ''} · ${qLabelLong(last.end)} · SEC·Nasdaq` : 'SEC·Nasdaq') + repDoc(sym), info: INFO.jearnings,
@@ -7807,7 +7841,7 @@ ${what.join(' · ')}
     if (!E) return earnSkeleton(sym, 'searnings');
     const Q = E.quarters || [];
     const last = Q.at(-1), prev = Q.at(-2);
-    const sur = (E.surprises || []).find((s) => s.end === last?.end);
+    const sur = (E.surprises || []).find((s) => s.end === last?.end && s.eps != null);
     const yoy = yoyQ(Q, last), qoq = last?.revenue != null && prev?.revenue ? last.revenue / prev.revenue - 1 : null;
     const g = gmQ(last), gPrev = gmQ(prev);
     const opm = last?.opIncome != null && last.revenue ? last.opIncome / last.revenue : null;
