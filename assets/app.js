@@ -2107,10 +2107,18 @@
     async quote() { await loadQuote(); }, // 종목 카드·Fire 시세·환율
     // ---- 선택한 종목만 받는다 (sym을 먼저 잡아 두어 도중에 종목을 바꿔도 섞이지 않게)
     async faa() { state.faa = await getJ(`data/faa-joby.json?t=${Math.floor(Date.now() / 600000)}`); },
-    async temk() { state.temk = await getJ(`data/tem-kpis.json?t=${Math.floor(Date.now() / 600000)}`); },
+    async temk() {
+      const [M, A] = await Promise.all([getJ(`data/tem-kpis.json?t=${Math.floor(Date.now() / 600000)}`), getJ(`${NEWS_API}/bizq?s=TEM`, 8000).catch(() => null)]);
+      state.temk = M; state.temq = A?.entry || null; // 새 분기 '분기별 진척'은 서버가 발표문으로 자동 정리(확인 후 파일로 바뀜)
+    },
     async biz(d, L, sym = state.stock) {
       const k = bizKey(sym), S = (state.biz ||= {});
-      if (BIZ_KEYS.has(k)) { S[k] = await getJ(`data/biz/${k}.json?t=${Math.floor(Date.now() / 600000)}`); return; }
+      if (BIZ_KEYS.has(k)) {
+        // 확인해 넣은 파일 + 그보다 새 분기가 나왔으면 서버가 발표문으로 자동 정리한 분기(/api/bizq)
+        const [C, A] = await Promise.all([getJ(`data/biz/${k}.json?t=${Math.floor(Date.now() / 600000)}`), getJ(`${NEWS_API}/bizq?s=${k}`, 8000).catch(() => null)]);
+        S[k] = bizWithAuto(C, A?.entry);
+        return;
+      }
       if (!bizAuto(sym)) return;
       if (S[k] && Date.now() - (S[k]._t || 0) < 6 * 3600000) return; // 6시간 안에 받은 건 그대로
       try { S[k] = { ...(await getJ(`${NEWS_API}/biz?s=${encodeURIComponent(sym)}`, 12000)), _t: Date.now() }; bizSave(k, S[k]); }
@@ -7535,7 +7543,7 @@ ${what.join(' · ')}
   function temData() {
     const M = state.temk; if (!M?.quarters?.length) return null;
     const A = state.facts?.tem, Q = [...M.quarters];
-    if (A?.ok && A.q && !Q.some((x) => x.q === A.q) && A.q > Q[0].q) Q.unshift({ ...A, auto: true, highlights: [] });
+    if (A?.ok && A.q && !Q.some((x) => x.q === A.q) && A.q > Q[0].q) Q.unshift({ ...A, auto: true, highlights: state.temq?.q === A.q && state.temq.hl?.length ? state.temq.hl : [] });
     const L = Q[0], ya = Q.find((x) => x.q === `${+L.q.slice(0, 4) - 1}${L.q.slice(4)}`), pv = Q[1];
     const g = (k) => (ya?.[k] && L[k] != null ? L[k] / ya[k] - 1 : null);
     return { M, Q, L, pv, yoy: { revenue: g('revenue'), diagnostics: g('diagnostics'), dataApps: g('dataApps') } };
@@ -7564,7 +7572,7 @@ ${what.join(' · ')}
         <div class="tem-chart">${bars.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col" title="${temQ(x.q)} 매출 ${usdM(x.revenue)}"><b>${usdM(x.revenue)}</b><div class="tem-stack"><i style="height:${h(x.diagnostics)}"></i><em style="height:${h(x.dataApps)}"></em></div><span>${temQ(x.q).replace('분기', 'Q')}</span><small class="${cls(x.adjEbitda)}">${x.adjEbitda != null ? (x.adjEbitda < 0 ? '−' : '+') + Math.abs(x.adjEbitda).toFixed(1) : '–'}</small></div>`; }).join('')}</div>
         <p class="note">막대: 진단(파랑) + 데이터·앱(주황) 매출 · 아래 숫자: 조정 EBITDA(백만 달러)</p>
         <div class="mini-h er-h">분기별 진척</div>
-        <ul class="faa-ms tem-ms">${Q.slice(0, 4).map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${temQ(x.q)}</b> <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">원문</a>${x.highlights?.length ? `<ul class="tem-hl">${x.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>` : '<p class="note">세부 진척은 정리 중이에요</p>'}</div></li>`).join('')}</ul>
+        <ul class="faa-ms tem-ms">${Q.slice(0, 4).map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${temQ(x.q)}</b> <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">원문</a>${x.auto && x.highlights?.length ? ` <em class="biz-new">${EN ? 'Auto' : '자동 정리'}</em>` : ''}${x.highlights?.length ? `<ul class="tem-hl">${x.highlights.map((h) => (typeof h === 'string' ? `<li>${esc(h)}</li>` : `<li data-noi18n>${esc(tx(h))}</li>`)).join('')}</ul>${x.auto ? `<p class="note">${EN ? 'Picked out by AI from the earnings release (numbers checked against the source) — may contain mistakes; replaced once reviewed.' : 'AI가 실적 발표문에서 뽑았어요(숫자는 원문과 대조) — 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.'}</p>` : ''}` : '<p class="note">세부 진척은 정리 중이에요</p>'}</div></li>`).join('')}</ul>
         <p class="note">숫자는 회사가 분기마다 SEC에 내는 실적 발표문 기준이에요. 새 발표가 나오면 매출·사업별 매출·조정 EBITDA·검사 지표는 자동으로 반영되고, 진척 소식은 확인 후 더해요. 투자 조언이 아니에요.</p>`,
     });
   }
@@ -7573,6 +7581,12 @@ ${what.join(' · ')}
   // 관리자 '인기 종목' 가운데 ETF를 뺀 종목. 파일을 더하면 여기에도 이름을 더한다(build.py가 목록이 맞는지 검사)
   const BIZ_KEYS = new Set(['000270', '000660', '005380', '005930', '086280', 'FRVO', 'GOOGL', 'PANW', 'PLTR', 'PLUG', 'RXRX', 'SHFS', 'TSLA']);
   const bizKey = (sym) => (isKR(sym) ? String(sym).slice(0, 6) : sym);
+  // 자동 정리한 새 분기를 맨 위에 붙인다 — 파일에 없는 분기이고, 파일의 마지막 분기보다 20일 넘게 뒤에 발표된 것만
+  function bizWithAuto(C, E) {
+    const L = C?.q?.[0];
+    if (!E?.q || !L || C.q.some((x) => x.q === E.q) || !E.filed || !L.filed || Date.parse(E.filed) - Date.parse(L.filed) < 20 * 864e5) return C;
+    return { ...C, q: [{ ...E, auto: true }, ...C.q], guide: E.guide || C.guide, guideOld: !E.guide && C.guide ? L : null };
+  }
   // 자동 정리(SEC 재무제표·네이버 분기 실적)를 붙일 종목: 기본 종목(전용 화면이 있음)·ETF는 빼고
   const bizAuto = (sym) => !BUILTIN.includes(sym) && !isEtf(sym) && (isKR(sym) || US_SYM.test(sym));
   // 본 종목의 사업 현황은 이 기기에 30종목까지 저장해 두고, 다시 열면 기다리지 않고 바로 그린다(뒤에서 새로 받음)
@@ -7686,15 +7700,16 @@ ${what.join(' · ')}
       histLi = (X?.hist || []).filter((h) => h.lines?.length && !have.has(qOf(h.end))).slice(0, 4).map((h) => { const k = qOf(h.end); return `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${k.slice(5)} '${k.slice(2, 4)}` : `'${k.slice(2, 4)} ${k.slice(5)}분기`}</b> <em class="biz-new">${EN ? 'Auto summary' : '자동 요약'}</em><ul class="tem-hl" data-noi18n>${h.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></li>`; }).join('');
       if (histLi) histLi += `<li class="faa-note"><p class="note">${EN ? 'Auto summaries are written by AI from each release and the news around it — they may contain mistakes.' : '자동 요약은 실적 발표 숫자와 그 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</p></li>`;
     }
-    const sub = `${B.auto ? `<span class="biz-auto">${EN ? 'Auto' : '자동 정리'}</span>` : ''}${bizQ(B, L)} ${EN ? 'results' : '실적'}${L.filed ? ` (${md(isoToTs(L.filed))})` : ''} · ${esc(tx(B.src))}${nx && nx >= today ? ` · ${EN ? 'next' : '다음 실적'} ${md(isoToTs(nx))}` : ''}`;
+    const sub = `${B.auto || L.auto ? `<span class="biz-auto">${EN ? 'Auto' : '자동 정리'}</span>` : ''}${bizQ(B, L)} ${EN ? 'results' : '실적'}${L.filed ? ` (${md(isoToTs(L.filed))})` : ''} · ${esc(tx(B.src))}${nx && nx >= today ? ` · ${EN ? 'next' : '다음 실적'} ${md(isoToTs(nx))}` : ''}`;
     card('biz', {
       title, sub, easy: esc(tx(B.easy)),
       body: `${flash}${mix}
         <div class="ns-grid h-grid biz-n${tiles.length <= 4 ? tiles.length : tiles.length <= 6 ? 3 : 4}">${tiles.map(([l, v, s, c]) => `<div><span>${esc(l)}</span><b class="${c}">${v}</b><small>${s || '&nbsp;'}</small></div>`).join('')}</div>
-        ${B.guide ? `<p class="biz-guide">🎯 <b>${EN ? 'Company outlook' : '회사 전망'}</b> ${esc(tx(B.guide))}</p>` : ''}
+        ${B.guide ? `<p class="biz-guide">🎯 <b>${EN ? 'Company outlook' : '회사 전망'}</b>${B.guideOld ? ` <small>(${EN ? `as of ${bizQ(B, B.guideOld)}` : `${bizQ(B, B.guideOld)} 발표 기준`})</small>` : ''} ${esc(tx(B.guide))}</p>` : ''}
         ${chart}
         ${hlQ.length || autoLi || histLi ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>
-        <ul class="faa-ms tem-ms">${autoLi}${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}${histLi}</ul>` : ''}
+        <ul class="faa-ms tem-ms">${autoLi}${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.auto ? ` <em class="biz-new">${EN ? 'Auto' : '자동 정리'}</em>` : ''}${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li${x.auto ? ' data-noi18n' : ''}>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}${histLi}</ul>` : ''}
+        ${L.auto ? `<p class="note biz-auto-note">${EN ? `${bizQ(B, L)} was compiled automatically from the earnings release: revenue and operating income come from the reported tables; other figures and highlights were picked out by AI and kept only if they match the numbers in the source. It may still contain mistakes and will be replaced once reviewed.` : `${bizQ(B, L)}은 서버가 실적 발표문으로 자동 정리했어요. 매출·영업이익은 발표 표에서 읽었고, 다른 숫자와 소식은 AI가 뽑은 것 중 원문 숫자와 맞는 것만 넣었어요. 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.`}</p>` : ''}
         <p class="note">${stale ? `${EN ? 'A newer quarter may already be out — it will be added after review. ' : '새 분기 실적이 나왔을 수 있어요 — 확인 후 더할게요. '}` : ''}${B.fy ? esc(tx(B.fy)) + '. ' : ''}${B.auto ? (EN ? 'Compiled automatically from reported quarterly financials and refreshed weekly. Business mix and quarterly highlights are hand-checked for featured stocks only. Not investment advice.' : '회사가 공시한 분기 재무제표를 자동으로 정리했고 매주 새로 받아요. 사업별 비중·분기별 소식은 대표 종목만 직접 확인해 정리해요. 투자 조언이 아니에요.') : EN ? 'Figures are from the company’s own earnings releases (see Source); new quarters are added after review. Not investment advice.' : '숫자는 회사가 낸 실적 발표 기준이에요(원문 링크). 새 분기는 확인 후 더해요. 투자 조언이 아니에요.'}</p>`,
     });
   }

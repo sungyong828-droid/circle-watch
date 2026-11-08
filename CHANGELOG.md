@@ -15,6 +15,8 @@
 <!-- EN Joby's FAA certification card now uses the Q3 letter (Nov 4): Stages 1–3 are complete and Stage 5 is at 25% (Joby) / 14% (FAA). For-credit TIA flights with FAA pilots are expected in 1H 2027 -->
 - 📊 '사업 현황'에 3분기 실적을 넣었어요: 테슬라·알파벳·팔란티어·리커전·삼성전자·SK하이닉스·현대차·기아·현대글로비스, 그리고 템퍼스. 플러그파워는 예비 실적을 먼저 보여 줘요.
 <!-- EN Business snapshots now include Q3 results for Tesla, Alphabet, Palantir, Recursion, Samsung Electronics, SK hynix, Hyundai, Kia, Hyundai Glovis and Tempus. Plug Power shows its preliminary numbers for now -->
+- 📊 '사업 현황'이 이제 새 분기 실적을 스스로 정리해요. 실적 발표가 나오면 서버가 공시·회사 발표문을 읽어 매출·영업이익과 주요 소식을 바로 보여 주고, 'AI 정리' 표시를 붙여요. 숫자는 발표문에 그대로 있는 것만 써요.
+<!-- EN Business snapshots now update themselves: when a company reports a new quarter, the server reads its filing or press release and shows revenue, operating income and key news right away, marked as AI-summarized. Only numbers found in the release are used -->
 <!-- internal --> - 조비 주주서한 차트 모양이 바뀌어 인증 수치를 자동으로 못 읽던 문제 수정(서버)
 
 ## v2026.11.05-3 — 2026-11-05
