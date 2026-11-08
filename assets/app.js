@@ -7675,7 +7675,7 @@ ${what.join(' · ')}
     let gBlock = '';
     if (GE && (GE.seg?.length || GE.k?.length) && (!L.q || GE.q >= L.q)) {
       const gm = (v) => { const a = Math.abs(v), sg = v < 0 ? '-' : ''; return GE.cur === 'KRW' ? (a >= 1e12 ? (EN ? `${sg}₩${(a / 1e12).toFixed(a >= 1e13 ? 1 : 2)}T` : `${sg}${(a / 1e12).toFixed(a >= 1e13 ? 1 : 2)}조원`) : EN ? `${sg}₩${nf(0).format(a / 1e9)}B` : `${sg}${nf(0).format(a / 1e8)}억원`) : a >= 1e9 ? `${sg}$${(a / 1e9).toFixed(a >= 1e11 ? 0 : a >= 1e10 ? 1 : 2)}B` : `${sg}$${nf(a >= 1e8 ? 0 : 1).format(a / 1e6)}M`; };
-      const nm = (x) => esc(EN ? x.en : x.ko), gq = EN ? `Q${GE.q.slice(5)} '${GE.q.slice(2, 4)}` : `'${GE.q.slice(2, 4)} ${GE.q.slice(5)}분기`;
+      const nm = (x) => esc(EN ? x.en : x.ko), gq = EN ? `Q${GE.q.slice(5)} '${GE.q.slice(2, 4)}` : `'${GE.q.slice(2, 4)} ${BIZ_MON[+GE.q.slice(5) - 1]}`;
       const gs = GE.seg || [], gsum = gs.reduce((a, x) => a + x.v, 0);
       const gmix = gs.length > 1 && gsum > 0 ? `<div class="tem-mix biz-mix"><div class="biz-bar">${gs.map((x, i) => `<i style="width:${((x.v / gsum) * 100).toFixed(1)}%;background:${BIZ_COLORS[i % 4]}"></i>`).join('')}</div>
         <div class="tem-leg biz-leg">${gs.map((x, i) => `<span><i style="background:${BIZ_COLORS[i % 4]}"></i>${nm(x)} ${gm(x.v)} · ${Math.round((x.v / gsum) * 100)}%</span>`).join('')}</div></div>` : '';
