@@ -2120,9 +2120,12 @@
         return;
       }
       if (!bizAuto(sym)) return;
-      if (S[k] && Date.now() - (S[k]._t || 0) < 6 * 3600000) return; // 6시간 안에 받은 건 그대로
+      // 사업별 매출·핵심 지표: 서버가 최근 발표문에서 AI로 뽑아 원문 숫자와 맞춰 본 것(/api/bizq · 30분마다 새로)
+      const G = (state.bizg ||= {}), gP = !G[k] || Date.now() - G[k]._t > 1800000 ? getJ(`${NEWS_API}/bizq?s=${encodeURIComponent(sym)}`, 8000).then((A) => { G[k] = { e: A?.entry || null, _t: Date.now() }; }).catch(() => {}) : null;
+      if (S[k] && Date.now() - (S[k]._t || 0) < 6 * 3600000) { await gP; return; } // 6시간 안에 받은 건 그대로
       try { S[k] = { ...(await getJ(`${NEWS_API}/biz?s=${encodeURIComponent(sym)}`, 12000)), _t: Date.now() }; bizSave(k, S[k]); }
       catch (e) { if (/^404$/.test(e.message)) { S[k] = null; bizSave(k, null); } else if (!S[k]) throw e; }
+      await gP;
     },
     async sfacts() { state.spcx = await getJ(`data/spcx-facts.json?t=${Math.floor(Date.now() / 600000)}`); },
     async schart(d, L, sym = state.stock) {
@@ -7667,6 +7670,26 @@ ${what.join(' · ')}
         <div class="tem-chart biz-chart">${CQ.map((x) => { const h = (v) => `${Math.max(2, ((v || 0) / mx) * 100)}%`; return `<div class="tem-col"><b>${bizFmt(B, valOf(x)).replace(/억원$|조원$/, (m) => m[0])}</b><div class="tem-stack biz-stack">${stack && x.seg ? (B.seg || []).map((s, i) => { const sx = (B.seg || []).reduce((a, t) => a + (x.seg[t.k] || 0), 0) || 1; return `<i style="height:${(((x.seg[s.k] || 0) / sx) * (valOf(x) / mx) * 100).toFixed(2)}%;background:${BIZ_COLORS[i % 4]}"></i>`; }).join('') : `<i style="height:${h(valOf(x))};background:${BIZ_COLORS[0]}"></i>`}</div><span>${bizQs(B, x)}</span><small class="${cls(x.op)}">${x.op != null ? bizFmt(B, x.op).replace(/억원$|조원$/, (m) => m[0]) : '–'}</small></div>`; }).join('')}</div>
         <p class="note">${stack ? `${EN ? 'Bars' : '막대'}: ${(B.seg || []).map((s, i) => `<span class="biz-dot" style="background:${BIZ_COLORS[i % 4]}"></span>${esc(tx(s))}`).join(' + ')} · ` : ''}${EN ? 'number below' : '아래 숫자'}: ${esc(tx(B.profit))}</p>` : '';
     const hlQ = Q.filter((x) => x.hl?.length).slice(0, 4);
+    // 정리 파일이 없는 종목: 서버가 최근 발표문에서 뽑은 사업별 매출·핵심 지표(원문 숫자와 맞는 것만)
+    const GE = !curated ? state.bizg?.[k]?.e : null;
+    let gBlock = '';
+    if (GE && (GE.seg?.length || GE.k?.length) && (!L.q || GE.q >= L.q)) {
+      const gm = (v) => { const a = Math.abs(v), sg = v < 0 ? '-' : ''; return GE.cur === 'KRW' ? (a >= 1e12 ? (EN ? `${sg}₩${(a / 1e12).toFixed(a >= 1e13 ? 1 : 2)}T` : `${sg}${(a / 1e12).toFixed(a >= 1e13 ? 1 : 2)}조원`) : EN ? `${sg}₩${nf(0).format(a / 1e9)}B` : `${sg}${nf(0).format(a / 1e8)}억원`) : a >= 1e9 ? `${sg}$${(a / 1e9).toFixed(a >= 1e11 ? 0 : a >= 1e10 ? 1 : 2)}B` : `${sg}$${nf(a >= 1e8 ? 0 : 1).format(a / 1e6)}M`; };
+      const nm = (x) => esc(EN ? x.en : x.ko), gq = EN ? `Q${GE.q.slice(5)} '${GE.q.slice(2, 4)}` : `'${GE.q.slice(2, 4)} ${GE.q.slice(5)}분기`;
+      const gs = GE.seg || [], gsum = gs.reduce((a, x) => a + x.v, 0);
+      const gmix = gs.length > 1 && gsum > 0 ? `<div class="tem-mix biz-mix"><div class="biz-bar">${gs.map((x, i) => `<i style="width:${((x.v / gsum) * 100).toFixed(1)}%;background:${BIZ_COLORS[i % 4]}"></i>`).join('')}</div>
+        <div class="tem-leg biz-leg">${gs.map((x, i) => `<span><i style="background:${BIZ_COLORS[i % 4]}"></i>${nm(x)} ${gm(x.v)} · ${Math.round((x.v / gsum) * 100)}%</span>`).join('')}</div></div>` : '';
+      const gt = (GE.k || []).map((x) => {
+        const u = x.u && !(EN && /[가-힣]/.test(x.u)) ? `${/^[A-Za-z]/.test(x.u) ? ' ' : ''}${esc(x.u)}` : '';
+        const v = x.f === 'money' ? gm(x.v) : x.f === 'pct' ? `${x.v}%` : `${nf(Number.isInteger(x.v) ? 0 : 1).format(x.v)}${u}`;
+        const d = x.ya == null ? null : x.f === 'pct' ? x.v - x.ya : x.v > 0 && x.ya > 0 ? x.v / x.ya - 1 : null;
+        const sm = d == null ? '' : `${EN ? 'YoY ' : '전년 대비 '}<span class="${cls(d)}">${x.f === 'pct' ? `${d >= 0 ? '+' : ''}${d.toFixed(1)}%p` : pct(d, 0)}</span>`;
+        return `<div><span>${nm(x)}</span><b class="${x.f === 'money' ? cls(x.v) : ''}">${v}</b><small>${sm || '&nbsp;'}</small></div>`;
+      });
+      gBlock = `<div class="mini-h er-h">${EN ? `Business mix & key metrics · ${gq}` : `사업별 매출·핵심 지표 · ${gq}`} <em class="biz-new">${EN ? 'AI' : 'AI 정리'}</em>${GE.url ? ` <a href="${safeUrl(GE.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}</div>
+        <div data-noi18n>${gmix}${gt.length ? `<div class="ns-grid h-grid biz-n${gt.length <= 4 ? gt.length : 4}">${gt.join('')}</div>` : ''}</div>
+        <p class="note">${EN ? `AI picked these from the ${GE.cur === 'KRW' ? 'earnings news' : 'earnings release'}; only figures that match the source are shown${gs.length ? ' (the business lines add up to total revenue)' : ''}. They may still contain mistakes.` : `AI가 ${GE.cur === 'KRW' ? '실적 기사' : '실적 발표문'}에서 뽑은 숫자 중 원문과 맞는 것만 보여 줘요${gs.length ? '(사업별 매출은 더하면 총매출과 맞아요)' : ''}. 틀릴 수 있어요.`}</p>`;
+    }
     // 새 분기 실적이 나왔는데 이 카드(직접 확인해 넣는 값·매주 자동 정리)에 아직 없으면: 발표 숫자 + AI 요약을 '분기별 주요 소식' 맨 위에 붙인다
     const NL = !isKR(sym) ? earnLast(sym) : null;
     let autoLi = '', histLi = '';
@@ -7706,11 +7729,12 @@ ${what.join(' · ')}
       body: `${flash}${mix}
         <div class="ns-grid h-grid biz-n${tiles.length <= 4 ? tiles.length : tiles.length <= 6 ? 3 : 4}">${tiles.map(([l, v, s, c]) => `<div><span>${esc(l)}</span><b class="${c}">${v}</b><small>${s || '&nbsp;'}</small></div>`).join('')}</div>
         ${B.guide ? `<p class="biz-guide">🎯 <b>${EN ? 'Company outlook' : '회사 전망'}</b>${B.guideOld ? ` <small>(${EN ? `as of ${bizQ(B, B.guideOld)}` : `${bizQ(B, B.guideOld)} 발표 기준`})</small>` : ''} ${esc(tx(B.guide))}</p>` : ''}
+        ${gBlock}
         ${chart}
         ${hlQ.length || autoLi || histLi ? `<div class="mini-h er-h">${EN ? 'What happened each quarter' : '분기별 주요 소식'}</div>
         <ul class="faa-ms tem-ms">${autoLi}${hlQ.map((x) => `<li class="done"><span class="faa-dot"></span><div><b>${bizQ(B, x)}</b>${x.auto ? ` <em class="biz-new">${EN ? 'Auto' : '자동 정리'}</em>` : ''}${x.url ? ` <a href="${safeUrl(x.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${x.hl.map((h) => `<li${x.auto ? ' data-noi18n' : ''}>${esc(tx(h))}</li>`).join('')}</ul></div></li>`).join('')}${histLi}</ul>` : ''}
         ${L.auto ? `<p class="note biz-auto-note">${EN ? `${bizQ(B, L)} was compiled automatically from the earnings release: revenue and operating income come from the reported tables; other figures and highlights were picked out by AI and kept only if they match the numbers in the source. It may still contain mistakes and will be replaced once reviewed.` : `${bizQ(B, L)} 실적은 서버가 실적 발표문으로 자동 정리했어요. 매출·영업이익은 발표 표에서 읽었고, 다른 숫자와 소식은 AI가 뽑은 것 중 원문 숫자와 맞는 것만 넣었어요. 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.`}</p>` : ''}
-        <p class="note">${stale ? `${EN ? 'A newer quarter may already be out — it will be added after review. ' : '새 분기 실적이 나왔을 수 있어요 — 확인 후 더할게요. '}` : ''}${B.fy ? esc(tx(B.fy)) + '. ' : ''}${B.auto ? (EN ? 'Compiled automatically from reported quarterly financials and refreshed weekly. Business mix and quarterly highlights are hand-checked for featured stocks only. Not investment advice.' : '회사가 공시한 분기 재무제표를 자동으로 정리했고 매주 새로 받아요. 사업별 비중·분기별 소식은 대표 종목만 직접 확인해 정리해요. 투자 조언이 아니에요.') : EN ? 'Figures are from the company’s own earnings releases (see Source); new quarters are added after review. Not investment advice.' : '숫자는 회사가 낸 실적 발표 기준이에요(원문 링크). 새 분기는 확인 후 더해요. 투자 조언이 아니에요.'}</p>`,
+        <p class="note">${stale ? `${EN ? 'A newer quarter may already be out — it will be added after review. ' : '새 분기 실적이 나왔을 수 있어요 — 확인 후 더할게요. '}` : ''}${B.fy ? esc(tx(B.fy)) + '. ' : ''}${B.auto ? (EN ? (gBlock ? 'Compiled automatically from reported quarterly financials and refreshed weekly. Not investment advice.' : 'Compiled automatically from reported quarterly financials and refreshed weekly. The business mix is added automatically when the earnings release breaks it out. Not investment advice.') : (gBlock ? '회사가 공시한 분기 재무제표를 자동으로 정리했고 매주 새로 받아요. 투자 조언이 아니에요.' : '회사가 공시한 분기 재무제표를 자동으로 정리했고 매주 새로 받아요. 사업별 비중은 실적 발표문에 나와 있으면 자동으로 더해요. 투자 조언이 아니에요.')) : EN ? 'Figures are from the company’s own earnings releases (see Source); new quarters are added after review. Not investment advice.' : '숫자는 회사가 낸 실적 발표 기준이에요(원문 링크). 새 분기는 확인 후 더해요. 투자 조언이 아니에요.'}</p>`,
     });
   }
 
