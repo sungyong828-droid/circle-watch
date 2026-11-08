@@ -64,6 +64,42 @@
   ],
   "q": [
     {
+      "q": "2026Q3",
+      "filed": "2026-10-28",
+      "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000080/googexhibit991q32026.htm",
+      "rev": 127577,
+      "seg": {
+        "svc": 96302,
+        "cloud": 30709,
+        "bets": 372
+      },
+      "op": 40576,
+      "k": {
+        "search": 63350,
+        "yt": 11207,
+        "cloudOp": 11121,
+        "capex": 51355
+      },
+      "hl": [
+        {
+          "ko": "매출 1,276억 달러(+25%) — 연 매출로 환산하면 5,000억 달러 규모",
+          "en": "Revenue $127.6B (+25%) — now on a half-trillion-dollar run rate"
+        },
+        {
+          "ko": "구글 클라우드 매출 307억 달러(+103%) · TPU 시스템 판매가 성장에 큰 몫",
+          "en": "Google Cloud revenue $30.7B (+103%) · TPU systems a meaningful contributor"
+        },
+        {
+          "ko": "검색 질의 증가율 최근 5년 중 최고 · 제미나이 앱 사용자 10억 명",
+          "en": "Search query growth highest in five years · Gemini app reached 1 billion users"
+        },
+        {
+          "ko": "설비투자 514억 달러(1년 전 240억 달러)",
+          "en": "Capex of $51.4B (vs $24.0B a year ago)"
+        }
+      ]
+    },
+    {
       "q": "2026Q2",
       "filed": "2026-07-22",
       "url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000066/googexhibit991q22026.htm",

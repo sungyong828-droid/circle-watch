@@ -74,15 +74,43 @@
       "f": "usdM"
     }
   ],
-  "flash": [
-    {
-      "d": "2026-10-02",
-      "ko": "3분기 인도 48만 6,532대(전년 49만 7,099대) · 에너지 저장 13.7GWh — 실적은 10/21 발표",
-      "en": "Q3 deliveries 486,532 (vs 497,099 a year ago) · 13.7 GWh storage deployed — results on 10/21",
-      "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026064366/exhibit991111111.htm"
-    }
-  ],
   "q": [
+    {
+      "q": "2026Q3",
+      "filed": "2026-10-21",
+      "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026066738/exhibit9914.htm",
+      "rev": 28046,
+      "seg": {
+        "auto": 20560,
+        "energy": 2881,
+        "svc": 4605
+      },
+      "op": 718,
+      "k": {
+        "deliv": 486532,
+        "storage": 13.7,
+        "fsd": 1.74,
+        "fcf": 1531
+      },
+      "hl": [
+        {
+          "ko": "오스틴 로보택시에 사이버캡 투입(9/3) · 무감독 로보택시 주행거리 전 분기의 8배",
+          "en": "Cybercab joined the Austin Robotaxi fleet (Sept 3) · unsupervised Robotaxi miles up 8x QoQ"
+        },
+        {
+          "ko": "누적 1,000만 번째 차량 생산·인도 · 승용차 대기 주문 4년 만에 최대",
+          "en": "Produced and delivered the 10 millionth vehicle · largest passenger-vehicle backlog in four years"
+        },
+        {
+          "ko": "에너지 저장 주문·대기 물량 역대 최대 · 메가팩토리 텍사스(연 50GWh) 생산 시작",
+          "en": "Record energy-storage orders and backlog · Megafactory Texas (50 GWh) began production"
+        },
+        {
+          "ko": "잉여현금흐름 15억 달러로 흑자 전환 · 현금·투자자산 454억 달러",
+          "en": "Free cash flow back to +$1.5B · cash and investments of $45.4B"
+        }
+      ]
+    },
     {
       "q": "2026Q2",
       "filed": "2026-07-22",

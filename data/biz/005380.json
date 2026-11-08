@@ -61,10 +61,44 @@
     }
   ],
   "guide": {
-    "ko": "2026년 매출 +1~2% · 영업이익률 6.3~7.3% · 도매 판매 415만 8,300대 목표",
-    "en": "2026 targets: revenue +1–2% · operating margin 6.3–7.3% · 4,158,300 wholesale units"
+    "ko": "2026년 목표(10/29 하향): 매출 +1~2%(유지) · 영업이익률 5.5~6.5%(기존 6.3~7.3%) · 도매 판매 400만 대(기존 415만 8,300대)",
+    "en": "2026 targets (cut on 10/29): revenue +1–2% (kept) · operating margin 5.5–6.5% (was 6.3–7.3%) · 4.0M wholesale units (was 4,158,300)"
   },
   "q": [
+    {
+      "q": "2026Q3",
+      "filed": "2026-10-29",
+      "url": "https://www.hyundaimotorgroup.com/ko/news/hyundai-motor-company-2026-q3-earnings",
+      "rev": 45.11,
+      "op": 2.68,
+      "seg": {
+        "auto": 33.06,
+        "fin": 12.05
+      },
+      "k": {
+        "wh": 920710,
+        "xev": 245540,
+        "xevShare": 26.7
+      },
+      "ky": {
+        "wh": -0.113,
+        "xev": -0.027
+      },
+      "hl": [
+        {
+          "ko": "파업·추석 연휴로 판매 92만 대(-11.3%) · 매출 45.1조원(-3.4%)",
+          "en": "Strikes and the Chuseok holiday cut sales to 921K (-11.3%) · revenue ₩45.1T (-3.4%)"
+        },
+        {
+          "ko": "환율·원가 절감·하이브리드 확대로 영업이익 2.68조원(+5.5%) · 영업이익률 5.9%",
+          "en": "FX, cost cuts and more hybrids lifted operating profit to ₩2.68T (+5.5%) · 5.9% margin"
+        },
+        {
+          "ko": "연간 목표 하향(판매 400만 대·영업이익률 5.5~6.5%) · 분기 배당 2,500원",
+          "en": "Annual targets cut (4.0M units, 5.5–6.5% margin) · ₩2,500 quarterly dividend"
+        }
+      ]
+    },
     {
       "q": "2026Q2",
       "filed": "2026-07-23",

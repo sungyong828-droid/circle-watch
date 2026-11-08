@@ -44,6 +44,32 @@
   },
   "q": [
     {
+      "q": "2026Q3",
+      "filed": "2026-10-30",
+      "url": "https://www.newsis.com/view/NISX20261030_0003848117",
+      "rev": 9.05,
+      "op": 0.57,
+      "seg": {
+        "dist": 4.29,
+        "logi": 2.95,
+        "ship": 1.81
+      },
+      "hl": [
+        {
+          "ko": "매출 9.05조원(+23.1%)·영업이익 5,665억원(+8.1%) 모두 분기 최대 — 처음 9조원 돌파",
+          "en": "Record revenue ₩9.05T (+23.1%) and operating profit ₩566.5B (+8.1%) — first quarter over ₩9T"
+        },
+        {
+          "ko": "해운: 그룹 밖 화주 운송 확대로 매출 +37.1% · 영업이익 +16.6%",
+          "en": "Shipping: more non-affiliate cargo lifted revenue 37.1% and operating profit 16.6%"
+        },
+        {
+          "ko": "물류: 북미 물동량·컨테이너 시황 덕에 영업이익 +19.6% · 유통은 비철금속 부진으로 -18.7%",
+          "en": "Logistics profit +19.6% on North America volumes and container rates · distribution -18.7% on weak metals"
+        }
+      ]
+    },
+    {
       "q": "2026Q2",
       "filed": "2026-07-23",
       "url": "https://biz.sbs.co.kr/amp/article/20000324267",

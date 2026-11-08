@@ -2361,13 +2361,19 @@ const MON3 = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, S
 const pad2 = (n) => String(n).padStart(2, '0');
 export function parseFaaChart(html) {
   const t = String(html).replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
-  const m = t.match(/DATA AS OF ([A-Z]+)\.? (\d{1,2}),? (\d{4})[\s\S]{0,400}?JOBY((?:\s*\d{1,3}%){3,4})\s*FAA((?:\s*\d{1,3}%){5,8})/i);
+  const m = t.match(/DATA AS OF ([A-Z]+)\.? (\d{1,2}),? (\d{4})[\s\S]{0,400}?JOBY((?:\s*\d{1,3}%){2,4})\s*FAA((?:\s*\d{1,3}%){5,8})/i);
   if (!m) return null;
   const mon = MON3[m[1].slice(0, 3).toUpperCase()];
   const nums = (s) => [...s.matchAll(/(\d{1,3})%/g)].map((x) => +x[1]);
   const J = nums(m[4]), F = nums(m[5]), n = J.length, fm = F.slice(0, n), ex = F.slice(n);
-  if (!mon || !((n === 3 && ex.length === 4) || (n === 4 && ex.length === 2))) return null;
-  const s = { 1: [J[0], fm[0]], 2: [J[1], fm[1]], 3: [ex[0], ex[1]], 4: [J[2], fm[2]], 5: n === 4 ? [J[3], fm[3]] : [ex[2], ex[3]] };
+  if (!mon || !((n === 2 && ex.length === 4) || (n === 3 && ex.length === 4) || (n === 4 && ex.length === 2))) return null;
+  let s;
+  if (n === 2) {
+    // 2026년 3분기 서한부터: 이름표가 1·4단계에만 붙고 3·5단계 숫자가 이어지며, 2단계(100%/100%)는 설명 글 뒤에 따로 나온다
+    const tail = t.slice(m.index + m[0].length, m.index + m[0].length + 600);
+    if (ex[0] !== 100 || ex[1] !== 100 || !/\b100%\s*100%/.test(tail)) return null;
+    s = { 1: [J[0], fm[0]], 2: [100, 100], 3: [ex[0], ex[1]], 4: [J[1], fm[1]], 5: [ex[2], ex[3]] };
+  } else s = { 1: [J[0], fm[0]], 2: [J[1], fm[1]], 3: [ex[0], ex[1]], 4: [J[2], fm[2]], 5: n === 4 ? [J[3], fm[3]] : [ex[2], ex[3]] };
   for (const [a, b] of Object.values(s)) if (!(a >= 0 && a <= 100 && b >= 0 && b <= a)) return null; // FAA 승인 ≤ Joby 제출
   if (s[1][0] !== 100 || s[3][0] !== 100) return null;
   return { asOf: `${m[3]}-${pad2(mon)}-${pad2(m[2])}`, stages: s };

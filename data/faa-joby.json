@@ -1,9 +1,9 @@
 {
-  "asOf": "2026-07-31",
+  "asOf": "2026-10-30",
   "source": {
-    "label": "Joby 2026년 2분기 주주서한 (2026-08-05)",
-    "date": "2026-08-05",
-    "url": "https://www.sec.gov/Archives/edgar/data/1819848/000181984826000432/joby-8kx20260805xexx99_2.htm"
+    "label": "Joby 2026년 3분기 주주서한 (2026-11-04)",
+    "date": "2026-11-04",
+    "url": "https://www.sec.gov/Archives/edgar/data/1819848/000181984826000531/joby-8kx20261104xexx99_2.htm"
   },
   "stages": [
     {
@@ -19,10 +19,10 @@
       "n": 2,
       "name": "적합성 입증 방법",
       "en": "Means of Compliance",
-      "joby": 97,
-      "faa": 97,
+      "joby": 100,
+      "faa": 100,
       "status": "done",
-      "note": "Joby는 사실상 완료로 봄 — 설계 변경에 대응하려고 일부를 일부러 열어 둠"
+      "note": "Joby·FAA 모두 100% — 1~3단계 완료"
     },
     {
       "n": 3,
@@ -38,7 +38,7 @@
       "name": "시험·분석",
       "en": "Testing & Analysis",
       "joby": 83,
-      "faa": 77,
+      "faa": 78,
       "status": "active",
       "note": "부품·시스템 시험 보고서를 FAA가 검토 · 5단계와 함께 진행"
     },
@@ -46,15 +46,15 @@
       "n": 5,
       "name": "실증·검증",
       "en": "Show & Verify",
-      "joby": 20,
-      "faa": 10,
+      "joby": 25,
+      "faa": 14,
       "status": "active",
       "note": "FAA 적합 기체로 인증 비행(TIA) — 끝나면 형식 인증(Type Certificate) 발급"
     }
   ],
   "history": [
     {
-      "label": "3분기 서한(10/31)",
+      "label": "25년 3분기(10/31)",
       "asOf": "2025-10-31",
       "s5": [
         10,
@@ -84,9 +84,17 @@
         20,
         10
       ]
+    },
+    {
+      "label": "3분기 서한(10/30)",
+      "asOf": "2026-10-30",
+      "s5": [
+        25,
+        14
+      ]
     }
   ],
-  "next": "FAA 조종사가 직접 모는 인증 비행(for-credit TIA) 시작",
+  "next": "FAA 조종사 훈련·인증 비행(for-credit TIA) — 2027년 상반기 예정",
   "milestones": [
     {
       "date": "2022-05-26",
@@ -119,9 +127,21 @@
       "done": true
     },
     {
+      "date": "2026-11-04",
+      "title": "3분기: 1~3단계 모두 완료 · 주요 부품 인증 시험 마침 · 기체 17대 생산 중",
+      "url": "https://www.sec.gov/Archives/edgar/data/1819848/000181984826000531/joby-8kx20261104xexx99_2.htm",
+      "done": true
+    },
+    {
+      "date": "예정",
+      "title": "두바이에서 조종사 탑승 운항 비행 시험",
+      "note": "Joby: 2026년 안",
+      "done": false
+    },
+    {
       "date": "예정",
       "title": "FAA 조종사 인증 비행(for-credit TIA) 시작",
-      "note": "Joby: 2026년 중 시작 예정",
+      "note": "Joby: 2027년 상반기 예정",
       "done": false
     },
     {
@@ -132,7 +152,7 @@
     {
       "date": "예정",
       "title": "첫 승객 운항",
-      "note": "Joby 목표: 2026년 안",
+      "note": "날짜 미정 — 시범사업 승객 탑승도 TIA 시험이 상당히 진행돼야 가능(FAA)",
       "done": false
     }
   ],

@@ -35,10 +35,41 @@
     }
   ],
   "guide": {
-    "ko": "2026년 현금 영업비용 3.75억 달러 미만(하향) · 추가 자금 조달 없이 2028년 초까지 버틸 현금",
-    "en": "2026 cash operating expenses under $375M (lowered) · runway into early 2028 without new financing"
+    "ko": "2026년 현금 영업비용 3.75억 달러 미만 · 2027년 3.6억 달러 미만 · 10월 유상증자 포함 2029년까지 버틸 현금",
+    "en": "2026 cash operating expenses under $375M · 2027 under $360M · cash runway into 2029 including the October offering"
   },
   "q": [
+    {
+      "q": "2026Q3",
+      "filed": "2026-11-02",
+      "url": "https://www.sec.gov/Archives/edgar/data/1601830/000160183026000144/exhibit991-q0326.htm",
+      "rev": 18.6,
+      "seg": {
+        "collab": 18.1
+      },
+      "op": -123.2,
+      "k": {
+        "cash": 561.5
+      },
+      "hl": [
+        {
+          "ko": "REC-4881(가족성 선종성 용종증) 2상: 용종이 크게 줄고 투약을 멈춘 뒤에도 유지",
+          "en": "REC-4881 (FAP) Phase 2: deep polyp reductions that persisted off treatment"
+        },
+        {
+          "ko": "REC-1245 1상: 자궁내막암 부분 반응 2건 · 질병 조절률 91.7%",
+          "en": "REC-1245 Phase 1: two confirmed partial responses in endometrial cancer · 91.7% disease control"
+        },
+        {
+          "ko": "사노피가 공동 연구의 첫 후보물질 선택(2027년 1상 예정)",
+          "en": "Sanofi optioned the first development candidate (Phase 1 in 2027)"
+        },
+        {
+          "ko": "10월 유상증자(순 약 1.87억 달러)로 2029년까지 버틸 현금 확보",
+          "en": "October offering (~$187M net) extends the cash runway into 2029"
+        }
+      ]
+    },
     {
       "q": "2026Q2",
       "filed": "2026-08-05",

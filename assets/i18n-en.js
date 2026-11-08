@@ -2135,7 +2135,21 @@ window.__I18N_EN = {
 "ⓘ 숫자는 공개 출처에서 자동으로 모은 것이라 지연·오류가 있을 수 있고, 각 자료의 권리는 제공자에게 있어요. AI 요약은 틀릴 수 있어요. 회사 이름·로고는 각 회사의 상표이며 식별 목적으로만 쓰고, 제휴 관계가 없어요. 자세한 내용은": "ⓘ Figures are collected automatically from public sources and may be delayed or wrong; rights stay with each provider. AI summaries may contain mistakes. Company names and logos are trademarks of their owners, used only for identification, with no affiliation. See the",
 "을 확인해 주세요.": "for details.",
 "이용 안내·면책": "Terms & disclaimer",
-"개인정보 처리방침": "Privacy policy"
+"개인정보 처리방침": "Privacy policy",
+"Joby 2026년 3분기 주주서한 (2026-11-04)": "Joby Q3 2026 shareholder letter (2026-11-04)",
+"Joby·FAA 모두 100% — 1~3단계 완료": "Joby and FAA both at 100% — Stages 1–3 complete",
+"25년 3분기(10/31)": "Q3 '25 (10/31)",
+"3분기 서한(10/30)": "Q3 letter (10/30)",
+"FAA 조종사 훈련·인증 비행(for-credit TIA) — 2027년 상반기 예정": "FAA pilot training and for-credit TIA flights — expected in 1H 2027",
+"3분기: 1~3단계 모두 완료 · 주요 부품 인증 시험 마침 · 기체 17대 생산 중": "Q3: Stages 1–3 all complete · key component for-credit tests done · 17 aircraft in production",
+"두바이에서 조종사 탑승 운항 비행 시험": "Piloted operational flight testing in Dubai",
+"Joby: 2026년 안": "Joby: within 2026",
+"Joby: 2027년 상반기 예정": "Joby: expected in 1H 2027",
+"날짜 미정 — 시범사업 승객 탑승도 TIA 시험이 상당히 진행돼야 가능(FAA)": "No date set — even pilot-program passengers need substantial TIA progress first (FAA)",
+"BMS와 종양 데이터·모델 계약(5년 최대 1.375억 달러) · 올해 데이터 계약 5.5억 달러 넘어": "Oncology data and model deal with BMS (up to $137.5M over 5 years) · data licensing bookings top $550M this year",
+"머크·모더나와 맞춤형 암 백신(INT) 상업화 협력": "Collaboration with Merck and Moderna to commercialize an individualized cancer vaccine (INT)",
+"Personalis 인수 규제 심사 통과(11/30 주주총회)": "Personalis acquisition cleared regulatory review (shareholder vote 11/30)",
+"심전도 AI 2종(ECG-PH·ECG-MR) FDA 510(k) 허가": "FDA 510(k) clearances for two ECG AI tools (ECG-PH, ECG-MR)"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

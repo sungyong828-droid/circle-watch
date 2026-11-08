@@ -30,6 +30,30 @@
   ],
   "q": [
     {
+      "q": "2026Q3",
+      "filed": "2026-10-28",
+      "url": "https://news.skhynix.co.kr/q3-2026-business-results/",
+      "rev": 104.62,
+      "op": 83.33,
+      "k": {
+        "cash": 114.5
+      },
+      "hl": [
+        {
+          "ko": "매출 104.6조원 — 분기 매출 처음 100조원 돌파 · 영업이익률 80%",
+          "en": "Revenue ₩104.6T — first quarter over ₩100T · 80% operating margin"
+        },
+        {
+          "ko": "2027~2028년 생산능력의 50% 이상 장기공급계약(고객 14곳) · 4분기부터 HBM4가 주력",
+          "en": "Long-term deals with 14 customers cover 50%+ of 2027–28 capacity · HBM4 is the main product from Q4"
+        },
+        {
+          "ko": "올해 약 100조원 주주환원(키옥시아 투자 수익 특별배당 포함) · 순현금 98.7조원",
+          "en": "About ₩100T of shareholder returns this year (incl. a Kioxia special dividend) · net cash ₩98.7T"
+        }
+      ]
+    },
+    {
       "q": "2026Q2",
       "filed": "2026-07-29",
       "url": "https://news.skhynix.co.kr/q2-2026-business-results/",

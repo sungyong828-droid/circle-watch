@@ -65,10 +65,46 @@
     }
   ],
   "guide": {
-    "ko": "2026년 매출 전망 81.50~81.58억 달러로 상향 · 미국 기업 매출 34.2억 달러 이상(+134% 이상)",
-    "en": "2026 revenue guidance raised to $8.150–8.158B · U.S. commercial over $3.424B (at least +134%)"
+    "ko": "2026년 매출 전망 85.30~85.34억 달러로 상향(+91%) · 미국 기업 매출 35.59억 달러 이상(+143% 이상) · 4분기 매출 26.49~26.53억 달러",
+    "en": "2026 revenue guidance raised to $8.530–8.534B (+91%) · U.S. commercial over $3.559B (at least +143%) · Q4 revenue $2.649–2.653B"
   },
   "q": [
+    {
+      "q": "2026Q3",
+      "filed": "2026-11-02",
+      "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000045/a2026q3ex991pressrelease.htm",
+      "rev": 2313,
+      "seg": {
+        "usgov": 953,
+        "uscom": 984,
+        "intl": 376
+      },
+      "op": 1085,
+      "k": {
+        "uscom": 984,
+        "tcv": 2918,
+        "r40": 158,
+        "fcf": 1216
+      },
+      "hl": [
+        {
+          "ko": "미국 기업(상업) 매출이 처음으로 미국 정부 매출을 넘어섬",
+          "en": "U.S. commercial revenue passed U.S. government revenue for the first time"
+        },
+        {
+          "ko": "분기 매출 처음 20억 달러 돌파(+96%) · 미국 기업 매출 +148%",
+          "en": "First $2B+ quarter (+96%) · U.S. commercial +148%"
+        },
+        {
+          "ko": "100만 달러 이상 계약 212건 · 계약 총액(TCV) 29.2억 달러",
+          "en": "212 deals of $1M+ · total contract value of $2.92B"
+        },
+        {
+          "ko": "영업이익률 47%(조정 62%) · Rule of 40 158%",
+          "en": "Operating margin 47% (adjusted 62%) · Rule of 40 score of 158%"
+        }
+      ]
+    },
     {
       "q": "2026Q2",
       "filed": "2026-08-03",

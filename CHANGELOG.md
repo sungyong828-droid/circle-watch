@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- ✈️ 조비 FAA 인증 현황을 3분기 주주서한(11/4) 숫자로 바꿨어요. 1~3단계 모두 완료, 마지막 5단계는 Joby 25%·FAA 14%예요. FAA 조종사 인증 비행은 2027년 상반기 예정이에요.
+<!-- EN Joby's FAA certification card now uses the Q3 letter (Nov 4): Stages 1–3 are complete and Stage 5 is at 25% (Joby) / 14% (FAA). For-credit TIA flights with FAA pilots are expected in 1H 2027 -->
+- 📊 '사업 현황'에 3분기 실적을 넣었어요: 테슬라·알파벳·팔란티어·리커전·삼성전자·SK하이닉스·현대차·기아·현대글로비스, 그리고 템퍼스. 플러그파워는 예비 실적을 먼저 보여 줘요.
+<!-- EN Business snapshots now include Q3 results for Tesla, Alphabet, Palantir, Recursion, Samsung Electronics, SK hynix, Hyundai, Kia, Hyundai Glovis and Tempus. Plug Power shows its preliminary numbers for now -->
+<!-- internal --> - 조비 주주서한 차트 모양이 바뀌어 인증 수치를 자동으로 못 읽던 문제 수정(서버)
+
 ## v2026.11.05-3 — 2026-11-05
 
 [이 버전 보기](https://2dfb9a0f.my-fire-portfolio.pages.dev) · 커밋 `1b73091`

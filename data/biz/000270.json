@@ -41,6 +41,35 @@
   ],
   "q": [
     {
+      "q": "2026Q3",
+      "filed": "2026-10-29",
+      "url": "https://www.hyundaimotorgroup.com/ko/news/kia-2026-q3-earnings",
+      "rev": 31.6,
+      "op": 1.82,
+      "k": {
+        "wh": 847355,
+        "xevShare": 36.2
+      },
+      "ky": {
+        "wh": 0.079,
+        "xevShare": 9.8
+      },
+      "hl": [
+        {
+          "ko": "판매 +7.9% · 매출 31.6조원(+10.1%) · 영업이익 1.82조원(+24.3%) — 미국 관세 25%→15% 효과",
+          "en": "Sales +7.9% · revenue ₩31.6T (+10.1%) · operating profit ₩1.82T (+24.3%) — U.S. tariff cut from 25% to 15%"
+        },
+        {
+          "ko": "친환경차 30만 대(+47%) · 비중 36.2% · 전기차 12.3만 대(+75.4%)",
+          "en": "Eco-friendly sales 300K (+47%) · 36.2% share · EVs 123K (+75.4%)"
+        },
+        {
+          "ko": "미국 하이브리드 점유율 10.6%로 첫 두 자릿수 · 미국 분기 점유율 5.8% 역대 최고",
+          "en": "U.S. hybrid share 10.6%, first time in double digits · record 5.8% U.S. quarterly share"
+        }
+      ]
+    },
+    {
       "q": "2026Q2",
       "filed": "2026-07-24",
       "url": "https://www.hyundaimotorgroup.com/ko/news/kia-2026-q2-earnings",
