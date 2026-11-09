@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🌐 영어 화면에서도 실적 AI 요약과 컨퍼런스콜 핵심이 영어로 나와요.
+<!-- EN Earnings AI summaries and earnings-call highlights now appear in English on the English screen -->
+<!-- internal --> - 실적 EPS를 회사 발표문 표의 희석 EPS로 먼저 보여 주고, 나스닥 값이 다르면 '조정 EPS'로 따로 표시(애플 2.10 vs 2.05)
+
 ## v2026.11.08-1 — 2026-11-08
 
 [이 버전 보기](https://1764624f.my-fire-portfolio.pages.dev) · 커밋 `6f5e543`

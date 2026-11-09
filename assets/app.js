@@ -2776,6 +2776,8 @@
     const F = st(sym).krinfo?.finance, k = (F?.periods || []).filter((p) => !p.cns).map((p) => p.key).sort().at(-1);
     return k ? `${k.slice(0, 4)}-${k.slice(4, 6)}-${new Date(Date.UTC(+k.slice(0, 4), +k.slice(4, 6), 0)).getUTCDate()}` : null;
   }
+  const esL = (o) => (EN && o?.en?.length && o.en.length === o.lines?.length ? o.en : o?.lines || []);
+  const esKo = (o) => EN && !(o?.en?.length && o.en.length === o.lines?.length); // 영어 화면인데 아직 한국어만 있음
   function earnSumGet(sym, last = isKR(sym) ? (krLastEnd(sym) ? { end: krLastEnd(sym), reportedOn: isoToday() } : null) : earnLast(sym)) {
     if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 120) return null; // 지난 분기 요약 기록(hist)도 같이 받는다
     const S = state.earnsum[sym];
@@ -2783,7 +2785,7 @@
     if (!S || (S.pending && Date.now() - S.t > 20000) || (S.callPending && !S.call && (S.n || 0) < 3 && Date.now() - S.t > 30000) || (S.q && S.q !== last.end)) {
       const n = S?.callPending ? (S.n || 0) + 1 : 0;
       state.earnsum[sym] = { ...(S || {}), t: Date.now(), loading: true };
-      getJ(`${NEWS_API}/earnsum?s=${sym}`, 25000).then((j) => { state.earnsum[sym] = { ...j, callPending: j.callPending || (S?.callPending && !j.call), n, t: Date.now() }; if (state.earnsum[sym].callPending && !j.call && n < 3) setTimeout(() => { if (document.querySelector(`.es-box[data-es="${CSS.escape(sym)}"]`)) earnSumGet(sym, last); }, 31000); }).catch(() => { state.earnsum[sym] = { none: true, t: Date.now() }; })
+      getJ(`${NEWS_API}/earnsum?s=${sym}${EN ? '&lang=en' : ''}`, 25000).then((j) => { state.earnsum[sym] = { ...j, callPending: j.callPending || (S?.callPending && !j.call), n, t: Date.now() }; if (state.earnsum[sym].callPending && !j.call && n < 3) setTimeout(() => { if (document.querySelector(`.es-box[data-es="${CSS.escape(sym)}"]`)) earnSumGet(sym, last); }, 31000); }).catch(() => { state.earnsum[sym] = { none: true, t: Date.now() }; })
         .then(() => { for (const el of document.querySelectorAll(`.es-box[data-es="${CSS.escape(sym)}"]`)) el.outerHTML = earnSumBlock(sym); if (state.stock === sym) try { renderBiz(sym); } catch (e) { console.error(e); } });
     }
     return state.earnsum[sym];
@@ -2796,14 +2798,14 @@
       ? `${EN ? 'From the earnings call transcript' : '컨퍼런스콜 녹취록 요점으로 AI가 정리'}${C.url ? ` · <a href="${esc(C.url)}" target="_blank" rel="noopener">${EN ? 'Transcript (Motley Fool)' : '녹취록 원문(Motley Fool)'} ↗</a>` : ''}`
       : C.src === 'krnews' ? (EN ? 'From Korean news on management’s comments — Korean companies don’t publish transcripts. Updated as more news comes in.' : '한국 회사는 녹취록을 공개하지 않아 발표 뒤 경영진 발언 뉴스로 AI가 정리했어요. 뉴스가 늘면 다시 정리해요')
       : (EN ? 'From news after the call — updated again when the transcript is out' : '발표 뒤 뉴스 기준이에요. 녹취록이 올라오면 다시 정리해요');
-    return `<div class="es-call"><b>🎙️ ${EN ? 'Earnings call (Korean)' : '컨퍼런스콜 핵심'}${C.src === 'call' ? '' : ` <span class="es-tag">${EN ? 'news' : '뉴스 기준'}</span>`}</b><ul data-noi18n>${C.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${src}</small></div>`;
+    return `<div class="es-call"><b>🎙️ ${EN ? `Earnings call${esKo(C) ? ' (Korean)' : ''}` : '컨퍼런스콜 핵심'}${C.src === 'call' ? '' : ` <span class="es-tag">${EN ? 'news' : '뉴스 기준'}</span>`}</b><ul data-noi18n>${esL(C).map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${src}</small></div>`;
   }
   function earnSumBlock(sym) {
     const last = isKR(sym) ? (() => { const X = earnSumGet(sym); return X?.lines?.length && X.q ? { end: X.q, reportedOn: X.reportedOn } : null; })() : earnLast(sym);
     // 발표 뒤 일주일만 실적 카드 맨 위에 — 그 뒤엔 사업 현황의 '분기별 주요 소식'에 남는다
     if (!last?.reportedOn || daysBetween(last.reportedOn, isoToday()) > 7) return '';
     const X = earnSumGet(sym, last);
-    if (X?.lines?.length) return `<div class="es-box" data-es="${esc(sym)}"><b>🤖 ${EN ? 'AI summary (Korean)' : 'AI 3줄 요약'} · ${qLabelLong(X.q)}</b><ul data-noi18n>${X.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${EN ? 'Written by AI from the reported numbers and news around the release — may contain mistakes.' : '실적 숫자와 발표 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</small>${callBlock(X)}</div>`;
+    if (X?.lines?.length) return `<div class="es-box" data-es="${esc(sym)}"><b>🤖 ${EN ? `AI summary${esKo(X) ? ' (Korean)' : ''}` : 'AI 3줄 요약'} · ${qLabelLong(X.q)}</b><ul data-noi18n>${esL(X).map((l) => `<li>${esc(l)}</li>`).join('')}</ul><small>${EN ? 'Written by AI from the reported numbers and news around the release — may contain mistakes.' : '실적 숫자와 발표 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</small>${callBlock(X)}</div>`;
     if (X?.none) return `<div class="es-box" data-es="${esc(sym)}" hidden></div>`;
     return `<div class="es-box" data-es="${esc(sym)}" hidden></div>`; // 아직이면 자리만(서버가 미리 만들어 두고, 준비되면 그때 나타난다)
   }
@@ -7623,6 +7625,17 @@ ${what.join(' · ')}
   }
   const bizQ = (B, x) => (x.lb ? tx(x.lb) : EN ? `Q${x.q.slice(5)} '${x.q.slice(2, 4)}` : `'${x.q.slice(2, 4)} ${x.q.slice(5)}분기`);
   const BIZ_MON = ['1~3월', '4~6월', '7~9월', '10~12월'];
+  // EPS 줄: 발표문 표의 희석 EPS가 기준. 나스닥 값(시장 예상과 비교하는 기준 — 일회성 항목을 뺀 값일 수 있음)이 다르면 그 값으로 예상과 비교한다
+  // 실제=예상·서프라이즈 0은 Nasdaq이 발표 직후 예상치를 채워 둔 값일 수 있어 10일 동안 뺀다
+  function epsTxt(gaap, sur) {
+    const ok = sur?.eps != null && sur.consensus != null && isFinite(sur.consensus) && !(sur.eps === sur.consensus && !sur.surprise && daysBetween(sur.reported, isoToday()) <= 10);
+    const f2 = (v) => `${v < 0 ? '-' : ''}$${Math.abs(+v).toFixed(2)}`;
+    const vs = ok ? (EN ? `est. ${f2(sur.consensus)}` : `예상 ${f2(sur.consensus)} ${sur.eps > sur.consensus ? '상회' : sur.eps < sur.consensus ? '하회' : '부합'}`) : '';
+    if (gaap == null) return ok ? `EPS ${f2(sur.eps)} (${vs})` : '';
+    if (!ok) return `EPS ${f2(gaap)}`;
+    if (Math.abs(gaap - sur.eps) < 0.005) return `EPS ${f2(gaap)} (${vs})`;
+    return `EPS ${f2(gaap)} · ${EN ? 'adj. EPS' : '조정 EPS'} ${f2(sur.eps)} (${vs})`;
+  }
   const bizQs = (B, x) => (B.auto ? (EN ? `Q${x.q.slice(5)} '${x.q.slice(2, 4)}` : `'${x.q.slice(2, 4)} ${BIZ_MON[+x.q.slice(5) - 1]}`) : x.lb ? tx(x.lb).replace(/분기$/, 'Q').replace(/^FY(\d\d) (\d)Q$/, '$2Q FY$1') : EN ? `Q${x.q.slice(5)} '${x.q.slice(2, 4)}` : `'${x.q.slice(2, 4)} ${x.q.slice(5)}Q`);
   function renderBiz(sym = state.stock) {
     const el = document.getElementById('c-biz'), k = bizKey(sym);
@@ -7702,7 +7715,7 @@ ${what.join(' · ')}
       if (N2 && kEnd && (!lEnd || Date.parse(kEnd) - Date.parse(lEnd) > 30 * 864e5)) {
         const won = (v) => (v == null ? '–' : fuKrw(Math.abs(v), v < 0 ? '-' : '')), yy = (c, y) => (c != null && y > 0 ? ` (${EN ? 'YoY' : '전년 대비'} ${pct(c / y - 1, 0)})` : '');
         const nums = [`${EN ? 'Revenue' : '매출'} ${won(N2.rev)}${yy(N2.rev, N2.revYa)}`, N2.op != null ? `${EN ? 'operating income' : '영업이익'} ${won(N2.op)}${yy(N2.op, N2.opYa)}` : '', N2.net != null ? `${EN ? 'net income' : '순이익'} ${won(N2.net)}` : ''].filter(Boolean).join(' · ') + (N2.src === 'prelim' ? (EN ? ' (preliminary)' : ' (잠정)') : '');
-        const ai = X?.q === kEnd && X.lines?.length ? X.lines : [], qn = Math.ceil(+kEnd.slice(5, 7) / 3), yy2 = kEnd.slice(2, 4);
+        const ai = X?.q === kEnd && X.lines?.length ? esL(X) : [], qn = Math.ceil(+kEnd.slice(5, 7) / 3), yy2 = kEnd.slice(2, 4);
         autoLi = `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${qn} '${yy2}` : `'${yy2} ${qn}분기`}</b> <em class="biz-new">${X?.reportedOn && daysBetween(X.reportedOn, today) <= 7 ? (EN ? 'Just reported' : '방금 발표') : (EN ? 'Auto summary' : '자동 요약')}</em><ul class="tem-hl">${[nums, ...ai].map((h) => `<li${h === nums ? '' : ' data-noi18n'}>${esc(h)}</li>`).join('')}</ul><p class="note">${N2.src === 'prelim' ? (EN ? 'Preliminary results the company filed with DART (may change in the quarterly report)' : '회사가 DART에 낸 잠정 실적이에요(분기보고서에서 바뀔 수 있어요)') : (EN ? 'Numbers from Naver Finance' : '네이버 증권 분기 실적 숫자예요')}${ai.length ? (EN ? ' + an AI summary of the news — may contain mistakes; replaced once reviewed.' : '. 요약은 AI가 뉴스로 정리해서 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.') : '.'}</p></div></li>`;
       }
     }
@@ -7711,8 +7724,8 @@ ${what.join(' · ')}
       const sur = (E?.surprises || []).find((x) => x.end === NL.end), I0 = istmtOf(sym), I = I0 && Math.abs(Date.parse(I0.end) - Date.parse(NL.end)) < 40 * 864e5 ? I0 : null;
       const rev = I?.rev ?? q.revenue, revYa = I?.prev?.rev ?? ya?.revenue, op = I?.op ?? q.opIncome, net = I?.net ?? q.netIncome;
       const nums = [rev != null ? `${EN ? 'Revenue' : '매출'} ${fu(rev)}${revYa ? ` (${EN ? 'YoY' : '전년 대비'} ${pct(rev / revYa - 1, 0)})` : ''}` : '', op != null ? `${EN ? 'operating income' : '영업이익'} ${fu(op)}` : '', net != null ? `${EN ? 'net income' : '순이익'} ${fu(net)}` : '',
-        sur?.eps != null && sur.consensus != null && isFinite(sur.consensus) && !(sur.eps === sur.consensus && !sur.surprise && daysBetween(sur.reported, today) <= 10) ? `EPS $${(+sur.eps).toFixed(2)} (${EN ? `est. $${(+sur.consensus).toFixed(2)}` : `예상 $${(+sur.consensus).toFixed(2)} ${sur.eps > sur.consensus ? '상회' : sur.eps < sur.consensus ? '하회' : '부합'}`})` : ''].filter(Boolean).join(' · '); // 실제=예상·서프라이즈 0은 Nasdaq이 발표 직후 예상치를 채워 둔 값일 수 있어 10일 동안 뺀다
-      const X = earnSumGet(sym, NL), ai = X?.q === NL.end && X.lines?.length ? X.lines : [];
+        epsTxt(I?.eps, sur)].filter(Boolean).join(' · '); // 실제=예상·서프라이즈 0은 Nasdaq이 발표 직후 예상치를 채워 둔 값일 수 있어 10일 동안 뺀다
+      const X = earnSumGet(sym, NL), ai = X?.q === NL.end && X.lines?.length ? esL(X) : [];
       const lines = [nums, ...ai].filter(Boolean);
       const qn = Math.ceil(+NL.end.slice(5, 7) / 3), yy = NL.end.slice(2, 4), fresh = daysBetween(NL.reportedOn, today) <= 7;
       if (lines.length) autoLi = `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${qn} '${yy}` : `'${yy} ${qn}분기`}</b> <em class="biz-new">${fresh ? (EN ? 'Just reported' : '방금 발표') : (EN ? 'Auto summary' : '자동 요약')}</em>${I?.url ? ` <a href="${safeUrl(I.url)}" target="_blank" rel="noopener">${EN ? 'Source' : '원문'}</a>` : ''}<ul class="tem-hl">${lines.map((h) => `<li${h === nums ? '' : ' data-noi18n'}>${esc(h)}</li>`).join('')}</ul><p class="note">${ai.length ? (EN ? 'Reported numbers + an AI summary of the release and news — may contain mistakes; replaced once reviewed.' : '발표 숫자와 AI가 발표·뉴스로 정리한 요약이에요. 틀릴 수 있고, 확인 후 정리된 내용으로 바뀌어요.') : (EN ? 'Reported numbers, added automatically.' : '발표 숫자를 자동으로 붙였어요.')}</p></div></li>`;
@@ -7720,7 +7733,7 @@ ${what.join(' · ')}
     {
       const X = earnSumGet(sym), qOf = (end) => { const d = new Date(Date.parse(end + 'T12:00:00Z') - 45 * 864e5); return `${d.getUTCFullYear()}Q${Math.floor(d.getUTCMonth() / 3) + 1}`; };
       const have = new Set([...hlQ.map((x) => x.q), ...(autoLi && NL ? [qOf(NL.end)] : []), ...(autoLi && isKR(sym) && (X?.nums?.end || krLastEnd(sym)) ? [qOf(X?.nums?.end || krLastEnd(sym))] : [])]);
-      histLi = (X?.hist || []).filter((h) => h.lines?.length && !have.has(qOf(h.end))).slice(0, 4).map((h) => { const k = qOf(h.end); return `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${k.slice(5)} '${k.slice(2, 4)}` : `'${k.slice(2, 4)} ${k.slice(5)}분기`}</b> <em class="biz-new">${EN ? 'Auto summary' : '자동 요약'}</em><ul class="tem-hl" data-noi18n>${h.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></li>`; }).join('');
+      histLi = (X?.hist || []).filter((h) => h.lines?.length && !have.has(qOf(h.end))).slice(0, 4).map((h) => { const k = qOf(h.end); return `<li class="done"><span class="faa-dot"></span><div><b>${EN ? `Q${k.slice(5)} '${k.slice(2, 4)}` : `'${k.slice(2, 4)} ${k.slice(5)}분기`}</b> <em class="biz-new">${EN ? 'Auto summary' : '자동 요약'}</em><ul class="tem-hl" data-noi18n>${esL(h).map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></li>`; }).join('');
       if (histLi) histLi += `<li class="faa-note"><p class="note">${EN ? 'Auto summaries are written by AI from each release and the news around it — they may contain mistakes.' : '자동 요약은 실적 발표 숫자와 그 무렵 뉴스로 AI가 정리했어요. 틀릴 수 있어요.'}</p></li>`;
     }
     const sub = `${B.auto || L.auto ? `<span class="biz-auto">${EN ? 'Auto' : '자동 정리'}</span>` : ''}${bizQ(B, L)} ${EN ? 'results' : '실적'}${L.filed ? ` (${md(isoToTs(L.filed))})` : ''} · ${esc(tx(B.src))}${nx && nx >= today ? ` · ${EN ? 'next' : '다음 실적'} ${md(isoToTs(nx))}` : ''}`;
@@ -7815,6 +7828,12 @@ ${what.join(' · ')}
   }
   const earnSkeleton = (sym, id) => card(id, { title: `${STOCK_INFO[sym].short} 실적`, info: INFO.searnings, body: `<p class="skeleton">${st(sym).earnErr ? '실적을 불러오지 못했습니다. 새로고침으로 다시 시도하세요.' : '실적 불러오는 중…'}</p>` });
   // EPS: 회계 기준(SEC)을 먼저, 시장 예상과 비교하는 조정 EPS(Nasdaq)가 다르면 함께 — 일회성 이익·손실 때문에 크게 다를 수 있다
+  const withPrEps = (sym, Q) => {
+    const L = Q.at(-1);
+    if (!L || L.eps != null || isKR(sym)) return Q;
+    const I = istmtOf(sym);
+    return I?.eps != null && I.end && Math.abs(Date.parse(I.end) - Date.parse(L.end)) < 40 * 864e5 ? [...Q.slice(0, -1), { ...L, eps: I.eps }] : Q;
+  };
   const epsAdjDiff = (q, a = q?.epsAdj) => a != null && q?.eps != null && Math.abs(a - q.eps) > 0.01;
   const epsMain = (q) => (q?.eps != null ? '$' + q.eps.toFixed(2) : q?.epsAdj != null ? `$${q.epsAdj.toFixed(2)}${EN ? ' (adj.)' : '(조정)'}` : '–');
   const epsAdjNote = (q, sur) => (sur && epsAdjDiff(q, sur.eps) ? `${EN ? 'adj. EPS' : '조정 EPS'} $${(+sur.eps).toFixed(2)} · ` : '');
@@ -7823,7 +7842,7 @@ ${what.join(' · ')}
   function renderBurnEarnings(sym = 'JOBY') {
     const E = st(sym).earn;
     if (!E) return earnSkeleton(sym, 'searnings');
-    const Q = E.quarters || [];
+    const Q = withPrEps(sym, E.quarters || []);
     const last = Q.at(-1), prev = Q.at(-2);
     const sur = (E.surprises || []).find((s) => s.end === last?.end && s.eps != null);
     const rw = sRunway(E);
@@ -7878,7 +7897,7 @@ ${what.join(' · ')}
   function renderGrowthEarnings(sym) {
     const S = STOCK_INFO[sym], E = st(sym).earn;
     if (!E) return earnSkeleton(sym, 'searnings');
-    const Q = E.quarters || [];
+    const Q = withPrEps(sym, E.quarters || []);
     const last = Q.at(-1), prev = Q.at(-2);
     const sur = (E.surprises || []).find((s) => s.end === last?.end && s.eps != null);
     const yoy = yoyQ(Q, last), qoq = last?.revenue != null && prev?.revenue ? last.revenue / prev.revenue - 1 : null;
@@ -7995,7 +8014,7 @@ ${what.join(' · ')}
     if (isKR(sym)) return;
     const el = document.getElementById('skpis');
     if (!el) return;
-    const T = commonTiles(sym), E = st(sym).earn, Q = E?.quarters || [], last = Q.at(-1);
+    const T = commonTiles(sym), E = st(sym).earn, Q = withPrEps(sym, E?.quarters || []), last = Q.at(-1);
     let own = [];
     if (sym === 'JOBY') {
       const F = faaData(), s5 = F?.stages?.find((s) => s.n === 5), s4 = F?.stages?.find((s) => s.n === 4);
@@ -8118,7 +8137,7 @@ ${what.join(' · ')}
     if (!document.getElementById('c-ssummary') || !isOther(sym)) return;
     const S = STOCK_INFO[sym], items = [];
     const add = (tone, go, html, tag, weight = 1) => items.push({ tone, go, html, tag, weight });
-    const E = st(sym).earn, Q = E?.quarters || [], last = Q.at(-1);
+    const E = st(sym).earn, Q = withPrEps(sym, E?.quarters || []), last = Q.at(-1);
     if (sym === 'JOBY') {
       const F = faaData(), s5 = F?.stages?.find((s) => s.n === 5);
       if (s5) {
