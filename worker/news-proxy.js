@@ -3510,6 +3510,23 @@ export async function bizgRun(env, k, { force = false, dry = false, cache = cach
   await idle(6);
   return { entry: E, dropped: B.dropped };
 }
+// 인기 종목은 누가 열기 전에 미리 만든다(처음 여는 사람도 바로 보게) — 30분마다 2종목씩 확인, 한 번에 하나만 새로 만든다
+// 목록: 사이트 '많이 추가한 종목'(/api/popular) + 자주 찾는 종목. 이미 만든 분기·새 실적이 없는 종목은 확인 표시(6~12시간)로 건너뛴다.
+export const BIZG_POP = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'META', 'AVGO', 'TSM', 'NFLX', 'AMD', 'ORCL', 'MU', 'COST', 'UBER', 'COIN', 'HOOD', 'SOFI', 'IONQ', 'RKLB', 'ASTS', 'OKLO',
+  'HIMS', 'MSTR', 'CRWD', 'NET', 'SNOW', 'APP', 'SHOP', 'ARM', 'RDDT', 'ACHR',
+  '373220', '207940', '068270', '035420', '035720', '012450', '042700', '105560', '051910', '006400', '012330', '034020', '329180', '055550'];
+export async function bizgTick(env, at = Date.now()) {
+  if (!env?.SUMS || !env.AI) return;
+  let pop = [];
+  try { const r = await fetch(`${SITE}/api/popular`, { signal: AbortSignal.timeout(5000) }); if (r.ok) pop = ((await r.json()).items || []).map((x) => String(x.sym || '')); } catch {}
+  const list = [...new Set([...pop, ...BIZG_POP].map((x) => ({ k: x.toUpperCase().replace(/\.(KS|KQ)$/, ''), sfx: /\.KQ$/i.test(x) ? 'KQ' : 'KS' })).filter((x) => bizgOk(x.k)).map((x) => JSON.stringify(x)))].map((x) => JSON.parse(x));
+  const n = list.length, start = (Math.floor(at / 1800000) * 2) % n;
+  for (let i = 0; i < Math.min(2, n); i++) {
+    const { k, sfx } = list[(start + i) % n];
+    const r = await bizgRun(env, k, { sfx }).catch(() => null);
+    if (r?.entry && !r.none) break; // 하나 만들었으면 이번 차례는 끝(요청 수 제한)
+  }
+}
 // GET /api/bizq?s=TSLA — 자동 정리한 새 분기(없으면 { none }). 오래 확인하지 않았으면 뒤에서 한 번 확인한다
 export async function handleBizQ(url, cache, cors, ctx, env) {
   const k = String(url.searchParams.get('s') || '').toUpperCase().replace(/\.(KS|KQ)$/, '');
@@ -3710,7 +3727,7 @@ export default {
     if (event.cron === '17 */3 * * *') { ctx.waitUntil(checkFacts(env, true).catch(() => {})); ctx.waitUntil(buildSemi(env).catch(() => {})); return; }
     // 5분마다(요약과 다른 때): 폰 알림 — 목표가 도달·실적 발표일
     // 같은 때 30분마다: 사업 현황 새 분기 자동 정리(종목을 돌아가며 3개씩 확인, 새 분기는 한 번에 하나만 만든다)
-    if (event.cron === '2-59/5 * * * *') { ctx.waitUntil(pushTick(env, event.scheduledTime).catch(() => {})); if (Math.floor(event.scheduledTime / 300000) % 6 === 3) ctx.waitUntil(bizqTick(env, event.scheduledTime).catch(() => {})); return; }
+    if (event.cron === '2-59/5 * * * *') { ctx.waitUntil(pushTick(env, event.scheduledTime).catch(() => {})); if (Math.floor(event.scheduledTime / 300000) % 6 === 0) ctx.waitUntil(bizgTick(env, event.scheduledTime).catch(() => {})); if (Math.floor(event.scheduledTime / 300000) % 6 === 3) ctx.waitUntil(bizqTick(env, event.scheduledTime).catch(() => {})); return; }
     // 15분마다: GitHub 예약 실행은 실제로 3~5시간씩 밀리므로, 데이터가 14분 넘게 묵었으면 수집을 직접 깨운다
     // (GH_TOKEN 비밀값이 있을 때만 — 저장소 Actions 쓰기 권한 토큰)
     // 같은 때 데이터 멈춤 감시도 한다(멈췄으면 조용히 수집을 깨움, 알림 없음)
