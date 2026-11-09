@@ -14,6 +14,7 @@
 - 🌐 영어 화면에서도 실적 AI 요약과 컨퍼런스콜 핵심이 영어로 나와요.
 <!-- EN Earnings AI summaries and earnings-call highlights now appear in English on the English screen -->
 <!-- internal --> - 실적 EPS를 회사 발표문 표의 희석 EPS로 먼저 보여 주고, 나스닥 값이 다르면 '조정 EPS'로 따로 표시(애플 2.10 vs 2.05)
+<!-- internal --> - 많이 보는 종목(사이트 인기 종목 + 자주 찾는 44개)의 사업별 매출·핵심 지표를 서버가 미리 만들어 둠 — 30분마다 2종목 확인, 한 번에 하나만 생성, AI 하루 한도 안에서만
 
 ## v2026.11.08-1 — 2026-11-08
 
