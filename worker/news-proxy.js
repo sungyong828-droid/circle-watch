@@ -1269,7 +1269,8 @@ async function handleKrEarnSum(url, cache, cors, ctx, env, sym) {
   if (kept?.lines?.length) {
     if (!H.items.some((x) => x.end === kept.q)) { H.items = [{ end: kept.q, reportedOn: kept.reportedOn, lines: kept.lines }, ...H.items].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 8); ctx.waitUntil(env.SUMS.put(`bizhl:${sym}`, JSON.stringify(H)).catch(() => {})); }
     const call = await krCallSumOf(sym, end, kept.reportedOn, url, cache, env, ctx).catch(() => null);
-    if (url.searchParams.get('lang') === 'en') await earnSumEn(env, cache, url.origin, ctx, sym, kept, key, H, call).catch(() => {});
+    const enSt = url.searchParams.get('lang') === 'en' ? await earnSumEn(env, cache, url.origin, ctx, sym, kept, key, H, call).catch((e) => String(e)) : null;
+    if (enSt && url.hostname !== 'my-fire-portfolio.pages.dev') kept.enSt = enSt; // 시험 사이트에서만 번역 상태를 보여 준다
     return json(withHist({ ...kept, nums, call: withCallEn(call, kept) }), { ...cors, 'cache-control': 'no-store' });
   }
   if (!env?.SUMS || !env?.AI || Date.now() - Date.parse(end) > 100 * 864e5) return json(withHist({ none: true, nums }), cors);
@@ -2770,7 +2771,8 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   if (kept?.lines?.length) {
     if (!H.items.some((x) => x.end === kept.q)) { H.items = [{ end: kept.q, reportedOn: kept.reportedOn, lines: kept.lines }, ...H.items].sort((a, b) => b.end.localeCompare(a.end)).slice(0, 8); ctx.waitUntil(env.SUMS.put(`bizhl:${sym}`, JSON.stringify(H)).catch(() => {})); }
     const call = await callSumOf(sym, last, url.origin, cache, env, ctx).catch(() => null);
-    if (url.searchParams.get('lang') === 'en') await earnSumEn(env, cache, url.origin, ctx, sym, kept, key, H, call).catch(() => {});
+    const enSt = url.searchParams.get('lang') === 'en' ? await earnSumEn(env, cache, url.origin, ctx, sym, kept, key, H, call).catch((e) => String(e)) : null;
+    if (enSt && url.hostname !== 'my-fire-portfolio.pages.dev') kept.enSt = enSt; // 시험 사이트에서만 번역 상태를 보여 준다
     return json(withHist({ ...kept, call: withCallEn(call, kept) }), { ...cors, 'cache-control': 'no-store' });
   }
   if (Date.now() - Date.parse(last.reportedOn + 'T00:00:00Z') > 10 * 86400000) return json(withHist({ none: true }), cors);
@@ -2824,16 +2826,17 @@ async function enLines(env, arr) {
   return out.map((x, i) => { const e = String(x || '').trim(); return e && e.length <= 320 && !/[가-힣぀-ヿ一-鿿]/.test(e) && pctsOf(e) === pctsOf(arr[i]) ? e : null; });
 }
 async function earnSumEn(env, cache, origin, ctx, sym, kept, key, H, call) {
-  if (!env?.AI || !env?.SUMS) return;
+  if (!env?.AI || !env?.SUMS) return 'no-ai';
   const hist = H.items.slice(0, 5).filter((h) => h.lines?.length && !(h.en?.length === h.lines.length));
   const needMain = !(kept.en?.length === kept.lines.length), needCall = !!call?.lines?.length && kept.callEn?.at !== call.at;
-  if (!needMain && !needCall && !hist.length) return;
-  if (!(await aiLock(cache, origin, `earnen:${sym}`, 300))) return;
-  if ((await aiUnitsUsed()) >= AI_EXTRA_STOP) return;
+  if (!needMain && !needCall && !hist.length) return 'done';
+  if (!(await aiLock(cache, origin, `earnen:${sym}`, 300))) return 'locked';
+  if ((await aiUnitsUsed()) >= AI_EXTRA_STOP) return 'budget';
   const groups = [...(needMain ? [kept.lines] : []), ...(needCall ? [call.lines] : []), ...hist.map((h) => h.lines)];
   const flat = groups.flat();
-  const en = await enLines(env, flat).catch(() => null);
-  if (!en) return;
+  let err = null;
+  const en = await enLines(env, flat).catch((e) => { err = String(e.message || e); return null; });
+  if (!en) return err;
   let i = 0;
   const take = (n) => { const g = en.slice(i, i + n); i += n; return g.every(Boolean) ? g : null; };
   if (needMain) { const g = take(kept.lines.length); if (g) kept.en = g; }
@@ -2841,6 +2844,7 @@ async function earnSumEn(env, cache, origin, ctx, sym, kept, key, H, call) {
   for (const h of hist) { const g = take(h.lines.length); if (g) h.en = g; }
   const left = Math.max(3600, Math.floor(40 * 86400 - (Date.now() - Date.parse(kept.at || 0)) / 1000));
   ctx.waitUntil(Promise.all([env.SUMS.put(key, JSON.stringify(kept), { expirationTtl: left }), env.SUMS.put(`bizhl:${sym}`, JSON.stringify(H))]).catch(() => {}));
+  return `ok ${en.filter(Boolean).length}/${en.length}`;
 }
 const withCallEn = (call, kept) => (call && kept?.callEn?.at === call.at ? { ...call, en: kept.callEn.lines } : call);
 // ---------------------------------------------------------------- 🎙️ 컨퍼런스콜 핵심 — 발표 뒤 10일 동안
