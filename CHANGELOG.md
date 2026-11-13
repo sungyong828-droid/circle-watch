@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.13-1 — 2026-11-13
+
+[이 버전 보기](https://1c162b0d.my-fire-portfolio.pages.dev) · 커밋 `1e67262`
+
 - 📈 서클·스페이스X·템퍼스의 실시간 등락률을 '전날 종가 대비'로 바꿨어요. 보유 현황·증권사 앱과 같은 숫자가 나와요(가격은 그대로 24시간 실시간).
 <!-- EN The live change % for Circle, SpaceX and Tempus is now measured against the previous close — the same number your holdings and brokerage apps show (the price itself is still live around the clock) -->
 - 💵 USDC 카드에 서클 공식 사이트의 공시 유통량(주 1회)을 함께 보여 줘요. 실시간 숫자와 왜 조금 다른지도 적어 뒀어요.
