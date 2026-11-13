@@ -2882,7 +2882,7 @@
     const net = P.find((p) => p.pos);
     return `<div class="f100"><div class="f100-h">${h}</div>
       <div class="f100-bar">${P.map((p) => `<i style="width:${((p.v / total) * 100).toFixed(2)}%;background:${p.color}"></i>`).join('')}${loss ? `<em style="left:${((R / total) * 100).toFixed(1)}%"></em>` : ''}</div>
-      <ul class="f100-lg">${P.map((p, i) => `<li${p.pos ? ' class="pos"' : ''}><i style="background:${p.color}"></i><span>${esc(p.k)}</span><b>${wonP(i)}</b></li>`).join('')}</ul>
+      <ul class="f100-lg">${P.map((p, i) => `<li${p.pos ? ' class="pos"' : ''}><i style="background:${p.color}"></i><span>${esc(p.pos && p.extra ? (EN ? 'Left from operations' : '영업으로 남은 돈') : p.k)}</span><b>${wonP(i)}</b></li>`).join('')}</ul>
       ${net?.extra ? `<p class="f100-n">${EN ? `Plus ${won(net.extra)} from outside the business (interest etc.) → net income ${won(I.net)}` : `여기에 이자 등 영업 밖 수익 ${won(net.extra)}이 더해져 순이익은 ${won(I.net)}이에요`}</p>` : ''}
       ${loss ? `<p class="f100-n">${EN ? `The marker is ${cs}100 of revenue — everything past it is the loss (${won(-I.op)}).` : `세로선이 매출 100원이에요. 넘어간 만큼(${won(-I.op)})이 영업손실이에요.`}</p>` : ''}</div>`;
   }
@@ -3587,7 +3587,7 @@
           <div><span>${EN ? 'KOSPI' : '코스피'}</span><b class="${cls(R.ks)}">${pct(R.ks, 1)}</b></div>
         </div>
         <div class="chart bm-chart"><canvas id="cv-bench" role="img" aria-label="${EN ? 'Return comparison' : '수익률 비교'}"></canvas></div>
-        ${R.per.length > 1 ? `<p class="bm-per">${EN ? 'Best' : '가장 많이 오른 종목'} <b>${esc(nm(R.per[0].t))} <span class="${cls(R.per[0].r)}">${pct(R.per[0].r, 1)}</span></b> · ${EN ? 'worst' : '가장 약한 종목'} <b>${esc(nm(R.per.at(-1).t))} <span class="${cls(R.per.at(-1).r)}">${pct(R.per.at(-1).r, 1)}</span></b></p>` : ''}
+        ${R.per.length > 1 ? `<p class="bm-per">${EN ? 'Best' : R.per[0].r > 0 ? '가장 많이 오른 종목' : '가장 덜 내린 종목'} <b>${esc(nm(R.per[0].t))} <span class="${cls(R.per[0].r)}">${pct(R.per[0].r, 1)}</span></b> · ${EN ? 'worst' : '가장 약한 종목'} <b>${esc(nm(R.per.at(-1).t))} <span class="${cls(R.per.at(-1).r)}">${pct(R.per.at(-1).r, 1)}</span></b></p>` : ''}
         <p class="note">${EN ? `${R.start} → ${R.end}.` : `${R.start} → ${R.end} 기준.`}${R.late ? (EN ? ' Starts later because a holding listed recently.' : ' 최근 상장한 종목이 있어 그 종목 가격이 생긴 날부터 비교했어요.') : ''}${R.miss.length ? (EN ? ` Left out (no price history): ${R.miss.map(nm).join(', ')}.` : ` 가격 기록을 못 받아 뺀 종목: ${R.miss.map(nm).join(', ')}.`) : ''} ${EN ? 'Price return only — trades and dividends not included.' : '가격 수익률이라 중간 매매·배당은 들어가지 않아요.'}</p>`
         : `<p class="note">${EN ? 'Not enough price history for this period yet.' : '이 기간의 가격 기록이 아직 부족해요.'}</p>`,
     });
@@ -5977,6 +5977,10 @@ ${what.join(' · ')}
     const f = U.filter;
     let list = all.filter((i) => newsMatch(i, f));
     if (f === 'filing' && state.majorOnly) list = list.filter((i) => i.level !== 'low');
+    // '전체'에서는 업계 뉴스(코인 등)를 하루 4건까지만 — 하루 수십 건씩 쏟아져 정작 내 종목 소식·공시가 한참 아래로 밀렸다. 나머지는 업계 탭에서 본다
+    let indCut = 0;
+    if (f === 'all') { const per = {}; list = list.filter((i) => { if (i.kind !== 'industry') return true; const d = dayLabel(i.t); per[d] = (per[d] || 0) + 1; if (per[d] <= 4) return true; indCut++; return false; }); }
+    const indLabel = U.filters.find(([k]) => k === 'industry')?.[1] || '';
     const counts = Object.fromEntries(U.filters.map(([k]) => [k, all.filter((i) => newsMatch(i, k)).length]));
     let lastDay = '';
     const rows = list.slice(0, 80).map((i) => {
@@ -5995,6 +5999,7 @@ ${what.join(' · ')}
     el.innerHTML = `
       <div class="nf" role="group" aria-label="뉴스 종류">${U.filters.map(([k, label]) => `<button type="button" data-nf="${k}" aria-pressed="${k === f}">${label}<small>${counts[k]}</small></button>`).join('')}</div>
       ${f === 'filing' ? `<label class="nf-opt"><input type="checkbox" id="major-only" ${state.majorOnly ? 'checked' : ''}> 주요 공시만 보기 <small>(임원 지분변동 Form 4·매도예정 144 숨김)</small></label>` : ''}
+      ${indCut ? `<button type="button" class="nf-more" data-nf="industry">${EN ? `Only 4 industry stories a day are shown here · see ${indCut} more` :`여기엔 ${esc(indLabel)} 뉴스를 하루 4건만 보여요 · 나머지 ${indCut}건 보기`}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>` : ''}
       <ul class="nl">${rows || '<li class="empty">표시할 항목이 없습니다.</li>'}</ul>
       <p class="note">제목을 누르면 원문이 새 창으로 열립니다. 공시는 SEC EDGAR, 뉴스는 구글 뉴스·전문 매체 RSS에서 새로고침 때마다 받습니다. 회색 한 줄 요약은 AI가 기사 앞부분을 읽고 만든 것이라 틀릴 수 있어요.</p>`;
   }
@@ -6900,15 +6905,20 @@ ${what.join(' · ')}
     const [tone, label] = optTone(O), sp0 = O.spot;
     const mv = (x, lbl) => (x ? `<div><span>${lbl}</span><b>±${(x.move * 100).toFixed(1)}%</b><small>${md(isoToTs(x.exp))} 만기(${x.days}일) · ${price(sp0 * (1 - x.move))}~${price(sp0 * (1 + x.move))}</small></div>` : '');
     const strikes = (L, t) => L.map((r) => `<span class="op-k ${t}" title="${md(isoToTs(r.exp))} 만기 · 미결제 ${unit(r.oi)}계약">$${r.k % 1 ? r.k.toFixed(1) : r.k}<small>${unit(r.oi)} · ${md(isoToTs(r.exp))}</small></span>`).join('');
+    // 결론 한 줄(숫자 표를 읽기 전에): 가장 가까운 만기까지 시장이 보는 범위 + 콜·풋이 가장 많이 쌓인 가격
+    const kS = (r) => `$${r.k % 1 ? r.k.toFixed(1) : r.k}`, N0 = O.near, tc = O.topCalls?.[0], tp = O.topPuts?.[0];
+    const lead = N0 ? `<p class="op-lead">${EN ? `Options imply a move of about <b>±${(N0.move * 100).toFixed(1)}%</b> (${price(sp0 * (1 - N0.move))}–${price(sp0 * (1 + N0.move))}) by ${md(isoToTs(N0.exp))}.${tc && tp ? ` Most open calls sit at ${kS(tc)}, puts at ${kS(tp)}.` : ''}`
+      : `옵션 시장은 ${md(isoToTs(N0.exp))}까지 주가가 <b>±${(N0.move * 100).toFixed(1)}%</b>(${price(sp0 * (1 - N0.move))}~${price(sp0 * (1 + N0.move))}) 안에서 움직일 걸로 보고 있어요.${tc && tp ? ` 콜이 가장 많이 쌓인 가격은 ${kS(tc)}, 풋은 ${kS(tp)}예요.` : ''}`}</p>` : '';
+    const liveP = stockPx(sym)?.price > 0 ? stockPx(sym).price : sp0; // 맥스 페인과 비교하는 '현재가'는 지금 시세(옵션 기준가는 15분 지연·장 마감 값)
     card(id, {
       title, sub: `${S.short} · CBOE 옵션 시세(약 15분 지연) · 기준가 ${price(sp0)}${O.at ? ` · ${asOf(O.at)}` : ''}`, info: INFO.options,
-      body: `<div class="an-head"><span class="tone ${tone}">${label}</span><span class="an-cons">풋/콜 거래량 비율 <b>${O.pcVol != null ? O.pcVol.toFixed(2) : '–'}</b></span></div>
+      body: `<div class="an-head"><span class="tone ${tone}">${label}</span><span class="an-cons">풋/콜 거래량 비율 <b>${O.pcVol != null ? O.pcVol.toFixed(2) : '–'}</b></span></div>${lead}
         <div class="ns-grid er-grid">
           <div><span>내재변동성(IV30)</span><b>${O.iv30 != null ? O.iv30.toFixed(1) + '%' : '–'}</b><small>앞으로 30일 연간 변동성 예상${O.iv30Chg ? ` · 전일 ${O.iv30Chg > 0 ? '+' : ''}${O.iv30Chg.toFixed(1)}%p` : ''}</small></div>
           <div><span>풋/콜 미결제 비율</span><b>${O.pcOI != null ? O.pcOI.toFixed(2) : '–'}</b><small>콜 ${unit(O.callOI)} · 풋 ${unit(O.putOI)}계약</small></div>
           ${mv(O.near, '가장 가까운 만기 예상 변동폭')}${mv(O.month, '한 달 예상 변동폭')}
           ${O.earn ? mv(O.earn, '실적 발표 포함 만기 예상 변동폭') : ''}
-          ${O.maxPain ? `<div><span>맥스 페인</span><b>${price(O.maxPain.strike)}</b><small>${md(isoToTs(O.maxPain.exp))} 만기 · 현재가 대비 <span class="${cls(O.maxPain.strike / sp0 - 1)}">${pct(O.maxPain.strike / sp0 - 1, 1)}</span></small></div>` : ''}
+          ${O.maxPain ? `<div><span>맥스 페인</span><b>${price(O.maxPain.strike)}</b><small>${md(isoToTs(O.maxPain.exp))} 만기 · 현재가 대비 <span class="${cls(O.maxPain.strike / liveP - 1)}">${pct(O.maxPain.strike / liveP - 1, 1)}</span></small></div>` : ''}
         </div>
         ${O.topCalls?.length ? `<div class="mini-h er-h">미결제가 많이 쌓인 가격(60일 이내 만기)</div><div class="op-row"><span class="op-l up">콜</span>${strikes(O.topCalls, 'up')}</div><div class="op-row"><span class="op-l down">풋</span>${strikes(O.topPuts, 'down')}</div>` : ''}
         ${O.unusual?.length ? `<div class="mini-h er-h">오늘 거래가 몰린 옵션(거래량 > 미결제 1.5배)</div><ul class="op-un">${O.unusual.map((u) => `<li><span class="${u.type === 'C' ? 'up' : 'down'}">${u.type === 'C' ? '콜' : '풋'} ${price(u.k)}</span><span>${md(isoToTs(u.exp))} 만기</span><span>거래 ${unit(u.vol)} · 미결제 ${unit(u.oi)}</span></li>`).join('')}</ul>` : ''}
@@ -7724,7 +7734,7 @@ ${what.join(' · ')}
       const sur = (E?.surprises || []).find((x) => x.end === NL.end), I0 = istmtOf(sym), I = I0 && Math.abs(Date.parse(I0.end) - Date.parse(NL.end)) < 40 * 864e5 ? I0 : null;
       const rev = I?.rev ?? q.revenue, revYa = I?.prev?.rev ?? ya?.revenue, op = I?.op ?? q.opIncome, net = I?.net ?? q.netIncome;
       const nums = [rev != null ? `${EN ? 'Revenue' : '매출'} ${fu(rev)}${revYa ? ` (${EN ? 'YoY' : '전년 대비'} ${pct(rev / revYa - 1, 0)})` : ''}` : '', op != null ? `${EN ? 'operating income' : '영업이익'} ${fu(op)}` : '', net != null ? `${EN ? 'net income' : '순이익'} ${fu(net)}` : '',
-        epsTxt(I?.eps, sur)].filter(Boolean).join(' · '); // 실제=예상·서프라이즈 0은 Nasdaq이 발표 직후 예상치를 채워 둔 값일 수 있어 10일 동안 뺀다
+        epsTxt(I?.eps ?? q.eps, sur)].filter(Boolean).join(' · '); // 발표문에서 EPS를 못 읽었으면 SEC 분기 재무제표의 희석 EPS(위 실적 카드와 같은 값) // 실제=예상·서프라이즈 0은 Nasdaq이 발표 직후 예상치를 채워 둔 값일 수 있어 10일 동안 뺀다
       const X = earnSumGet(sym, NL), ai = X?.q === NL.end && X.lines?.length ? esL(X) : [];
       const lines = [nums, ...ai].filter(Boolean);
       const qn = Math.ceil(+NL.end.slice(5, 7) / 3), yy = NL.end.slice(2, 4), fresh = daysBetween(NL.reportedOn, today) <= 7;
@@ -7893,7 +7903,9 @@ ${what.join(' · ')}
 
   // ---------------------------------------------------------------- 실적: 성장 기업(SPCX·TEM) — 매출 성장·이익률 중심
   const yoyQ = (Q, q) => { if (!q) return null; const ya = qYa(Q, q.end); return q.revenue != null && ya?.revenue ? q.revenue / ya.revenue - 1 : null; };
-  const gmQ = (q) => (!q?.revenue ? null : q.grossProfit != null ? q.grossProfit / q.revenue : q.cost != null ? (q.revenue - q.cost) / q.revenue : null);
+  // 매출원가가 없는 회사(증권사·은행 등)는 매출총이익률이 100%로 나와 뜻이 없다 → 비우고 그 자리에 순이익률을 보여 준다
+  const gmQ = (q) => { const g = !q?.revenue ? null : q.grossProfit != null ? q.grossProfit / q.revenue : q.cost != null ? (q.revenue - q.cost) / q.revenue : null; return g != null && g < 0.9995 ? g : null; };
+  const nmQ = (q) => (q?.revenue > 0 && q.netIncome != null ? q.netIncome / q.revenue : null);
   function renderGrowthEarnings(sym) {
     const S = STOCK_INFO[sym], E = st(sym).earn;
     if (!E) return earnSkeleton(sym, 'searnings');
@@ -7913,7 +7925,8 @@ ${what.join(' · ')}
       body: `${nextEarnHtml(E.next, lk ? `<p class="note">⚠️ 실적 발표 2거래일 뒤 <b>보호예수 최대 ${unit(lk.shares)}주</b>가 풀려요(${esc(lk.label)}).</p>` : '', sym)}
         ${last ? `<div class="ns-grid er-grid">
           <div><span>매출</span><b>${usdS2(last.revenue)}</b><small>전년 같은 분기 대비 ${sp(yoy)} · 전분기 ${sp(qoq)}</small></div>
-          <div><span>매출총이익률</span><b>${g != null ? pctPlain(g) : '–'}</b><small>${g != null && gPrev != null ? `전분기 ${pctPlain(gPrev)} → <span class="${cls(g - gPrev)}">${pp(g - gPrev, 1)}</span>` : '매출 − 매출원가'}</small></div>
+          ${g == null && nmQ(last) != null ? `<div><span>${EN ? 'Net margin' : '순이익률'}</span><b class="${cls(nmQ(last))}">${pctPlain(nmQ(last))}</b><small>${nmQ(prev) != null ? `${EN ? 'prev. quarter' : '전분기'} ${pctPlain(nmQ(prev))} → <span class="${cls(nmQ(last) - nmQ(prev))}">${pp(nmQ(last) - nmQ(prev), 1)}</span>` : (EN ? 'net income ÷ revenue' : '순이익 ÷ 매출')}</small></div>`
+            : `<div><span>매출총이익률</span><b>${g != null ? pctPlain(g) : '–'}</b><small>${g != null && gPrev != null ? `전분기 ${pctPlain(gPrev)} → <span class="${cls(g - gPrev)}">${pp(g - gPrev, 1)}</span>` : '매출 − 매출원가'}</small></div>`}
           <div><span>영업이익</span><b class="${cls(last.opIncome)}">${usdS2(last.opIncome)}</b><small>영업이익률 ${opm != null ? pctPlain(opm) : '–'}</small></div>
           <div><span>순이익</span><b class="${cls(last.netIncome)}">${usdS2(last.netIncome)}</b><small>${turn || `전분기 ${usdS2(prev?.netIncome)}`}</small></div>
           <div><span>EPS(주당순이익)</span><b>${epsMain(last)}</b><small>${sur ? `${epsAdjNote(last, sur)}예상 $${sur.consensus.toFixed(2)} · ${sur.eps >= sur.consensus ? '예상보다 양호' : '예상보다 부진'}` : '예상치 없음'}</small></div>
@@ -8045,7 +8058,8 @@ ${what.join(' · ')}
       const yoy = yoyQ(Q, last), g = gmQ(last);
       own = [
         tile('매출 성장률', yoy != null ? `<span class="${cls(yoy)}">${pct(yoy, 0)}</span>` : '–', `<span class="flat">전년 같은 분기 대비 · ${last ? usd(last.revenue) : ''}</span>`, 'searn:c-searnings'),
-        tile('매출총이익률', g != null ? pctPlain(g) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'searn:c-searnings'),
+        g == null && nmQ(last) != null ? tile(EN ? 'Net margin' : '순이익률', `<span class="${cls(nmQ(last))}">${pctPlain(nmQ(last))}</span>`, `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'searn:c-searnings')
+          : tile('매출총이익률', g != null ? pctPlain(g) : '–', `<span class="flat">${last ? qLabel(last.end) : ''}</span>`, 'searn:c-searnings'),
         tile('분기 순이익', last?.netIncome != null ? `<span class="${cls(last.netIncome)}">${usdS2(last.netIncome)}</span>` : '–', `<span class="flat">${last ? qLabel(last.end) : ''}${Q.at(-2)?.netIncome < 0 && last?.netIncome > 0 ? ' · 흑자 전환' : ''}</span>`, 'searn:c-searnings'),
         tile('현금·단기투자', last ? usd(last.liquidity ?? last.cash) : '–', `<span class="flat">분기 현금흐름 ${usdS2(last?.burn)}</span>`, 'searn:c-searnings'),
       ];

@@ -410,6 +410,10 @@ body { overflow-x: clip; }
 .nf-opt input { width: 18px; height: 18px; accent-color: var(--c-blue); }
 .nf-opt { flex-wrap: wrap; }
 .nf-opt small { color: var(--faint); font-size: 11px; flex-basis: 100%; padding-left: 24px; }
+/* '전체'에서 업계 뉴스를 줄여 보여 줄 때: 나머지를 보는 한 줄 버튼 */
+.nf-more { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 40px; margin-top: 10px; padding: 8px 12px; border: 1px dashed var(--line); border-radius: 10px; background: transparent; color: var(--ink-2); font-size: 12.5px; text-align: left; cursor: pointer; word-break: keep-all; }
+.nf-more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.nf-more:active { background: var(--surface-2); }
 
 .nl { list-style: none; margin: 8px -16px 0; padding: 0; }
 .nl li.nd { padding: 14px 16px 6px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
@@ -744,6 +748,7 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 .op-k { display: inline-grid; padding: 5px 9px; border-radius: 8px; background: var(--surface-2); font: 600 12.5px var(--mono); }
 .op-k small { font: 500 10.5px var(--mono); color: var(--muted); }
 .op-k.up { box-shadow: inset 2px 0 0 var(--up); } .op-k.down { box-shadow: inset 2px 0 0 var(--down); }
+.op-lead { margin: 10px 0 2px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 13.5px; line-height: 1.55; color: var(--ink); word-break: keep-all; overflow-wrap: anywhere; }
 .op-un { list-style: none; margin: 6px 0 0; padding: 0; }
 .op-un li { display: grid; grid-template-columns: 90px 1fr auto; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line-soft); font-size: 12.5px; }
 .op-un li:first-child { border-top: 0; }

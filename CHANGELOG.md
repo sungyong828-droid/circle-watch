@@ -11,6 +11,18 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🎯 옵션 카드 맨 위에 결론 한 줄이 생겼어요. "옵션 시장은 11/20까지 ±8% 안에서 움직일 걸로 봐요"처럼 숫자 표를 읽기 전에 바로 알 수 있어요.
+<!-- EN The options card now opens with a one-line takeaway — the move the market expects by the nearest expiry and where calls and puts are piled up -->
+- 📰 서클 뉴스 '전체'에서 코인 업계 뉴스는 하루 4건만 보여요. 쏟아지는 코인 기사에 밀리던 서클 소식·공시가 먼저 보여요(나머지는 '암호화폐' 탭).
+<!-- EN Circle's "All" news list now shows only 4 crypto-industry stories a day, so Circle news and filings are no longer buried (the rest is under the Crypto filter) -->
+- 💰 '비싼가 싼가'·경쟁사 비교가 금융주에서도 맞게 나와요. 소파이·슈왑·마스터카드·JP모건처럼 숫자가 틀리거나 비어 있던 종목을 고쳤어요.
+<!-- EN "Cheap or expensive?" and the peer table are now correct for financial stocks (SoFi, Schwab, Mastercard, JPMorgan and others that showed wrong or missing figures) -->
+<!-- internal --> - 밸류에이션 정확성: 주주총회 안내문(DEF 14A)에 단위가 틀리게 붙은 숫자 제외(SCHW 4분기 순이익 −64억 → 25억, PER 87.9 → 14.9), 금융사 매출은 전체 순매출 기준(SOFI PSR 32.9 → 4.3, JPM 매출 없음 → 있음), 순이익 항목이 다른 회사 보완(MA PER 없음 → 33.7), 16년 전 주식 수를 쓰던 V는 값을 비움(PER 8.4는 틀린 값), 지분 일부만 상장된 회사(IBKR)는 PSR 숨김
+<!-- internal --> - 뉴스 제목 번역에 이름 표기 검사: Nvidia가 '네이버', Binance가 '빔인스'로 옮겨진 번역은 버리고 원문 제목을 보여 줌(요청에 표기 사전도 같이 넣음)
+<!-- internal --> - 매출원가가 없는 회사(증권사·은행)는 뜻 없는 '매출총이익률 100%' 대신 순이익률 표시 · '매출 100원' 막대에서 영업 밖 수익이 있을 때 '순이익'이 두 번 나오던 이름 정리 · 사업 현황 자동 요약 EPS를 실적 카드와 같은 값으로 · 내 수익률 카드에서 모두 내렸을 때 '가장 덜 내린 종목'
+<!-- internal --> - 영어 실적 요약이 만들어지지 않던 문제: 추가 기능 AI 몫(250)이 매일 오전에 바닥나 번역을 못 했음 → 번역은 420까지 허용. 코인 업계 뉴스 요약은 하루 사용량 150 이후엔 서클 관련 기사만(제목 번역은 계속)
+<!-- internal --> - 한국 재무 자동 갱신(dart-sync) 고침: 접속이 끊기면 통째로 실패하던 것 → 그 회사만 건너뛰고 다음에 다시, 받은 만큼은 바로 반영, 지난 분기는 받아 둔 값 재사용(요청 500번 → 80번), 4개씩 동시에(1분 300번 제한), DART가 응답을 끊으면 20번 실패 뒤 멈춤
+
 ## v2026.11.09-1 — 2026-11-09
 
 [이 버전 보기](https://2ceafdf8.my-fire-portfolio.pages.dev) · 커밋 `e24a31f`
