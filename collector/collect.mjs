@@ -222,10 +222,15 @@ async function usycSeries() {
   return L;
 }
 
+// 전체 달러 스테이블코인 일별 공급량(USDC 점유율 추이용)
+async function totalUsdSeries() {
+  const d = await getJSON('https://stablecoins.llama.fi/stablecoincharts/all');
+  return d.map((p) => [Number(p.date), p.totalCirculating?.peggedUSD || 0]).filter(([t, v]) => t >= HISTORY_START && v > 0);
+}
 async function collectSeries(prev) {
-  // USDC가 핵심 — EURC·USYC가 실패해도 직전 기록으로 두고 나머지는 갱신한다
-  const [usdc, eurc, usyc] = await Promise.all([stableSeries('2'), stableSeries('50').catch(() => null), usycSeries().catch(() => null)]);
-  return { usdc, eurc: eurc?.length ? eurc : prev?.eurc ?? [], usyc: usyc?.length ? usyc : prev?.usyc ?? [] };
+  // USDC가 핵심 — EURC·USYC·전체가 실패해도 직전 기록으로 두고 나머지는 갱신한다
+  const [usdc, eurc, usyc, total] = await Promise.all([stableSeries('2'), stableSeries('50').catch(() => null), usycSeries().catch(() => null), totalUsdSeries().catch(() => null)]);
+  return { usdc, eurc: eurc?.length ? eurc : prev?.eurc ?? [], usyc: usyc?.length ? usyc : prev?.usyc ?? [], total: total?.length ? total : prev?.total ?? [] };
 }
 
 async function collectArcDex() {
@@ -540,9 +545,10 @@ const isoToTs = (s) => Date.parse(s + 'T00:00:00Z') / 1000;
 
 // 미 재무부 13주 T-bill 금리(쿠폰 환산) — Circle 준비금 수익 추정용
 async function collectRates() {
+  // 2025-06(USDC 기록 시작)부터 모두 받는다 — 지난 분기들의 준비금 수익 추정과 실제 실적을 비교하려고
   const now = new Date();
-  const years = [now.getUTCFullYear()];
-  if (now.getUTCMonth() < 3) years.unshift(now.getUTCFullYear() - 1);
+  const years = [];
+  for (let y = 2025; y <= now.getUTCFullYear(); y++) years.push(y);
   const rows = [];
   for (const y of years) {
     const res = await fetch(`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${y}/all?type=daily_treasury_bill_rates&field_tdr_date_value=${y}&page&_format=csv`, { signal: AbortSignal.timeout(60000) });
@@ -559,7 +565,71 @@ async function collectRates() {
   }
   rows.sort((a, b) => a[0].localeCompare(b[0]));
   const daily = rows.slice(-90);
-  return { tenor: '13주', latest: daily.at(-1), daily };
+  const hist = rows.filter((r) => r[0] >= isoDay(HISTORY_START));
+  return { tenor: '13주', latest: daily.at(-1), daily, hist };
+}
+
+// 서클 공식 사이트(circle.com/transparency)의 주 1회 공시 유통량(십억 달러) — 페이지에는 최신 값 하나만 있어 매주 쌓아 둔다
+const MON3 = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+function parseDisclosed(html, today = new Date().toISOString().slice(0, 10)) {
+  const h = String(html || ''), i = h.indexOf('id="usdc-in-circulation"');
+  if (i < 0) return null;
+  const tag = h.slice(h.lastIndexOf('<', i), h.indexOf('>', i) + 1);
+  const v = Number(tag.match(/data-point="([\d.]+)"/)?.[1]);
+  const m = [...h.slice(Math.max(0, i - 20000), i).matchAll(/As of ([A-Za-z]{3})[a-z]*\.? (\d{1,2}), (\d{4})/g)].at(-1);
+  const mo = m ? MON3.indexOf(m[1].toLowerCase()) : -1;
+  if (!(v > 10 && v < 1000) || mo < 0) return null;
+  const asOf = `${m[3]}-${String(mo + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  if (asOf > today || Date.parse(today) - Date.parse(asOf) > 45 * 864e5) return null;
+  return { asOf, usdc: Math.round(v * 1e9) };
+}
+// 6시간에 한 번만 페이지를 읽는다(15분마다 읽을 필요 없음)
+async function collectDisclosed(state) {
+  const D = (state.disclosed ||= { at: 0, hist: [] });
+  if (Date.now() - D.at > 6 * 3600e3) {
+    const r = await fetch('https://www.circle.com/transparency', { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error('circle transparency ' + r.status);
+    const x = parseDisclosed(await r.text());
+    if (!x) throw new Error('circle transparency: 값을 못 찾음');
+    D.at = Date.now();
+    const same = D.hist.find((p) => p.asOf === x.asOf);
+    if (same) same.usdc = x.usdc; else D.hist.push(x);
+    D.hist.sort((a, b) => a.asOf.localeCompare(b.asOf));
+    D.hist = D.hist.slice(-104);
+  }
+  return D.hist;
+}
+
+// 연준 FOMC 회의 일정(결정 발표일 = 회의 마지막 날) — 연준 공식 일정표, 하루에 한 번
+const MONTH_FULL = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+export function parseFomc(html) {
+  const out = [];
+  const h = String(html || '');
+  const years = [...h.matchAll(/(\d{4}) FOMC Meetings/g)];
+  years.forEach((y, k) => {
+    const part = h.slice(y.index, years[k + 1]?.index ?? h.length);
+    for (const m of part.matchAll(/fomc-meeting__month[^>]*><strong>([A-Za-z/]+)<\/strong><\/div>\s*<div class="fomc-meeting__date[^>]*>([^<]+)<\/div>/g)) {
+      const months = m[1].toLowerCase().split('/'), raw = m[2].trim();
+      if (/notation|unscheduled|conference call/i.test(raw)) continue; // 서면 의결·임시 회의는 빼고 정례 회의만
+      const days = raw.match(/\d{1,2}/g);
+      const mo = MONTH_FULL.indexOf(months.at(-1));
+      if (!days || mo < 0) continue;
+      out.push({ d: `${y[1]}-${String(mo + 1).padStart(2, '0')}-${days.at(-1).padStart(2, '0')}`, sep: raw.includes('*') });
+    }
+  });
+  return [...new Map(out.map((x) => [x.d, x])).values()].sort((a, b) => a.d.localeCompare(b.d));
+}
+async function collectFomc(state) {
+  const F = (state.fomc ||= { at: 0, list: [] });
+  if (Date.now() - F.at > 24 * 3600e3 || !F.list.length) {
+    const r = await fetch('https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm', { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error('fed ' + r.status);
+    const L = parseFomc(await r.text());
+    if (L.length < 4) throw new Error('fed: 일정을 못 찾음');
+    F.at = Date.now(); F.list = L.filter((x) => x.d >= isoDay(Date.now() / 1000 - 30 * DAY)); // 지난 회의는 버린다
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  return F.list.filter((x) => x.d >= today).slice(0, 8);
 }
 
 // Arc 일별 트랜잭션 수 · 수수료(USDC)
@@ -667,6 +737,8 @@ async function main() {
     rates: () => collectRates(),
     arcActivity: () => collectArcActivity(),
     news: () => collectNews(),
+    disclosed: () => collectDisclosed(state),
+    fomc: () => collectFomc(state),
   };
   for (const [k, fn] of Object.entries(sections)) {
     const t = Date.now();
