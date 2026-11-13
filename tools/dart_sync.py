@@ -337,7 +337,15 @@ def main():
     # 발행주식수(보통주 − 자기주식): 이전에 받은 보고서와 같으면 다시 받지 않는다
     sp = os.path.join(CACHE, 'dart_shares.json')
     shares = json.load(open(sp, encoding='utf-8')) if os.path.exists(sp) else {}
-    todo = [] if CACHED else [s for s in have if shares.get(s, {}).get('at') != latest[s][2]]
+    # 새 보고서의 주식 수가 DART에 아직 안 올라온 회사(실적 철엔 수백 곳)는 이틀 뒤에 다시 묻는다 — 매일 같은 요청을 되풀이하지 않게
+    wait_from = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
+
+    def need_share(s):
+        c, end = shares.get(s) or {}, latest[s][2]
+        t = c.get('try') or {}
+        return c.get('at') != end and not (t.get('end') == end and t.get('at', '') > wait_from)
+
+    todo = [] if CACHED else [s for s in have if need_share(s)]
     print(f'발행주식수 받기: {len(todo)}개 회사', flush=True)
 
     def get_share(s):
@@ -350,6 +358,8 @@ def main():
     def put_share(s, r):
         if r:
             shares[s] = {'n': r[1], 'at': r[0]}
+        else:  # 아직 없음 → 지난 값을 그대로 두고 물어본 날만 적어 둔다
+            shares[s] = {**(shares.get(s) or {}), 'try': {'end': latest[s][2], 'at': today}}
 
     stop = run_all(todo, get_share, put_share, lambda: json.dump(shares, open(sp, 'w', encoding='utf-8')), '발행주식수')
 
@@ -404,8 +414,9 @@ def main():
     out = {}
     for s, F in fin.items():
         q = {k: {e: round(v) for e, v in sorted(F['q'][k].items())[-20:]} for k in ('revenue', 'netIncome')}
-        if q['revenue'] and s in shares:
-            out[s] = {'q': q, 'sh': shares[s]['n'], 'shAt': shares[s]['at']}
+        sh = shares.get(s) or {}
+        if q['revenue'] and sh.get('n'):
+            out[s] = {'q': q, 'sh': sh['n'], 'shAt': sh['at']}
     shards = {}
     for s, v in out.items():
         shards.setdefault(bucket(s), {})[s] = v
