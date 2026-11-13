@@ -861,6 +861,7 @@
         <td class="${cls(r.ch1, 5e-5)}">${r.ch1 == null ? '–' : Math.abs(r.ch1) < 5e-5 ? '0.00%' : pct(r.ch1, Math.abs(r.ch1) < 0.001 ? 2 : 1)}</td><td class="${cls(r.ch7, 5e-5)}">${pct(r.ch7)}</td><td class="${cls(r.ch30, 5e-5)}">${pct(r.ch30)}</td></tr>`;
     };
     const x = delta('usdcShare', { mode: 'pp' });
+    const SH = usdcShareSeries();
     card('stables', {
       title: '달러 스테이블코인 공급량',
       sub: '경쟁 코인과 서클 자체 상품 · DefiLlama (USDC는 서클 공식 값)',
@@ -868,6 +869,8 @@
       body: `
         <div class="headline"><span class="lbl">USDC 점유율</span><span class="big">${pctPlain(x.c.v)}</span>${x.html.replace('class="', 'style="font:500 13px var(--mono)" class="')}</div>
         <div class="delta-line"><span class="when">${x.when} · 전체 달러 스테이블코인 ${usd(s.totalUsd)}</span></div>
+        ${SH.length > 30 ? `<div class="mini-h sh-h" data-noi18n>${EN ? 'USDC share over time' : 'USDC 점유율 추이'}<small>${ym(SH[0][0])} ${pctPlain(SH[0][1])} → ${pctPlain(SH.at(-1)[1])}</small></div>
+        <div class="chart short"><canvas id="cv-ushare" role="img" aria-label="${EN ? 'USDC share trend' : 'USDC 점유율 추이'}"></canvas></div>` : ''}
         <div class="tbl-wrap"><table>
           <thead><tr><th>달러 스테이블코인</th><th>공급량</th><th>점유율</th><th>1일</th><th>7일</th><th>30일</th></tr></thead>
           <tbody>${s.rows.map((r) => row(r, false)).join('')}
@@ -875,16 +878,36 @@
             ${s.products.map((r) => row(r, true)).join('')}
           </tbody></table></div>`,
     });
+    if (SH.length > 30) {
+      const labels = SH.map((p) => p[0]);
+      draw('ushare', {
+        type: 'line',
+        data: { labels, datasets: [lineDs(EN ? 'USDC share' : 'USDC 점유율', SH.map((p) => p[1]), C.blue, { pointRadius: endPoint(labels.length), tension: 0.1 })] },
+        options: {
+          interaction, plugins: { ...noLegend, tooltip: tooltip((it) => fullDay(labels[it.dataIndex]), (v) => (v * 100).toFixed(2) + '%') },
+          scales: { x: axisX(labels, ym, 5), y: { ...axisY((v) => (v * 100).toFixed(1) + '%'), grace: '10%' } },
+        },
+      });
+    }
+  }
+  // USDC ÷ 전체 달러 스테이블코인(DefiLlama 일별 기록 — 같은 출처끼리 나눠 추이를 본다)
+  function usdcShareSeries() {
+    const T = new Map((state.data.series?.total || []).map((p) => [p[0], p[1]]));
+    return (state.data.series?.usdc || []).filter((p) => T.get(p[0]) > 0).map((p) => [p[0], p[1] / T.get(p[0])]);
   }
 
   // 서클 공식 사이트(circle.com/transparency)의 숫자와 다르게 보이는 이유를 카드에 적는다: 그쪽은 주 1회 공시 + 아직 풀리지 않은 물량을 뺀 기준
   function usdcDiscNote() {
-    const D = state.usdcDisclosed;
+    const D = state.usdcDisclosed?.usdc ? state.usdcDisclosed : state.data?.disclosed?.at(-1);
     if (!D?.usdc) return '';
     const day = md(isoToTs(D.asOf));
+    // 수집기가 매주 쌓아 둔 지난 공시값과 비교
+    const P = (state.data?.disclosed || []).filter((p) => p.asOf < D.asOf).at(-1);
+    const dv = P ? D.usdc - P.usdc : null;
+    const prevTxt = P ? (EN ? ` That's ${dv >= 0 ? 'up' : 'down'} ${usd(Math.abs(dv))} from the previous week (${md(isoToTs(P.asOf))}).` : ` 지난 공시(${md(isoToTs(P.asOf))}) ${usd(P.usdc)}보다 <b class="${cls(dv, 1)}">${dv >= 0 ? '+' : '-'}${usd(Math.abs(dv))}</b>.`) : '';
     return `<p class="note usdc-disc" data-noi18n>${EN
-      ? `Circle's website shows <b>${usd(D.usdc)}</b> “in circulation” (as of ${day}, updated weekly). The number above is the total USDC currently issued on all blockchains, straight from Circle's API and refreshed every minute. Circle's weekly figure leaves out tokens that are authorized but not yet issued, so it is a little smaller.`
-      : `서클 공식 사이트의 유통량은 <b>${usd(D.usdc)}</b>(${day} 기준 · 주 1회 공시)예요. 위 숫자는 서클 API가 알려 주는 <b>지금 블록체인에 발행돼 있는 전체 물량</b>이라 1분마다 바뀌고, 서클 공시는 그중 아직 시장에 풀리지 않은 물량을 뺀 값이라 조금 작아요.`}</p>`;
+      ? `Circle's website shows <b>${usd(D.usdc)}</b> “in circulation” (as of ${day}, updated weekly).${prevTxt} The number above is the total USDC currently issued on all blockchains, straight from Circle's API and refreshed every minute. Circle's weekly figure leaves out tokens that are authorized but not yet issued, so it is a little smaller.`
+      : `서클 공식 사이트의 유통량은 <b>${usd(D.usdc)}</b>(${day} 기준 · 주 1회 공시)예요.${prevTxt} 위 숫자는 서클 API가 알려 주는 <b>지금 블록체인에 발행돼 있는 전체 물량</b>이라 1분마다 바뀌고, 서클 공시는 그중 아직 시장에 풀리지 않은 물량을 뺀 값이라 조금 작아요.`}</p>`;
   }
   function seriesCard(id, { title, sub, key, fmt, series, color, info, note }) {
     if (!series?.length) return failed(id, title, state.data.errors?.series);
@@ -1747,6 +1770,14 @@
     }
     const rv = reserveEstimate();
     if (rv) add('neu', 'usdc:c-reserve', `준비금 이자수익 추정 연 <b>${usd(rv.annual)}</b> · 13주 국채 ${(rv.rate * 100).toFixed(2)}% 기준`, null, 0);
+    const QT = qTrackSafe();
+    if (QT) {
+      const t = QT.chg > 0.02 ? 'pos' : QT.chg < -0.02 ? 'neg' : 'neu';
+      add(t, 'earn:c-qtrack', EN ? `${qLabel(QT.te)} reserve income est. <b>${usd(QT.proj)}</b> · ${sp(QT.chg)} vs last quarter${QT.done ? '' : ` (day ${QT.elapsed}/${QT.total})`}` : `${qLabel(QT.te)} 준비금 이자수익 추정 <b>${usd(QT.proj)}</b> · 전분기 대비 ${sp(QT.chg)}${QT.done ? '' : ` (${QT.elapsed}/${QT.total}일)`}`,
+        t === 'pos' ? (EN ? 'Reserve income up' : '이번 분기 이자↑') : t === 'neg' ? (EN ? 'Reserve income down' : '이번 분기 이자↓') : null, 1);
+    }
+    const FM = nextFomc();
+    if (FM && FM.days <= 7) add('neu', 'usdc:c-reserve', EN ? `Fed rate decision <b>${FM.when}</b> · rates drive Circle's interest income` : `FOMC 금리 결정 <b>${FM.when}</b> · D-${Math.max(0, FM.days)} · 금리는 서클 이자수익을 좌우해요`, null, 1);
 
     const S = d.short;
     if (S?.daily?.length) {
@@ -1857,6 +1888,106 @@
   }
 
   // 서클 준비금 이자수익 추정: USDC 유통량 × 13주 국채 금리
+  // ---- 이번 분기 미리보기: 날마다 'USDC 유통량 × 13주 국채 금리 ÷ 365'를 쌓아 준비금 이자수익을 추정한다
+  // 서클은 준비금 일부를 현금으로 들고 있어 실제 이자가 단순 계산보다 조금 적다 → 바로 전 분기의 '실제 ÷ 단순 계산' 비율로 맞춘다
+  // (2025 3분기~2026 3분기 비교: 단순 계산 대비 실제 99.8%→91.3%, 전 분기 비율로 맞추면 다음 분기 오차 약 3% 안)
+  const dayIso = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const qStartIso = (iso) => `${iso.slice(0, 4)}-${String(Math.floor((+iso.slice(5, 7) - 1) / 3) * 3 + 1).padStart(2, '0')}-01`;
+  const qEndIso = (iso) => { const y = +iso.slice(0, 4), m = Math.floor((+iso.slice(5, 7) - 1) / 3) * 3 + 3; return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
+  const daysIso = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+  function accrue(X, a, b) {
+    if (a < X.uFirst || a < X.rFirst) return null; // 기록이 분기 첫날을 덮지 못하면 계산하지 않는다
+    let lr = X.RH.filter((p) => p[0] < a).at(-1)?.[1] ?? null, lu = null, sum = 0, n = 0, su = 0, sr = 0;
+    for (let t = Date.parse(a + 'T00:00:00Z'), e = Date.parse(b + 'T00:00:00Z'); t <= e; t += 864e5) {
+      const d = dayIso(t);
+      lu = X.U.get(d) ?? lu; lr = X.R.get(d) ?? lr; // 주말·휴일은 직전 값
+      if (lu == null || lr == null) continue;
+      sum += (lu * lr) / 365; n++; su += lu; sr += lr;
+    }
+    return n ? { sum, n, avgU: su / n, avgR: sr / n } : null;
+  }
+  function qTrack() {
+    const S = state.data?.series?.usdc, Rt = state.data?.rates, E = state.earnings;
+    const RH = Rt?.hist?.length ? Rt.hist : Rt?.daily;
+    if (!S?.length || !RH?.length || !Rt.latest || !E?.quarters?.length) return null;
+    const X = { U: new Map(), R: new Map(RH.map((p) => [p[0], p[1]])), RH, uFirst: dayIso(S[0][0] * 1000), rFirst: RH[0][0] };
+    for (const p of S) if (p[0] % 86400 === 0) X.U.set(dayIso(p[0] * 1000), p[1]); // 오늘 중간값(동기화 때 붙인 값)은 빼고 하루 단위만
+    const uLast = [...X.U.keys()].at(-1);
+    const rep = E.quarters.filter((q) => q.reserve > 0);
+    const last = rep.at(-1);
+    if (!last || !uLast) return null;
+    const past = rep.map((q) => { const e = accrue(X, qStartIso(q.end), q.end); return e ? { end: q.end, act: q.reserve, est: e.sum, ratio: q.reserve / e.sum, avgU: e.avgU, avgR: e.avgR } : null; }).filter(Boolean);
+    const lp = past.at(-1)?.end === last.end ? past.at(-1) : null;
+    if (!lp) return null; // 바로 전 분기로 맞출 수 없으면(금리·유통량 기록 부족) 보여 주지 않는다 — 단순 계산은 실제보다 10% 가까이 클 수 있다
+    // 아직 실적이 안 나온 첫 분기(마감됐어도 발표 전이면 그 분기)
+    const ts = addDays(last.end, 1), te = qEndIso(ts), today = dayIso(Date.now());
+    if (ts > today) return null;
+    const upto = uLast < te ? uLast : te;
+    const so = upto >= ts ? accrue(X, ts, upto) : null;
+    const remDays = Math.max(0, daysIso(upto < ts ? addDays(ts, -1) : upto, te));
+    const liveU = current('usdcTotal').v ?? S.at(-1)[1], liveR = Rt.latest[1];
+    const calib = lp?.ratio ?? 1;
+    const proj = ((so?.sum || 0) + (liveU * liveR * remDays) / 365) * calib;
+    const back = past.slice(1).map((p, i) => ({ end: p.end, err: (p.est * past[i].ratio) / p.act - 1 }));
+    const ya = E.quarters.find((q) => q.reserve > 0 && Math.abs(daysIso(q.end, te) - 365) < 20);
+    const distRatio = last.dist > 0 ? last.dist / last.reserve : null;
+    return {
+      ts, te, done: te < today, total: daysIso(ts, te) + 1, elapsed: Math.min(daysIso(ts, today) + 1, daysIso(ts, te) + 1),
+      proj, calib, hasCalib: !!lp, last, lp, chg: proj / last.reserve - 1, yoy: ya ? proj / ya.reserve - 1 : null,
+      avgU: so?.avgU ?? null, avgR: so?.avgR ?? null, liveU, liveR, remDays, back, distRatio, keep: distRatio != null ? proj * (1 - distRatio) : null,
+    };
+  }
+  const qTrackSafe = () => { try { return qTrack(); } catch (e) { console.error(e); return null; } };
+  function renderQTrack() {
+    const el = document.getElementById('c-qtrack');
+    if (!el) return;
+    const T = qTrackSafe();
+    el.hidden = !T;
+    if (!T) return;
+    const q = qLabelLong(T.te), pr = (v) => (v == null ? '–' : (v * 100).toFixed(2) + '%');
+    const prog = Math.min(100, (T.elapsed / T.total) * 100);
+    const accTxt = T.back.slice(-3).reverse().map((b) => `${qLabel(b.end)} <b>${b.err >= 0 ? '+' : ''}${(b.err * 100).toFixed(1)}%</b>`).join(' · ');
+    card('qtrack', {
+      title: EN ? '🔮 This quarter so far' : '🔮 이번 분기 미리보기',
+      sub: EN ? `${q} reserve income, estimated from daily USDC supply × T-bill rate` : `${q} 준비금 이자수익 추정 · 날마다 USDC 유통량 × 국채 금리`,
+      info: EN
+        ? `<p>Circle earns most of its revenue as interest on the reserves behind USDC. This card adds up <b>USDC supply × 13-week T-bill rate ÷ 365</b> for every day of the quarter.</p><p>Circle keeps part of its reserves in cash, so the real interest is a bit lower than this simple math. We scale it by last quarter's ratio (actual ÷ simple math). The remaining days assume today's USDC supply and rate stay the same.</p><p>This is reserve income only, not total revenue or profit.</p>`
+        : `<p>서클 매출의 대부분은 USDC 뒤에 있는 준비금의 이자예요. 이 카드는 분기 동안 날마다 <b>USDC 유통량 × 13주 국채 금리 ÷ 365</b>를 더해서 이번 분기 이자수익을 추정해요.</p><p>서클은 준비금 일부를 현금으로 들고 있어서 실제 이자는 이 단순 계산보다 조금 적어요. 그래서 바로 전 분기의 '실제 ÷ 단순 계산' 비율로 맞춰요. 남은 날짜는 지금 유통량과 금리가 그대로 이어진다고 가정해요.</p><p>매출 전체나 순이익이 아니라 준비금 이자수익만 추정한 값이에요.</p>`,
+      body: `<div data-noi18n>
+        <div class="headline"><span class="lbl">${EN ? 'Estimate' : '추정'}</span><span class="big">${usd(T.proj)}</span><span class="lbl">${EN ? `last quarter ${usd(T.last.reserve)}` : `전분기 실제 ${usd(T.last.reserve)}`}</span></div>
+        <div class="delta-line"><span class="${cls(T.chg)}">${arrow(T.chg)} ${pct(T.chg)}</span><span class="when">${EN ? 'vs last quarter' : '전분기 대비'}${T.yoy != null ? ` · ${EN ? 'Y/Y' : '전년 같은 분기 대비'} <span class="${cls(T.yoy)}">${pct(T.yoy)}</span>` : ''}</span></div>
+        <div class="qt-prog"><div class="qt-bar" role="img" aria-label="${EN ? `${T.elapsed} of ${T.total} days` : `${T.total}일 중 ${T.elapsed}일`}"><i style="width:${prog.toFixed(1)}%"></i></div><span>${T.done ? (EN ? 'Quarter over · waiting for the report' : '분기 마감 · 실적 발표 대기') : (EN ? `Day ${T.elapsed} of ${T.total}` : `${T.total}일 중 ${T.elapsed}일째`)}</span></div>
+        <div class="px-stats">
+          <div><span>${EN ? 'Avg USDC' : '평균 USDC'}</span><b>${usd(T.avgU)}</b><small>${EN ? 'last Q' : '전분기'} ${usd(T.lp?.avgU)}</small></div>
+          <div><span>${EN ? 'Avg T-bill rate' : '평균 국채 금리'}</span><b>${pr(T.avgR)}</b><small>${EN ? 'last Q' : '전분기'} ${pr(T.lp?.avgR)}</small></div>
+          <div><span>${EN ? "Circle's share" : '서클 몫'}</span><b>${usd(T.keep)}</b><small>${EN ? 'after partners' : '파트너 몫 뺀 후'}</small></div>
+        </div>
+        ${accTxt ? `<p class="qt-acc">${EN ? 'How close this method got before' : '이 방법의 지난 분기 오차'}: ${accTxt}</p>` : ''}
+        <p class="note">${EN
+          ? `${T.done ? '' : `Remaining ${T.remDays} days assume USDC ${usd(T.liveU)} and a ${pr(T.liveR)} rate. `}${T.hasCalib ? `Scaled by last quarter's ratio (${pctPlain(T.calib, 0)}). ` : ''}${T.distRatio != null ? `Circle's share subtracts the ${pctPlain(T.distRatio, 0)} of reserve income that went to Coinbase and other partners last quarter.` : ''}`
+          : `${T.done ? '' : `남은 ${T.remDays}일은 지금 유통량(${usd(T.liveU)})과 금리(${pr(T.liveR)})가 이어진다고 가정했어요. `}${T.hasCalib ? `전 분기 비율(${pctPlain(T.calib, 0)})로 맞춘 값이에요. ` : ''}${T.distRatio != null ? `서클 몫은 지난 분기 준비금 이자의 ${pctPlain(T.distRatio, 0)}가 코인베이스 등 파트너에게 나간 비율로 뺐어요.` : ''}`}</p>
+      </div>`,
+    });
+  }
+
+  // ---- 다음 FOMC(연준 금리 결정): 발표는 미국 동부 오후 2시
+  function fomcAt(d) {
+    const f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' });
+    for (const h of [18, 19]) { const t = Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10), h); if (+f.format(t) === 14) return t; }
+    return null;
+  }
+  function nextFomc() {
+    const today = dayIso(Date.now());
+    const F = (state.data?.fomc || []).find((m) => m.d >= today);
+    if (!F) return null;
+    const t = fomcAt(F.d);
+    if (!t) return null;
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: 'numeric', hourCycle: 'h23', weekday: 'short' }).formatToParts(t).map((x) => [x.type, x.value]));
+    const wk = { Sun: '일', Mon: '월', Tue: '화', Wed: '수', Thu: '목', Fri: '금', Sat: '토' }[p.weekday];
+    const days = Math.ceil((t - Date.now()) / 864e5);
+    return { ...F, t, days, when: EN ? `${new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}, 2 PM ET` : `${p.month}/${p.day}(${wk}) 새벽 ${p.hour}시` };
+  }
+
   function reserveEstimate() {
     const r = state.data.rates?.latest;
     const u = current('usdcTotal');
@@ -1870,15 +2001,24 @@
     const labels = R.daily.map((p) => isoToTs(p[0]));
     const r90 = R.daily[0][1];
     const flow7 = usdcNetMint().slice(-7).reduce((a, p) => a + p[1], 0);
+    // 파트너 몫을 뺀 서클 몫: 바로 전 분기 실적의 '실제 이자 ÷ 단순 계산'과 '유통·거래 비용 ÷ 준비금 이자'로 줄인다
+    const T = qTrackSafe();
+    const net = T?.distRatio != null && T.hasCalib ? x.annual * T.calib * (1 - T.distRatio) : null;
+    const netHtml = net ? `<div class="rv-net" data-noi18n><div class="rv-net-h"><span>${EN ? "Circle's share after partners (est.)" : '파트너 몫을 뺀 서클 몫(추정)'}</span><b>${EN ? `${usd(net)}/yr` : `연 ${usd(net)}`}</b></div>
+      <small>${EN ? `Based on ${qLabelLong(T.last.end)}: actual interest was ${pctPlain(T.calib, 0)} of this simple math, and ${pctPlain(T.distRatio, 0)} of it went to Coinbase and other partners.` : `${qLabelLong(T.last.end)} 실적 기준이에요. 실제 이자는 이 단순 계산의 ${pctPlain(T.calib, 0)}였고, 그중 ${pctPlain(T.distRatio, 0)}는 코인베이스 등 파트너에게 나갔어요.`}</small></div>` : '';
+    const F = nextFomc();
+    const fomcHtml = F ? `<div class="rv-fomc" data-noi18n><span class="rv-fomc-d">📅 ${EN ? 'Next Fed rate decision' : '다음 FOMC 금리 결정'} <b>${F.when}</b></span><span class="rv-fomc-n">${F.days <= 0 ? (EN ? 'today' : '오늘') : `D-${F.days}`}</span></div>` : '';
     card('reserve', {
       title: '서클 준비금 이자수익 추정', sub: `USDC 유통량 × 미국 ${R.tenor} 국채 금리 · 연환산`, info: INFO.reserve,
       body: `<div class="headline"><span class="lbl">연간</span><span class="big">${usd(x.annual)}</span><span class="lbl">분기 ${usd(x.annual / 4)} · 하루 ${usd(x.annual / 365)}</span></div>
         <div class="delta-line"><span class="when">USDC ${usd(x.usdc)} × 금리 ${(x.rate * 100).toFixed(2)}% (${x.rateDay.slice(5).replace('-', '/')} 기준) · 유통 파트너 몫 차감 전</span></div>
+        ${netHtml}
         <div class="px-stats">
           <div><span>금리 0.25%p 인하 시</span><b class="down">-${usd(x.usdc * 0.0025)}</b><small>연간</small></div>
           <div><span>USDC $10억 증가 시</span><b class="up">+${usd(1e9 * x.rate)}</b><small>연간</small></div>
           <div><span>최근 7일 순발행 효과</span><b class="${cls(flow7, 1)}">${flow7 >= 0 ? '+' : '-'}${usd(Math.abs(flow7 * x.rate))}</b><small>연간</small></div>
         </div>
+        ${fomcHtml}
         <div class="mini-h" style="margin-top:14px;font-size:12px;color:var(--muted)">미국 ${R.tenor} 국채 금리 · 최근 90일 (${(r90 * 100).toFixed(2)}% → ${(x.rate * 100).toFixed(2)}%)</div>
         <div class="chart short"><canvas id="cv-reserve" role="img" aria-label="국채 금리 추이"></canvas></div>`,
     });
@@ -2075,7 +2215,7 @@
       const keep = (arr, cur) => { const last = cur?.at(-1); return last && last[0] > arr.at(-1)[0] ? [...arr, last] : arr; };
       // 중계 서버 기록이 수집기 기록보다 짧으면(예: CoinGecko가 워커를 막아 USYC가 10/14에서 끊김) 더 최근까지 있는 쪽을 쓴다
       const newer = (a, b) => (a?.length && (a.at(-1)[0] >= (b?.at(-1)?.[0] ?? 0)) ? a : b);
-      d.series = { usdc: keep(j.usdc, d.series?.usdc), eurc: newer(j.eurc, d.series?.eurc), usyc: newer(j.usyc, d.series?.usyc) };
+      d.series = { usdc: keep(j.usdc, d.series?.usdc), eurc: newer(j.eurc, d.series?.eurc), usyc: newer(j.usyc, d.series?.usyc), total: d.series?.total };
     },
     async facts() { state.facts = await getJ(`${NEWS_API}/facts`, 15000); }, // FAA %·보호예수 공시 자동 확인 결과
     async rates(d) { // 미 재무부 13주 국채 금리
@@ -2093,7 +2233,11 @@
         }
       }
       rows.sort((a, b) => a[0].localeCompare(b[0]));
-      if (rows.length) d.rates = { tenor: '13주', latest: rows.at(-1), daily: rows.slice(-90) };
+      if (rows.length) {
+        const H = new Map((d.rates?.hist || []).map((p) => [p[0], p[1]]));
+        for (const p of rows) H.set(p[0], p[1]);
+        d.rates = { tenor: '13주', latest: rows.at(-1), daily: rows.slice(-90), hist: [...H].sort((a, b) => a[0].localeCompare(b[0])) };
+      }
     },
     async short(d, L) { // FINRA 일별 공매도: 서버에 없는 최근 거래일만 추가로 받는다
       const S = d.short;
@@ -2240,6 +2384,7 @@
         state.earnings = j;
         state.earningsErr = false;
         try { renderEarnings(); } catch {}
+        try { if (state.data) { renderReserve(); renderSummary(); } } catch {} // 서클 몫·이번 분기 추정은 실적이 있어야 계산된다
       } catch (e) {
         state.earningsErr = true;
         if (!state.earnings) throw e;
@@ -3654,8 +3799,22 @@
         if (form && now - t < 3 * 864e5) out.push({ id: `fl:${sym}:${f.form}:${f.d}`, t, ic: '📄', title: EN ? `${nameOfSym(sym)} filed a ${form}` : `${nameOfSym(sym)} 새 공시 · ${FORM_KO[form]}`, sub: `${f.form} · ${md(isoToTs(f.d.slice(0, 10)))}`, go: { sym, v: 'news' } });
       }
     }
+    if (WATCH.includes('CRCL')) out.push(...usdcEvents());
     const seen = new Set();
     return out.filter((x) => now - x.t < wk && (seen.has(x.id) ? false : seen.add(x.id))).sort((a, b) => b.t - a.t).slice(0, 30); // 최근 7일만
+  }
+  // USDC 하루 순발행·순소각이 10억 달러를 넘은 날, 유통량이 1년 최고치를 넘은 날
+  function usdcEvents() {
+    const S = (state.data?.series?.usdc || []).filter((p) => p[0] % 86400 === 0);
+    const out = [], go = { sym: 'CRCL', v: 'usdc' };
+    for (let i = Math.max(1, S.length - 8); i < S.length; i++) {
+      if (S[i][0] - S[i - 1][0] !== 86400) continue;
+      const d = S[i][1] - S[i - 1][1];
+      if (Math.abs(d) >= 1e9) out.push({ id: `um:${S[i][0]}`, t: S[i][0] * 1000 + 864e5, ic: '🪙', title: EN ? `USDC ${d > 0 ? 'net minted' : 'net burned'} ${usd(Math.abs(d))} in a day` : `USDC 하루 ${d > 0 ? '순발행' : '순소각'} ${d > 0 ? '+' : '-'}${usd(Math.abs(d))}`, sub: `${md(S[i][0])} · ${EN ? 'supply' : '유통량'} ${usd(S[i][1])}`, go });
+    }
+    const L = S.at(-1), yr = L ? S.filter((p) => p[0] >= L[0] - 365 * 86400 && p[0] < L[0]) : [];
+    if (yr.length > 300 && L[1] > Math.max(...yr.map((p) => p[1]))) out.push({ id: `uh:${L[0]}`, t: L[0] * 1000 + 864e5, ic: '🏔️', title: EN ? 'USDC supply hit a 1-year high' : 'USDC 유통량 1년 최고치', sub: `${md(L[0])} · ${usd(L[1])}`, go });
+    return out;
   }
   function updateBell() {
     const b = document.getElementById('bell-n');
@@ -3668,7 +3827,7 @@
   function goTarget(go) {
     if (go.tab) { state.fireTab = go.tab; savePref('fireTab', go.tab); showView('fire'); window.scrollTo({ top: 0 }); return; }
     if (go.sym && WATCH.includes(go.sym)) setStock(go.sym);
-    const ic = { chart: 'chart', earn: 'earn', news: 'news' }[go.v];
+    const ic = { chart: 'chart', earn: 'earn', news: 'news', usdc: 'usdc' }[go.v];
     const t = TAB_SETS[state.stock].find(([, , i]) => i === ic);
     showView(t ? t[0] : 'home');
     window.scrollTo({ top: 0 });
@@ -5635,6 +5794,7 @@ ${what.join(' · ')}
   const usdS = (v) => (v == null ? '–' : (v < 0 ? '-' : '') + usd(Math.abs(v)));
 
   function renderEarnings() {
+    try { renderQTrack(); } catch (e) { console.error(e); }
     try { renderAiCards('CRCL'); } catch (e) { console.error(e); }
     try { renderValCards('CRCL'); } catch (e) { console.error(e); }
     const E = state.earnings;
@@ -8804,7 +8964,7 @@ ${what.join(' · ')}
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
       () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc, note: usdcDiscNote }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
-      renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderFearGreed, renderKwNews];
+      renderUsdcFlow, renderReserve, renderQTrack, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderFearGreed, renderKwNews];
     for (const j of jobs) {
       try { j(); } catch (e) { console.error(e); }
     }

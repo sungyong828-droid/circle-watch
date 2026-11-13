@@ -2460,3 +2460,20 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .ed-prom > b { font-size: 13px; }
 .ed-prom ul { margin: 6px 0 2px; padding-left: 18px; font-size: 13px; line-height: 1.5; }
 .ed-prom li small { margin-left: 6px; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+
+/* 서클: 이번 분기 미리보기 · 준비금 카드의 서클 몫 · 다음 FOMC · USDC 점유율 추이 */
+.qt-prog { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+.qt-prog span { flex: none; white-space: nowrap; }
+.qt-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
+.qt-bar i { display: block; height: 100%; border-radius: 3px; background: var(--c-blue); }
+.qt-acc { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+.qt-acc b { font: 600 12px var(--mono); color: var(--ink-2); }
+.rv-net { margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(79, 143, 247, 0.4); background: rgba(79, 143, 247, 0.08); }
+.rv-net-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+.rv-net-h b { font: 700 17px var(--mono); color: var(--ink); white-space: nowrap; }
+.rv-net small { display: block; margin-top: 4px; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.rv-fomc { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: var(--surface-2); font-size: 12.5px; color: var(--ink-2); }
+.rv-fomc b { white-space: nowrap; color: var(--ink); }
+.rv-fomc-n { flex: none; font: 700 13px var(--mono); color: var(--c-blue); }
+.sh-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--muted); }
+.sh-h small { font: 500 11px var(--mono); color: var(--faint); white-space: nowrap; }

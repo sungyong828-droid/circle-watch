@@ -11,6 +11,18 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🔮 서클 실적 탭 맨 위에 '이번 분기 미리보기'가 생겼어요. 날마다 USDC 유통량과 국채 금리로 이번 분기 준비금 이자수익을 추정해서, 실적 발표 전에 전분기보다 늘지 줄지 미리 볼 수 있어요(지난 분기 오차도 함께 보여 줘요).
+<!-- EN Circle's Earnings tab now opens with "This quarter so far": an estimate of this quarter's reserve income built from daily USDC supply and T-bill rates, so you can see before the report whether it is tracking above or below last quarter (with how close the method got in past quarters) -->
+- 💰 준비금 이자수익 카드에 코인베이스 등 파트너 몫을 뺀 '서클 몫'과 다음 FOMC 금리 결정 날짜(한국 시간)를 넣었어요.
+<!-- EN The reserve income card now shows Circle's share after Coinbase and other partners, plus the date of the next Fed rate decision -->
+- 📈 스테이블코인 카드에 USDC 점유율 추이 그래프를 넣었어요.
+<!-- EN The stablecoin card now has a chart of USDC's market share over time -->
+- 🔔 USDC가 하루에 10억 달러 넘게 발행·소각되거나 1년 최고치를 찍으면 알림함에 알려 줘요.
+<!-- EN The notification bell now flags days when more than $1B of USDC is minted or burned, and when supply hits a 1-year high -->
+- 💵 USDC 카드의 서클 공시 유통량에 지난주 공시 대비 변화가 함께 나와요(매주 기록이 쌓이면서 보여요).
+<!-- EN The weekly Circle disclosure note on the USDC card now shows the change from the previous week once a second week is recorded -->
+- 수집기: 13주 국채 금리를 2025-06부터 모두 보관(분기 추정용), 전체 달러 스테이블코인 일별 기록·서클 주간 공시 유통량·연준 FOMC 일정을 함께 수집. 실적 데이터에 서클 유통·거래 비용(매출 − 영업비용 − 영업이익 − 기타 원가, SEC 값) 추가 <!-- internal -->
+
 ## v2026.11.13-1 — 2026-11-13
 
 [이 버전 보기](https://1c162b0d.my-fire-portfolio.pages.dev) · 커밋 `1e67262`

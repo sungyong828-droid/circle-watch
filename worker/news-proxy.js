@@ -586,7 +586,7 @@ const qtrEnd = (s) => { const m = String(s || '').match(/([A-Z][a-z]{2}) (\d{4})
 const EARN_CFG = {
   CRCL: {
     cik: '0001876042',
-    flows: { revenue: 'Revenues', reserve: 'InterestAndDividendIncomeOperating', otherRevenue: 'RevenueFromContractWithCustomerExcludingAssessedTax', opIncome: 'OperatingIncomeLoss', netIncome: 'NetIncomeLoss', eps: 'EarningsPerShareDiluted' },
+    flows: { revenue: 'Revenues', reserve: 'InterestAndDividendIncomeOperating', otherRevenue: 'RevenueFromContractWithCustomerExcludingAssessedTax', opIncome: 'OperatingIncomeLoss', netIncome: 'NetIncomeLoss', eps: 'EarningsPerShareDiluted', opex: 'OperatingExpenses', otherCost: 'OtherCostOfOperatingRevenue' },
   },
   JOBY: {
     cik: '0001819848',
@@ -630,7 +630,7 @@ async function earnCfg(sym) {
 }
 // SEC 재무제표 정리본을 6시간 저장해 실적·밸류에이션·경쟁사 비교가 같이 쓴다(SEC 호출을 줄여 차단 방지)
 export async function secQuarterly(sym = 'CRCL') {
-  const key = new Request(`https://cache.internal/secq/${sym}?v=4`);
+  const key = new Request(`https://cache.internal/secq/${sym}?v=5`);
   try { const h = await caches.default.match(key); if (h) return await h.json(); } catch {}
   const out = await secQuarterlyRaw(sym);
   try { await caches.default.put(key, new Response(JSON.stringify(out), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=21600' } })); } catch {}
@@ -758,6 +758,14 @@ export async function buildEarnings(sym = 'CRCL', origin = null) {
   if (sec.status === 'fulfilled') {
     const s = sec.value.q;
     for (const [k, map] of Object.entries(s)) for (const [end, v] of Object.entries(map)) put(end, k, k === 'eps' && v === 0 ? null : v);
+    // 서클: 유통·거래 비용(코인베이스 등 파트너에게 주는 몫)은 SEC 공통 항목이 없어 손익계산서 순서로 되짚는다
+    // 매출 − 기타 원가 − 유통·거래 비용 − 영업비용 = 영업이익 → 유통·거래 비용 = 매출 − 영업비용 − 영업이익 − 기타 원가 (모두 SEC 값만 사용)
+    if (s.opex) for (const [end, rev] of Object.entries(s.revenue || {})) {
+      const ox = s.opex[end], oi = s.opIncome?.[end];
+      if (ox == null || oi == null) continue;
+      const d = rev - ox - oi - (s.otherCost?.[end] || 0);
+      if (d > 0 && d < rev) put(end, 'dist', d);
+    }
   }
   if (fin.status === 'fulfilled') {
     const t = fin.value?.incomeStatementTable;
@@ -840,7 +848,7 @@ export async function handleEarnings(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   // 1시간마다 새로(새로고침 버튼은 10분), 그 사이엔 즉시 응답
-  return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr4`, {
+  return swr(cache, ctx, `${url.origin}/earnings?s=${sym}&v=swr5`, {
     freshSec: url.searchParams.has('live') ? 120 : url.searchParams.has('fresh') ? 600 : 3600, keepSec: 7 * 86400, cors,
     build: async (prev) => {
       const E = await buildEarnings(sym, url.origin);
@@ -2827,7 +2835,7 @@ export async function handleEarnSum(url, cache, cors, ctx, env) {
   const sym = pickSym(url);
   if (!(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
   if (KR_RE.test(sym)) return handleKrEarnSum(url, cache, cors, ctx, env, sym);
-  const E = await (async () => { try { const r = await cache.match(new Request(`${url.origin}/earnings?s=${sym}&v=swr4`)); if (r) return await r.json(); } catch {} return buildEarnings(sym).catch(() => null); })();
+  const E = await (async () => { try { const r = await cache.match(new Request(`${url.origin}/earnings?s=${sym}&v=swr5`)); if (r) return await r.json(); } catch {} return buildEarnings(sym).catch(() => null); })();
   // 발표 직후에는 EPS 서프라이즈(Nasdaq)가 재무제표보다 먼저 들어온다 → 더 최근 것을 기준 분기로
   const qL = (E?.quarters || []).at(-1), sL = (E?.surprises || []).find((x) => x.reported);
   let last = sL && (!qL?.reportedOn || sL.end > qL.end) ? { end: sL.end, reportedOn: sL.reported } : qL;
