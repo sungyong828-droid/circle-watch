@@ -2305,14 +2305,19 @@ const TITLE_GLOSS = [
   [/\bgoogle\b/i, ['구글']], [/\balphabet\b/i, ['알파벳']], [/\bApple\b/, ['애플']], [/\bMeta\b/, ['메타']], [/\bsamsung\b/i, ['삼성']], [/\bIntel\b/, ['인텔']], [/\bbroadcom\b/i, ['브로드컴']],
   [/\bOracle\b/, ['오라클']], [/\bnetflix\b/i, ['넷플릭스']], [/\bjoby\b/i, ['조비']], [/\barcher aviation\b/i, ['아처']], [/\bTempus\b/, ['템퍼스']], [/\bboeing\b/i, ['보잉']],
   [/\bnasdaq\b/i, ['나스닥']], [/\bpolymarket\b/i, ['폴리마켓']], [/\bkalshi\b/i, ['칼시']], [/\bhyperliquid\b/i, ['하이퍼리퀴드']], [/\buniswap\b/i, ['유니스왑']],
-  [/\bwall street\b/i, ['월가', '월스트리트', '월 스트리트']], [/\bbuffett\b/i, ['버핏']], [/\bberkshire\b/i, ['버크셔']], [/\bmicrostrategy\b/i, ['마이크로스트래티지']], [/\bsaylor\b/i, ['세일러']],
+  [/\bwall street\b/i, ['월가', '월스트리트', '월 스트리트']], [/\bbuffett\b/i, ['버핏']], [/\bberkshire\b/i, ['버크셔']], [/\bmicrostrategy\b/i, ['마이크로스트래티지']], [/\bStrategy(?= stock| shares|'s|’s| Made| and Metaplanet| buys| bought| adds| CEO| Inc)/, ['스트래티지']], [/\bsaylor\b/i, ['세일러']],
   [/\brocket lab\b/i, ['로켓랩', '로켓 랩']], [/\bmicron\b/i, ['마이크론']], [/\bdisney\b/i, ['디즈니']], [/\bwalmart\b/i, ['월마트']], [/\bcostco\b/i, ['코스트코']], [/\bUber\b/, ['우버']],
   [/\bpfizer\b/i, ['화이자']], [/\bmoderna\b/i, ['모더나']], [/\beli lilly\b/i, ['릴리']], [/\btrump\b/i, ['트럼프']], [/\bmusk\b/i, ['머스크']], [/\bpowell\b/i, ['파월']],
   [/\bthe Fed\b|\bFed(?:'s| chair| cut| rate| hike| official)/, ['연준', '연방준비']], [/\bgemini\b/i, ['제미니', '제미나이']], [/\bsofi\b/i, ['소파이', 'SoFi']], [/\bvisa inc\b/i, ['비자']],
 ];
 const glossHits = (en) => TITLE_GLOSS.map(([re, ko]) => { const m = String(en).match(re); return m ? [m[0], ko] : null; }).filter(Boolean);
 // 영어 제목에 나온 이름마다: 번역에 한국어 표기 중 하나가 있거나 영어 그대로 남아 있어야 한다
-export const titleKoOk = (en, ko) => glossHits(en).every(([w, kos]) => kos.some((k) => ko.includes(k)) || ko.toLowerCase().includes(w.toLowerCase().replace(/^the /, '')));
+// 금액 확인: "$270M"을 '27억 달러'(실제 2.7억)로 옮기는 자릿수 실수가 있다 → 영어 제목의 $…M/B/million/billion 금액마다 번역에 같은 금액(±3%)의 '○억 달러'가 있거나 원문 표기가 남아 있어야 한다
+const EN_UNIT = { k: 1e3, m: 1e6, mn: 1e6, million: 1e6, b: 1e9, bn: 1e9, billion: 1e9, t: 1e12, trillion: 1e12 }, KO_UNIT = { 조: 1e12, 억: 1e8, 천만: 1e7, 백만: 1e6, 십만: 1e5, 만: 1e4, 천: 1e3 };
+const enMoney = (s) => [...String(s).matchAll(/\$\s?(\d[\d,]*(?:\.\d+)?)\s?([Mm]illion|[Bb]illion|[Tt]rillion|bn|mn|[MBT])\b/g)].map((m) => ({ v: +m[1].replace(/,/g, '') * EN_UNIT[m[2].toLowerCase()], raw: (m[1] + m[2]).toLowerCase() }));
+const koMoney = (s) => [...String(s).matchAll(/((?:\d[\d,]*(?:\.\d+)?\s?(?:천만|백만|십만|조|억|만|천)\s?)+)(?:달러|불)/g)].map((m) => [...m[1].matchAll(/(\d[\d,]*(?:\.\d+)?)\s?(천만|백만|십만|조|억|만|천)/g)].reduce((t, x) => t + +x[1].replace(/,/g, '') * KO_UNIT[x[2]], 0));
+export const titleMoneyOk = (en, ko) => { const K = koMoney(ko), flat = String(ko).toLowerCase().replace(/[\s$,]/g, ''); return enMoney(en).every((a) => K.some((v) => Math.abs(v - a.v) <= a.v * 0.03) || flat.includes(a.raw.replace(/,/g, ''))); };
+export const titleKoOk = (en, ko) => titleMoneyOk(en, ko) && glossHits(en).every(([w, kos]) => kos.some((k) => ko.includes(k)) || ko.toLowerCase().includes(w.toLowerCase().replace(/^the /, '')));
 const glossHint = (titles) => { const m = new Map(); for (const t of titles) for (const [w, kos] of glossHits(t)) m.set(w.replace(/^the /i, '').replace(/^(Fed).*$/, '$1'), kos[0]); return m.size ? `이름 표기(반드시 이대로): ${[...m].slice(0, 30).map(([w, k]) => `${w}=${k}`).join(', ')}\n\n` : ''; };
 // 답이 JSON처럼 생기면 Workers AI(vLLM)가 본문(content) 대신 reasoning 칸에 넣어 돌려준다 — 거기까지 본다
 const aiText = (r) => (typeof r?.response === 'string' ? r.response : null) ?? r?.choices?.[0]?.message?.content ?? r?.choices?.[0]?.message?.reasoning_content ?? r?.choices?.[0]?.message?.reasoning ?? '';
