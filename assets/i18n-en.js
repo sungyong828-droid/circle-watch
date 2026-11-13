@@ -2149,7 +2149,13 @@ window.__I18N_EN = {
 "BMS와 종양 데이터·모델 계약(5년 최대 1.375억 달러) · 올해 데이터 계약 5.5억 달러 넘어": "Oncology data and model deal with BMS (up to $137.5M over 5 years) · data licensing bookings top $550M this year",
 "머크·모더나와 맞춤형 암 백신(INT) 상업화 협력": "Collaboration with Merck and Moderna to commercialize an individualized cancer vaccine (INT)",
 "Personalis 인수 규제 심사 통과(11/30 주주총회)": "Personalis acquisition cleared regulatory review (shareholder vote 11/30)",
-"심전도 AI 2종(ECG-PH·ECG-MR) FDA 510(k) 허가": "FDA 510(k) clearances for two ECG AI tools (ECG-PH, ECG-MR)"
+"심전도 AI 2종(ECG-PH·ECG-MR) FDA 510(k) 허가": "FDA 510(k) clearances for two ECG AI tools (ECG-PH, ECG-MR)",
+"등락률은 전날 종가 대비": "change vs prev. close",
+"등락률은 24시간 전 대비": "change vs 24h ago",
+"전날 대비": "vs prev. close",
+"등락률": "Change",
+": 전날 종가(미국 정규장) 대비 — 보유 현황·증권사 앱과 같은 기준이에요(": ": vs the previous close (US regular session) — the same basis as your holdings and brokerage apps (",
+"). 가격 범위·거래대금은 최근 24시간 기준이에요.": "). The price range and volume cover the last 24 hours."
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.

@@ -1,4 +1,4 @@
-﻿// Fire Portfolio 중계 Worker (Cloudflare Worker · Pages Functions 공용)
+// Fire Portfolio 중계 Worker (Cloudflare Worker · Pages Functions 공용)
 import { sendWebPush } from './webpush.js';
 // 구글 뉴스 RSS·Nasdaq·SEC·Yahoo는 브라우저에서 직접 받을 수 없어(CORS), 이 코드가 대신 받아 JSON으로 돌려준다.
 // GET /news?s=SYM → { at, official, kr, en, filings, crypto }   (3분 캐시 · 항목마다 AI 한 줄 요약 sum)
@@ -457,6 +457,37 @@ function corsHeaders(origin) {
 
 // Circle 공식 USDC·EURC 유통량: Circle API는 IP당 요청 제한이 엄격해서(429, 약 20분 대기)
 // 1분 캐시로 몇 번을 눌러도 Circle에는 1분에 한 번만 묻고, 막히면 마지막 성공 값(최대 1일)을 돌려준다.
+// 서클이 공식 사이트(circle.com/transparency)에 주 1회 공시하는 'In circulation'.
+// API의 totalAmount(지금 블록체인에 발행돼 있는 전체 물량)와 기준이 달라 늘 조금 작다 — 서클 준비금 보고서의 정의: 전체 공급량 − 허용됐지만 아직 발행되지 않은 토큰.
+// (2026-11-09 공시 689.3억 달러 · 같은 날 API 700.6억~703.9억) 두 숫자를 나란히 보여 주려고 페이지에 들어 있는 값(data-point, 십억 달러)과 기준일(As of …)을 읽는다
+const CIRC_MON = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+export function parseCircleDisclosed(html, today = new Date().toISOString().slice(0, 10)) {
+  const h = String(html || ''), i = h.indexOf('id="usdc-in-circulation"');
+  if (i < 0) return null;
+  const tag = h.slice(h.lastIndexOf('<', i), h.indexOf('>', i) + 1);
+  const v = Number(tag.match(/data-point="([\d.]+)"/)?.[1]);
+  const m = [...h.slice(Math.max(0, i - 20000), i).matchAll(/As of ([A-Za-z]{3})[a-z]*\.? (\d{1,2}), (\d{4})/g)].at(-1);
+  const mo = m ? CIRC_MON.indexOf(m[1].toLowerCase()) : -1;
+  if (!(v > 10 && v < 1000) || mo < 0) return null;
+  const asOf = `${m[3]}-${String(mo + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  if (asOf > today || Date.parse(today) - Date.parse(asOf) > 45 * 86400000) return null; // 날짜가 이상하면 쓰지 않는다
+  return { usdc: Math.round(v * 1e9), asOf };
+}
+// 6시간 캐시 · 못 읽으면 마지막 성공 값(30일)
+async function circleDisclosed(origin, cache, ctx) {
+  const key = new Request(`${origin}/circle-disclosed?v=1`), keep = new Request(`${origin}/circle-disclosed-keep?v=1`);
+  const hit = await cache.match(key);
+  if (hit) return hit.json();
+  let out = null;
+  try {
+    const r = await fetch('https://www.circle.com/transparency', { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, signal: AbortSignal.timeout(7000) });
+    if (r.ok) out = parseCircleDisclosed(await r.text());
+  } catch {}
+  if (out) ctx.waitUntil(cache.put(keep, new Response(JSON.stringify(out), { headers: { 'cache-control': 'public, max-age=2592000' } })));
+  else out = await cache.match(keep).then((r) => (r ? r.json() : null)).catch(() => null);
+  ctx.waitUntil(cache.put(key, new Response(JSON.stringify(out || { none: true }), { headers: { 'cache-control': `public, max-age=${out ? 21600 : 1800}` } })));
+  return out || { none: true };
+}
 async function circleSupply(url, cache, cors, ctx) {
   const key = new Request(`${url.origin}/circle`);
   const lastKey = new Request(`${url.origin}/circle-last-good`);
@@ -464,10 +495,13 @@ async function circleSupply(url, cache, cors, ctx) {
   if (!res) {
     let body, stale = false;
     try {
-      const r = await fetch('https://api.circle.com/v1/stablecoins', { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+      const [r, disc] = await Promise.all([
+        fetch('https://api.circle.com/v1/stablecoins', { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) }),
+        circleDisclosed(url.origin, cache, ctx).catch(() => null),
+      ]);
       if (!r.ok) throw new Error('circle ' + r.status);
       const j = await r.json();
-      body = JSON.stringify({ at: new Date().toISOString(), data: (j.data || []).filter((x) => x.symbol === 'USDC' || x.symbol === 'EURC') });
+      body = JSON.stringify({ at: new Date().toISOString(), data: (j.data || []).filter((x) => x.symbol === 'USDC' || x.symbol === 'EURC'), ...(disc?.usdc ? { disclosed: disc } : {}) });
       ctx.waitUntil(cache.put(lastKey, new Response(body, { headers: { 'cache-control': 'public, max-age=86400' } })));
     } catch (e) {
       const last = await cache.match(lastKey);

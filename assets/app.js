@@ -340,7 +340,7 @@
       <p>바이낸스 <b>CRCLUSDT 무기한 선물</b>(TradFi 주식 선물)의 실시간 체결가입니다. 바이낸스와 직접 연결(WebSocket)해 거래가 체결될 때마다 바로 바뀝니다.</p>
       <ul>
         <li>미국 증시(NYSE) 휴장 시간·주말에도 24시간 거래되므로, 다음 날 개장가를 미리 가늠하는 용도로 쓸 수 있습니다. 실제 NYSE 주가와 약간 차이가 날 수 있습니다.</li>
-        <li><b>24시간 변동</b>: 24시간 전 가격 대비 등락률(<span class="up">빨강=상승</span>, <span class="down">파랑=하락</span>).</li>
+        <li><b>등락률</b>: 전날 종가(미국 정규장) 대비 — 보유 현황·증권사 앱과 같은 기준이에요(<span class="up">빨강=상승</span>, <span class="down">파랑=하락</span>). 가격 범위·거래대금은 최근 24시간 기준이에요.</li>
         <li><b>펀딩비</b>: 선물 가격을 현물(지수)에 맞추려고 롱·숏끼리 주고받는 수수료. 양수면 롱(상승 베팅)이 숏에게 지불 → 상승 베팅이 많다는 뜻. 표시 값은 <b>8시간마다 한 번</b> 정산되는 비율이에요(예: +0.0050% = 1만 달러어치 포지션이면 8시간에 0.5달러). 바이낸스 앱의 '펀딩비'와 같은 값이에요.</li>
         <li><b>미결제약정</b>: 아직 청산되지 않은 선물 포지션 규모(달러 환산). 늘면 새 자금이 들어오는 중입니다.</li>
       </ul>`,
@@ -877,7 +877,16 @@
     });
   }
 
-  function seriesCard(id, { title, sub, key, fmt, series, color, info }) {
+  // 서클 공식 사이트(circle.com/transparency)의 숫자와 다르게 보이는 이유를 카드에 적는다: 그쪽은 주 1회 공시 + 아직 풀리지 않은 물량을 뺀 기준
+  function usdcDiscNote() {
+    const D = state.usdcDisclosed;
+    if (!D?.usdc) return '';
+    const day = md(isoToTs(D.asOf));
+    return `<p class="note usdc-disc" data-noi18n>${EN
+      ? `Circle's website shows <b>${usd(D.usdc)}</b> “in circulation” (as of ${day}, updated weekly). The number above is the total USDC currently issued on all blockchains, straight from Circle's API and refreshed every minute. Circle's weekly figure leaves out tokens that are authorized but not yet issued, so it is a little smaller.`
+      : `서클 공식 사이트의 유통량은 <b>${usd(D.usdc)}</b>(${day} 기준 · 주 1회 공시)예요. 위 숫자는 서클 API가 알려 주는 <b>지금 블록체인에 발행돼 있는 전체 물량</b>이라 1분마다 바뀌고, 서클 공시는 그중 아직 시장에 풀리지 않은 물량을 뺀 값이라 조금 작아요.`}</p>`;
+  }
+  function seriesCard(id, { title, sub, key, fmt, series, color, info, note }) {
     if (!series?.length) return failed(id, title, state.data.errors?.series);
     const x = delta(key);
     const pts = series.slice();
@@ -888,7 +897,7 @@
     card(id, {
       title, sub, info,
       body: `<div class="headline"><span class="big">${fmt(liveNow)}</span></div>${deltaLine(key)}
-        <div class="chart"><canvas id="cv-${id}" role="img" aria-label="${esc(title)} 추이"></canvas></div>`,
+        <div class="chart"><canvas id="cv-${id}" role="img" aria-label="${esc(title)} 추이"></canvas></div>${note ? note() : ''}`,
     });
     draw(id, {
       type: 'line',
@@ -1305,6 +1314,14 @@
   const mdLocal = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
+  // 등락률 기준(2026-11-13 바꿈): 바이낸스의 '24시간 전 가격'이 아니라 전날 종가(Nasdaq 시세의 기준가) — 보유 현황·증권사 앱과 같은 숫자가 나오게.
+  // 가격은 그대로 바이낸스 실시간 체결가. Nasdaq 시세를 아직 못 받았을 때만 24시간 전 대비로 보여 주고, 화면에도 그렇게 적는다
+  function bnDay(sym, t) {
+    const ref = state.quote?.[sym]?.prevClose;
+    if (!t) return { pct: null, chg: null, ref: null, day: false };
+    return ref > 0 ? { pct: t.last / ref - 1, chg: t.last - ref, ref, day: true } : { pct: t.pct, chg: t.last - t.open, ref: t.open, day: false };
+  }
+  const bnRefTxt = (D) => (D.day ? '등락률은 전날 종가 대비' : '등락률은 24시간 전 대비');
   async function bnGet(path) {
     const r = await fetch(`${BN.rest}/${path}`, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) throw new Error('binance ' + r.status);
@@ -1399,8 +1416,9 @@
       }
     }
     prevLast = t.last;
-    const chg = t.last - t.open;
-    setHtml('px-chg', `<span class="${cls(t.pct)}">${arrow(t.pct)} ${chg >= 0 ? '+' : '-'}$${Math.abs(chg).toFixed(2)} (${pct(t.pct, 2)})</span>`);
+    const D = bnDay('CRCL', t), chg = D.chg;
+    setHtml('px-chg', `<span class="${cls(D.pct)}">${arrow(D.pct)} ${chg >= 0 ? '+' : '-'}$${Math.abs(chg).toFixed(2)} (${pct(D.pct, 2)})</span>`);
+    setText('px-ref', bnRefTxt(D));
     const pos = t.high > t.low ? (t.last - t.low) / (t.high - t.low) : 0.5;
     const rb = document.getElementById('px-range');
     if (rb) rb.style.left = `${Math.min(100, Math.max(0, pos * 100))}%`;
@@ -1414,9 +1432,10 @@
     if (px.oi != null) setHtml('px-oi', usd(px.oi * (px.mark?.mark || t.last)));
     setHtml('px-time', hm(t.E || px.at) + ' 기준');
     setHtml('sum-px', price(t.last));
-    setHtml('sum-pxchg', `<span class="${cls(t.pct)}">${pct(t.pct, 1)}</span>`);
+    setHtml('sum-pxchg', `<span class="${cls(D.pct)}">${pct(D.pct, 1)}</span>`);
+    setText('sum-pxlbl', D.day ? '전날 대비' : '24시간');
     const sw = document.querySelector('[data-stock="CRCL"]');
-    if (sw) { const a = sw.querySelector('.ss-px'), b = sw.querySelector('.ss-ch'); if (a) a.textContent = price(t.last); if (b) { b.className = `ss-ch ${cls(t.pct)}`; b.textContent = pct(t.pct, 1); } }
+    if (sw) { const a = sw.querySelector('.ss-px'), b = sw.querySelector('.ss-ch'); if (a) a.textContent = price(t.last); if (b) { b.className = `ss-ch ${cls(D.pct)}`; b.textContent = pct(D.pct, 1); } }
     setHtml('pc-last', price(t.last));
     const k = px.klines[state.range];
     if (k?.length) {
@@ -1438,7 +1457,7 @@
   function renderPriceCard() {
     card('price', {
       title: 'CRCL 실시간 주가',
-      sub: 'Binance CRCLUSDT 무기한 선물 · 24시간 거래',
+      sub: `Binance CRCLUSDT 무기한 선물 · 24시간 거래<span class="px-ref" id="px-ref">${bnRefTxt(bnDay('CRCL', px.t))}</span>`,
       info: INFO.price,
       body: `
         <div class="px-main"><span class="px-last" id="px-last">${price(px.t?.last)}</span><span class="px-chg" id="px-chg"></span></div>
@@ -1790,7 +1809,7 @@
     const toneName = { pos: '긍정', neg: '주의', neu: '중립' };
     const chevron = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
     const pxLine = `<li><button type="button" data-go="crcl:c-pricechart"><span class="tone px"><span class="live-dot"></span>주가</span>
-      <span class="txt">CRCL <b id="sum-px">${price(px.t?.last)}</b> · 24시간 <span id="sum-pxchg">${px.t ? `<span class="${cls(px.t.pct)}">${pct(px.t.pct, 1)}</span>` : '–'}</span></span>${chevron}</button></li>`;
+      <span class="txt">CRCL <b id="sum-px">${price(px.t?.last)}</b> · <span id="sum-pxlbl">${bnDay('CRCL', px.t).day ? '전날 대비' : '24시간'}</span> <span id="sum-pxchg">${px.t ? `<span class="${cls(bnDay('CRCL', px.t).pct)}">${pct(bnDay('CRCL', px.t).pct, 1)}</span>` : '–'}</span></span>${chevron}</button></li>`;
     const fc = fireCfg ? fireCalc() : null;
     const fireLine = fc ? `<li><button type="button" data-go="fire:c-fire"><span class="tone px">🔥 Fire</span>
       <span class="txt">퇴사까지 <b>${(Math.max(0, fc.progress) * 100).toFixed(1)}%</b> · ${wonFull(fc.basis)} / ${wonFull(fc.F.goal)}</span>${chevron}</button></li>` : '';
@@ -1989,6 +2008,7 @@
       }
       const pick = (s) => j.data.find((x) => x.symbol === s);
       const u = pick('USDC'), e = pick('EURC');
+      if (j.disclosed?.usdc) state.usdcDisclosed = j.disclosed; // 서클 공식 사이트의 주 1회 공시 유통량(기준이 다른 숫자 — USDC 카드에 따로 보여 준다)
       const on = (c, n) => Number(c?.chains?.find((x) => x.chain === n)?.amount ?? NaN);
       if (u) {
         L.usdcTotal = Number(u.totalAmount);
@@ -5536,7 +5556,7 @@ ${what.join(' · ')}
   }
 
   // 시세(보유 종목·경쟁사·환율): Fire 화면이거나 CRCL 외 종목을 보고 있을 때 15초마다
-  let quoteInflight = null;
+  let quoteInflight = null, quoteAgain = null;
   function loadQuote() { return (quoteInflight ||= fetchQuote().finally(() => { quoteInflight = null; })); }
   async function fetchQuote() {
     try {
@@ -5549,6 +5569,11 @@ ${what.join(' · ')}
       state.quote = j;
       for (const sym of Object.keys(live)) applyLive(sym); // 방금 들어온 실시간 체결가가 더 최신이면 유지
       state.quoteErr = false;
+      try { paintPx(); updateTbNow(); if (BN24[state.stock]) paintStock(); } catch {} // 전날 종가가 바뀌었으면 바이낸스 종목의 등락률도 같이
+      // 한동안 아무도 안 봤으면 서버가 저장해 둔 옛 시세(몇 시간 전 값일 수 있음)를 먼저 준다 → 4초 뒤 새 값으로 한 번 더 받는다
+      if (Date.now() - Date.parse(j.at || 0) > 60000 && !quoteAgain) {
+        quoteAgain = setTimeout(() => { quoteAgain = null; loadQuote().then(() => { renderFire(); renderSummary(); renderHomeFire(); renderStockSwitch(); if (isOther()) { paintStock(); renderSSummary(); } }).catch(() => {}); }, 4000);
+      }
     } catch (e) {
       state.quoteErr = true;
       if (!state.quote) throw e;
@@ -6096,13 +6121,15 @@ ${what.join(' · ')}
     if (isKR(sym)) return state.krq?.[sym] || null;
     if (BN24[sym]) {
       const t = bx[sym]?.t;
-      return t ? { price: t.last, pct: t.pct, change: t.last - t.open, prevClose: t.open, status: 'BN24', time: t.E } : null;
+      if (!t) return null;
+      const D = bnDay(sym, t); // 등락률은 전날 종가 대비(Nasdaq 시세가 아직 없으면 24시간 전 대비)
+      return { price: t.last, pct: D.pct, change: D.chg, prevClose: D.ref, status: 'BN24', time: t.E, day: D.day };
     }
     return state.quote?.[sym] || null;
   }
   const statusLabel = (q) => (q?.status === 'BN24' ? '바이낸스 24시간' : mktStatus(q?.status));
   function stockPx(sym) {
-    if (sym === 'CRCL' && px.t) return { price: px.t.last, pct: px.t.pct, live: true };
+    if (sym === 'CRCL' && px.t) return { price: px.t.last, pct: bnDay('CRCL', px.t).pct, live: true };
     const q = pq(sym);
     return q ? { price: q.price, pct: q.pct, live: !!BN24[sym] } : null;
   }
@@ -6311,6 +6338,7 @@ ${what.join(' · ')}
       const X = bx[sym], t = X.t;
       setHtml('spx-via', X.via === 'ws' ? '<span class="live-dot"></span>실시간 체결' : X.via === 'rest' ? '5초마다 갱신' : '연결 중…');
       setHtml('spx-time', hm(t.E || X.at) + ' 기준');
+      setText('spx-ref', bnRefTxt(q));
       const pos = t.high > t.low ? (t.last - t.low) / (t.high - t.low) : 0.5;
       const rb = document.getElementById('spx-rb');
       if (rb) rb.style.left = `${Math.min(100, Math.max(0, pos * 100))}%`;
@@ -6351,7 +6379,7 @@ ${what.join(' · ')}
     if (BN24[sym]) {
       const X = bxOf(sym);
       card('sprice', {
-        title: `${sym} 실시간 주가`, sub: `Binance ${BN24[sym]} 무기한 선물 · 24시간 거래`, info: INFO.sprice(sym),
+        title: `${sym} 실시간 주가`, sub: `Binance ${BN24[sym]} 무기한 선물 · 24시간 거래<span class="px-ref" id="spx-ref">${bnRefTxt(bnDay(sym, X.t))}</span>`, info: INFO.sprice(sym),
         body: `
           <div class="px-main"><span class="px-last" id="spx-last">${pxS(sym, X.t?.last)}</span><span class="px-chg" id="spx-chg"></span></div>
           <div class="px-meta"><span id="spx-via">연결 중…</span><span id="spx-time"></span></div>
@@ -8774,7 +8802,7 @@ ${what.join(' · ')}
   function renderAll() {
     if (!state.data) return;
     const jobs = [renderStatus, renderSummary, renderKpis, renderShort, renderStables,
-      () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc }),
+      () => seriesCard('usdc', { title: 'USDC 전체 유통량', sub: '추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'usdcTotal', fmt: usd, series: state.data.series?.usdc, color: C.blue, info: INFO.usdc, note: usdcDiscNote }),
       () => seriesCard('eurc', { title: 'EURC 전체 유통량', sub: '유로 스테이블코인 · 추이 DefiLlama 일별 · 현재 값 서클 공식', key: 'eurcTotal', fmt: eur, series: state.data.series?.eurc, color: C.purple, info: INFO.eurc }),
       renderUsdcFlow, renderReserve, renderProducts, renderChains, renderTvl, renderDex, renderArcActivity, renderBorrow, renderArcSupply, renderLending, renderCirbtc, renderAccounts, renderCctp, renderEarnings, () => renderNewsSummary('CRCL'), () => renderNews('CRCL'), updateNewsBadge, renderFire, renderStock, renderMarket, renderFearGreed, renderKwNews];
     for (const j of jobs) {
