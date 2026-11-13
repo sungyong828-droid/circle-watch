@@ -1946,7 +1946,7 @@
     if (!T) return;
     const q = qLabelLong(T.te), pr = (v) => (v == null ? '–' : (v * 100).toFixed(2) + '%');
     const prog = Math.min(100, (T.elapsed / T.total) * 100);
-    const accTxt = T.back.slice(-3).reverse().map((b) => `${qLabel(b.end)} <b>${b.err >= 0 ? '+' : ''}${(b.err * 100).toFixed(1)}%</b>`).join(' · ');
+    const accTxt = T.back.slice(-3).reverse().map((b) => `<span>${qLabel(b.end)} <b>${b.err >= 0 ? '+' : ''}${(b.err * 100).toFixed(1)}%</b></span>`).join(' · ');
     card('qtrack', {
       title: EN ? '🔮 This quarter so far' : '🔮 이번 분기 미리보기',
       sub: EN ? `${q} reserve income, estimated from daily USDC supply × T-bill rate` : `${q} 준비금 이자수익 추정 · 날마다 USDC 유통량 × 국채 금리`,
@@ -1985,7 +1985,7 @@
     const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: 'numeric', hourCycle: 'h23', weekday: 'short' }).formatToParts(t).map((x) => [x.type, x.value]));
     const wk = { Sun: '일', Mon: '월', Tue: '화', Wed: '수', Thu: '목', Fri: '금', Sat: '토' }[p.weekday];
     const days = Math.ceil((t - Date.now()) / 864e5);
-    return { ...F, t, days, when: EN ? `${new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}, 2 PM ET` : `${p.month}/${p.day}(${wk}) 새벽 ${p.hour}시` };
+    return { ...F, t, days, when: EN ? `${new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}, 2 PM ET` : `${p.month}/${p.day}(${wk}) ${+p.hour < 6 ? '새벽 ' : ''}${+p.hour}시` };
   }
 
   function reserveEstimate() {

@@ -2468,6 +2468,7 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .qt-bar i { display: block; height: 100%; border-radius: 3px; background: var(--c-blue); }
 .qt-acc { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 .qt-acc b { font: 600 12px var(--mono); color: var(--ink-2); }
+.qt-acc span { white-space: nowrap; }
 .rv-net { margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(79, 143, 247, 0.4); background: rgba(79, 143, 247, 0.08); }
 .rv-net-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
 .rv-net-h b { font: 700 17px var(--mono); color: var(--ink); white-space: nowrap; }
