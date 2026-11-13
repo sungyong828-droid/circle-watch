@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.13-2 — 2026-11-13
+
+[이 버전 보기](https://04983927.my-fire-portfolio.pages.dev) · 커밋 `3eb6915`
+
 - 🔮 서클 실적 탭 맨 위에 '이번 분기 미리보기'가 생겼어요. 날마다 USDC 유통량과 국채 금리로 이번 분기 준비금 이자수익을 추정해서, 실적 발표 전에 전분기보다 늘지 줄지 미리 볼 수 있어요(지난 분기 오차도 함께 보여 줘요).
 <!-- EN Circle's Earnings tab now opens with "This quarter so far": an estimate of this quarter's reserve income built from daily USDC supply and T-bill rates, so you can see before the report whether it is tracking above or below last quarter (with how close the method got in past quarters) -->
 - 💰 준비금 이자수익 카드에 코인베이스 등 파트너 몫을 뺀 '서클 몫'과 다음 FOMC 금리 결정 날짜(한국 시간)를 넣었어요.
