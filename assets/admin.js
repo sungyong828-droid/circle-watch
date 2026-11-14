@@ -66,6 +66,7 @@
     if (j.me && !j.me.excluded && store.get('cw.noCount') === 'true') {
       try { await api(`/api/admin/exclude?vid=${myVid()}&on=1`); r = await api(`/api/admin/stats?vid=${myVid()}`); j = await r.json(); } catch {}
     }
+    j.events = await loadEvents();
     render(j, quiet);
     if (!quiet) { await new Promise((ok) => setTimeout(ok, Math.max(0, 600 - (Date.now() - t0)))); btnState('done'); } // 너무 빨라도 도는 모습이 보이게
   }
@@ -142,7 +143,9 @@
     out.innerHTML = `<code>${esc(url)}</code><button type="button" class="btn-ghost sm" data-copy="${esc(url)}">복사</button>`;
   }
   function downloadCsv(j) {
-    const rows = [['날짜', '방문자', '신규', '조회수', 'IP 수'], ...j.days.map((d) => [d.day, d.visitors, d.newbies, d.views, d.ips])];
+    const ev = j.events || {};
+    const rows = [['날짜', '방문자', '신규', '조회수', 'IP 수', '영어', '한국어', '소식 카드 보임', '소식 전체 보기', '이벤트'],
+      ...j.days.map((d) => [d.day, d.visitors, d.newbies, d.views, d.ips, d.en || 0, d.ko || 0, d.wnSeen || 0, d.wn || 0, (ev[d.day] || []).map((e) => e.k).join(' ')])];
     const blob = new Blob(['\ufeff' + rows.map((r) => r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = `fire-portfolio-visits-${j.today}.csv`;
@@ -167,6 +170,44 @@
     return `<div class="div-scroll"><table class="adm-tbl adm-pages"><thead><tr><th>페이지</th><th>오늘</th><th>7일</th><th>30일</th><th>신규</th></tr></thead>
       <tbody>${list.map((g) => `<tr><td>${esc(PAGE_NAME[g.page] || g.page)}</td>${cell(g.t)}${cell(g.w)}${cell(g.m)}<td>${nf(g.nb)}</td></tr>`).join('')}</tbody></table></div>
       <div class="adm-row"><span class="adm-dim">조회수(기기 수) · 신규 = 그날 처음 온 기기가 연 경우(최근 30일). 기기 수는 날마다 따로 센 합이에요.</span><button type="button" class="btn-ghost sm" id="adm-pages-csv">날짜별 CSV</button></div>`;
+  }
+  // 이벤트 날(주간 지표 비교용): FOMC 결정 발표일 · 서클 주간 공시 기준일 — 대시보드와 같은 /api/data 에서 읽는다(30분 동안 다시 안 읽음)
+  let evCache = null, evAt = 0;
+  async function loadEvents() {
+    if (evCache && Date.now() - evAt < 30 * 60000) return evCache;
+    try {
+      const d = await (await fetch('/api/data', { cache: 'no-store' })).json();
+      const E = {}, ISO = /^\d{4}-\d{2}-\d{2}$/;
+      const add = (day, k, label) => { if (!(E[day] ||= []).some((x) => x.k === k)) E[day].push({ k, label }); };
+      // FOMC 결정은 미국 동부 오후 2시 = 한국 다음 날 새벽 3~4시 → 한국 날짜로 하루 뒤
+      for (const m of d.fomc || []) if (ISO.test(m.d || '')) add(new Date(Date.parse(m.d + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10), 'fomc', 'FOMC');
+      for (const p of d.disclosed || []) if (ISO.test(p.asOf || '')) add(p.asOf, 'disc', '서클 공시');
+      evCache = E; evAt = Date.now();
+    } catch { evCache ||= {}; }
+    return evCache;
+  }
+  const USE_NAME = { home: '홈', crcl: '서클 주가', earn: '서클 실적', usdc: 'USDC', arc: 'Arc', news: '뉴스', fire: '🔥 퇴사 계산', div: '🔥 배당', sprice: '종목 주가', searn: '종목 실적', snews: '종목 뉴스', fireSet: '보유 종목 입력(퇴사)', divSet: '보유 종목 입력(배당)', watch: '관심 종목 추가', ocr: '캡처로 불러오기', share: '공유', blog: '블로그 링크', bonus: '🔥 성과급 계산', divsim: '배당 포트폴리오 시뮬', kr: '한국 종목', sns: 'SNS 링크', hold: '보유 가져오기', whatsnew: "업데이트 소식 '전체 보기'", wnseen: '업데이트 소식 카드 보임' };
+  // 날짜별 표 + '이벤트 날 평균 vs 평소 날 평균'(오늘은 하루가 안 끝나 평균에서 뺀다)
+  function daysHtml(j) {
+    const ev = j.events || {}, by = Object.fromEntries(j.days.map((d) => [d.day, d]));
+    const t = new Date(j.today + 'T12:00:00+09:00').getTime(), list = [];
+    for (let i = 29; i >= 0; i--) { const day = new Date(t - i * 86400000 + 9 * 3600000).toISOString().slice(0, 10); list.push(by[day] || { day, visitors: 0, newbies: 0, views: 0 }); }
+    const enPct = (en, ko) => (en + ko ? Math.round((en / (en + ko)) * 100) + '%' : '–');
+    const avg = (L) => {
+      const n = L.length || 1, en = L.reduce((a, d) => a + (d.en || 0), 0), ko = L.reduce((a, d) => a + (d.ko || 0), 0);
+      return { n: L.length, v: L.reduce((a, d) => a + d.visitors, 0) / n, nb: L.reduce((a, d) => a + d.newbies, 0) / n, en, ko };
+    };
+    const past = list.slice(0, -1), E = avg(past.filter((d) => ev[d.day])), N = avg(past.filter((d) => !ev[d.day]));
+    const f1 = (x) => x.toLocaleString('ko-KR', { maximumFractionDigits: 1 });
+    const side = (lbl, A) => `<span>${lbl} <b>${A.n}일</b> 평균 방문 <b>${f1(A.v)}</b> · 신규 ${f1(A.nb)} · 영어 ${enPct(A.en, A.ko)}</span>`;
+    const cmp = E.n
+      ? `<p class="adm-evcmp">${side('📅 이벤트 날', E)} ${delta(E.v, N.v)}<br>${side('평소 날', N)}</p>`
+      : '<p class="adm-dim">최근 30일 안에 표시할 이벤트 날이 아직 없어요. 지난 FOMC 날짜는 수집기가 새 규칙으로 돌기 시작한 뒤부터 보여요.</p>';
+    const badge = (day) => (ev[day] || []).map((e) => `<em class="adm-ev adm-ev-${e.k}">${esc(e.label)}</em>`).join('');
+    const rows = list.slice(-14).reverse().map((d) => `<tr${ev[d.day] ? ' class="is-ev"' : ''}><td>${md(d.day)} (${wd(d.day)})${d.day === j.today ? ' <small class="adm-dim">오늘</small>' : ''} ${badge(d.day)}</td><td>${nf(d.visitors)}</td><td>${nf(d.newbies)}</td><td>${nf(d.views)}</td><td>${enPct(d.en || 0, d.ko || 0)}</td><td>${nf(d.wnSeen)} → ${nf(d.wn)}</td></tr>`).join('');
+    return `${cmp}
+      <div class="div-scroll"><table class="adm-tbl adm-days"><thead><tr><th>날짜</th><th>방문자</th><th>신규</th><th>조회</th><th>영어</th><th>소식 보임 → 클릭</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="adm-dim">이벤트 날 = FOMC 금리 결정 발표 날(한국 시간 새벽이라 미국 날짜보다 하루 뒤) · 서클 주간 공시 기준일(공시 페이지의 'As of' 날짜 — 실제로 올라온 날과 하루 이틀 다를 수 있어요). 평균은 최근 30일 중 오늘을 뺀 날로 계산해요. 영어 = 그날 화면 언어가 영어인 기기 비율. 소식 = 업데이트 소식 카드가 보인 기기 → '전체 보기'를 누른 기기.</p>`;
   }
   function downloadPagesCsv(j) {
     const rows = [['날짜', '페이지', '기기', '조회수', '신규'], ...(j.pages || []).map((p) => [p.day, p.page, p.devices, p.views, p.newbies])];
@@ -324,11 +365,9 @@
         <section class="card"><h2>오늘 어디서 왔나</h2>${listHtml(j.refsToday, 'ref')}</section>
         <section class="card"><h2>신규 방문 유입 경로 <small>최근 7일</small></h2>${listHtml(j.refs7, 'ref')}</section>
         <section class="card"><h2>국가 <small>최근 7일</small></h2>${listHtml(j.countries, 'country', regionName)}</section>
-        <section class="card"><h2>날짜별</h2>
-          <table class="adm-tbl"><thead><tr><th>날짜</th><th>방문자</th><th>신규</th><th>조회</th></tr></thead>
-          <tbody>${j.days.slice(-14).reverse().map((d) => `<tr><td>${md(d.day)} (${wd(d.day)})</td><td>${nf(d.visitors)}</td><td>${nf(d.newbies)}</td><td>${nf(d.views)}</td></tr>`).join('') || '<tr><td colspan="4">아직 기록이 없어요.</td></tr>'}</tbody></table>
-        </section>
+        <section class="card"><h2>많이 쓰는 화면·기능 <small>최근 7일 · 그날 한 번이라도 연 기기</small></h2>${listHtml(j.uses || [], 'k', (k) => USE_NAME[k] || k)}</section>
       </div>
+      <section class="card"><h2>날짜별 <small>최근 14일 · 이벤트 날 표시</small></h2>${daysHtml(j)}</section>
       <div class="adm-2">
         <section class="card"><h2>화면 오류 <small>최근 7일 · 방문자 화면에서 난 오류</small></h2>
           ${(j.errors || []).length ? `<ul class="adm-errs">${j.errors.map((e) => `<li><code>${esc(e.msg)}</code><small>${nf(e.n)}회 · ${e.days}일 · 마지막 ${esc(new Date(e.last_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }))}</small></li>`).join('')}</ul>` : '<p class="adm-dim">✅ 최근 7일 동안 보고된 오류가 없어요.</p>'}

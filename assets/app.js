@@ -9628,9 +9628,10 @@ ${what.join(' · ')}
   }
   // 그날 처음 연 화면·처음 쓴 기능만 비트 하나로 알린다(종목·금액 같은 값은 보내지 않음) → 관리자 페이지 '많이 쓰는 화면·기능'
   // 순서는 functions/api/admin/stats.js 의 USE_BITS 와 같아야 한다
-  function markUse(name) {
+  // now: 바로 보낸다(다른 페이지로 넘어가는 링크를 눌렀을 때)
+  function markUse(name, now = false) {
     try {
-      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr', 'sns', 'hold'];
+      const BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr', 'sns', 'hold', 'whatsnew', 'wnseen'];
       const i = BITS.indexOf(name);
       if (i < 0 || !IS_PROD) return;
       const U = (window.__fpUse ||= { day: '', sent: 0, pend: 0, t: null });
@@ -9645,7 +9646,7 @@ ${what.join(' · ')}
         const bits = U.pend; U.pend = 0; U.sent |= bits;
         try { localStorage.setItem('cw.useSent', `${U.day}:${U.sent}`); } catch {}
         fetch(`/api/hit?k=u&v=${vid}&u=${bits}`, { cache: 'no-store', keepalive: true }).catch(() => {});
-      }), 1200);
+      }), now ? 0 : 1200);
     } catch {}
   }
   // 화면 오류는 관리자 페이지 '화면 오류'에 모은다(운영 주소만 · 한 번 열 때 최대 3건 · 네트워크 끊김 같은 흔한 일은 빼고)
@@ -9672,9 +9673,10 @@ ${what.join(' · ')}
     if (loadPref('seenNews', '') === W.id) { el.hidden = true; return; }
     const items = EN && W.en?.length ? W.en : W.items;
     el.hidden = false;
+    markUse('wnseen');
     el.innerHTML = `<div class="wc-head"><b>🎉 ${EN ? 'What’s new' : '새로 업데이트됐어요'}${W.ver ? ` <small>${esc(W.ver)}</small>` : ''}</b><button type="button" class="wc-x" data-news-close aria-label="${EN ? 'Close' : '닫기'}">×</button></div>
       <ul class="wn-list">${items.slice(0, 7).map((x) => `<li>${x}</li>`).join('')}</ul>
-      <div class="wn-act"><a class="btn-ghost sm" href="updates?ref=whatsnew">${EN ? 'All updates' : '업데이트 소식 전체 보기'} →</a><button type="button" class="btn-primary wc-ok" data-news-close>${EN ? 'Got it' : '확인'}</button></div>`;
+      <div class="wn-act"><a class="btn-ghost sm" href="updates?ref=whatsnew" data-wnlink>${EN ? 'All updates' : '업데이트 소식 전체 보기'} →</a><button type="button" class="btn-primary wc-ok" data-news-close>${EN ? 'Got it' : '확인'}</button></div>`;
   }
   let startShow = false;
   function renderWelcome(firstVisit) {
@@ -9801,6 +9803,7 @@ ${what.join(' · ')}
   document.addEventListener('click', (ev) => {
     if (ev.target.closest?.('a[href*="blog.naver.com"]')) markUse('blog');
     if (ev.target.closest?.('a[href*="instagram.com/myfireportfolio"], a[href*="x.com/myfireportfolio"]')) markUse('sns');
+    if (ev.target.closest?.('[data-wnlink]')) markUse('whatsnew', true); // 업데이트 소식 카드 → 전체 보기(같은 탭으로 넘어가서 바로 보낸다)
     const fb = ev.target.closest?.('a.fl-fb');
     if (fb) fb.href = `feedback?from=${encodeURIComponent(state.view)}${EN ? '&lang=en' : ''}`; // 어느 화면에서 문의했는지 함께
   }, true);

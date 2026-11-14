@@ -626,10 +626,11 @@ async function collectFomc(state) {
     if (!r.ok) throw new Error('fed ' + r.status);
     const L = parseFomc(await r.text());
     if (L.length < 4) throw new Error('fed: 일정을 못 찾음');
-    F.at = Date.now(); F.list = L.filter((x) => x.d >= isoDay(Date.now() / 1000 - 30 * DAY)); // 지난 회의는 버린다
+    F.at = Date.now(); F.list = L.filter((x) => x.d >= isoDay(Date.now() / 1000 - 35 * DAY)); // 오래된 회의는 버린다
   }
-  const today = new Date().toISOString().slice(0, 10);
-  return F.list.filter((x) => x.d >= today).slice(0, 8);
+  // 앞으로 8회 + 최근 35일 안에 지난 회의(관리자 통계의 '이벤트 날' 표시용 · 화면은 오늘 이후 첫 날짜만 쓴다)
+  const today = new Date().toISOString().slice(0, 10), from = isoDay(Date.now() / 1000 - 35 * DAY);
+  return [...F.list.filter((x) => x.d >= from && x.d < today), ...F.list.filter((x) => x.d >= today).slice(0, 8)];
 }
 
 // Arc 일별 트랜잭션 수 · 수수료(USDC)

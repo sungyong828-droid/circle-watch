@@ -37,9 +37,14 @@ body.adm { max-width: 960px; margin: 0 auto; padding-top: 12px; }
 .adm-tbl th { color: var(--muted); font-weight: 500; text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
 .adm-tbl td { text-align: right; padding: 5px 6px; font-family: var(--mono); border-bottom: 1px solid var(--line-soft); }
 .adm-tbl th:first-child, .adm-tbl td:first-child { text-align: left; font-family: var(--sans); }
-.adm-pages td:not(:first-child) { white-space: nowrap; }
-.adm-pages td small { font-size: 11px; }
-.adm-pages td:first-child { word-break: keep-all; }
+.adm-pages td:not(:first-child), .adm-days td:not(:first-child), .adm-days th { white-space: nowrap; }
+.adm-pages td small, .adm-days td small { font-size: 11px; }
+.adm-pages td:first-child, .adm-days td:first-child { word-break: keep-all; }
+.adm-days tr.is-ev td { background: rgba(245, 192, 78, .06); }
+.adm-ev { display: inline-block; font-style: normal; font-size: 11px; line-height: 1.5; padding: 0 6px; margin: 1px 2px 1px 0; border-radius: 999px; white-space: nowrap; background: rgba(245, 192, 78, .16); color: #f5c04e; }
+.adm-ev-disc { background: rgba(91, 155, 255, .16); color: #5b9bff; }
+.adm-evcmp { margin: 0 0 10px; font-size: 13px; line-height: 1.7; word-break: keep-all; }
+.adm-evcmp em { font-style: normal; margin-left: 4px; }
 .adm-set .chk { display: flex; gap: 8px; align-items: center; font-size: 13px; }
 .adm-set code { font-family: var(--mono); font-size: 11px; color: var(--ink-2); word-break: break-all; }
 @media (max-width: 640px) {

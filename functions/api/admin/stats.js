@@ -3,6 +3,10 @@
 // ?vid=… 를 주면 그 기기의 기록·제외 여부도 함께 돌려준다(관리자 화면의 '이 기기' 설명용).
 import { denyUnlessAdmin, json, kstDay, VID_RE, LOCK_FAILS, LOCK_MS } from '../../../worker/admin-auth.js';
 
+// 그날 연 화면·쓴 기능 비트(visits.used) — 순서는 assets/app.js 의 markUse BITS 와 같아야 한다
+const USE_BITS = ['home', 'crcl', 'earn', 'usdc', 'arc', 'news', 'fire', 'div', 'sprice', 'searn', 'snews', 'fireSet', 'divSet', 'watch', 'ocr', 'share', 'blog', 'bonus', 'divsim', 'kr', 'sns', 'hold', 'whatsnew', 'wnseen'];
+const WN = USE_BITS.indexOf('whatsnew'), WN_SEEN = USE_BITS.indexOf('wnseen');
+
 export async function onRequestGet({ request, env }) {
   const deny = await denyUnlessAdmin(request, env);
   if (deny) return deny;
@@ -11,7 +15,9 @@ export async function onRequestGet({ request, env }) {
   const q = (sql, ...args) => env.STATS.prepare(sql).bind(...args).all().then((r) => r.results || []);
   const EX = 'vid NOT IN (SELECT vid FROM excluded)';
   const [days, total, refs7, refsToday, countries, devices, live, back, week, prevWeek, exN, refs30, langs, hours, errs, fails] = await Promise.all([
-    q(`SELECT day, COUNT(*) AS visitors, SUM(views) AS views, SUM(is_new) AS newbies, COUNT(DISTINCT iph) AS ips
+    // en·ko = 그날 화면 언어별 기기 수 · wn = 업데이트 소식 카드의 '전체 보기'를 누른 기기 · wnSeen = 그 카드가 보인 기기
+    q(`SELECT day, COUNT(*) AS visitors, SUM(views) AS views, SUM(is_new) AS newbies, COUNT(DISTINCT iph) AS ips,
+         SUM(lang = 'en') AS en, SUM(lang = 'ko') AS ko, SUM((used >> ${WN}) & 1) AS wn, SUM((used >> ${WN_SEEN}) & 1) AS wnSeen
        FROM visits WHERE day >= ?1 AND ${EX} GROUP BY day ORDER BY day`, from30),
     q(`SELECT COUNT(DISTINCT vid) AS visitors, SUM(views) AS views, MIN(day) AS since FROM visits WHERE ${EX}`),
     q(`SELECT COALESCE(ref, '직접 방문') AS ref, COUNT(*) AS n FROM visits WHERE day >= ?1 AND is_new = 1 AND ${EX} GROUP BY 1 ORDER BY n DESC LIMIT 12`, from7),
@@ -40,6 +46,9 @@ export async function onRequestGet({ request, env }) {
   const pages = await q(`SELECT p.page, p.day, COUNT(*) AS devices, SUM(p.views) AS views, SUM(COALESCE(v.is_new, 0)) AS newbies
      FROM pageviews p LEFT JOIN visits v ON v.day = p.day AND v.vid = p.vid
      WHERE p.day >= ?1 AND p.vid NOT IN (SELECT vid FROM excluded) GROUP BY p.page, p.day ORDER BY p.day`, from30).catch(() => null);
+  // 많이 쓰는 화면·기능(최근 7일 · 기기 × 날 수): 비트 조합별로 받아 여기서 푼다
+  const useRows = await q(`SELECT used, COUNT(*) AS n FROM visits WHERE day >= ?1 AND used > 0 AND ${EX} GROUP BY used`, from7).catch(() => []);
+  const uses = USE_BITS.map((k, i) => ({ k, n: useRows.reduce((a, r) => a + (((r.used >> i) & 1) ? r.n : 0), 0) })).filter((x) => x.n).sort((a, b) => b.n - a.n);
   // 고객 문의(숨긴 글 제외 최근 60건 + 상태별 개수)
   const [fb, fbN] = await Promise.all([
     q(`SELECT id, at, kind, msg, contact, page, lang, status FROM feedback WHERE status != 'hidden' ORDER BY id DESC LIMIT 60`),
@@ -61,7 +70,7 @@ export async function onRequestGet({ request, env }) {
     at: new Date(now).toISOString(), today, days, total: total[0] || {}, refs7, refsToday, countries, devices,
     liveNow: live[0]?.n || 0, week: week[0]?.n || 0, weekNew: week[0]?.newbies || 0, prevWeek: prevWeek[0]?.n || 0, prevWeekNew: prevWeek[0]?.newbies || 0,
     returning: back[0]?.n || 0, excludedDevices: exN[0]?.n || 0,
-    picks, pickDevices: pickDev[0]?.n || 0, pages,
+    picks, pickDevices: pickDev[0]?.n || 0, pages, uses,
     feedback: fb, feedbackCount: Object.fromEntries(fbN.map((r) => [r.status, r.n])),
     refs30, langs, hours, errors: errs, authFails: fails, lockRule: { fails: LOCK_FAILS, minutes: LOCK_MS / 60000 },
     me,

@@ -42,7 +42,7 @@ export async function onRequestGet({ request, env }) {
   const db = env.STATS;
   try {
     if (kind === 'u') {
-      const bits = Math.max(0, Math.min(0x3fffff, parseInt(url.searchParams.get('u'), 10) || 0));
+      const bits = Math.max(0, Math.min(0xffffff, parseInt(url.searchParams.get('u'), 10) || 0)); // 24종(admin/stats.js 의 USE_BITS)
       if (bits) await db.prepare('UPDATE visits SET used = used | ?3, last_at = ?4 WHERE day = ?1 AND vid = ?2').bind(day, vid, bits, now).run();
       return done;
     }
@@ -74,17 +74,19 @@ export async function onRequestGet({ request, env }) {
     const isNew = url.searchParams.get('n') === '1' ? 1 : 0;
     const country = String(request.cf?.country || '').slice(0, 2) || null;
     const iph = await ipHash(request.headers.get('cf-connecting-ip'), day, env.ADMIN_KEY);
+    const page = url.searchParams.get('p') || '';
+    const fromPage = PAGE_RE.test(page) ? 1 : 0; // 소개 페이지 언어는 그날 언어가 비어 있을 때만 채운다(대시보드 화면 언어가 먼저)
     // 이미 오늘 기록이 있는 기기는 조회수만 늘리고, 새 기기는 같은 IP에서 하루 상한까지만 센다
     await db.prepare(
       `INSERT INTO visits (day, vid, first_at, last_at, views, is_new, ref, country, device, iph, lang)
        SELECT ?1, ?2, ?3, ?3, 1, ?4, ?5, ?6, ?7, ?8, ?9
        WHERE ?8 IS NULL OR (SELECT COUNT(*) FROM visits WHERE day = ?1 AND iph = ?8) < ${PER_IP_DEVICES}
          OR EXISTS (SELECT 1 FROM visits WHERE day = ?1 AND vid = ?2)
-       ON CONFLICT(day, vid) DO UPDATE SET views = MIN(views + 1, 500), last_at = ?3, ref = COALESCE(visits.ref, excluded.ref), lang = COALESCE(excluded.lang, visits.lang)`,
-    ).bind(day, vid, now, isNew, ref || null, country, device, iph, lang).run();
+       ON CONFLICT(day, vid) DO UPDATE SET views = MIN(views + 1, 500), last_at = ?3, ref = COALESCE(visits.ref, excluded.ref),
+         lang = CASE WHEN ?10 = 1 THEN COALESCE(visits.lang, excluded.lang) ELSE COALESCE(excluded.lang, visits.lang) END`,
+    ).bind(day, vid, now, isNew, ref || null, country, device, iph, lang, fromPage).run();
     // 페이지별 조회수: 위에서 기록된(IP 상한에 걸리지 않은) 기기만. 따로 실행해서 표가 없어도 방문 기록은 남는다
-    const page = url.searchParams.get('p') || '';
-    if (PAGE_RE.test(page)) {
+    if (fromPage) {
       await db.prepare(
         `INSERT INTO pageviews (day, page, vid, views)
          SELECT ?1, ?2, ?3, 1 WHERE EXISTS (SELECT 1 FROM visits WHERE day = ?1 AND vid = ?3)
