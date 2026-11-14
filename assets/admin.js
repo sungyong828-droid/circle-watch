@@ -149,6 +149,33 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
+  // 소개·검색용 페이지 조회(최근 30일): 페이지마다 오늘 · 7일 · 30일 조회수(기기 수)와 30일 신규
+  const PAGE_NAME = { stablecoin: '스테이블코인 한눈에', daily: '오늘의 스테이블코인', calendar: '이번 주 경제 일정', 'money-flow': '빚투 지표', 'dividend-etf': '배당 ETF 비교', about: '사이트 소개', en: '영어 소개', updates: '업데이트 소식', dividend: '배당금 계산기', portfolio: '배당 포트폴리오 계산기', grow: '적립식 배당 시뮬레이터', 'etf-tax': '미국 ETF 세금 비교', bonus: '성과급 계산기', fire: '퇴사 계산기', crcl: '서클(CRCL)', joby: '조비(JOBY)', spcx: '스페이스X(SPCX)', tem: '템퍼스 AI(TEM)', feedback: '문의·개선 제안' };
+  function pagesHtml(rows, today) {
+    if (!rows) return '<p class="adm-dim">아직 페이지별 기록 표가 없어요. <code>stats/migrate-6.sql</code>을 한 번 적용하면 그때부터 쌓여요.</p>';
+    if (!rows.length) return '<p class="adm-dim">아직 기록이 없어요. 소개·검색용 페이지를 누가 열면 여기에 쌓여요.</p>';
+    const from7 = new Date(Date.parse(today + 'T12:00:00+09:00') - 6 * 86400000 + 9 * 3600000).toISOString().slice(0, 10);
+    const by = {};
+    for (const r of rows) {
+      const g = (by[r.page] ||= { page: r.page, t: [0, 0], w: [0, 0], m: [0, 0], nb: 0 });
+      g.m[0] += r.views; g.m[1] += r.devices; g.nb += r.newbies || 0;
+      if (r.day >= from7) { g.w[0] += r.views; g.w[1] += r.devices; }
+      if (r.day === today) { g.t[0] += r.views; g.t[1] += r.devices; }
+    }
+    const list = Object.values(by).sort((a, b) => b.m[0] - a.m[0]);
+    const cell = ([v, d]) => `<td>${nf(v)}${v ? ` <small class="adm-dim">${nf(d)}대</small>` : ''}</td>`;
+    return `<div class="div-scroll"><table class="adm-tbl adm-pages"><thead><tr><th>페이지</th><th>오늘</th><th>7일</th><th>30일</th><th>신규</th></tr></thead>
+      <tbody>${list.map((g) => `<tr><td>${esc(PAGE_NAME[g.page] || g.page)}</td>${cell(g.t)}${cell(g.w)}${cell(g.m)}<td>${nf(g.nb)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="adm-row"><span class="adm-dim">조회수(기기 수) · 신규 = 그날 처음 온 기기가 연 경우(최근 30일). 기기 수는 날마다 따로 센 합이에요.</span><button type="button" class="btn-ghost sm" id="adm-pages-csv">날짜별 CSV</button></div>`;
+  }
+  function downloadPagesCsv(j) {
+    const rows = [['날짜', '페이지', '기기', '조회수', '신규'], ...(j.pages || []).map((p) => [p.day, p.page, p.devices, p.views, p.newbies])];
+    const blob = new Blob(['﻿' + rows.map((r) => r.join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `fire-portfolio-pages-${j.today}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
   let lastStats = null;
   // 고객 문의(/feedback)
   const FB_KIND = { idea: ['💡', '개선 제안'], bug: ['🐞', '오류·숫자'], question: ['❓', '질문'], etc: ['💬', '기타'] };
@@ -281,6 +308,7 @@
         <section class="card"><h2>유입 채널 <small>최근 30일 · 어디서 들어왔나</small></h2>${channelsHtml(j.refs30)}</section>
         <section class="card"><h2>검색 노출 <small>구글·네이버 등록 점검</small></h2>${seoHtml()}</section>
       </div>
+      <section class="card"><h2>소개·검색 페이지 조회 <small>최근 30일 · 페이지를 연 횟수</small></h2>${pagesHtml(j.pages, j.today)}</section>
       <div class="adm-2">
         <section class="card"><h2>시간대별 방문 <small>최근 7일</small></h2>${hourBars(j.hours)}</section>
         <section class="card"><h2>서비스 상태 <small>지금 이 화면에서 확인</small></h2><ul class="adm-health" id="adm-health"></ul>
@@ -324,6 +352,7 @@
         <p class="note">방문자 = 하루 동안 사이트를 연 기기 수(한국 시간 기준). 같은 사람도 휴대폰·PC는 따로 세고, 브라우저 저장소를 지우면 새 방문자로 셉니다. 유입 경로는 블로그 등 다른 사이트의 주소, 또는 링크 끝의 <b>?ref=이름</b> 값이에요. 예: <code>https://my-fire-portfolio.pages.dev/?ref=blog</code> · 기준 시각 ${esc(new Date(j.at).toLocaleString('ko-KR'))}</p>
       </section>`;
     document.getElementById('adm-csv')?.addEventListener('click', () => downloadCsv(j));
+    document.getElementById('adm-pages-csv')?.addEventListener('click', () => downloadPagesCsv(j));
     document.getElementById('adm-health-run')?.addEventListener('click', runHealth);
     document.getElementById('adm-ref')?.addEventListener('input', refLink);
     document.getElementById('adm-ref-page')?.addEventListener('change', refLink);

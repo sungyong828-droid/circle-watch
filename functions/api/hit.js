@@ -5,11 +5,13 @@
 //   ?k=u&u=비트 — 그날 연 화면·쓴 기능(어떤 종목·금액인지는 보내지 않음)
 //   ?k=e&m=메시지 — 화면 오류(관리자 페이지의 '화면 오류'에 모아 보임)
 //   ?k=w&s=AAPL,MSTY — 관심 종목에 새로 추가한 티커 이름(인기 종목 순위용 · 수량·금액은 없음). 목록에서 빠진 티커는 지운다
+// 소개·검색용 페이지(assets/landing.js)는 방문 기록에 &p=페이지 이름을 붙인다 → pageviews(하루 × 페이지 × 기기 조회수)
 const VID_RE = /^[a-z0-9]{16,40}$/;
 const BOT_RE = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|monitor/i;
 const PER_IP_DEVICES = 30; // 한 IP에서 하루에 새로 세는 기기 수 상한(무작위 ID로 숫자 부풀리기 방지 · 회사·통신사 공용 IP는 넉넉히)
 const MAX_ERR_ROWS = 300;   // 하루 오류 종류 상한
 const SYM_RE = /^([A-Z][A-Z0-9.-]{0,9}|[0-9A-Z]{6}\.(KS|KQ))$/; // 미국 티커 · 한국 종목코드
+const PAGE_RE = /^[a-z0-9][a-z0-9-]{0,39}$/; // 소개 페이지 이름(stablecoin, daily, money-flow …)
 
 const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600000).toISOString().slice(0, 10);
 
@@ -80,6 +82,15 @@ export async function onRequestGet({ request, env }) {
          OR EXISTS (SELECT 1 FROM visits WHERE day = ?1 AND vid = ?2)
        ON CONFLICT(day, vid) DO UPDATE SET views = MIN(views + 1, 500), last_at = ?3, ref = COALESCE(visits.ref, excluded.ref), lang = COALESCE(excluded.lang, visits.lang)`,
     ).bind(day, vid, now, isNew, ref || null, country, device, iph, lang).run();
+    // 페이지별 조회수: 위에서 기록된(IP 상한에 걸리지 않은) 기기만. 따로 실행해서 표가 없어도 방문 기록은 남는다
+    const page = url.searchParams.get('p') || '';
+    if (PAGE_RE.test(page)) {
+      await db.prepare(
+        `INSERT INTO pageviews (day, page, vid, views)
+         SELECT ?1, ?2, ?3, 1 WHERE EXISTS (SELECT 1 FROM visits WHERE day = ?1 AND vid = ?3)
+         ON CONFLICT(day, page, vid) DO UPDATE SET views = MIN(views + 1, 500)`,
+      ).bind(day, page, vid).run().catch(() => {});
+    }
   } catch {}
   return done;
 }

@@ -37,6 +37,9 @@ body.adm { max-width: 960px; margin: 0 auto; padding-top: 12px; }
 .adm-tbl th { color: var(--muted); font-weight: 500; text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
 .adm-tbl td { text-align: right; padding: 5px 6px; font-family: var(--mono); border-bottom: 1px solid var(--line-soft); }
 .adm-tbl th:first-child, .adm-tbl td:first-child { text-align: left; font-family: var(--sans); }
+.adm-pages td:not(:first-child) { white-space: nowrap; }
+.adm-pages td small { font-size: 11px; }
+.adm-pages td:first-child { word-break: keep-all; }
 .adm-set .chk { display: flex; gap: 8px; align-items: center; font-size: 13px; }
 .adm-set code { font-family: var(--mono); font-size: 11px; color: var(--ink-2); word-break: break-all; }
 @media (max-width: 640px) {

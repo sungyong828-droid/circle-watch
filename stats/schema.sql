@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS picks (vid TEXT NOT NULL, sym TEXT NOT NULL, day TEXT
 CREATE INDEX IF NOT EXISTS picks_day ON picks (day, sym);
 
 -- 고객 문의·개선 제안(/feedback) — 자세한 설명은 stats/migrate-4.sql
+CREATE TABLE IF NOT EXISTS feedback (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   at INTEGER NOT NULL,
   day TEXT NOT NULL,
@@ -61,3 +62,7 @@ CREATE INDEX IF NOT EXISTS picks_day ON picks (day, sym);
 );
 CREATE INDEX IF NOT EXISTS feedback_day ON feedback (day, iph);
 CREATE INDEX IF NOT EXISTS feedback_hash ON feedback (hash);
+
+-- 소개·검색용 페이지별 조회수(하루 × 페이지 × 기기) — 자세한 설명은 stats/migrate-6.sql
+CREATE TABLE IF NOT EXISTS pageviews (day TEXT NOT NULL, page TEXT NOT NULL, vid TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (day, page, vid));
+CREATE INDEX IF NOT EXISTS pageviews_page ON pageviews (page, day);
