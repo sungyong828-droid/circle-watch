@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.15-1 — 2026-11-15
+
+[이 버전 보기](https://580af0e0.my-fire-portfolio.pages.dev) · 커밋 `d18f848`
+
 - ⚡ 실적 AI 요약과 '회사 약속' 카드가 훨씬 빨리 떠요(2~3초 → 거의 바로). 처음 여는 화면의 데이터도 절반 가까이 줄였어요.
 <!-- EN The earnings AI summary and the company-promises card now load almost instantly (down from 2–3 seconds), and the first screen downloads about half as much data -->
 - 속도: /api/earnsum·/api/promises 완성 응답 저장(readyCache: 10분/30분 뒤 뒤에서 갱신, 대기·확인 중·번역 전 응답은 저장 안 함, 예약 작업은 저장 없이 직접 생성) · /api/data 15분 기록을 최근 26시간치만(623KB→287KB) · 바이낸스 같은 요청 3초 안 한 번만 <!-- internal -->
