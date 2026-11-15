@@ -1345,10 +1345,16 @@
     return ref > 0 ? { pct: t.last / ref - 1, chg: t.last - ref, ref, day: true } : { pct: t.pct, chg: t.last - t.open, ref: t.open, day: false };
   }
   const bnRefTxt = (D) => (D.day ? '등락률은 전날 종가 대비' : '등락률은 24시간 전 대비');
-  async function bnGet(path) {
-    const r = await fetch(`${BN.rest}/${path}`, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error('binance ' + r.status);
-    return r.json();
+  // 첫 화면에서 여러 곳(시세 카드·차트·동기화)이 거의 동시에 같은 주소를 부른다 → 3초 안의 같은 요청은 한 번만 보내고 결과를 나눠 쓴다
+  const bnRecent = new Map();
+  function bnGet(path) {
+    const hit = bnRecent.get(path);
+    if (hit && Date.now() - hit.at < 3000) return hit.p;
+    const p = fetch(`${BN.rest}/${path}`, { signal: AbortSignal.timeout(10000) }).then((r) => { if (!r.ok) throw new Error('binance ' + r.status); return r.json(); });
+    bnRecent.set(path, { p, at: Date.now() });
+    p.catch(() => bnRecent.delete(path)); // 실패한 요청은 다음에 바로 다시
+    if (bnRecent.size > 60) for (const [k, v] of bnRecent) if (Date.now() - v.at > 3000) bnRecent.delete(k);
+    return p;
   }
   async function loadPxSnapshot() {
     const [t, m, oi] = await Promise.all([

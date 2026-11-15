@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- ⚡ 실적 AI 요약과 '회사 약속' 카드가 훨씬 빨리 떠요(2~3초 → 거의 바로). 처음 여는 화면의 데이터도 절반 가까이 줄였어요.
+<!-- EN The earnings AI summary and the company-promises card now load almost instantly (down from 2–3 seconds), and the first screen downloads about half as much data -->
+- 속도: /api/earnsum·/api/promises 완성 응답 저장(readyCache: 10분/30분 뒤 뒤에서 갱신, 대기·확인 중·번역 전 응답은 저장 안 함, 예약 작업은 저장 없이 직접 생성) · /api/data 15분 기록을 최근 26시간치만(623KB→287KB) · 바이낸스 같은 요청 3초 안 한 번만 <!-- internal -->
+
 - 🛠️ 관리자: 소개·검색용 페이지(/stablecoin · /daily · /calendar · /money-flow · /dividend-etf 등)를 연 횟수를 페이지별·날짜별로 집계해 '소개·검색 페이지 조회' 표(오늘·7일·30일·신규)와 날짜별 CSV로 보여 줌. 익명 방식 그대로(기기 무작위 ID · 페이지 이름만). /daily/날짜 페이지의 유입 경로가 '직접 방문'으로 빠지던 것도 'page-daily'로 바로잡음. 적용 전에 `stats/migrate-6.sql` 한 번 실행 필요 <!-- internal -->
 - 🛠️ 관리자: '날짜별' 표에 FOMC 결정 날·서클 주간 공시 기준일을 표시하고 '이벤트 날 평균 vs 평소 날 평균'(방문·신규·영어 비율) 한 줄 추가. 날짜별 영어 화면 비율, 업데이트 소식 카드가 보인 기기 → '전체 보기'를 누른 기기 수(하루 한 번), '많이 쓰는 화면·기능'(최근 7일)을 다시 보여 줌. 소개 페이지도 화면 언어를 기록(대시보드 언어가 우선). CSV에 같은 열 추가. 수집기: 지난 35일 안의 FOMC 날짜도 함께 내보냄 <!-- internal -->
 
