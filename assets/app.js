@@ -6653,27 +6653,103 @@ ${what.join(' · ')}
 
   // ---------------------------------------------------------------- 💼 유명 투자자 포트폴리오(13F) — 홈 · 시장 네 번째 탭
   // 수집기(collector/gurus.mjs)가 SEC 13F 보고서로 만든 data/gurus.json. 탭을 열 때(넓은 화면은 카드가 보일 때)만 받는다
-  const GURUS = {
-    buffett: ['워런 버핏', 'Warren Buffett', '버크셔 해서웨이', 'Berkshire Hathaway'],
-    thiel: ['피터 틸', 'Peter Thiel', '틸 매크로', 'Thiel Macro'],
-    ackman: ['빌 애크먼', 'Bill Ackman', '퍼싱 스퀘어', 'Pershing Square'],
-    wood: ['캐시 우드', 'Cathie Wood', 'ARK 인베스트', 'ARK Invest'],
-    druck: ['스탠리 드러켄밀러', 'Stanley Druckenmiller', '듀케인 패밀리 오피스', 'Duquesne Family Office'],
-    dalio: ['레이 달리오', 'Ray Dalio', '브리지워터(창업한 회사)', 'Bridgewater (the firm he founded)'],
-    soros: ['조지 소로스', 'George Soros', '소로스 펀드(창업한 회사)', 'Soros Fund Mgmt (the firm he founded)'],
-    tepper: ['데이비드 테퍼', 'David Tepper', '아팔루사', 'Appaloosa'],
-    lilu: ['리루', 'Li Lu', '히말라야 캐피털', 'Himalaya Capital'],
-    klarman: ['세스 클라만', 'Seth Klarman', '바우포스트', 'Baupost Group'],
-    icahn: ['칼 아이칸', 'Carl Icahn', '아이칸(본인 명의)', 'Icahn (personal filing)'],
-    coleman: ['체이스 콜먼', 'Chase Coleman', '타이거 글로벌', 'Tiger Global'],
-    loeb: ['댄 롭', 'Dan Loeb', '서드 포인트', 'Third Point'],
-    laffont: ['필리프 라퐁', 'Philippe Laffont', '코투', 'Coatue'],
-    pabrai: ['모니시 파브라이', 'Mohnish Pabrai', '달랄 스트리트', 'Dalal Street'],
-    smith: ['테리 스미스', 'Terry Smith', '펀드스미스', 'Fundsmith'],
-    gates: ['빌 게이츠 재단', 'Gates Foundation', '게이츠 재단 신탁', 'Gates Foundation Trust'],
+  // [이름, 영문 이름, 회사(기관은 나라·종류), 영문, 머리글자, 소개, 영문 소개] — 수집 대상(CIK)은 collector/gurus.mjs
+  const GURU_P = {
+    buffett: ['워런 버핏', 'Warren Buffett', '버크셔 해서웨이', 'Berkshire Hathaway', 'WB',
+      '‘오마하의 현인’. 1965년부터 버크셔 해서웨이를 이끌며 시장을 크게 앞질러 온, 역사상 가장 유명한 가치투자자예요. 2026년부터는 그레그 에이블이 CEO를 맡고 있어요.',
+      'The “Oracle of Omaha.” Ran Berkshire Hathaway from 1965 and beat the market by a wide margin — the most famous value investor ever. Greg Abel became CEO in 2026.'],
+    thiel: ['피터 틸', 'Peter Thiel', '틸 매크로', 'Thiel Macro', 'PT',
+      '페이팔·팔란티어 공동 창업자이자 페이스북의 첫 외부 투자자. 실리콘밸리 최고의 벤처 투자자로 꼽혀요. 13F는 개인 매크로 펀드라 규모가 작아요.',
+      'Co-founder of PayPal and Palantir and Facebook’s first outside investor — one of Silicon Valley’s best-known VCs. This 13F is his small personal macro fund.'],
+    ackman: ['빌 애크먼', 'Bill Ackman', '퍼싱 스퀘어', 'Pershing Square', 'BA',
+      '퍼싱 스퀘어 창업자. 몇 종목에 크게 거는 집중 투자와 경영진을 압박하는 행동주의로 유명해요. 2020년 코로나 폭락 직전 신용 보험으로 약 26억 달러를 벌었어요.',
+      'Founder of Pershing Square, known for big concentrated bets and activism. Made about $2.6B hedging with credit insurance just before the 2020 COVID crash.'],
+    wood: ['캐시 우드', 'Cathie Wood', 'ARK 인베스트', 'ARK Invest', 'CW',
+      'ARK 인베스트 창업자. 테슬라·AI·유전체 같은 혁신 성장주에 집중해요. 대표 펀드 ARKK가 2020년 약 150% 오르며 스타가 됐어요.',
+      'Founder of ARK Invest, focused on disruptive growth like Tesla, AI and genomics. Became a star when her flagship ARKK fund rose about 150% in 2020.'],
+    druck: ['스탠리 드러켄밀러', 'Stanley Druckenmiller', '듀케인 패밀리 오피스', 'Duquesne Family Office', 'SD',
+      '조지 소로스와 1992년 파운드화 공매도를 이끈 전설적인 매크로 투자자. 듀케인을 30년 운용하며 손실 난 해 없이 연평균 약 30%를 냈다고 알려져 있어요.',
+      'Legendary macro investor who ran the 1992 pound trade with George Soros. Reportedly averaged ~30% a year for 30 years at Duquesne without a losing year.'],
+    dalio: ['레이 달리오', 'Ray Dalio', '브리지워터(창업한 회사)', 'Bridgewater (the firm he founded)', 'RD',
+      '세계 최대 헤지펀드 브리지워터 창업자이자 책 ‘원칙’의 저자. 2022년 경영에서 물러나, 이 포트폴리오는 브리지워터 회사 것이에요.',
+      'Founded Bridgewater, the world’s largest hedge fund, and wrote “Principles.” He stepped back in 2022, so this is Bridgewater’s portfolio.'],
+    soros: ['조지 소로스', 'George Soros', '소로스 펀드(창업한 회사)', 'Soros Fund Mgmt (the firm he founded)', 'GS',
+      '1992년 파운드화 공매도로 ‘영란은행을 무너뜨린 남자’. 퀀텀 펀드로 유명하고, 지금은 소로스 펀드가 가문 자산을 운용해요.',
+      '“The man who broke the Bank of England” with his 1992 bet against the pound. Famous for the Quantum Fund; Soros Fund now manages family money.'],
+    tepper: ['데이비드 테퍼', 'David Tepper', '아팔루사', 'Appaloosa', 'DT',
+      '아팔루사 창업자. 2009년 금융위기 바닥에서 은행주를 사들여 수십억 달러를 번 것으로 유명해요. 미식축구팀 캐롤라이나 팬서스 구단주이기도 해요.',
+      'Founder of Appaloosa, famous for buying bank stocks at the 2009 bottom and making billions. He also owns the NFL’s Carolina Panthers.'],
+    lilu: ['리루', 'Li Lu', '히말라야 캐피털', 'Himalaya Capital', 'LL',
+      '찰리 멍거가 자기 돈을 맡긴 투자자로, 버크셔의 BYD 투자를 연결했어요. ‘중국의 버핏’으로 불리며 몇 종목만 오래 들고 가요.',
+      'The investor Charlie Munger trusted with his own money; he brought BYD to Berkshire. Called “China’s Buffett,” he holds a few stocks for years.'],
+    klarman: ['세스 클라만', 'Seth Klarman', '바우포스트', 'Baupost Group', 'SK',
+      '바우포스트 창업자. 절판된 가치투자 고전 ‘안전마진’의 저자로, 싸게 사서 기다리는 투자의 대가예요.',
+      'Founder of Baupost and author of the out-of-print value classic “Margin of Safety” — a master of buying cheap and waiting.'],
+    icahn: ['칼 아이칸', 'Carl Icahn', '아이칸(본인 명의)', 'Icahn (personal filing)', 'CI',
+      '대표적인 행동주의 투자자이자 ‘기업 사냥꾼’. 지분을 사서 경영진에 변화를 요구해요. 포트폴리오 대부분이 자기 회사(IEP) 주식이에요.',
+      'The classic activist and “corporate raider” who buys stakes and pushes management to change. Most of this is his own company, IEP.'],
+    coleman: ['체이스 콜먼', 'Chase Coleman', '타이거 글로벌', 'Tiger Global', 'CC',
+      '전설적 투자자 줄리언 로버트슨의 제자(‘타이거 새끼’)로 타이거 글로벌을 세웠어요. 기술주와 스타트업 투자로 유명해요.',
+      'A “Tiger cub” trained by Julian Robertson who founded Tiger Global, known for tech stocks and startup investing.'],
+    loeb: ['댄 롭', 'Dan Loeb', '서드 포인트', 'Third Point', 'DL',
+      '서드 포인트 창업자. 경영진에게 보내는 날카로운 공개 서한으로 유명한 행동주의 헤지펀드 매니저예요. 종목을 자주 바꿔요.',
+      'Founder of Third Point, an activist known for sharp public letters to management. Trades actively.'],
+    laffont: ['필리프 라퐁', 'Philippe Laffont', '코투', 'Coatue', 'PL',
+      '타이거 출신으로 코투를 세웠어요. 대형 기술주와 성장 기업에 집중하는 대표적인 기술주 헤지펀드예요.',
+      'A Tiger alumnus who founded Coatue, one of the best-known tech-focused hedge funds.'],
+    pabrai: ['모니시 파브라이', 'Mohnish Pabrai', '달랄 스트리트', 'Dalal Street', 'MP',
+      '버핏 방식을 그대로 따르는 가치투자자. 2008년 버핏과의 점심을 약 65만 달러에 낙찰받았어요. 종목 수가 아주 적어요.',
+      'A value investor who copies Buffett’s playbook; won the 2008 lunch with Buffett for about $650K. Holds very few stocks.'],
+    smith: ['테리 스미스', 'Terry Smith', '펀드스미스', 'Fundsmith', 'TS',
+      '‘영국의 버핏’. “좋은 회사를 사고, 비싸게 사지 말고, 아무것도 하지 마라”는 원칙으로 펀드스미스를 키웠어요.',
+      '“Britain’s Buffett.” Built Fundsmith on “buy good companies, don’t overpay, do nothing.”'],
+    gates: ['빌 게이츠 재단', 'Gates Foundation', '게이츠 재단 신탁', 'Gates Foundation Trust', 'GF',
+      '빌 게이츠가 세운 게이츠 재단의 투자 자산이에요. 버크셔 주식을 많이 갖고 있고, 재단은 2045년까지 자산을 대부분 쓰고 문을 닫을 계획이에요.',
+      'The Gates Foundation’s endowment, with a big Berkshire stake. The foundation plans to spend nearly all of it and close by 2045.'],
   };
+  const GURU_I = {
+    nps: ['국민연금', 'National Pension Service', '한국 · 연기금', 'Korea · Pension', 'NPS',
+      '대한민국 국민의 노후 자금을 굴리는 기금으로, 세계 3대 연기금 중 하나예요. 13F에는 미국 주식 중 직접 들고 있는 것만 나와요.',
+      'Korea’s national pension fund — one of the three largest pension funds in the world. The 13F shows only the US stocks it holds directly.'],
+    bok: ['한국은행', 'Bank of Korea', '한국 · 중앙은행', 'Korea · Central bank', 'BOK',
+      '우리나라 중앙은행이에요. 외환보유액 일부를 미국 주식에 투자하는데, 주로 S&P 500 같은 지수 ETF예요.',
+      'Korea’s central bank. It invests part of its FX reserves in US stocks, mostly index ETFs like the S&P 500.'],
+    kic: ['한국투자공사', 'Korea Investment Corp', '한국 · 국부펀드', 'Korea · Sovereign fund', 'KIC',
+      '대한민국 국부펀드. 한국은행 외환보유액과 정부 기금을 맡아 해외 주식·채권 등에 투자해요.',
+      'Korea’s sovereign wealth fund, investing FX reserves and government funds in overseas stocks and bonds.'],
+    norway: ['노르웨이 국부펀드', 'Norway’s wealth fund', '노르웨이 · 국부펀드', 'Norway · Sovereign fund', 'NO',
+      '석유로 번 돈으로 만든 세계 최대 국부펀드로, 노르웨이 중앙은행이 운용해요. 전 세계 상장 주식의 약 1.5%를 갖고 있어요.',
+      'The world’s largest sovereign fund, built from oil revenue and run by Norway’s central bank. It owns about 1.5% of all listed shares.'],
+    snb: ['스위스 중앙은행', 'Swiss National Bank', '스위스 · 중앙은행', 'Switzerland · Central bank', 'SNB',
+      '스위스프랑 강세를 막으려고 사들인 외화를 주식에도 투자해요. 시가총액대로 고르게 담아 지수와 비슷해요.',
+      'Invests the foreign currency it bought to hold down the franc — spread across stocks by market value, much like an index.'],
+    temasek: ['테마섹', 'Temasek', '싱가포르 · 국영 투자회사', 'Singapore · State investor', 'TM',
+      '싱가포르 정부가 소유한 투자회사예요. 기업 지분을 직접 사서 오래 들고 가는 투자로 유명해요.',
+      'An investment company owned by the Singapore government, known for taking direct stakes and holding them for the long term.'],
+    pif: ['사우디 국부펀드(PIF)', 'Saudi PIF', '사우디 · 국부펀드', 'Saudi Arabia · Sovereign fund', 'PIF',
+      '무함마드 빈 살만 왕세자가 이끄는 사우디아라비아 국부펀드. 석유 이후 시대를 대비해 해외 기업에 크게 투자해요(루시드 최대주주).',
+      'Saudi Arabia’s sovereign fund, chaired by Crown Prince Mohammed bin Salman, making big bets abroad for a post-oil era (Lucid’s largest owner).'],
+    mubadala: ['무바달라', 'Mubadala', 'UAE · 국부펀드', 'UAE · Sovereign fund', 'MB',
+      '아부다비 정부의 국부펀드예요. 반도체 회사 글로벌파운드리의 최대주주라 비중 대부분이 이 종목이에요.',
+      'Abu Dhabi’s sovereign fund. It is the majority owner of chipmaker GlobalFoundries, which dominates this portfolio.'],
+    cpp: ['캐나다 국민연금(CPP)', 'Canada Pension Plan', '캐나다 · 연기금', 'Canada · Pension', 'CPP',
+      '캐나다 국민연금을 굴리는 기관으로, 세계에서 가장 큰 연기금 중 하나예요. 비상장·인프라 투자도 많이 해요.',
+      'Manages Canada’s national pension — one of the world’s largest pension funds, with big private and infrastructure holdings too.'],
+    calpers: ['캘퍼스(CalPERS)', 'CalPERS', '미국 · 연기금', 'US · Pension', 'CP',
+      '캘리포니아 공무원 연금으로, 미국 최대 공적 연기금이에요. 미국 주식을 지수처럼 넓게 담아요.',
+      'California’s public employees’ pension, the largest US public pension fund. Holds US stocks broadly, like an index.'],
+    harvard: ['하버드 대학 기금', 'Harvard endowment', '미국 · 대학 기금', 'US · Endowment', 'H',
+      '미국 최대 대학 기금을 운용해요. 대부분 외부 펀드에 맡겨서 13F에는 직접 들고 있는 일부만 나와요.',
+      'Manages the largest US university endowment. Most money sits with outside funds, so the 13F shows only what it holds directly.'],
+    rentec: ['르네상스 테크놀로지', 'Renaissance Technologies', '미국 · 퀀트 펀드', 'US · Quant fund', 'RT',
+      '수학자 짐 사이먼스가 세운 퀀트(알고리즘) 투자의 전설이에요. 컴퓨터가 수천 종목을 사고팔아 비중이 고르게 퍼져 있어요.',
+      'The legendary quant firm founded by mathematician Jim Simons. Algorithms trade thousands of stocks, so weights are spread thin.'],
+  };
+  const GURUS = { ...GURU_P, ...GURU_I };
   const guName = (id) => (GURUS[id] ? GURUS[id][EN ? 1 : 0] : id);
   const guFirm = (id) => (GURUS[id] ? GURUS[id][EN ? 3 : 2] : '');
+  const guBio = (id) => (GURUS[id] ? GURUS[id][EN ? 6 : 5] : '');
+  const guAv = (id, big) => `<span class="gu-av ${GURU_I[id] ? 'inst' : ''}${big ? ' big' : ''}" style="--h:${[...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7)}" aria-hidden="true">${GURUS[id]?.[4] || '?'}</span>`;
   const GU_COLORS = ['#5b8def', '#f2994a', '#3fbf7f', '#c86bf2', '#f5c542', '#f04452', '#3ec6d6', '#e86fb0', '#8fbf3f', '#a78bfa'], GU_REST = '#8a94a6';
   const GURU_URL = ON_PAGES ? '/api/gurus' : 'data/gurus.json';
   let guruP = null, guruIO = null;
@@ -6734,9 +6810,9 @@ ${what.join(' · ')}
   function renderGurus() {
     const el = document.getElementById('c-gurus');
     if (!el) return;
-    const title = EN ? '💼 Famous investors’ portfolios' : '💼 유명 투자자 포트폴리오';
-    const easy = EN ? 'Big US investors managing over $100M must report the US stocks they hold every quarter (Form 13F). Pick an investor to see what they own and how much of their portfolio each stock is.'
-      : '1억 달러 넘게 굴리는 미국 기관·큰손은 분기마다 갖고 있는 미국 주식을 SEC에 신고해요(13F 보고서). 투자자를 고르면 어떤 종목을 얼마나 담았는지 비중으로 보여줘요.';
+    const title = EN ? '💼 Famous investors & institutions' : '💼 유명 투자자·기관 포트폴리오';
+    const easy = EN ? 'Investors managing over $100M in US stocks — including foreign pension and sovereign funds — must report their US holdings every quarter (Form 13F). Pick one to see what they own and how much of the portfolio each stock is.'
+      : '미국 주식을 1억 달러 넘게 굴리는 큰손은 해외 연기금·국부펀드까지 분기마다 갖고 있는 미국 주식을 SEC에 신고해요(13F 보고서). 투자자나 기관을 고르면 어떤 종목을 얼마나 담았는지 비중으로 보여줘요.';
     const info = EN ? '• 13F shows holdings at <b>quarter end</b>, published up to 45 days later — they may have traded since.<br>• Only US-listed stocks, ETFs, options and convertible notes. Cash, bonds, foreign shares and short sales aren’t included.<br>• Options are counted at the value of the underlying shares. Change = share count vs. the previous quarter.<br>• Source: SEC EDGAR · tickers via OpenFIGI.'
       : '• 13F는 <b>분기 말</b> 기준 보유 내역이고 최대 45일 뒤에 공개돼요. 그 사이 사고팔았을 수 있어요.<br>• 미국 상장 주식·ETF·옵션·전환사채만 담겨요. 현금·채권·해외 주식·공매도는 빠져요.<br>• 옵션은 기초 주식 금액으로 계산돼요. 변화는 지난 분기 대비 주식 수 기준이에요.<br>• 출처: SEC EDGAR · 종목 코드는 OpenFIGI.';
     const G = state.gurus;
@@ -6755,9 +6831,14 @@ ${what.join(' · ')}
       title, easy, info,
       sub: EN ? `Form 13F · holdings at ${guQ(sel.period)} end (${guMd(sel.period)}) · filed ${guMd(sel.filed)}` : `13F 보고서 · ${guQ(sel.period)} 말(${guMd(sel.period)}) 기준 · ${guMd(sel.filed)} 공개`,
       body: `<div data-noi18n>
-        <label class="gu-pick"><select id="gu-sel" data-gusel aria-label="${EN ? 'Choose an investor' : '투자자 고르기'}">${list.map((g) => `<option value="${g.id}"${g.id === sel.id ? ' selected' : ''}>${esc(guName(g.id))}</option>`).join('')}</select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></label>
-        <div class="gu-head"><div><small>${esc(guFirm(sel.id))}</small></div>
-          <div class="gu-stat"><span>${EN ? 'Reported value' : '신고 금액'} <b>${usd(sel.total)}</b></span><span>${EN ? `${sel.count} holdings` : `${sel.count}종목`}</span></div></div>
+        <div class="gu-dd" id="gu-dd">
+          <button type="button" class="gu-dd-btn" data-gudd aria-haspopup="listbox" aria-expanded="false" aria-controls="gu-dd-menu">${guAv(sel.id, true)}<span class="gu-dd-t"><b>${esc(guName(sel.id))}</b><small>${esc(guFirm(sel.id))}</small></span><svg class="gu-dd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="gu-dd-menu" id="gu-dd-menu" role="listbox" aria-label="${EN ? 'Choose an investor' : '투자자 고르기'}" hidden>
+            ${[[EN ? 'Famous investors' : '유명 투자자', list.filter((g) => GURU_P[g.id])], [EN ? 'Institutions · funds' : '기관 · 국부펀드 · 연기금', list.filter((g) => GURU_I[g.id])]].filter(([, L]) => L.length).map(([lbl, L]) => `<div class="gu-dd-g" role="presentation">${lbl}<span>${L.length}</span></div>${L.map((g) => `<button type="button" role="option" class="gu-dd-o" data-guru="${g.id}" aria-selected="${g.id === sel.id}">${guAv(g.id)}<span class="gu-dd-t"><b>${esc(guName(g.id))}</b><small>${esc(guFirm(g.id))}</small></span><em>${usd(g.total)}</em></button>`).join('')}`).join('')}
+          </div>
+        </div>
+        <div class="gu-bio"><p>${esc(guBio(sel.id))}</p>${sel.skipped ? `<p class="gu-skip">${EN ? `The latest ${guQ(sel.skipped)} filing hid its holdings (confidential), so the latest public one (${guQ(sel.period)}) is shown.` : `최신 ${guQ(sel.skipped)} 보고서는 보유 내역을 비공개로 내서, 공개된 가장 최근 자료(${guQ(sel.period)})를 보여 줘요.`}</p>` : ''}
+          <div class="gu-stat"><span>${EN ? 'Reported value' : '신고 금액'} <b>${usd(sel.total)}</b></span><span>${EN ? 'Holdings' : '보유 종목'} <b>${nf(0).format(sel.count)}</b></span></div></div>
         <div class="gu-main"><div class="gu-pie"><div class="chart gu-chart"><canvas id="cv-gurus" role="img" aria-label="${esc(guName(sel.id))} ${EN ? 'portfolio weights' : '포트폴리오 비중'}"></canvas>
           <div class="gu-center" aria-hidden="true">${sel.count > 10 ? `<small>${EN ? 'Top 10' : '상위 10종목'}</small><b>${pctPlain(t10w, 0)}</b>` : `<small>${EN ? 'Holdings' : '보유 종목'}</small><b>${sel.count}</b>`}</div></div></div>
         <ul class="gu-list">${top10.map((h, i) => guRow(h, i, mine)).join('')}
@@ -6776,13 +6857,28 @@ ${what.join(' · ')}
       options: { cutout: '52%', layout: { padding: 2 }, plugins: { ...noLegend, guLabels: { labels }, tooltip: { callbacks: { label: (it) => ` ${it.label}: ${pctPlain(it.raw, 1)}${top10[it.dataIndex] ? ' · ' + usd(top10[it.dataIndex].v) : ''}` } } } },
     });
   }
+  // 투자자 펼침 목록 열기/닫기(다시 그리지 않고 그 자리에서) — 닫혀 있던 걸 닫으면 false
+  function guDdOpen(open) {
+    const m = document.getElementById('gu-dd-menu'), b = document.querySelector('[data-gudd]');
+    if (!m || !b || m.hidden === !open) return false;
+    m.hidden = !open; b.setAttribute('aria-expanded', String(!!open));
+    document.getElementById('gu-dd')?.classList.toggle('open', !!open);
+    if (open) {
+      const s = m.querySelector('[aria-selected="true"]');
+      if (s) { m.scrollTop = s.offsetTop - m.clientHeight / 2 + s.offsetHeight / 2; s.focus({ preventScroll: true }); }
+      // 화면 아래쪽이면 목록이 잘리지 않게 카드를 조금 올린다
+      const r = m.getBoundingClientRect(), nav = document.querySelector('.tabbar')?.getBoundingClientRect().top || innerHeight;
+      if (r.bottom > nav - 56) window.scrollBy({ top: Math.min(r.bottom - nav + 64, b.getBoundingClientRect().top - 80), behavior: 'smooth' });
+    }
+    return true;
+  }
   // 종목 화면 '기관 보유 현황'에 붙는 한 줄: 이 종목을 담은 유명 투자자
   function guruLine(sym) {
     if (isKR(sym) || DEMO) return '';
     if (!state.gurus) { if (!state.gurusErr) loadGurus(); return ''; }
     const L = state.gurus.list.filter((g) => GURUS[g.id]).map((g) => { const h = g.top.find((x) => x.t === sym && !x.pc); return h ? { id: g.id, w: h.w, chg: h.chg } : null; }).filter(Boolean).sort((a, b) => b.w - a.w);
     if (!L.length) return '';
-    return `<div class="gu-hold" data-noi18n><span>💼 ${EN ? 'Famous investors holding it' : '이 종목을 담은 유명 투자자'}</span><p>${L.map((g) => `<button type="button" data-gurugo="${g.id}">${esc(guName(g.id))} <b>${pctPlain(g.w, g.w >= 0.1 ? 0 : 1)}</b>${g.chg === 'new' ? `<em>${EN ? 'New' : '신규'}</em>` : ''}</button>`).join('')}</p><small>${EN ? 'Share of each investor’s portfolio · 13F, quarter end' : '각 투자자 포트폴리오에서 차지하는 비중 · 13F 분기 말 기준'}</small></div>`;
+    return `<div class="gu-hold" data-noi18n><span>💼 ${EN ? 'Famous investors & funds holding it' : '이 종목을 담은 유명 투자자·기관'}</span><p>${L.map((g) => `<button type="button" data-gurugo="${g.id}">${esc(guName(g.id))} <b>${pctPlain(g.w, g.w >= 0.1 ? 0 : 1)}</b>${g.chg === 'new' ? `<em>${EN ? 'New' : '신규'}</em>` : ''}</button>`).join('')}</p><small>${EN ? 'Share of each investor’s portfolio · 13F, quarter end' : '각 투자자 포트폴리오에서 차지하는 비중 · 13F 분기 말 기준'}</small></div>`;
   }
 
   function renderHolders(sym = state.stock, id = sym === 'CRCL' ? 'holders' : 'sholders') {
@@ -9458,6 +9554,9 @@ ${what.join(' · ')}
     }
   });
   document.addEventListener('click', (ev) => {
+    // 💼 투자자 펼침 목록: 버튼은 열고 닫기, 바깥을 누르면 닫기
+    if (ev.target.closest('[data-gudd]')) { guDdOpen(document.getElementById('gu-dd-menu')?.hidden); return; }
+    if (!ev.target.closest('#gu-dd-menu')) guDdOpen(false);
     const ez = ev.target.closest('[data-easy]');
     if (ez) {
       const id = ez.dataset.easy, panel = document.getElementById('easy-' + id);
@@ -9959,7 +10058,13 @@ ${what.join(' · ')}
   setInterval(() => { if (!document.hidden) refresh('auto'); }, DATA_REFRESH_MS);
   setInterval(() => { if (!document.hidden) { renderStatus(); renderMarket(); if (px.mark) setHtml('px-next', fundLeft(px.mark.next)); } }, 30000);
   document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') { closeWatchSheet(); closeTxSheet(); closeFolderSheet(); closeHomeEdit(); }
+    if (ev.key === 'Escape') { if (guDdOpen(false)) document.querySelector('[data-gudd]')?.focus(); closeWatchSheet(); closeTxSheet(); closeFolderSheet(); closeHomeEdit(); }
+    // 투자자 목록: 위·아래 화살표로 이동
+    if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && ev.target.closest?.('#gu-dd')) {
+      const os = [...document.querySelectorAll('#gu-dd-menu .gu-dd-o')], i = os.indexOf(ev.target);
+      if (i < 0) { if (ev.target.matches('[data-gudd]')) { ev.preventDefault(); guDdOpen(true); } return; }
+      ev.preventDefault(); os[Math.max(0, Math.min(os.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1)))].focus();
+    }
     if (ev.key === 'Enter' && ev.target?.id === 'tgt-in') { const b = document.querySelector('[data-tgtsave]'); if (b) saveTgt(b.dataset.tgtsave); }
     if (ev.key === 'Enter' && ev.target?.id === 'fd-name') saveFolder();
   });
@@ -9980,7 +10085,6 @@ ${what.join(' · ')}
     if (ev.target.id === 'tax-amt') { taxCfg.amt = ev.target.value; writeJSON(TAX_KEY, taxCfg); renderHomeFire(); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); }
   });
   document.addEventListener('change', (ev) => {
-    if (ev.target.matches?.('[data-gusel]')) { state.guru = ev.target.value; renderGurus(); document.getElementById('gu-sel')?.focus({ preventScroll: true }); return; }
     const gc = ev.target.dataset?.grow;
     if (gc && ev.target.type === 'checkbox') { growCfg[gc] = ev.target.checked; growSave(); growRefresh(); return; }
     const ec = ev.target.dataset?.etax;

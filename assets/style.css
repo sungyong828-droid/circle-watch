@@ -2054,17 +2054,40 @@ html[lang="en"] .f100-lg { grid-template-columns: repeat(auto-fit, minmax(160px,
 }
 
 /* 💼 유명 투자자 포트폴리오(13F) */
-/* 투자자 고르기: 펼침 목록(휴대폰은 기본 선택 창이 뜬다) */
-.gu-pick { position: relative; display: block; margin-top: 12px; }
-.gu-pick select { -webkit-appearance: none; appearance: none; width: 100%; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: 700 16px var(--sans); padding: 11px 40px 11px 14px; border-radius: 12px; cursor: pointer; text-overflow: ellipsis; }
-.gu-pick select:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 1px; }
-.gu-pick select option { background: var(--surface); color: var(--ink); font-weight: 600; }
-.gu-pick svg { position: absolute; right: 14px; top: 50%; width: 18px; height: 18px; margin-top: -9px; fill: none; stroke: var(--muted); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
-.gu-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-.gu-head > div:first-child b { display: block; font-size: 16px; }
-.gu-head > div:first-child small { color: var(--muted); font-size: 12px; }
-.gu-stat { display: flex; gap: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
-.gu-stat b { color: var(--ink); font: 700 13px var(--mono); }
+/* 투자자 고르기: 펼침 목록 — '유명 투자자' · '기관' 두 묶음 */
+.gu-av { --h: 210; flex: none; width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font: 800 10.5px var(--sans); letter-spacing: -0.3px; color: hsl(var(--h) 70% 82%); background: hsl(var(--h) 45% 26%); box-shadow: inset 0 0 0 1px hsl(var(--h) 50% 40% / .55); }
+.gu-av.inst { border-radius: 9px; }
+.gu-av.big { width: 40px; height: 40px; font-size: 12.5px; }
+.gu-av.big.inst { border-radius: 11px; }
+:root[data-theme="light"] .gu-av { color: hsl(var(--h) 60% 30%); background: hsl(var(--h) 70% 92%); box-shadow: inset 0 0 0 1px hsl(var(--h) 50% 70% / .6); }
+:root[data-theme="light"] .gu-dd-menu { box-shadow: 0 16px 36px rgba(16, 24, 40, .14), 0 2px 6px rgba(16, 24, 40, .08); }
+.gu-dd { position: relative; margin-top: 12px; }
+.gu-dd-btn { width: 100%; display: flex; align-items: center; gap: 11px; text-align: left; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 9px 12px 9px 10px; border-radius: 14px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.gu-dd-btn:hover { border-color: color-mix(in srgb, var(--c-blue) 45%, var(--line)); }
+.gu-dd.open .gu-dd-btn { border-color: var(--c-blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-blue) 18%, transparent); }
+.gu-dd-t { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.gu-dd-t b { font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gu-dd-t small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gu-dd-chev { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s; }
+.gu-dd.open .gu-dd-chev { transform: rotate(180deg); stroke: var(--c-blue); }
+.gu-dd-menu { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 6px); max-height: min(60vh, 440px); overflow-y: auto; overscroll-behavior: contain; padding: 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .2); animation: guDdIn .14s ease-out; }
+@keyframes guDdIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.gu-dd-g { position: sticky; top: -6px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: 0 -6px; padding: 10px 14px 6px; font: 800 11.5px var(--sans); letter-spacing: .2px; color: var(--muted); background: var(--surface); }
+.gu-dd-g:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.gu-dd-g span { font: 700 10.5px var(--mono); padding: 1px 6px; border-radius: 999px; background: var(--surface-2); }
+.gu-dd-o { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; border: 0; background: transparent; color: var(--ink); padding: 8px; border-radius: 11px; cursor: pointer; }
+.gu-dd-o .gu-dd-t b { font-size: 14px; }
+.gu-dd-o .gu-dd-t small { font-size: 11.5px; }
+.gu-dd-o em { flex: none; font: 600 11.5px var(--mono); font-style: normal; color: var(--muted); }
+.gu-dd-o:hover, .gu-dd-o:focus-visible { background: var(--surface-2); outline: none; }
+.gu-dd-o[aria-selected="true"] { background: color-mix(in srgb, var(--c-blue) 14%, transparent); }
+.gu-dd-o[aria-selected="true"] .gu-dd-t b { color: var(--c-blue); }
+.gu-dd-o[aria-selected="true"] em::before { content: '✓ '; color: var(--c-blue); font-weight: 800; }
+.gu-bio { margin-top: 10px; padding: 11px 13px; border-radius: 12px; background: var(--surface-2); }
+.gu-bio p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--ink-2); word-break: keep-all; }
+.gu-bio .gu-skip { margin-top: 6px; font-size: 12px; color: var(--c-amber, #f5a524); }
+.gu-stat { display: flex; gap: 14px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.gu-stat b { color: var(--ink); font: 700 13px var(--mono); margin-left: 3px; }
 .gu-pie { display: flex; justify-content: center; margin: 12px 0 6px; }
 .gu-chart { position: relative; width: 240px; max-width: 100%; height: 240px; }
 .gu-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }

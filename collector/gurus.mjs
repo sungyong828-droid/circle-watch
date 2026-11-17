@@ -26,6 +26,19 @@ export const GURU_CIKS = {
   pabrai: 1549575, // Dalal Street (Mohnish Pabrai)
   smith: 1569205, // Fundsmith (Terry Smith)
   gates: 1166559, // Gates Foundation Trust
+  // ---- 기관(연기금·국부펀드·중앙은행·대학 기금·퀀트) — 화면 목록에서 '기관'으로 묶인다
+  nps: 1608046, // National Pension Service (국민연금)
+  bok: 1965704, // Bank of Korea (한국은행, 2023년부터 제출)
+  kic: 1441689, // Korea Investment Corp (한국투자공사)
+  norway: 1374170, // Norges Bank (노르웨이 국부펀드 GPFG)
+  snb: 1582202, // Swiss National Bank
+  temasek: 1021944, // Temasek Holdings
+  pif: 1767640, // Public Investment Fund (사우디)
+  mubadala: 1704268, // Mubadala Investment Co (아부다비)
+  cpp: 1283718, // Canada Pension Plan Investment Board
+  calpers: 919079, // California Public Employees' Retirement System
+  harvard: 1082621, // Harvard Management Co
+  rentec: 1037389, // Renaissance Technologies
 };
 const TOP = 40, SOLD = 10;
 
@@ -81,7 +94,7 @@ async function filingList(cik) {
   const j = await get(`https://data.sec.gov/submissions/CIK${String(cik).padStart(10, '0')}.json`);
   const R = j.filings.recent, list = [];
   R.form.forEach((f, i) => { if (f === '13F-HR' || f === '13F-HR/A') list.push({ form: f, filed: R.filingDate[i], period: R.reportDate[i], acc: R.accessionNumber[i] }); });
-  const periods = [...new Set(list.map((x) => x.period))].sort().reverse().slice(0, 2);
+  const periods = [...new Set(list.map((x) => x.period))].sort().reverse().slice(0, 4);
   return { filer: j.name, quarters: periods.map((p) => ({ period: p, filings: list.filter((x) => x.period === p).sort((a, b) => a.filed.localeCompare(b.filed) || a.acc.localeCompare(b.acc)) })) };
 }
 // 한 분기: 원본에 수정본을 반영(재작성이면 통째로 바꾸고, '신규 보유 추가'면 더한다)
@@ -157,9 +170,13 @@ export async function collectGurus(state, prev, log = console.log) {
         if (!L.quarters.length) continue;
         const s = sig(L);
         if (S.sig[id] === s && prevBy[id]) { out[id] = prevBy[id]; continue; }
-        const cur = await quarter(cik, L.quarters[0]);
-        const old = L.quarters[1] ? await quarter(cik, L.quarters[1]) : null;
-        out[id] = { id, ...shrink({ cik, filer: L.filer, period: cur.period, filed: cur.filed, prevPeriod: old?.period || null, cur: cur.hold, old: old?.hold || [] }) };
+        // 보유 표가 비어 있는 분기는 건너뛴다(노르웨이 중앙은행은 1·3분기를 비공개로 내고 1년 뒤 공개)
+        const empty = (q) => !q.hold.some((h) => h.v > 0);
+        let k = 0, cur = null, old = null, skipped = null;
+        for (; k < L.quarters.length && !cur; k++) { const q = await quarter(cik, L.quarters[k]); if (empty(q)) skipped ||= q.period; else cur = q; }
+        if (!cur) throw new Error('보유 표가 비어 있음');
+        for (; k < L.quarters.length && !old; k++) { const q = await quarter(cik, L.quarters[k]); if (!empty(q)) old = q; }
+        out[id] = { id, ...shrink({ cik, filer: L.filer, period: cur.period, filed: cur.filed, prevPeriod: old?.period || null, cur: cur.hold, old: old?.hold || [] }), ...(skipped ? { skipped } : {}) };
         S.sig[id] = s;
         log(`gurus: ${id} ${cur.period} ${cur.hold.length}종목`);
       } catch (e) {
