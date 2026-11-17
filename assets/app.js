@@ -5101,11 +5101,11 @@
     ['today', () => (EN ? '📌 Today in one line' : '📌 오늘 한 줄'), ['today-line'], () => (EN ? 'How much my holdings moved today' : '오늘 내 자산이 얼마나 움직였는지')],
     ['fire', () => (EN ? '🔥 My money' : '🔥 내 돈 요약'), ['home-fire'], () => (EN ? 'FIRE · Dividends · Tax' : '퇴사까지 · 배당금 · 세금')],
     ['stocks', () => (EN ? '📈 My stocks' : '📈 내 종목'), ['ss-head', 'ss-folders', 'stock-switch', 'home-crcl', 'home-stock']],
-    ['market', () => (EN ? '📊 Market' : '📊 시장'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow'], () => (EN ? 'Overview · Fear & Greed · Money flow' : '개요 · 공포탐욕 · 자금 동향')],
+    ['market', () => (EN ? '📊 Market' : '📊 시장'), ['mk-tabs', 'c-market', 'c-feargreed', 'c-flow', 'c-gurus'], () => (EN ? 'Overview · Fear & Greed · Money flow · Gurus' : '개요 · 공포탐욕 · 자금 동향 · 유명 투자자')],
   ];
   const DEFAULT_ORDER = ['today', 'fire', 'market', 'stocks'];
   // 휴대폰 홈: 시장 개요·공포탐욕·자금 동향을 탭 하나로(넓은 화면은 셋 다 보임)
-  const MK_TABS = [['market', 'c-market', () => (EN ? '📊 Overview' : '📊 시장 개요')], ['fg', 'c-feargreed', () => (EN ? '😨 Fear & Greed' : '😨 공포·탐욕')], ['flow', 'c-flow', () => (EN ? '💸 Money flow' : '💸 자금 동향')]];
+  const MK_TABS = [['market', 'c-market', () => (EN ? '📊 Overview' : '📊 시장 개요')], ['fg', 'c-feargreed', () => (EN ? '😨 Fear & Greed' : '😨 공포·탐욕')], ['flow', 'c-flow', () => (EN ? '💸 Money flow' : '💸 자금 동향')], ['gurus', 'c-gurus', () => (EN ? '💼 Gurus' : '💼 유명 투자자')]];
   function applyMkTab() {
     const cur = MK_TABS.some((x) => x[0] === loadPref('mktab', 'market')) ? loadPref('mktab', 'market') : 'market';
     const el = document.getElementById('mk-tabs');
@@ -6649,6 +6649,142 @@ ${what.join(' · ')}
   const titleCase = (s) => String(s || '').replace(/\s*\/[a-z]{2,3}\/?\s*$/i, '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bLlc\b/g, 'LLC').replace(/\bL\.p\./g, 'L.P.').replace(/\bInc\b/g, 'Inc');
   const HOLD_TABS = [['top', '상위 보유'], ['major', '주요 금융사'], ['buy', '많이 산 곳'], ['sell', '많이 판 곳']];
 
+  // ---------------------------------------------------------------- 💼 유명 투자자 포트폴리오(13F) — 홈 · 시장 네 번째 탭
+  // 수집기(collector/gurus.mjs)가 SEC 13F 보고서로 만든 data/gurus.json. 탭을 열 때(넓은 화면은 카드가 보일 때)만 받는다
+  const GURUS = {
+    buffett: ['워런 버핏', 'Warren Buffett', '버크셔 해서웨이', 'Berkshire Hathaway'],
+    thiel: ['피터 틸', 'Peter Thiel', '틸 매크로', 'Thiel Macro'],
+    ackman: ['빌 애크먼', 'Bill Ackman', '퍼싱 스퀘어', 'Pershing Square'],
+    wood: ['캐시 우드', 'Cathie Wood', 'ARK 인베스트', 'ARK Invest'],
+    druck: ['스탠리 드러켄밀러', 'Stanley Druckenmiller', '듀케인 패밀리 오피스', 'Duquesne Family Office'],
+    dalio: ['레이 달리오', 'Ray Dalio', '브리지워터(창업한 회사)', 'Bridgewater (the firm he founded)'],
+    soros: ['조지 소로스', 'George Soros', '소로스 펀드(창업한 회사)', 'Soros Fund Mgmt (the firm he founded)'],
+    tepper: ['데이비드 테퍼', 'David Tepper', '아팔루사', 'Appaloosa'],
+    lilu: ['리루', 'Li Lu', '히말라야 캐피털', 'Himalaya Capital'],
+    klarman: ['세스 클라만', 'Seth Klarman', '바우포스트', 'Baupost Group'],
+    icahn: ['칼 아이칸', 'Carl Icahn', '아이칸(본인 명의)', 'Icahn (personal filing)'],
+    coleman: ['체이스 콜먼', 'Chase Coleman', '타이거 글로벌', 'Tiger Global'],
+    loeb: ['댄 롭', 'Dan Loeb', '서드 포인트', 'Third Point'],
+    laffont: ['필리프 라퐁', 'Philippe Laffont', '코투', 'Coatue'],
+    pabrai: ['모니시 파브라이', 'Mohnish Pabrai', '달랄 스트리트', 'Dalal Street'],
+    smith: ['테리 스미스', 'Terry Smith', '펀드스미스', 'Fundsmith'],
+    gates: ['빌 게이츠 재단', 'Gates Foundation', '게이츠 재단 신탁', 'Gates Foundation Trust'],
+  };
+  const guName = (id) => (GURUS[id] ? GURUS[id][EN ? 1 : 0] : id);
+  const guFirm = (id) => (GURUS[id] ? GURUS[id][EN ? 3 : 2] : '');
+  const GU_COLORS = ['#5b8def', '#f2994a', '#3fbf7f', '#c86bf2', '#f5c542', '#f04452', '#3ec6d6', '#e86fb0', '#8fbf3f', '#a78bfa'], GU_REST = '#8a94a6';
+  const GURU_URL = ON_PAGES ? '/api/gurus' : 'data/gurus.json';
+  let guruP = null, guruIO = null;
+  function loadGurus() {
+    if (state.gurus || guruP) return guruP;
+    guruP = getJ(GURU_URL, 20000).catch((e) => { if (!DATA_FALLBACK) throw e; return getJ(DATA_FALLBACK.replace('latest.json', 'gurus.json'), 20000); })
+      .then((j) => { if (!j?.list?.length) throw new Error('empty'); state.gurus = j; state.gurusErr = null; })
+      .catch((e) => { state.gurusErr = e.message; })
+      .finally(() => { guruP = null; renderGurus(); try { if (state.view !== 'home') renderHolders(state.stock); } catch {} });
+    return guruP;
+  }
+  // 휴대폰: 탭을 골랐을 때 · 넓은 화면(카드 넷이 다 보임): 카드가 화면 가까이 오면
+  function wantGurus() {
+    const el = document.getElementById('c-gurus');
+    if (!el || state.gurus || guruP || DEMO) return;
+    if (!matchMedia('(min-width: 900px)').matches) { if (loadPref('mktab', 'market') === 'gurus') loadGurus(); return; }
+    if (guruIO || !window.IntersectionObserver) { if (!guruIO) loadGurus(); return; }
+    guruIO = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { guruIO.disconnect(); loadGurus(); } }, { rootMargin: '400px' });
+    guruIO.observe(el);
+  }
+  const guTk = (h) => h.t || String(h.n || '?').split(/\s+/)[0].slice(0, 8);
+  // ETF는 회사 이름이 'iShares Tr'처럼 운용사 신탁 이름이라, 종류 칸(예: CORE S&P500 ETF)을 붙여 어떤 ETF인지 보이게
+  const guNm = (h) => {
+    const m = String(h.n || '').match(/^(ishares|select sector spdr|spdr|vanguard|invesco)/i), c = String(h.c || '');
+    if (!m || !c || /^(COM|TR UNIT|ETP)\b/i.test(c)) return h.n || '';
+    const brand = /spdr/i.test(m[1]) ? 'SPDR' : /ishares/i.test(m[1]) ? 'iShares' : m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
+    return `${brand} ${c.replace(/^(ISHARES|SPDR)\s+/i, '')}`;
+  };
+  const guPc = (h) => (h.pc === 'put' ? (EN ? 'Put' : '풋옵션') : h.pc === 'call' ? (EN ? 'Call' : '콜옵션') : '');
+  const guKind = (h) => (/\bNOTE|DEBT|BOND/i.test(h.c || '') ? (EN ? 'Conv. note' : '전환사채') : /\bW(ARRANT|T)?\b|\*W/i.test(h.c || '') ? (EN ? 'Warrant' : '워런트') : '');
+  const guChg = (h) => (h.chg === 'new' ? `<em class="gu-chg new">${EN ? 'New' : '신규'}</em>`
+    : h.chg == null ? '' : Math.abs(h.chg) < 0.005 ? `<em class="gu-chg flat">${EN ? 'Same' : '유지'}</em>`
+    : `<em class="gu-chg ${h.chg > 0 ? 'up' : 'down'}">${h.chg > 0 ? '+' : '−'}${Math.round(Math.abs(h.chg) * 100)}%</em>`);
+  const guQ = (p) => { const m = +p.slice(5, 7); return EN ? `Q${Math.ceil(m / 3)} ${p.slice(0, 4)}` : `${p.slice(0, 4)}년 ${Math.ceil(m / 3)}분기`; };
+  const guMd = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
+  function guRow(h, i, mine) {
+    const lp = h.t ? logoPath(h.t) : null, tag = [guPc(h), guKind(h)].filter(Boolean)[0], my = !h.pc && !!h.t && mine.has(h.t);
+    return `<li class="${my ? 'gu-mine' : ''}"><i class="gu-sw" style="background:${i < 10 ? GU_COLORS[i] : GU_REST}"></i>
+      ${lp ? `<img class="gu-logo" src="${lp}" alt="" width="24" height="24" loading="lazy">` : `<span class="gu-logo ws-letter">${esc(guTk(h)[0])}</span>`}
+      <div class="gu-nm"><b>${esc(guTk(h))}${tag ? ` <small class="gu-tag">${tag}</small>` : ''}${my ? ` <small class="gu-my">${EN ? 'My stock' : '내 종목'}</small>` : ''}</b><small>${esc(guNm(h))}</small></div>
+      <div class="gu-w"><b>${pctPlain(h.w, h.w >= 0.1 ? 1 : 2)}</b><small>${usd(h.v)}</small></div>${guChg(h) || '<em class="gu-chg"></em>'}</li>`;
+  }
+  // 도넛 조각 위에 종목 이름과 비중을 바로 적는다(6% 이상만 — 작은 조각은 목록 색으로 찾는다)
+  const guLabelPlugin = {
+    id: 'guLabels',
+    afterDatasetsDraw(ch) {
+      const ds = ch.data.datasets[0], L = ch.options.plugins.guLabels?.labels || [], sum = ds.data.reduce((a, b) => a + b, 0) || 1, { ctx } = ch;
+      ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+      ch.getDatasetMeta(0).data.forEach((a, i) => {
+        const w = ds.data[i] / sum; if (w < 0.06 || !L[i]) return;
+        const p = a.tooltipPosition();
+        ctx.font = `700 ${w >= 0.12 ? 11.5 : 10}px Pretendard Variable, sans-serif`; ctx.fillText(L[i], p.x, p.y - 6);
+        ctx.font = `600 ${w >= 0.12 ? 10.5 : 9.5}px Pretendard Variable, sans-serif`; ctx.fillText((w * 100).toFixed(0) + '%', p.x, p.y + 7);
+      });
+      ctx.restore();
+    },
+  };
+  function renderGurus() {
+    const el = document.getElementById('c-gurus');
+    if (!el) return;
+    const title = EN ? '💼 Famous investors’ portfolios' : '💼 유명 투자자 포트폴리오';
+    const easy = EN ? 'Big US investors managing over $100M must report the US stocks they hold every quarter (Form 13F). Pick an investor to see what they own and how much of their portfolio each stock is.'
+      : '1억 달러 넘게 굴리는 미국 기관·큰손은 분기마다 갖고 있는 미국 주식을 SEC에 신고해요(13F 보고서). 투자자를 고르면 어떤 종목을 얼마나 담았는지 비중으로 보여줘요.';
+    const info = EN ? '• 13F shows holdings at <b>quarter end</b>, published up to 45 days later — they may have traded since.<br>• Only US-listed stocks, ETFs, options and convertible notes. Cash, bonds, foreign shares and short sales aren’t included.<br>• Options are counted at the value of the underlying shares. Change = share count vs. the previous quarter.<br>• Source: SEC EDGAR · tickers via OpenFIGI.'
+      : '• 13F는 <b>분기 말</b> 기준 보유 내역이고 최대 45일 뒤에 공개돼요. 그 사이 사고팔았을 수 있어요.<br>• 미국 상장 주식·ETF·옵션·전환사채만 담겨요. 현금·채권·해외 주식·공매도는 빠져요.<br>• 옵션은 기초 주식 금액으로 계산돼요. 변화는 지난 분기 대비 주식 수 기준이에요.<br>• 출처: SEC EDGAR · 종목 코드는 OpenFIGI.';
+    const G = state.gurus;
+    if (!G) {
+      card('gurus', { title, easy, info, body: state.gurusErr ? `<p class="err">${EN ? 'Couldn’t load 13F data. Try again in a moment.' : '13F 자료를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.'}</p>` : `<p class="skeleton">${EN ? 'Loading…' : '불러오는 중…'}</p>` });
+      return;
+    }
+    const list = G.list.filter((g) => GURUS[g.id]);
+    const sel = list.find((g) => g.id === loadPref('guru', 'buffett')) || list[0];
+    const mine = new Set(WATCH.filter((s) => !isKR(s)));
+    const top10 = sel.top.slice(0, 10), restW = Math.max(0, 1 - top10.reduce((a, h) => a + h.w, 0));
+    const t10w = 1 - restW;
+    // 내 관심 종목을 담은 투자자(전체 투자자 상위 40 기준)
+    const hits = [...mine].map((s) => ({ s, g: list.map((g) => { const h = g.top.find((x) => x.t === s && !x.pc); return h ? { id: g.id, w: h.w, chg: h.chg } : null; }).filter(Boolean).sort((a, b) => b.w - a.w) })).filter((x) => x.g.length);
+    card('gurus', {
+      title, easy, info,
+      sub: EN ? `Form 13F · holdings at ${guQ(sel.period)} end (${guMd(sel.period)}) · filed ${guMd(sel.filed)}` : `13F 보고서 · ${guQ(sel.period)} 말(${guMd(sel.period)}) 기준 · ${guMd(sel.filed)} 공개`,
+      body: `<div data-noi18n>
+        <div class="gu-chips" role="group" aria-label="${EN ? 'Investor' : '투자자'}">${list.map((g) => `<button type="button" data-guru="${g.id}" aria-pressed="${g.id === sel.id}">${esc(guName(g.id))}</button>`).join('')}</div>
+        <div class="gu-head"><div><b>${esc(guName(sel.id))}</b><small>${esc(guFirm(sel.id))}</small></div>
+          <div class="gu-stat"><span>${EN ? 'Reported value' : '신고 금액'} <b>${usd(sel.total)}</b></span><span>${EN ? `${sel.count} holdings` : `${sel.count}종목`}</span></div></div>
+        <div class="gu-main"><div class="gu-pie"><div class="chart gu-chart"><canvas id="cv-gurus" role="img" aria-label="${esc(guName(sel.id))} ${EN ? 'portfolio weights' : '포트폴리오 비중'}"></canvas>
+          <div class="gu-center" aria-hidden="true">${sel.count > 10 ? `<small>${EN ? 'Top 10' : '상위 10종목'}</small><b>${pctPlain(t10w, 0)}</b>` : `<small>${EN ? 'Holdings' : '보유 종목'}</small><b>${sel.count}</b>`}</div></div></div>
+        <ul class="gu-list">${top10.map((h, i) => guRow(h, i, mine)).join('')}
+          ${restW > 0.0005 ? `<li class="gu-rest"><i class="gu-sw" style="background:${GU_REST}"></i><span></span><div class="gu-nm"><b>${EN ? 'Others' : '기타'}</b><small>${EN ? `${sel.count - top10.length} more holdings` : `나머지 ${sel.count - top10.length}종목`}</small></div><div class="gu-w"><b>${pctPlain(restW, 1)}</b></div><em class="gu-chg"></em></li>` : ''}</ul></div>
+        ${sel.top.length > 10 ? `${more('gu:more', EN ? `Holdings #11–${sel.top.length}` : `11~${sel.top.length}위 종목 보기`)}<ul class="gu-list">${sel.top.slice(10).map((h, i) => guRow(h, i + 10, mine)).join('')}</ul></details>` : ''}
+        ${sel.sold?.length ? `${more('gu:sold', EN ? `Sold out since last quarter (${sel.sold.length})` : `지난 분기 대비 전량 매도 (${sel.sold.length})`)}<ul class="gu-sold">${sel.sold.map((h) => `<li><b>${esc(guTk(h))}${guPc(h) ? ` <small class="gu-tag">${guPc(h)}</small>` : ''}</b><small>${esc(guNm(h))}</small><span>${EN ? 'was' : '직전'} ${pctPlain(h.pw, h.pw >= 0.1 ? 1 : 2)}</span></li>`).join('')}</ul></details>` : ''}
+        ${hits.length ? `<div class="gu-hits"><div class="gu-hits-h">⭐ ${EN ? 'Investors holding my stocks' : '내 관심 종목을 담은 투자자'}</div>${hits.map((x) => `<p><b>${esc(x.s)}</b>${x.g.map((g) => `<button type="button" data-guru="${g.id}">${esc(guName(g.id))} <span>${pctPlain(g.w, g.w >= 0.1 ? 0 : 1)}</span>${g.chg === 'new' ? `<em>${EN ? 'New' : '신규'}</em>` : ''}</button>`).join('')}</p>`).join('')}</div>` : ''}
+        <p class="note gu-note">${EN ? `Holdings at quarter end, disclosed up to 45 days later — they may have changed since. US-listed stocks only (no cash, bonds or shorts). Change = shares vs. ${sel.prevPeriod ? guQ(sel.prevPeriod) : 'previous quarter'}.` : `분기 말 보유 내역이 최대 45일 뒤 공개된 거라 지금은 달라졌을 수 있어요. 미국 상장 주식만 담겨요(현금·채권·공매도 제외). 변화는 ${sel.prevPeriod ? guQ(sel.prevPeriod) : '지난 분기'} 대비 주식 수.`}</p>
+      </div>`,
+    });
+    const chip = el.querySelector('.gu-chips [aria-pressed="true"]'), row = chip?.parentElement;
+    if (row) { const x = chip.offsetLeft - row.offsetLeft; if (x + chip.offsetWidth > row.clientWidth) row.scrollLeft = x - 12; }
+    const labels = top10.map((h) => guTk(h) + (h.pc === 'put' ? (EN ? ' put' : ' 풋') : h.pc === 'call' ? (EN ? ' call' : ' 콜') : ''));
+    const data = top10.map((h) => h.w).concat(restW > 0.0005 ? [restW] : []);
+    draw('gurus', {
+      type: 'doughnut', plugins: [guLabelPlugin],
+      data: { labels: labels.concat(restW > 0.0005 ? [EN ? 'Others' : '기타'] : []), datasets: [{ data, backgroundColor: top10.map((_, i) => GU_COLORS[i]).concat([GU_REST]), borderWidth: 1.5, borderColor: C.surface }] },
+      options: { cutout: '52%', layout: { padding: 2 }, plugins: { ...noLegend, guLabels: { labels }, tooltip: { callbacks: { label: (it) => ` ${it.label}: ${pctPlain(it.raw, 1)}${top10[it.dataIndex] ? ' · ' + usd(top10[it.dataIndex].v) : ''}` } } } },
+    });
+  }
+  // 종목 화면 '기관 보유 현황'에 붙는 한 줄: 이 종목을 담은 유명 투자자
+  function guruLine(sym) {
+    if (isKR(sym) || DEMO) return '';
+    if (!state.gurus) { if (!state.gurusErr) loadGurus(); return ''; }
+    const L = state.gurus.list.filter((g) => GURUS[g.id]).map((g) => { const h = g.top.find((x) => x.t === sym && !x.pc); return h ? { id: g.id, w: h.w, chg: h.chg } : null; }).filter(Boolean).sort((a, b) => b.w - a.w);
+    if (!L.length) return '';
+    return `<div class="gu-hold" data-noi18n><span>💼 ${EN ? 'Famous investors holding it' : '이 종목을 담은 유명 투자자'}</span><p>${L.map((g) => `<button type="button" data-gurugo="${g.id}">${esc(guName(g.id))} <b>${pctPlain(g.w, g.w >= 0.1 ? 0 : 1)}</b>${g.chg === 'new' ? `<em>${EN ? 'New' : '신규'}</em>` : ''}</button>`).join('')}</p><small>${EN ? 'Share of each investor’s portfolio · 13F, quarter end' : '각 투자자 포트폴리오에서 차지하는 비중 · 13F 분기 말 기준'}</small></div>`;
+  }
+
   function renderHolders(sym = state.stock, id = sym === 'CRCL' ? 'holders' : 'sholders') {
     if (!document.getElementById('c-' + id)) return;
     const H = state.holders[sym], S = STOCK_INFO[sym];
@@ -6694,6 +6830,7 @@ ${what.join(' · ')}
           <div><span>줄인 곳</span><b class="down">${dec ? nf(0).format(dec.holders) + '곳' : '–'}</b><small>-${unit(dec?.shares)}주${H.soldOut ? ` · 전량 매도 ${nf(0).format(H.soldOut.holders)}곳` : ''}</small></div>
         </div>
         ${flow != null ? `<div class="h-flow"><span>기관 순매수(직전 분기 대비)</span><b class="${cls(flow)}">${flow > 0 ? '+' : ''}${unit(flow)}주</b></div>` : ''}
+        ${guruLine(sym)}
         ${estHtml}
         ${more(id + ':more', `기관별 보유 목록 ${H.top.length}곳 보기`)}
         <div class="nf h-tabs" role="group" aria-label="기관 목록 보기">${HOLD_TABS.map(([k, l]) => `<button type="button" data-htab="${k}" aria-pressed="${k === tab}">${l}</button>`).join('')}</div>
@@ -9379,7 +9516,11 @@ ${what.join(' · ')}
     const swp = ev.target.closest('[data-swpick]');
     if (swp) { pickStockFromSheet(swp.dataset.swpick); return; }
     const mkt = ev.target.closest('[data-mktab]');
-    if (mkt) { savePref('mktab', mkt.dataset.mktab); applyMkTab(); return; }
+    if (mkt) { savePref('mktab', mkt.dataset.mktab); applyMkTab(); if (mkt.dataset.mktab === 'gurus') loadGurus(); return; }
+    const gu = ev.target.closest('[data-guru]');
+    if (gu) { savePref('guru', gu.dataset.guru); renderGurus(); if (gu.closest('.gu-hits')) document.getElementById('c-gurus')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+    const gug = ev.target.closest('[data-gurugo]');
+    if (gug) { savePref('guru', gug.dataset.gurugo); savePref('mktab', 'gurus'); applyMkTab(); renderGurus(); showView('home'); requestAnimationFrame(() => { const el = document.getElementById(matchMedia('(min-width: 900px)').matches ? 'c-gurus' : 'mk-tabs'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - document.querySelector('.top').offsetHeight - 10 }); }); return; }
     if (ev.target.closest('[data-hsmore]')) { savePref('hsmore', loadPref('hsmore', '0') === '1' ? '0' : '1'); applyHsMore(); return; }
     const mkg = ev.target.closest('[data-mkgo]');
     if (mkg) { state.mkSym = mkg.dataset.mkgo; savePref('mksym', state.mkSym); if (state.view === 'mkt') renderMkChart(); else { showView('mkt'); window.scrollTo({ top: 0 }); } return; }
@@ -9766,6 +9907,7 @@ ${what.join(' · ')}
   applyHomeLayout();
   state.flowRange = loadPref('flowRange', '3y');
   try { renderFlowCard(); } catch (e) { console.error(e); }
+  try { renderGurus(); wantGurus(); } catch (e) { console.error(e); }
   setTimeout(loadSched, 1200);
   setTimeout(() => loadFlow().then(() => { renderFlowCard(); if (state.view === 'flow') renderFlowView(); }).catch(() => {}), 1800);
   renderStockSwitch();

@@ -5,6 +5,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { collectGurus } from './gurus.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = path.join(ROOT, 'data');
@@ -782,6 +783,22 @@ async function main() {
   out.snapshots = state.snapshots;
 
   await fs.writeFile(path.join(DATA_DIR, 'latest.json'), JSON.stringify(out));
+
+  // 유명 투자자 13F 포트폴리오 → data/gurus.json(화면은 '유명 투자자' 탭을 열 때만 받는다)
+  {
+    const t = Date.now();
+    let prevG = null;
+    if (SITE_URL) try { prevG = await getJSON(`${SITE_URL}/data/gurus.json?t=${Date.now()}`, { retries: 1 }); } catch {}
+    prevG ||= await readJSON(path.join(DATA_DIR, 'gurus.json'));
+    try {
+      const g = await collectGurus(state, prevG, log);
+      await fs.writeFile(path.join(DATA_DIR, 'gurus.json'), JSON.stringify(g));
+      log(`✓ gurus ${g.list.length}명 (${((Date.now() - t) / 1000).toFixed(1)}s)`);
+    } catch (e) {
+      log(`✗ gurus: ${e.message}`);
+      if (prevG) await fs.writeFile(path.join(DATA_DIR, 'gurus.json'), JSON.stringify(prevG));
+    }
+  }
   await fs.writeFile(path.join(DATA_DIR, 'state.json'), JSON.stringify(state));
   const failed = Object.keys(out.errors);
   log(failed.length ? `완료 (실패: ${failed.join(', ')})` : '완료');
