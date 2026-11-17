@@ -2054,11 +2054,13 @@ html[lang="en"] .f100-lg { grid-template-columns: repeat(auto-fit, minmax(160px,
 }
 
 /* 💼 유명 투자자 포트폴리오(13F) */
-.gu-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 10px -2px 0; padding: 0 2px 2px; scroll-behavior: smooth; }
-.gu-chips::-webkit-scrollbar { display: none; }
-.gu-chips button { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font: 600 12.5px var(--sans); padding: 7px 11px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
-.gu-chips button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.gu-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+/* 투자자 고르기: 펼침 목록(휴대폰은 기본 선택 창이 뜬다) */
+.gu-pick { position: relative; display: block; margin-top: 12px; }
+.gu-pick select { -webkit-appearance: none; appearance: none; width: 100%; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: 700 16px var(--sans); padding: 11px 40px 11px 14px; border-radius: 12px; cursor: pointer; text-overflow: ellipsis; }
+.gu-pick select:focus-visible { outline: 2px solid var(--c-blue); outline-offset: 1px; }
+.gu-pick select option { background: var(--surface); color: var(--ink); font-weight: 600; }
+.gu-pick svg { position: absolute; right: 14px; top: 50%; width: 18px; height: 18px; margin-top: -9px; fill: none; stroke: var(--muted); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.gu-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 .gu-head > div:first-child b { display: block; font-size: 16px; }
 .gu-head > div:first-child small { color: var(--muted); font-size: 12px; }
 .gu-stat { display: flex; gap: 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }

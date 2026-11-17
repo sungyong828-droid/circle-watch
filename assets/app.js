@@ -6745,7 +6745,7 @@ ${what.join(' · ')}
       return;
     }
     const list = G.list.filter((g) => GURUS[g.id]);
-    const sel = list.find((g) => g.id === loadPref('guru', 'buffett')) || list[0];
+    const sel = list.find((g) => g.id === (state.guru || 'buffett')) || list[0]; // 열 때마다 워런 버핏부터(고른 투자자는 이번 방문 동안만 유지)
     const mine = new Set(WATCH.filter((s) => !isKR(s)));
     const top10 = sel.top.slice(0, 10), restW = Math.max(0, 1 - top10.reduce((a, h) => a + h.w, 0));
     const t10w = 1 - restW;
@@ -6755,8 +6755,8 @@ ${what.join(' · ')}
       title, easy, info,
       sub: EN ? `Form 13F · holdings at ${guQ(sel.period)} end (${guMd(sel.period)}) · filed ${guMd(sel.filed)}` : `13F 보고서 · ${guQ(sel.period)} 말(${guMd(sel.period)}) 기준 · ${guMd(sel.filed)} 공개`,
       body: `<div data-noi18n>
-        <div class="gu-chips" role="group" aria-label="${EN ? 'Investor' : '투자자'}">${list.map((g) => `<button type="button" data-guru="${g.id}" aria-pressed="${g.id === sel.id}">${esc(guName(g.id))}</button>`).join('')}</div>
-        <div class="gu-head"><div><b>${esc(guName(sel.id))}</b><small>${esc(guFirm(sel.id))}</small></div>
+        <label class="gu-pick"><select id="gu-sel" data-gusel aria-label="${EN ? 'Choose an investor' : '투자자 고르기'}">${list.map((g) => `<option value="${g.id}"${g.id === sel.id ? ' selected' : ''}>${esc(guName(g.id))}</option>`).join('')}</select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></label>
+        <div class="gu-head"><div><small>${esc(guFirm(sel.id))}</small></div>
           <div class="gu-stat"><span>${EN ? 'Reported value' : '신고 금액'} <b>${usd(sel.total)}</b></span><span>${EN ? `${sel.count} holdings` : `${sel.count}종목`}</span></div></div>
         <div class="gu-main"><div class="gu-pie"><div class="chart gu-chart"><canvas id="cv-gurus" role="img" aria-label="${esc(guName(sel.id))} ${EN ? 'portfolio weights' : '포트폴리오 비중'}"></canvas>
           <div class="gu-center" aria-hidden="true">${sel.count > 10 ? `<small>${EN ? 'Top 10' : '상위 10종목'}</small><b>${pctPlain(t10w, 0)}</b>` : `<small>${EN ? 'Holdings' : '보유 종목'}</small><b>${sel.count}</b>`}</div></div></div>
@@ -6768,8 +6768,6 @@ ${what.join(' · ')}
         <p class="note gu-note">${EN ? `Holdings at quarter end, disclosed up to 45 days later — they may have changed since. US-listed stocks only (no cash, bonds or shorts). Change = shares vs. ${sel.prevPeriod ? guQ(sel.prevPeriod) : 'previous quarter'}.` : `분기 말 보유 내역이 최대 45일 뒤 공개된 거라 지금은 달라졌을 수 있어요. 미국 상장 주식만 담겨요(현금·채권·공매도 제외). 변화는 ${sel.prevPeriod ? guQ(sel.prevPeriod) : '지난 분기'} 대비 주식 수.`}</p>
       </div>`,
     });
-    const chip = el.querySelector('.gu-chips [aria-pressed="true"]'), row = chip?.parentElement;
-    if (row) { const x = chip.offsetLeft - row.offsetLeft; if (x + chip.offsetWidth > row.clientWidth) row.scrollLeft = x - 12; }
     const labels = top10.map((h) => guTk(h) + (h.pc === 'put' ? (EN ? ' put' : ' 풋') : h.pc === 'call' ? (EN ? ' call' : ' 콜') : ''));
     const data = top10.map((h) => h.w).concat(restW > 0.0005 ? [restW] : []);
     draw('gurus', {
@@ -9520,9 +9518,9 @@ ${what.join(' · ')}
     const mkt = ev.target.closest('[data-mktab]');
     if (mkt) { savePref('mktab', mkt.dataset.mktab); applyMkTab(); if (mkt.dataset.mktab === 'gurus') loadGurus(); return; }
     const gu = ev.target.closest('[data-guru]');
-    if (gu) { savePref('guru', gu.dataset.guru); renderGurus(); if (gu.closest('.gu-hits')) document.getElementById('c-gurus')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+    if (gu) { state.guru = gu.dataset.guru; renderGurus(); if (gu.closest('.gu-hits')) document.getElementById('c-gurus')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
     const gug = ev.target.closest('[data-gurugo]');
-    if (gug) { savePref('guru', gug.dataset.gurugo); savePref('mktab', 'gurus'); applyMkTab(); renderGurus(); showView('home'); requestAnimationFrame(() => { const el = document.getElementById(matchMedia('(min-width: 900px)').matches ? 'c-gurus' : 'mk-tabs'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - document.querySelector('.top').offsetHeight - 10 }); }); return; }
+    if (gug) { state.guru = gug.dataset.gurugo; savePref('mktab', 'gurus'); applyMkTab(); renderGurus(); showView('home'); requestAnimationFrame(() => { const el = document.getElementById(matchMedia('(min-width: 900px)').matches ? 'c-gurus' : 'mk-tabs'); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - document.querySelector('.top').offsetHeight - 10 }); }); return; }
     if (ev.target.closest('[data-hsmore]')) { savePref('hsmore', loadPref('hsmore', '0') === '1' ? '0' : '1'); applyHsMore(); return; }
     const mkg = ev.target.closest('[data-mkgo]');
     if (mkg) { state.mkSym = mkg.dataset.mkgo; savePref('mksym', state.mkSym); if (state.view === 'mkt') renderMkChart(); else { showView('mkt'); window.scrollTo({ top: 0 }); } return; }
@@ -9982,6 +9980,7 @@ ${what.join(' · ')}
     if (ev.target.id === 'tax-amt') { taxCfg.amt = ev.target.value; writeJSON(TAX_KEY, taxCfg); renderHomeFire(); const o = document.getElementById('tax-out'); if (o) o.innerHTML = taxOutHtml(); }
   });
   document.addEventListener('change', (ev) => {
+    if (ev.target.matches?.('[data-gusel]')) { state.guru = ev.target.value; renderGurus(); document.getElementById('gu-sel')?.focus({ preventScroll: true }); return; }
     const gc = ev.target.dataset?.grow;
     if (gc && ev.target.type === 'checkbox') { growCfg[gc] = ev.target.checked; growSave(); growRefresh(); return; }
     const ec = ev.target.dataset?.etax;
