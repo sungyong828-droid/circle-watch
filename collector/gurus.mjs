@@ -161,7 +161,8 @@ export async function collectGurus(state, prev, log = console.log) {
   S.sig ||= {}; S.figi ||= {};
   const prevBy = Object.fromEntries((prev?.list || []).map((g) => [g.id, g]));
   const out = {};
-  if (Date.now() - S.at < 3 * 3600e3 && prev?.list?.length) Object.assign(out, prevBy); // 3시간에 한 번만 SEC에 묻는다
+  // 3시간에 한 번만 SEC에 묻는다(새로 넣은 투자자가 아직 없으면 바로)
+  if (Date.now() - S.at < 3 * 3600e3 && prev?.list?.length && Object.keys(GURU_CIKS).every((id) => prevBy[id])) Object.assign(out, prevBy);
   else {
     for (const [id, cik] of Object.entries(GURU_CIKS)) {
       try {
