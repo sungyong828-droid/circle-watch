@@ -14,6 +14,7 @@
 - 💼 홈 › 시장에 '유명 투자자' 탭이 생겼어요. 워런 버핏·피터 틸·빌 애크먼·캐시 우드 등 17명이 분기마다 SEC에 신고하는 13F 보고서로 어떤 종목을 얼마나 담았는지 원 그래프와 비중(%)으로 보여 주고, 지난 분기 대비 신규·늘림·줄임·전량 매도도 표시해요. 내 관심 종목을 담은 투자자도 모아 보여 주고, 종목 화면의 기관 보유 현황에도 그 종목을 가진 유명 투자자가 나와요.
 <!-- EN New "Gurus" tab under Home › Market: see what Warren Buffett, Peter Thiel, Bill Ackman, Cathie Wood and 13 other famous investors hold, from their quarterly SEC 13F filings — a donut chart with % weights, plus new, added, trimmed and sold-out positions vs. last quarter. It also lists which of them own your watchlist stocks, and each stock's institutional-holders card now shows the famous investors holding it -->
 - 13F: 수집기 collector/gurus.mjs(SEC EDGAR 13F-HR·수정본 반영, 천 달러 단위로 적는 회사 보정, CUSIP→티커는 OpenFIGI·state에 저장, 3시간마다 확인·제출 번호 같으면 재사용) → data/gurus.json · /api/gurus(10분 캐시) · 탭을 열 때만 받음 <!-- internal -->
+- 영어 화면 어색한 문구 수정: 'Prior (시각) vs' → 'vs previous (시각)', 공매도 'vs prior trading day', 목표가 '+x% vs price $y' <!-- internal -->
 
 ## v2026.11.15-1 — 2026-11-15
 

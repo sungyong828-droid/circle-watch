@@ -519,7 +519,9 @@
     // 24시간 전 스냅샷이 아직 없으면(배포 직후) 가장 오래된 수집과 비교했다고 밝힌다
     const short = b && state.basis === '24h' && Date.parse(c.t) - Date.parse(b.t) < 20 * 3600 * 1000;
     const basisName = state.basis === 'prev' ? '직전' : short ? '가장 오래된 수집' : '24시간 전';
-    const w = b ? `${when(c.t)} ${c.live ? '실시간' : '수집'} · ${basisName}(${when(b.t)}) 대비` : `${when(c.t)} ${c.live ? '실시간' : '수집'} · 비교할 이전 수집 없음`;
+    const basisEn = state.basis === 'prev' ? 'previous' : short ? 'oldest collection' : '24h ago';
+    const w = EN ? `${when(c.t)} ${c.live ? 'Live' : 'Collected'} · ${b ? `vs ${basisEn} (${when(b.t)})` : 'no earlier collection to compare'}`
+      : b ? `${when(c.t)} ${c.live ? '실시간' : '수집'} · ${basisName}(${when(b.t)}) 대비` : `${when(c.t)} ${c.live ? '실시간' : '수집'} · 비교할 이전 수집 없음`;
     return { c, d, html: `<span class="${cls(d)}">${arrow(d)} ${txt}</span>`, when: w };
   }
   const deltaLine = (key, opts) => { const x = delta(key, opts); return `<div class="delta-line">${x.html}<span class="when">${x.when}</span></div>`; };
@@ -1280,7 +1282,7 @@
       easy: EN ? 'Short selling means borrowing shares to sell now and buying them back later — a bet that the price falls. A high ratio means more bets on a drop, but routine market-maker trades are mixed in, so 40–60% is common.' : '공매도는 주식을 빌려서 먼저 팔고, 나중에 사서 갚는 거래예요. 주가가 내려야 돈을 버는 거래라 비중이 높으면 하락에 거는 사람이 많다는 뜻이지만, 시장 조성자(증권사)의 일상적인 거래도 섞여 있어 40~60%는 흔한 수준이에요.',
       body: `
         <div class="headline"><span class="lbl">${md(labels.at(-1))} 장외 거래 중 공매도</span><span class="big">${pctPlain(last.ratio)}</span><span class="lbl">1개월 평균 ${pctPlain(S.avgRatio)}</span></div>
-        <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비 · 공매도 ${shares(last.short)} / 장외 집계 ${shares(last.total)}${ofAll != null ? ` · <b>${EN ? `≈ ${pctPlain(ofAll)} of total volume (${shares(last.vol)})` : `그날 전체 거래량(${shares(last.vol)}) 대비 약 ${pctPlain(ofAll)}`}</b>` : ''} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
+        <div class="delta-line"><span class="${cls(d1)}">${arrow(d1)} ${pp(d1, 1)}</span><span class="when">${EN ? `vs prior trading day (${prev ? md(labels.at(-2)) : '–'})` : `전 거래일(${prev ? md(labels.at(-2)) : '–'}) 대비`} · 공매도 ${shares(last.short)} / 장외 집계 ${shares(last.total)}${ofAll != null ? ` · <b>${EN ? `≈ ${pctPlain(ofAll)} of total volume (${shares(last.vol)})` : `그날 전체 거래량(${shares(last.vol)}) 대비 약 ${pctPlain(ofAll)}`}</b>` : ''} · 1개월 최고 ${pctPlain(hi.ratio)}(${md(isoToTs(hi.d))}) · 최저 ${pctPlain(lo.ratio)}(${md(isoToTs(lo.d))})</span></div>
         <div class="chart"><canvas id="cv-${id}" role="img" aria-label="${name} 일별 공매도 비율"></canvas></div>
         <div class="legend"><span><i style="background:${C.purple}"></i>일별 공매도 비율</span><span><i class="line" style="background:${C.ink2}"></i>1개월 평균</span></div>
         ${si.length ? `<div class="tbl-wrap"><table>
@@ -7165,7 +7167,7 @@ ${what.join(' · ')}
           ${T.buy ? `<i class="b" style="width:${w('buy')}%"><b>매수 ${T.buy}</b></i>` : ''}${T.hold ? `<i class="h" style="width:${w('hold')}%"><b>보유 ${T.hold}</b></i>` : ''}${T.sell ? `<i class="s" style="width:${w('sell')}%"><b>매도 ${T.sell}</b></i>` : ''}
         </div>
         <div class="ns-grid er-grid">
-          <div><span>평균 목표가</span><b>${price(T.mean)}</b><small>${up != null ? `현재가 ${price(p0)} 대비 <span class="${cls(up)}">${pct(up, 1)}</span>` : ''}</small></div>
+          <div><span>평균 목표가</span><b>${price(T.mean)}</b><small>${up != null ? (EN ? `<span class="${cls(up)}">${pct(up, 1)}</span> vs price ${price(p0)}` : `현재가 ${price(p0)} 대비 <span class="${cls(up)}">${pct(up, 1)}</span>`) : ''}</small></div>
           <div><span>목표가 범위</span><b>${price(T.low)} ~ ${price(T.high)}</b><small>가장 낮은 곳 · 가장 높은 곳</small></div>
         </div>
         ${more(id + ':more', `목표가 범위·추이${brokerLatest(sym).length ? ` · 증권사별 의견 ${brokerLatest(sym).length}곳` : ''} 보기`)}
