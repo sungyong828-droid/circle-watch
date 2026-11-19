@@ -5737,7 +5737,7 @@ ${what.join(' · ')}
       // 서버가 준 묵은 저장값이 지금 화면 값보다 오래됐으면 화면 값을 유지
       const P = state.quote;
       if (P && Date.parse(j.at || 0) < Date.parse(P.at || 0)) { state.quoteErr = false; return; }
-      if (P) for (const [k, v] of Object.entries(P)) if (k !== 'at' && v && j[k] == null && Date.parse(j.at) - Date.parse(P.at || 0) < 30 * 60e3) j[k] = { ...v, stale: true };
+      if (P) for (const [k, v] of Object.entries(P)) { const S = v?.since || P.at; if (k !== 'at' && v && j[k] == null && Date.parse(j.at) - Date.parse(S || 0) < 30 * 60e3) j[k] = { ...v, stale: true, since: S }; }
       state.quote = j;
       for (const sym of Object.keys(live)) applyLive(sym); // 방금 들어온 실시간 체결가가 더 최신이면 유지
       state.quoteErr = false;

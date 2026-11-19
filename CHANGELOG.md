@@ -15,7 +15,10 @@
 <!-- EN Anthropic (ANT) listed on Nasdaq on Nov 19. Add it straight from "Newly listed" at the top of Manage stocks; its page shows the change vs. the $83 IPO price, using the 24-hour Binance price so you can follow it even while the US market is closed -->
 - 🔧 CRCA 등 일부 종목 가격이 가끔 비어 보이던 문제를 고쳤어요.
 <!-- EN Fixed prices (e.g. CRCA) sometimes showing blank -->
-- 시세: Nasdaq이 동시 요청 중 1~3종목을 빈손으로 주던 것을 → 못 받은 종목만 0.3초 뒤 재시도, 그래도 없으면 Yahoo 시세(장전·장후 포함)로 대체 · 그래도 비면 30분 안의 직전 값 유지(서버·화면 모두) · 늦게 도착한 오래된 응답은 무시 <!-- internal -->
+- 🔧 일부 종목의 '비싼가 싼가(밸류에이션)'·손익계산서·공시 요약·사업 현황이 11월 16일 무렵부터 새로 바뀌지 않거나 오류로 보이던 문제를 고쳤어요.
+<!-- EN Fixed valuation, income statement, filing summaries and business updates for some stocks not refreshing (or showing an error) since around Nov 16 -->
+- 시세: Nasdaq이 동시 요청 중 1~3종목을 빈손으로 주던 것을 → 못 받은 종목만 0.3초 뒤 재시도, 그래도 없으면 Yahoo 시세(장전·장후 포함)로 대체 · 그래도 비면 실제로 받은 지 30분 안의 직전 값만 유지(since, 서버·화면 모두) · 늦게 도착한 오래된 응답은 무시 <!-- internal -->
+- SEC CIK 찾기: browse-edgar(count=1 거절·웹페이지 응답으로 바뀜) → SEC 공식 company_tickers.json(하루 한 번), 실패로 저장된 빈 CIK 캐시 버림(v=2) <!-- internal -->
 
 ## v2026.11.17-1 — 2026-11-17
 

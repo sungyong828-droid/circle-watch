@@ -609,12 +609,18 @@ const EARN_CFG = {
 };
 
 // SEC CIK 찾기(티커 → 10자리 번호)
+// SEC 공식 티커 목록(company_tickers.json, 약 800KB)을 하루 한 번 받아 둔다.
+// (예전 browse-edgar 검색 주소는 2026-11 무렵부터 count=1을 거절하고 웹페이지만 돌려줘 못 씀)
+let tickerCik = null;
 async function lookupCik(sym) {
-  const t = await fetch(`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(sym)}&type=10-Q&dateb=&owner=include&count=1&output=atom`, {
-    headers: { 'user-agent': 'FirePortfolio dashboard (https://my-fire-portfolio.pages.dev)' }, signal: AbortSignal.timeout(8000),
-  }).then((r) => r.text());
-  const m = t.match(/<cik>(\d+)<\/cik>/i);
-  return m ? m[1].padStart(10, '0') : null;
+  if (!tickerCik || Date.now() - tickerCik.at > 86400e3) {
+    const j = await secGet('https://www.sec.gov/files/company_tickers.json');
+    const m = new Map();
+    for (const x of Object.values(j)) if (!m.has(x.ticker)) m.set(String(x.ticker).toUpperCase(), String(x.cik_str).padStart(10, '0'));
+    tickerCik = { at: Date.now(), m };
+  }
+  const s = String(sym).toUpperCase();
+  return tickerCik.m.get(s) || tickerCik.m.get(s.replace('.', '-')) || null;
 }
 async function earnCfg(sym) {
   if (EARN_CFG[sym]) return EARN_CFG[sym];
@@ -1556,7 +1562,8 @@ export async function handleQuote(url, cache, cors, ctx) {
       const out = await buildQuote(extra);
       // 다시 물어도 못 받은 종목은 30분 안의 직전 값을 '묵은 값'으로 남긴다(빈칸 대신)
       const P = prev ? await prev.json().catch(() => null) : null;
-      if (P && Date.now() - Date.parse(P.at || 0) < 30 * 60e3) for (const [k, x] of Object.entries(out)) if (x === null && P[k]) out[k] = { ...P[k], stale: true };
+      // since = 그 값을 실제로 받은 시각(남긴 값을 또 남겨도 30분이 지나면 빈칸으로)
+      if (P) for (const [k, x] of Object.entries(out)) { const S = P[k]?.since || P.at; if (x === null && P[k] && Date.now() - Date.parse(S || 0) < 30 * 60e3) out[k] = { ...P[k], stale: true, since: S }; }
       return JSON.stringify(out);
     },
   });
@@ -3089,7 +3096,7 @@ const secPlain = (h) => String(h).replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' '
   .replace(/&nbsp;|&#160;|&#xa0;/gi, ' ').replace(/&amp;/g, '&').replace(/&#8217;|&#x2019;|&rsquo;/gi, "'").replace(/&#8220;|&#8221;|&ldquo;|&rdquo;/gi, '"').replace(/&#8212;|&#8211;|&mdash;|&ndash;/gi, '-').replace(/&#\d+;|&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
 async function cikOf(sym, cache, origin) {
   if (EARN_CFG[sym]) return EARN_CFG[sym].cik;
-  const key = new Request(`${origin}/cik?s=${sym}`);
+  const key = new Request(`${origin}/cik?s=${sym}&v=2`); // v=2: 예전 조회 실패로 저장된 빈 값은 버린다
   const hit = await cache.match(key);
   if (hit) return (await hit.text()) || null;
   const cik = await lookupCik(sym).catch(() => null);
