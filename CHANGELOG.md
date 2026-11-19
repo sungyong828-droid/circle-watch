@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.19-1 — 2026-11-19
+
+[이 버전 보기](https://b44c8d7e.my-fire-portfolio.pages.dev) · 커밋 `938eeb5`
+
 - 🆕 앤트로픽(ANT)이 11월 19일 Nasdaq에 상장했어요. 종목 추가 화면 맨 위 '새로 상장한 종목'에서 바로 넣을 수 있고, 종목 화면에서 공모가($83) 대비 몇 % 올랐는지 보여 줘요. 가격은 바이낸스 24시간 가격이라 미국 장이 닫혀 있을 때도 움직임을 볼 수 있어요.
 <!-- EN Anthropic (ANT) listed on Nasdaq on Nov 19. Add it straight from "Newly listed" at the top of Manage stocks; its page shows the change vs. the $83 IPO price, using the 24-hour Binance price so you can follow it even while the US market is closed -->
 - 🔧 CRCA 등 일부 종목 가격이 가끔 비어 보이던 문제를 고쳤어요.
