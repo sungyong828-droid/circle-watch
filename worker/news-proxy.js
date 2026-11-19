@@ -175,13 +175,18 @@ const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // 실제로 거래되는 종목인지 확인(Nasdaq 시세 조회, 하루 저장). 아무 글자나 넣어 서버 작업을 늘리는 요청을 막는다.
 async function knownSym(sym, cache, origin) {
   if (STOCKS.includes(sym) || QUOTE_SYMBOLS[sym] || CHART_SYMBOLS.includes(sym)) return true;
-  const key = new Request(`${origin}/symok?s=${sym}`);
+  const key = new Request(`${origin}/symok?s=${sym}&v=2`);
   const hit = await cache.match(key);
   if (hit) return (await hit.text()) === '1';
   let ok = false;
   if (KR_RE.test(sym)) { try { ok = !!(await naverBasic(sym))?.stockName; } catch {} }
-  else for (const cls of ['stocks', 'etf']) { try { const d = await nasdaqJson(`quote/${sym}/info?assetclass=${cls}`); if (d?.symbol && d?.primaryData?.lastSalePrice) { ok = true; break; } } catch {} }
-  await cache.put(key, new Response(ok ? '1' : '0', { headers: { 'cache-control': `public, max-age=${ok ? 86400 : 3600}` } }));
+  else {
+    for (const cls of ['stocks', 'etf']) { try { const d = await nasdaqJson(`quote/${sym}/info?assetclass=${cls}`); if (d?.symbol && d?.primaryData?.lastSalePrice) { ok = true; break; } } catch {} }
+    // Nasdaq은 가끔 빈손으로 답한다(그러면 TSLA도 '없는 종목'이 됐음) → SEC 상장사 목록으로 한 번 더(첫 거래 전 새 상장 종목도 여기 있음)
+    if (!ok) ok = !!(await lookupCik(sym).catch(() => null));
+  }
+  // 없다고 나온 답은 잠깐만 기억(일시적인 실패일 수 있음)
+  await cache.put(key, new Response(ok ? '1' : '0', { headers: { 'cache-control': `public, max-age=${ok ? 86400 : 600}` } }));
   return ok;
 }
 const unknownSym = (cors) => json({ error: '알 수 없는 종목입니다' }, cors, 404);
