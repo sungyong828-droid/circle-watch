@@ -145,7 +145,7 @@ function shrink(R) {
   const top = R.cur.slice(0, TOP).map((h) => {
     const p = O.get(`${h.cu}|${h.pc}`);
     // sh·ps = 이번·지난 분기 주식 수(주식 분할을 반영해 chg를 다시 계산할 때 씀 — fixChanges)
-    return { cu: h.cu, n: tidy(h.name), c: h.cls, pc: h.pc || undefined, v: Math.round(h.v), w: +(h.v / total).toFixed(5), sh: h.sh || undefined, ps: p?.sh || undefined,
+    return { cu: h.cu, n: tidy(h.name), c: h.cls, pc: h.pc || undefined, v: Math.round(h.v), w: +(h.v / total).toFixed(5), sh: h.sh || undefined, ps: p?.sh || undefined, pv: p?.v ? Math.round(p.v) : undefined,
       chg: !R.prevPeriod ? null : !p ? 'new' : p.sh > 0 ? +(h.sh / p.sh - 1).toFixed(4) : null };
   });
   const sold = R.prevPeriod ? R.old.filter((h) => !C.has(`${h.cu}|${h.pc}`)).slice(0, SOLD).map((h) => ({ cu: h.cu, n: tidy(h.name), pc: h.pc || undefined, pw: +(h.v / ptotal).toFixed(5), ps: h.sh || undefined })) : [];
@@ -161,8 +161,8 @@ function shrink(R) {
 export async function collectGurus(state, prev, log = console.log) {
   const S = (state.gurus ||= { at: 0, sig: {}, figi: {} });
   S.sig ||= {}; S.figi ||= {};
-  // 자료 형식이 바뀌면(주식 수 sh·ps 추가) 모든 보고서를 한 번 다시 읽는다
-  if (S.ver !== 2) { S.sig = {}; S.at = 0; S.ver = 2; }
+  // 자료 형식이 바뀌면(주식 수 sh·ps·지난 금액 pv 추가) 모든 보고서를 한 번 다시 읽는다
+  if (S.ver !== 3) { S.sig = {}; S.at = 0; S.ver = 3; }
   const prevBy = Object.fromEntries((prev?.list || []).map((g) => [g.id, g]));
   const out = {};
   // 3시간에 한 번만 SEC에 묻는다(새로 넣은 투자자가 아직 없으면 바로)
@@ -229,9 +229,11 @@ async function fixChanges(list, S, log) {
         if (i >= 0 && h.sh > 0) { h.ps = g.sold[i].ps; g.sold.splice(i, 1); nMerge++; } else continue;
       }
       if (!(h.sh > 0 && h.ps > 0)) continue;
-      const raw = h.sh / h.ps;
+      const raw = h.sh / h.ps, px = h.pv > 0 && h.v > 0 ? (h.pv / h.ps) / (h.v / h.sh) : 1; // px = 지난/이번 주당 가격
       let f = 1;
-      if (raw >= 1.4 || raw <= 0.7) { const ev = await splitsOf(h.t, S); for (const [d, k] of ev || []) if (d > from && d <= to) f *= k; }
+      // 주식 수나 주당 가격이 크게 바뀐 종목만 분할 기록을 본다
+      // (분할 뒤 팔면 주식 수는 그대로처럼 보인다 — 무바달라 APH 2:1 분할 + 56% 매도가 −12%로 보였음)
+      if (raw >= 1.4 || raw <= 0.7 || px >= 1.4 || px <= 0.7) { const ev = await splitsOf(h.t, S); for (const [d, k] of ev || []) if (d > from && d <= to) f *= k; }
       if (f !== 1) { h.split = +f.toFixed(4); nSplit++; } else delete h.split;
       h.chg = +(h.sh / (h.ps * f) - 1).toFixed(4);
     }

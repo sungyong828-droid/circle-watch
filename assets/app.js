@@ -6796,13 +6796,11 @@ ${what.join(' · ')}
   };
   const guPc = (h) => (h.pc === 'put' ? (EN ? 'Put' : '풋옵션') : h.pc === 'call' ? (EN ? 'Call' : '콜옵션') : '');
   const guKind = (h) => (/\bNOTE|DEBT|BOND/i.test(h.c || '') ? (EN ? 'Conv. note' : '전환사채') : /\bW(ARRANT|T)?\b|\*W/i.test(h.c || '') ? (EN ? 'Warrant' : '워런트') : '');
-  // 보유 주식 수 변화(주가 변화 아님). 3배 넘게 늘면 '+1,200%' 대신 '13배'
-  const guX = (c) => { const x = 1 + c; return x >= 10 ? nf(0).format(Math.round(x)) : x.toFixed(1); };
+  // 보유 주식 수 변화(주가 변화 아님) — 주식 분할 반영
   const guChgTip = (h) => (h.sh > 0 && h.ps > 0 ? ` title="${EN ? 'Shares' : '주식 수'} ${nf(0).format(h.ps * (h.split || 1))} → ${nf(0).format(h.sh)}${h.split ? (EN ? ` (split ${h.split}:1 adjusted)` : ` (${h.split}:1 분할 반영)`) : ''}"` : '');
   const guChg = (h) => (h.chg === 'new' ? `<em class="gu-chg new">${EN ? 'New' : '신규'}</em>`
     : h.chg == null ? '' : Math.abs(h.chg) < 0.005 ? `<em class="gu-chg flat"${guChgTip(h)}>${EN ? 'Same' : '유지'}</em>`
-    : h.chg >= 2 ? `<em class="gu-chg up"${guChgTip(h)}>${EN ? `×${guX(h.chg)}` : `${guX(h.chg)}배`}</em>`
-    : `<em class="gu-chg ${h.chg > 0 ? 'up' : 'down'}"${guChgTip(h)}>${h.chg > 0 ? '+' : '−'}${Math.round(Math.abs(h.chg) * 100)}%</em>`);
+    : `<em class="gu-chg ${h.chg > 0 ? 'up' : 'down'}"${guChgTip(h)}>${h.chg > 0 ? '+' : '−'}${nf(0).format(Math.round(Math.abs(h.chg) * 100))}%</em>`);
   const guQ = (p) => { const m = +p.slice(5, 7); return EN ? `Q${Math.ceil(m / 3)} ${p.slice(0, 4)}` : `${p.slice(0, 4)}년 ${Math.ceil(m / 3)}분기`; };
   const guMd = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
   function guRow(h, i, mine) {
@@ -6867,7 +6865,7 @@ ${what.join(' · ')}
         ${sel.top.length > 10 ? `${more('gu:more', EN ? `Holdings #11–${sel.top.length}` : `11~${sel.top.length}위 종목 보기`)}<ul class="gu-list">${sel.top.slice(10).map((h, i) => guRow(h, i + 10, mine)).join('')}</ul></details>` : ''}
         ${sel.sold?.length ? `${more('gu:sold', EN ? `Sold out since last quarter (${sel.sold.length})` : `지난 분기 대비 전량 매도 (${sel.sold.length})`)}<ul class="gu-sold">${sel.sold.map((h) => `<li><b>${esc(guTk(h))}${guPc(h) ? ` <small class="gu-tag">${guPc(h)}</small>` : ''}</b><small>${esc(guNm(h))}</small><span>${EN ? 'was' : '직전'} ${pctPlain(h.pw, h.pw >= 0.1 ? 1 : 2)}</span></li>`).join('')}</ul></details>` : ''}
         ${hits.length ? `<div class="gu-hits"><div class="gu-hits-h">⭐ ${EN ? 'Investors holding my stocks' : '내 관심 종목을 담은 투자자'}</div>${hits.map((x) => `<p><b>${esc(x.s)}</b>${x.g.map((g) => `<button type="button" data-guru="${g.id}">${esc(guName(g.id))} <span>${pctPlain(g.w, g.w >= 0.1 ? 0 : 1)}</span>${g.chg === 'new' ? `<em>${EN ? 'New' : '신규'}</em>` : ''}</button>`).join('')}</p>`).join('')}</div>` : ''}
-        <p class="note gu-note">${EN ? `Holdings at quarter end, disclosed up to 45 days later — they may have changed since. US-listed stocks only (no cash, bonds or shorts). Change = number of shares vs. ${sel.prevPeriod ? guQ(sel.prevPeriod) : 'previous quarter'}, adjusted for stock splits (e.g. ×8 = 8 times as many shares).` : `분기 말 보유 내역이 최대 45일 뒤 공개된 거라 지금은 달라졌을 수 있어요. 미국 상장 주식만 담겨요(현금·채권·공매도 제외). 변화는 ${sel.prevPeriod ? guQ(sel.prevPeriod) : '지난 분기'} 대비 <b>보유 주식 수</b>예요(주가 변화가 아니에요). 주식 분할은 반영했고, 3배 넘게 늘면 'N배'로 보여 줘요.`}</p>
+        <p class="note gu-note">${EN ? `Holdings at quarter end, disclosed up to 45 days later — they may have changed since. US-listed stocks only (no cash, bonds or shorts). Change = number of shares vs. ${sel.prevPeriod ? guQ(sel.prevPeriod) : 'previous quarter'} (not the share price), adjusted for stock splits.` : `분기 말 보유 내역이 최대 45일 뒤 공개된 거라 지금은 달라졌을 수 있어요. 미국 상장 주식만 담겨요(현금·채권·공매도 제외). 변화는 ${sel.prevPeriod ? guQ(sel.prevPeriod) : '지난 분기'} 대비 <b>보유 주식 수</b>예요(주가 변화가 아니에요). 주식 분할은 반영했어요.`}</p>
       </div>`,
     });
     const labels = top10.map((h) => guTk(h) + (h.pc === 'put' ? (EN ? ' put' : ' 풋') : h.pc === 'call' ? (EN ? ' call' : ' 콜') : ''));
