@@ -125,7 +125,7 @@
       <ul>
         ${BN24[sym] ? `<li><b>바이낸스 24시간</b>: 바이낸스의 ${sym}USDT 주식 선물(TradFi) 가격이에요. 미국 장이 닫힌 밤·주말에도 거래돼 다음 장 분위기를 미리 볼 수 있어요. 선물이라 실제 주가와 조금 차이가 나요("주가와 차이").</li>` : '<li>바이낸스에서 24시간 거래되지 않아, 미국 장이 닫힌 주말·새벽에는 마지막 거래 가격이 보여요.</li>'}
         ${STOCK_INFO[sym].peer ? `<li><b>경쟁사 ${STOCK_INFO[sym].peer[1]}(${STOCK_INFO[sym].peer[0]})</b>: ${STOCK_INFO[sym].peerNote}. 두 종목이 같이 움직이면 업계 전체 이슈, 반대로 움직이면 회사별 이슈일 가능성이 커요.</li>` : ''}
-        ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : ''}
+        ${sym === 'SPCX' ? '<li><b>공모가 대비</b>: 2026년 6월 상장 때 공모가($135)와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.</li>' : IPOS[sym] ? `<li data-noi18n>${EN ? `<b>vs IPO price</b>: compared with the $${IPOS[sym].price} IPO price (first trade ${IPOS[sym].date}). Listed less than a year ago, so it shows the post-IPO high instead of the 52-week range.` : `<b>공모가 대비</b>: ${IPOS[sym].date.slice(0, 4)}년 ${+IPOS[sym].date.slice(5, 7)}월 ${+IPOS[sym].date.slice(8)}일 상장 때 공모가($${IPOS[sym].price})와 비교. 상장 1년이 안 돼 "52주" 대신 상장 후 최고가를 보여줘요.`}</li>` : ''}
       </ul>`,
     bonus: `
       <p><b>성과급 계산법</b>(2026년 기준 · 지급률은 회사 공지에 맞게 바꿔 넣으세요)</p>
@@ -5733,6 +5733,11 @@ ${what.join(' · ')}
       const j = await getJ(`${NEWS_API}/quote${extra.length ? `?x=${extra.join(',')}` : ''}`, 15000);
       await krP;
       if (j.error) throw new Error(j.error);
+      // 서버가 이번에 일부 종목(예: CRCA)을 못 받아 빈 값이면 방금까지 보던 값을 그대로 둔다(가격이 '–'로 깜빡이지 않게).
+      // 서버가 준 묵은 저장값이 지금 화면 값보다 오래됐으면 화면 값을 유지
+      const P = state.quote;
+      if (P && Date.parse(j.at || 0) < Date.parse(P.at || 0)) { state.quoteErr = false; return; }
+      if (P) for (const [k, v] of Object.entries(P)) if (k !== 'at' && v && j[k] == null && Date.parse(j.at) - Date.parse(P.at || 0) < 30 * 60e3) j[k] = { ...v, stale: true };
       state.quote = j;
       for (const sym of Object.keys(live)) applyLive(sym); // 방금 들어온 실시간 체결가가 더 최신이면 유지
       state.quoteErr = false;
@@ -6485,12 +6490,20 @@ ${what.join(' · ')}
     st(sym).chart[r] = j;
   }
   const ipoPx = () => state.spcx?.ipo?.price ?? null;
+  // 최근 상장한 종목: 첫 거래일·확정 공모가(회사 발표 기준). 관심 종목에 넣으면 '공모가 대비'·'상장 후 최고'를 보여 준다
+  // ANT: 2026-11-18 공모가 $83 확정, 11-19 Nasdaq 첫 거래(CNBC·Axios). SPCX는 서버 자료(state.spcx.ipo)
+  const IPOS = { ANT: { date: '2026-11-19', price: 83, kr: '앤트로픽', en: 'Anthropic' } };
+  const ipoOf = (sym) => (sym === 'SPCX' ? (ipoPx() ? { date: '2026-06-12', price: ipoPx() } : null) : IPOS[sym] || null);
+  const ipoMd = (I) => { const [, m, d] = I.date.split('-').map(Number); return EN ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]} ${d}` : `${m}/${d}`; };
+  // 첫 거래일 당일(미국 날짜) 이후 사흘 동안 시세가 아직 없으면 '첫 거래 전'
+  const ipoWaiting = (sym) => { const I = IPOS[sym]; return !!I && Date.now() < Date.parse(I.date + 'T00:00:00-05:00') + 3 * 864e5; };
+  const ipoWaitTxt = (sym) => `<span data-noi18n>${EN ? `First trade pending · IPO price $${IPOS[sym].price}` : `첫 거래 전이에요 · 공모가 $${IPOS[sym].price}`}</span>`;
   let sPrev = { sym: null, px: null };
   function paintStock() {
     const sym = state.stock;
     if (!isOther(sym)) return;
     const q = pq(sym);
-    if (!q) { if (BN24[sym]) setHtml('spx-via', bx[sym]?.err ? '<span class="warn">바이낸스 연결 실패 · 다시 시도 중</span>' : '연결 중…'); return; }
+    if (!q) { if (BN24[sym]) setHtml('spx-via', bx[sym]?.err ? '<span class="warn">바이낸스 연결 실패 · 다시 시도 중</span>' : '연결 중…'); else if (ipoWaiting(sym)) setHtml('spx-via', ipoWaitTxt(sym)); return; }
     const last = document.getElementById('spx-last');
     if (last) {
       last.textContent = pxS(sym, q.price);
@@ -6518,6 +6531,7 @@ ${what.join(' · ')}
         setHtml('spx-next', fundLeft(X.mark.next));
       }
       if (X.oi != null) setHtml('spx-oi', usd(X.oi * (X.mark?.mark || t.last)));
+      if (IPOS[sym] && t.last) setHtml('spx-ipo', `<span class="${cls(t.last / IPOS[sym].price - 1)}">${pct(t.last / IPOS[sym].price - 1, 1)}</span>`);
       const k = X.klines[bxRange()];
       if (k?.length) { const ch = t.last / k[0][1] - 1; setHtml('spc-chg', `<span class="${cls(ch)}">${arrow(ch)} ${pct(ch, 2)}</span> <span class="lbl">${RANGES[bxRange()].label} 동안</span>`); }
       for (const id of ['sspark', 'spricechart']) liveCandle(id, t.last);
@@ -6528,7 +6542,8 @@ ${what.join(' · ')}
       : esc(String(q.time || '').replace(/^.*?(\d{1,2}:\d{2} [AP]M ET)$/, '$1')));
     const S = STOCK_INFO[sym], pr = S.peer ? state.quote?.[S.peer[0]] : null;
     if (pr) setHtml('spx-peer', `$${pr.price?.toFixed(2)} <span class="${cls(pr.pct)}">${pct(pr.pct, 1)}</span>`);
-    if (sym === 'SPCX' && ipoPx()) setHtml('spx-ipo', `<span class="${cls(q.price / ipoPx() - 1)}">${pct(q.price / ipoPx() - 1, 1)}</span>`);
+    const IP = ipoOf(sym);
+    if (IP && q.price) setHtml('spx-ipo', `<span class="${cls(q.price / IP.price - 1)}">${pct(q.price / IP.price - 1, 1)}</span>`);
     for (const id of ['sspark', 'spricechart']) if (state.srange === '1d' || id === 'sspark') liveCandle(id, q.price);
   }
   // range: '1d'·'1w'… (Yahoo 캔들) 또는 'bn'(바이낸스 1일)
@@ -6554,9 +6569,10 @@ ${what.join(' · ')}
           <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 최근 24시간 가격"></canvas></div>
           <div class="px-range" aria-label="24시간 가격 범위"><span id="spx-low">–</span><div class="rb"><i id="spx-rb"></i></div><span id="spx-high">–</span></div>
           <div class="px-stats">
+            ${IPOS[sym] ? `<div><span>공모가 대비</span><b id="spx-ipo">–</b><small data-noi18n>${EN ? `IPO $${IPOS[sym].price} · ${ipoMd(IPOS[sym])}` : `공모가 $${IPOS[sym].price} · ${ipoMd(IPOS[sym])} 상장`}</small></div>` : ''}
             <div><span>24h 거래대금</span><b id="spx-qv">–</b></div>
             <div><span>펀딩비</span><b id="spx-fund">–</b><small id="spx-next"></small></div>
-            <div><span>미결제약정</span><b id="spx-oi">–</b></div>
+            ${IPOS[sym] ? '' : '<div><span>미결제약정</span><b id="spx-oi">–</b></div>'}
           </div>
           ${tgtHost(sym)}
           <button type="button" class="link-btn" data-go="sprice:c-spricechart">가격 차트 · 공매도 · 기관 보유 보기${chevron}</button>`,
@@ -6570,14 +6586,14 @@ ${what.join(' · ')}
     const lo = pts.length ? Math.min(...pts.map((p) => p[1])) : null, hi = pts.length ? Math.max(...pts.map((p) => p[1])) : null;
     const pos = q?.price != null && hi > lo ? (q.price - lo) / (hi - lo) : 0.5;
     const y1 = st(sym).chart['1y'] || ch;
-    const stats = sym === 'SPCX'
-      ? `<div><span>상장 후 최고</span><b>${pxS(sym, y1?.high52)}</b></div><div><span>공모가 대비</span><b id="spx-ipo">–</b><small>공모가 ${pxS(sym, ipoPx())}</small></div>`
+    const stats = ipoOf(sym)
+      ? `<div><span>상장 후 최고</span><b>${pxS(sym, y1?.high52)}</b></div><div><span>공모가 대비</span><b id="spx-ipo">–</b><small>공모가 ${pxS(sym, ipoOf(sym).price)}</small></div>`
       : `<div><span>52주 최고</span><b>${pxS(sym, y1?.high52)}</b></div><div><span>52주 최저</span><b>${pxS(sym, y1?.low52)}</b></div>`;
     card('sprice', {
       title: `${ttlName(sym)}실시간 주가`, sub: isKR(sym) ? `${S.name} · ${S.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} ${sym.slice(0, 6)} · 네이버 증권 실시간` : `${S.name} · Nasdaq 실시간(장전·장중·장후)`, info: isKR(sym) ? INFO.krprice : INFO.sprice(sym),
       body: `
         <div class="px-main"><span class="px-last" id="spx-last">${pxS(sym, q?.price)}</span><span class="px-chg" id="spx-chg"></span></div>
-        <div class="px-meta"><span id="spx-via">불러오는 중…</span><span id="spx-time"></span></div>
+        <div class="px-meta"><span id="spx-via">${!q && ipoWaiting(sym) ? ipoWaitTxt(sym) : '불러오는 중…'}</span><span id="spx-time"></span></div>
         <div class="chart spark"><canvas id="cv-sspark" role="img" aria-label="${sym} 오늘 가격"></canvas></div>
         <div class="px-range" aria-label="오늘 가격 범위"><span>${pxS(sym, lo)}</span><div class="rb"><i style="left:${Math.min(100, Math.max(0, pos * 100))}%"></i></div><span>${pxS(sym, hi)}</span></div>
         <div class="px-stats">${stats}${S.peer ? `<div><span>경쟁사 ${S.peer[1]}</span><b id="spx-peer">–</b><small>${S.peer[0]}</small></div>` : `<div><span>52주 위치</span><b>${q?.price && y1?.high52 > y1?.low52 ? Math.round(((q.price - y1.low52) / (y1.high52 - y1.low52)) * 100) + '%' : '–'}</b><small>최저 0% · 최고 100%</small></div>`}</div>
@@ -7740,10 +7756,18 @@ ${what.join(' · ')}
       popular = L; renderWatchSheet();
     }).catch(() => {});
   }
+  // 상장한 지 30일 안 된 종목(IPOS) — 관심 종목에 없을 때만
+  function ipoAddHtml() {
+    const L = Object.entries(IPOS).filter(([s, I]) => !WATCH.includes(s) && Date.now() < Date.parse(I.date) + 30 * 864e5);
+    if (!L.length) return '';
+    return `<div class="ws-sub" data-noi18n>${EN ? '🆕 Newly listed' : '🆕 새로 상장한 종목'}</div>
+      <ul class="ws-list ws-pop">${L.map(([s, I]) => `<li>${logoPath(s) ? `<span class="ws-logo"><img src="${logoPath(s)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${s[0]}</span>`}
+        <div class="ws-name" data-noi18n><b>${s}</b><small>${EN ? `${I.en} · listed ${ipoMd(I)} · IPO $${I.price}` : `${I.kr} · ${ipoMd(I)} 상장 · 공모가 $${I.price}`}</small></div><button type="button" class="ws-btn add" data-wpop="${s}">+ 추가</button></li>`).join('')}</ul>`;
+  }
   function popularHtml() {
-    const list = (popular || []).filter((x) => !WATCH.includes(x.sym)).slice(0, 8);
-    if (!list.length) return '';
-    return `<div class="ws-sub">🔥 다른 사람들이 많이 추가한 종목 <small>최근 30일</small></div>
+    const list = (popular || []).filter((x) => !WATCH.includes(x.sym) && !IPOS[x.sym]).slice(0, 8);
+    if (!list.length) return ipoAddHtml();
+    return `${ipoAddHtml()}<div class="ws-sub">🔥 다른 사람들이 많이 추가한 종목 <small>최근 30일</small></div>
       <ul class="ws-list ws-pop">${list.map((x) => `<li>${logoPath(x.sym) ? `<span class="ws-logo"><img src="${logoPath(x.sym)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc((x.name || x.sym)[0])}</span>`}
         <div class="ws-name"><b>${esc(isKR(x.sym) ? x.name || x.sym.slice(0, 6) : x.sym)}</b><small>${isKR(x.sym) ? `${x.sym.endsWith('.KQ') ? '코스닥' : '코스피'} · ${x.sym.slice(0, 6)} · ` : ''}${x.n}명이 추가</small></div><button type="button" class="ws-btn add" data-wpop="${esc(x.sym)}">+ 추가</button></li>`).join('')}</ul>`;
   }

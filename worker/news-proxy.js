@@ -1510,12 +1510,37 @@ async function usdKrw() {
   }
 }
 
+// Nasdaq는 여러 종목을 한꺼번에 물으면 가끔 1~3개를 빈손으로 돌려준다(특히 CRCA 같은 ETF) → 못 받은 종목만 잠깐 뒤 한 번 더,
+// 그래도 안 되면 Yahoo 시세로 채운다(장전·장후 가격 포함)
+async function yahooQuote(sym) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d&includePrePost=true`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(6000) });
+  if (!r.ok) throw new Error('yahoo ' + r.status);
+  const j = (await r.json()).chart.result[0], m = j.meta || {};
+  const C = j.indicators?.quote?.[0]?.close || [], T = j.timestamp || [];
+  let i = C.length - 1; while (i >= 0 && C[i] == null) i--;
+  const last = i >= 0 ? C[i] : m.regularMarketPrice, reg = m.regularMarketPrice, prev = m.chartPreviousClose ?? m.previousClose ?? null;
+  const tp = m.currentTradingPeriod || {}, now = Date.now() / 1000;
+  const status = tp.pre && now >= tp.pre.start && now < tp.pre.end ? 'Pre-Market' : tp.regular && now >= tp.regular.start && now < tp.regular.end ? 'Market Open' : tp.post && now >= tp.post.start && now < tp.post.end ? 'After-Hours' : 'Closed';
+  const ext = status !== 'Market Open';
+  const price = last ?? reg, base = ext ? reg : prev;
+  return {
+    symbol: sym, name: m.longName || m.shortName || sym, asset: m.instrumentType === 'ETF' ? 'etf' : 'stocks', price, change: price != null && base != null ? price - base : null,
+    pct: price != null && base ? price / base - 1 : null, prevClose: base, regularClose: ext ? reg : null, status, time: T[i] ? new Date(T[i] * 1000).toISOString() : '', realtime: false, src: 'yahoo',
+  };
+}
 export async function buildQuote(extra = []) {
   const syms = [...Object.keys(QUOTE_SYMBOLS), ...extra.filter((x) => !QUOTE_SYMBOLS[x])];
-  const res = await Promise.allSettled([...syms.map((s) => (QUOTE_SYMBOLS[s] ? nasdaqQuote(s, QUOTE_SYMBOLS[s]) : nasdaqQuote(s, 'stocks').catch(() => nasdaqQuote(s, 'etf')))), usdKrw()]);
+  const one = (s) => (QUOTE_SYMBOLS[s] ? nasdaqQuote(s, QUOTE_SYMBOLS[s]) : nasdaqQuote(s, 'stocks').catch(() => nasdaqQuote(s, 'etf')));
+  const res = await Promise.allSettled([...syms.map(one), usdKrw()]);
   const v = (r) => (r.status === 'fulfilled' ? r.value : null);
   const out = { at: new Date().toISOString(), fx: v(res.at(-1)) };
   syms.forEach((s, i) => { out[s] = v(res[i]); });
+  const miss = syms.filter((s) => !out[s]);
+  if (miss.length) {
+    await sleep(300);
+    const again = await Promise.allSettled(miss.map((s) => one(s).catch(() => yahooQuote(s))));
+    miss.forEach((s, i) => { out[s] = v(again[i]); });
+  }
   if (!out.CRCA && !out.fx) throw new Error('시세를 받지 못했습니다');
   return out;
 }
@@ -1525,7 +1550,16 @@ export async function handleQuote(url, cache, cors, ctx) {
   // 8초 안이면 그대로, 하루 안이면 저장값을 즉시 주고 뒤에서 갱신(Nasdaq 8종목 조회는 3~4초 걸림).
   // 방문이 뜸해도 첫 화면이 3~4초 기다리지 않게 — 앱은 1분마다 다시 묻기 때문에 묵은 값은 곧 새 값으로 바뀐다
   const extra = [...new Set(String(url.searchParams.get('x') || '').toUpperCase().split(',').filter((x) => SYM_RE.test(x)))].sort().slice(0, 12);
-  return swr(cache, ctx, `${url.origin}/quote?v=swr2&x=${extra.join(',')}`, { freshSec: 8, keepSec: 86400, cors, build: async () => JSON.stringify(await buildQuote(extra)) });
+  return swr(cache, ctx, `${url.origin}/quote?v=swr2&x=${extra.join(',')}`, {
+    freshSec: 8, keepSec: 86400, cors,
+    build: async (prev) => {
+      const out = await buildQuote(extra);
+      // 다시 물어도 못 받은 종목은 30분 안의 직전 값을 '묵은 값'으로 남긴다(빈칸 대신)
+      const P = prev ? await prev.json().catch(() => null) : null;
+      if (P && Date.now() - Date.parse(P.at || 0) < 30 * 60e3) for (const [k, x] of Object.entries(out)) if (x === null && P[k]) out[k] = { ...P[k], stale: true };
+      return JSON.stringify(out);
+    },
+  });
 }
 
 // ---------------------------------------------------------------- 가격 차트 (Yahoo, 바이낸스에 없는 종목용)
