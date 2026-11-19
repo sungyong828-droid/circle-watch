@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 💼 유명 투자자: 투자자 목록이 묶음(유명 투자자 / 기관·국부펀드·연기금)마다 신고 금액이 큰 순서로 정렬돼요. 주식 분할한 종목은 분할을 반영해 늘림·줄임을 계산해요(예: 노르웨이 국부펀드 KLAC '+696%' → 실제로는 20% 줄임). 3배 넘게 늘린 종목은 '+1,200%' 대신 '13배'처럼 보여요.
+<!-- EN Gurus: the investor list is now sorted by reported value within each group (famous investors / institutions & funds). Share changes now account for stock splits (e.g. Norway's fund on KLAC: shown as +696%, actually trimmed 20%), and positions grown more than 3× show as "×13" instead of "+1,200%" -->
+- 13F: 상위 종목에 이번·지난 분기 주식 수(sh·ps) 저장 → Yahoo 분할 기록(3일 캐시)으로 두 분기 말 사이 분할 비율 반영, CUSIP만 바뀐 같은 티커는 '신규+전량 매도' 대신 한 종목으로, 형식 바뀜(ver 2)으로 전체 다시 수집 <!-- internal -->
+
 ## v2026.11.19-1 — 2026-11-19
 
 [이 버전 보기](https://b44c8d7e.my-fire-portfolio.pages.dev) · 커밋 `938eeb5`

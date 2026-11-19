@@ -49,7 +49,7 @@ async function get(url, type = 'json') {
       const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(60000) });
       if (r.ok) return type === 'json' ? r.json() : r.text();
       last = new Error(`${r.status} ${url}`);
-      if (r.status === 404) break;
+      if (r.status === 404 && i >= 1) break; // SEC는 있는 파일도 가끔 404로 답한다(한국은행 2026-11) → 한 번은 다시
     } catch (e) { last = e; }
     await sleep(1500 * (i + 1));
   }
@@ -144,9 +144,11 @@ function shrink(R) {
   const C = new Set(R.cur.map((h) => `${h.cu}|${h.pc}`));
   const top = R.cur.slice(0, TOP).map((h) => {
     const p = O.get(`${h.cu}|${h.pc}`);
-    return { cu: h.cu, n: tidy(h.name), c: h.cls, pc: h.pc || undefined, v: Math.round(h.v), w: +(h.v / total).toFixed(5), chg: !R.prevPeriod ? null : !p ? 'new' : p.sh > 0 ? +(h.sh / p.sh - 1).toFixed(4) : null };
+    // sh·ps = 이번·지난 분기 주식 수(주식 분할을 반영해 chg를 다시 계산할 때 씀 — fixChanges)
+    return { cu: h.cu, n: tidy(h.name), c: h.cls, pc: h.pc || undefined, v: Math.round(h.v), w: +(h.v / total).toFixed(5), sh: h.sh || undefined, ps: p?.sh || undefined,
+      chg: !R.prevPeriod ? null : !p ? 'new' : p.sh > 0 ? +(h.sh / p.sh - 1).toFixed(4) : null };
   });
-  const sold = R.prevPeriod ? R.old.filter((h) => !C.has(`${h.cu}|${h.pc}`)).slice(0, SOLD).map((h) => ({ cu: h.cu, n: tidy(h.name), pc: h.pc || undefined, pw: +(h.v / ptotal).toFixed(5) })) : [];
+  const sold = R.prevPeriod ? R.old.filter((h) => !C.has(`${h.cu}|${h.pc}`)).slice(0, SOLD).map((h) => ({ cu: h.cu, n: tidy(h.name), pc: h.pc || undefined, pw: +(h.v / ptotal).toFixed(5), ps: h.sh || undefined })) : [];
   return {
     cik: R.cik, filer: R.filer, period: R.period, filed: R.filed, prevPeriod: R.prevPeriod,
     count: R.cur.length, total: Math.round(total), opt: R.cur.filter((h) => h.pc).length,
@@ -159,6 +161,8 @@ function shrink(R) {
 export async function collectGurus(state, prev, log = console.log) {
   const S = (state.gurus ||= { at: 0, sig: {}, figi: {} });
   S.sig ||= {}; S.figi ||= {};
+  // 자료 형식이 바뀌면(주식 수 sh·ps 추가) 모든 보고서를 한 번 다시 읽는다
+  if (S.ver !== 2) { S.sig = {}; S.at = 0; S.ver = 2; }
   const prevBy = Object.fromEntries((prev?.list || []).map((g) => [g.id, g]));
   const out = {};
   // 3시간에 한 번만 SEC에 묻는다(새로 넣은 투자자가 아직 없으면 바로)
@@ -192,5 +196,45 @@ export async function collectGurus(state, prev, log = console.log) {
   const left = await mapTickers(allCu, S.figi, log);
   if (left) log(`gurus: 티커 변환 ${left}개 남음(다음 수집 때)`);
   for (const g of list) for (const h of [...g.top, ...g.sold]) { const t = S.figi[h.cu]; if (t) h.t = t; else delete h.t; }
+  await fixChanges(list, S, log);
   return { at: new Date().toISOString(), list };
+}
+
+// 주식 수 변화(chg) 바로잡기 — 매번 sh·ps에서 다시 계산한다
+// ① 주식 분할: KLAC 10:1 분할(2026-06) 때 노르웨이 국부펀드가 실제로는 20% 줄였는데 +696%로 보였다
+//    → 두 분기 말 사이의 분할 비율(Yahoo 분할 기록)을 지난 분기 주식 수에 곱한다
+// ② 분할·합병 뒤 CUSIP이 바뀐 종목: '신규' + '전량 매도'로 따로 보이지 않게 같은 티커면 한 종목으로
+const SPLIT_TTL = 3 * 86400e3;
+async function splitsOf(t, S) {
+  const C = (S.splits ||= {});
+  if (C[t] && Date.now() - C[t].at < SPLIT_TTL) return C[t].ev;
+  try {
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t.replace('.', '-'))}?range=2y&interval=1mo&events=splits`, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('yahoo ' + r.status);
+    const sp = (await r.json()).chart?.result?.[0]?.events?.splits || {};
+    C[t] = { at: Date.now(), ev: Object.values(sp).map((x) => [x.date * 1000, x.numerator / x.denominator]).filter((x) => x[1] > 0) };
+    await sleep(120);
+    return C[t].ev;
+  } catch { return C[t]?.ev || null; } // 못 물어보면 지난 기록(없으면 분할 없음으로)
+}
+async function fixChanges(list, S, log) {
+  let nSplit = 0, nMerge = 0;
+  for (const g of list) {
+    if (!g.prevPeriod) continue;
+    const from = Date.parse(g.prevPeriod + 'T23:59:59Z'), to = Date.parse(g.period + 'T23:59:59Z');
+    for (const h of g.top) {
+      if (h.pc || !h.t) continue;
+      if (h.chg === 'new') { // 같은 티커가 '전량 매도' 쪽에 있으면 CUSIP만 바뀐 것
+        const i = g.sold.findIndex((x) => !x.pc && x.t === h.t && x.ps > 0);
+        if (i >= 0 && h.sh > 0) { h.ps = g.sold[i].ps; g.sold.splice(i, 1); nMerge++; } else continue;
+      }
+      if (!(h.sh > 0 && h.ps > 0)) continue;
+      const raw = h.sh / h.ps;
+      let f = 1;
+      if (raw >= 1.4 || raw <= 0.7) { const ev = await splitsOf(h.t, S); for (const [d, k] of ev || []) if (d > from && d <= to) f *= k; }
+      if (f !== 1) { h.split = +f.toFixed(4); nSplit++; } else delete h.split;
+      h.chg = +(h.sh / (h.ps * f) - 1).toFixed(4);
+    }
+  }
+  if (nSplit || nMerge) log(`gurus: 주식 분할 반영 ${nSplit}건 · 티커 같은 종목 합침 ${nMerge}건`);
 }
