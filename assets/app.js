@@ -722,7 +722,14 @@
     const edge = (Hs) => { if (Hs.length < 2) return null; let a = Hs.at(-2); const b = Hs.at(-1); if (b[0] - a[0] < 3 && Hs.length >= 3) a = Hs.at(-3); return { a, b, m: (b[1] - a[1]) / (b[0] - a[0]) }; };
     // 가장 높은 고점(가장 낮은 저점)이 지난 뒤라면 그 점부터 잇는다 — 교과서식 '꼭대기에서 내려오는 저항선'
     // (전체 기간을 다 쓰면 꼭대기까지 올라가는 옛 선을 지금까지 늘여 JOBY 저항선이 +539%로 떠 있었음)
-    const from = (P, top) => { const g = P.reduce((b, p) => (top ? p[1] > b[1] : p[1] < b[1]) ? p : b, P[0]); const sub = P.filter((p) => p[0] >= g[0]); return sub.length >= 2 ? sub : P; };
+    // 꼭대기가 최근 k봉 안이라 그 뒤 확정된 봉우리가 없으면 → 꼭대기 뒤의 모든 봉으로 잇는다
+    // (예전엔 전체 봉우리로 돌아가 꼭대기까지 올라가는 선을 늘여 SK하이닉스 전체 저항선이 최고가보다 +178% 위에 떠 있었음)
+    const from = (P, top) => {
+      const g = P.reduce((b, p) => (top ? p[1] > b[1] : p[1] < b[1]) ? p : b, P[0]), sub = P.filter((p) => p[0] >= g[0]);
+      if (sub.length >= 2) return sub;
+      const rest = []; for (let i = g[0] + 1; i < n; i++) rest.push([i, top ? V[i].h : V[i].l]);
+      return rest.length ? [g, ...rest] : P;
+    };
     const R = hi.length ? edge(hull(from(hi, true), true)) : null, S = lo.length ? edge(hull(from(lo, false), false)) : null;
     if (!R && !S) return null;
     const at = (E, i) => E.a[1] + E.m * (i - E.a[0]);
