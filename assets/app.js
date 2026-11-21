@@ -709,18 +709,21 @@
       if (H) hi.push([i, V[i].h]);
       if (L) lo.push([i, V[i].l]);
     }
-    // 오른쪽 끝(최근 k봉)은 아직 '확정'된 봉우리·골짜기가 없다 → 그 구간의 최고·최저가가 앞 k봉보다도 높/낮으면 후보로
+    // 오른쪽 끝(최근 k봉)은 아직 '확정'된 봉우리·골짜기가 없다 → 그 구간의 최고·최저가를 후보로
     // (계속 떨어지는 중이면 새 저점이 확정되지 않아 지지선이 한참 전 저점에 머물던 문제)
-    const tail = (get, better) => { let j = n - k; for (let i = n - k; i < n; i++) if (better(get(V[i]), get(V[j]))) j = i; for (let i = Math.max(0, j - k); i < n; i++) if (i !== j && better(get(V[i]), get(V[j]))) return null; return [j, get(V[j])]; };
+    const tail = (get, better) => { let j = n - k; for (let i = n - k; i < n; i++) if (better(get(V[i]), get(V[j]))) j = i; return [j, get(V[j])]; };
     const th = tail((x) => x.h, (a, b) => a > b), tl = tail((x) => x.l, (a, b) => a < b);
-    if (th && th[0] > (hi.at(-1)?.[0] ?? -1)) hi.push(th);
-    if (tl && tl[0] > (lo.at(-1)?.[0] ?? -1)) lo.push(tl);
+    if (th[0] > (hi.at(-1)?.[0] ?? -1)) hi.push(th);
+    if (tl[0] > (lo.at(-1)?.[0] ?? -1)) lo.push(tl);
     const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
     const hull = (P, upper) => { const Hs = []; for (const p of P) { while (Hs.length >= 2 && (upper ? cross(Hs.at(-2), Hs.at(-1), p) >= 0 : cross(Hs.at(-2), Hs.at(-1), p) <= 0)) Hs.pop(); Hs.push(p); } return Hs; };
     // 껍질의 마지막 변 = 지금 가격에 가장 가까이 붙은 선(앞쪽 변을 늘이면 지금보다 멀리 떨어진, 이미 깨진 옛 선이 됨)
     // 마지막 두 점이 너무 붙어 있으면(3봉 미만) 기울기가 들쭉날쭉해서 한 점 앞에서 잇는다
     const edge = (Hs) => { if (Hs.length < 2) return null; let a = Hs.at(-2); const b = Hs.at(-1); if (b[0] - a[0] < 3 && Hs.length >= 3) a = Hs.at(-3); return { a, b, m: (b[1] - a[1]) / (b[0] - a[0]) }; };
-    const R = edge(hull(hi, true)), S = edge(hull(lo, false));
+    // 가장 높은 고점(가장 낮은 저점)이 지난 뒤라면 그 점부터 잇는다 — 교과서식 '꼭대기에서 내려오는 저항선'
+    // (전체 기간을 다 쓰면 꼭대기까지 올라가는 옛 선을 지금까지 늘여 JOBY 저항선이 +539%로 떠 있었음)
+    const from = (P, top) => { const g = P.reduce((b, p) => (top ? p[1] > b[1] : p[1] < b[1]) ? p : b, P[0]); const sub = P.filter((p) => p[0] >= g[0]); return sub.length >= 2 ? sub : P; };
+    const R = hi.length ? edge(hull(from(hi, true), true)) : null, S = lo.length ? edge(hull(from(lo, false), false)) : null;
     if (!R && !S) return null;
     const at = (E, i) => E.a[1] + E.m * (i - E.a[0]);
     const span = Math.max(...V.map((x) => x.h)) - Math.min(...V.map((x) => x.l)) || 1;
