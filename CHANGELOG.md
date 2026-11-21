@@ -15,6 +15,8 @@
 <!-- EN Price charts now draw trendlines automatically: resistance (green dashed) along the highs and support (red dashed) along the lows, with a label above the chart — uptrend, downtrend, sideways or narrowing, plus breakouts — and how far the price is from each line. Toggle them with the "Trendlines" button -->
 - 🗓️ 가격 차트에 '전체' 기간이 생겼어요. 상장 이후 모든 기간을 월봉으로(상장한 지 3년이 안 된 종목은 주봉으로) 볼 수 있어요.
 <!-- EN Price charts get an "All" range: the whole history since listing in monthly candles (weekly for stocks listed less than 3 years ago) -->
+- 🔍 가격 차트를 확대·축소할 수 있어요. ＋/－ 버튼이나 두 손가락으로 벌리고 좁혀서 크기를 바꾸고, 확대한 상태에서 옆으로 밀면 지난 구간을 볼 수 있어요. 추세선도 보이는 구간에 맞춰 다시 그려요. 두 번 누르거나 '원래대로'를 누르면 처음 화면으로 돌아가요.
+<!-- EN Zoom into price charts: use the ＋/－ buttons or pinch, then swipe sideways to look back. Trendlines redraw for the visible stretch. Double-tap or press "Reset" to go back -->
 - 추세선: 봉우리·골짜기(좌우 k봉, k=봉 수/18) + 최근 k봉의 최고·최저 → 가장 높은 고점(낮은 저점) 이후 점들의 위·아래 볼록 껍질 마지막 변, 기울기 ÷ 가격 범위 15% 기준으로 판단 · /api/chart r=all(Yahoo max를 받아 toBars로 묶음: 3년 이상 월봉·아니면 주봉 — Yahoo가 종목마다 월·주·일 간격을 섞어 줌), 차트 캐시 키 ohlc4 <!-- internal -->
 - 추세선이 이미 만난 경우(지지선 > 저항선) 꼭짓점까지만 긋고 꼭짓점 기준 돌파·이탈로 표시 · 한국 종목 '1일' 차트를 한국 날짜로 자름(미국 날짜로 잘라 오후 1시간만 보이던 문제) · 꼭대기가 최근 k봉 안이면 꼭대기 뒤 모든 봉으로 저항선(하이닉스 전체 저항선 +178% 문제) · 종목 확인(knownSym)에 Yahoo 시세 확인 추가(ETF가 SEC 목록에 없어 테스트에서 '알 수 없는 종목'), 캐시 키 symok v=3 <!-- internal -->
 
