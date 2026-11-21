@@ -625,7 +625,7 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
 .nk.related { color: var(--c-blue); border-color: rgba(79, 143, 247, 0.45); background: rgba(79, 143, 247, 0.1); }
 .nk.industry { color: var(--c-purple); border-color: rgba(143, 122, 238, 0.45); background: rgba(143, 122, 238, 0.1); }
 .nk.official { color: #fff; background: var(--c-blue); border-color: var(--c-blue); }
-.seg.range.jr { grid-template-columns: repeat(5, 1fr); }
+.seg.range.jr, .seg.range.r6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
 /* ---- 종목 선택: 모든 종목이 한눈에 보이는 격자 칩 (한 줄 4개 · 종목이 늘면 줄이 늘어남) */
 .stock-switch { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
@@ -2567,3 +2567,7 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .rv-fomc-n { flex: none; font: 700 13px var(--mono); color: var(--c-blue); }
 .sh-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--muted); }
 .sh-h small { font: 500 11px var(--mono); color: var(--faint); white-space: nowrap; }
+.ct-legend .ct-trend { font-family: var(--sans); font-weight: 700; padding: 1px 7px; border-radius: 6px; color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, transparent); }
+.ct-legend .ct-trend.up { color: var(--up); background: color-mix(in srgb, var(--up) 14%, transparent); }
+.ct-legend .ct-trend.down { color: var(--down); background: color-mix(in srgb, var(--down) 14%, transparent); }
+.ct-legend i.dash { height: 0; border-top: 2px dashed var(--c); background: none; border-radius: 0; }

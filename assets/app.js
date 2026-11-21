@@ -687,12 +687,65 @@
   state.chartType = loadPref('chartType', 'candle');
   state.chartMA = loadPref('chartMA', '1') === '1';
   state.chartVol = loadPref('chartVol', '1') === '1';
+  state.chartTrend = loadPref('chartTrend', '1') === '1';
   // 차트 위 도구: 캔들/라인 · 이동평균 · 거래량 (모든 종목 공통, 이 기기에 기억)
   const chartTools = (id) => `<div class="ct-bar" role="group" aria-label="차트 보기 설정">
       <button type="button" data-ctype="candle" aria-pressed="${state.chartType !== 'line'}">캔들</button><button type="button" data-ctype="line" aria-pressed="${state.chartType === 'line'}">라인</button>
       <i class="ct-sep"></i>
-      <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button>
+      <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button><button type="button" data-ctoggle="trend" aria-pressed="${state.chartTrend}">추세선</button>
     </div><div class="ct-legend" id="ctl-${id}"></div>`;
+  // ---------------------------------------------------------------- 자동 추세선(지지선·저항선)
+  // 화면에 보이는 캔들에서 '봉우리(주변 k개보다 높은 고가)'와 '골짜기(주변보다 낮은 저가)'를 찾고,
+  // 봉우리들을 위에서 감싸는 선(볼록 껍질)의 마지막 변 = 저항선, 골짜기들을 아래에서 받치는 마지막 변 = 지지선.
+  // 그래서 저항선은 그 뒤의 고점들이 넘지 않은 선, 지지선은 그 뒤의 저점들이 깨지 않은 선이 된다.
+  function trendLines(V) {
+    const n = V.length;
+    if (n < 15) return null;
+    const k = Math.max(2, Math.min(8, Math.round(n / 18)));
+    const hi = [], lo = [];
+    for (let i = k; i < n - k; i++) {
+      let H = true, L = true;
+      for (let j = i - k; j <= i + k && (H || L); j++) { if (j === i) continue; if (V[j].h > V[i].h) H = false; if (V[j].l < V[i].l) L = false; }
+      if (H) hi.push([i, V[i].h]);
+      if (L) lo.push([i, V[i].l]);
+    }
+    // 오른쪽 끝(최근 k봉)은 아직 '확정'된 봉우리·골짜기가 없다 → 그 구간의 최고·최저가가 앞 k봉보다도 높/낮으면 후보로
+    // (계속 떨어지는 중이면 새 저점이 확정되지 않아 지지선이 한참 전 저점에 머물던 문제)
+    const tail = (get, better) => { let j = n - k; for (let i = n - k; i < n; i++) if (better(get(V[i]), get(V[j]))) j = i; for (let i = Math.max(0, j - k); i < n; i++) if (i !== j && better(get(V[i]), get(V[j]))) return null; return [j, get(V[j])]; };
+    const th = tail((x) => x.h, (a, b) => a > b), tl = tail((x) => x.l, (a, b) => a < b);
+    if (th && th[0] > (hi.at(-1)?.[0] ?? -1)) hi.push(th);
+    if (tl && tl[0] > (lo.at(-1)?.[0] ?? -1)) lo.push(tl);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const hull = (P, upper) => { const Hs = []; for (const p of P) { while (Hs.length >= 2 && (upper ? cross(Hs.at(-2), Hs.at(-1), p) >= 0 : cross(Hs.at(-2), Hs.at(-1), p) <= 0)) Hs.pop(); Hs.push(p); } return Hs; };
+    // 껍질의 마지막 변 = 지금 가격에 가장 가까이 붙은 선(앞쪽 변을 늘이면 지금보다 멀리 떨어진, 이미 깨진 옛 선이 됨)
+    // 마지막 두 점이 너무 붙어 있으면(3봉 미만) 기울기가 들쭉날쭉해서 한 점 앞에서 잇는다
+    const edge = (Hs) => { if (Hs.length < 2) return null; let a = Hs.at(-2); const b = Hs.at(-1); if (b[0] - a[0] < 3 && Hs.length >= 3) a = Hs.at(-3); return { a, b, m: (b[1] - a[1]) / (b[0] - a[0]) }; };
+    const R = edge(hull(hi, true)), S = edge(hull(lo, false));
+    if (!R && !S) return null;
+    const at = (E, i) => E.a[1] + E.m * (i - E.a[0]);
+    const span = Math.max(...V.map((x) => x.h)) - Math.min(...V.map((x) => x.l)) || 1;
+    // 기울기: 차트 전체 길이 동안 선이 움직이는 폭 ÷ 차트의 가격 범위(15% 넘게 기울면 오름·내림)
+    const dir = (E) => (!E ? 0 : (E.m * (n - 1)) / span > 0.15 ? 1 : (E.m * (n - 1)) / span < -0.15 ? -1 : 0);
+    const ds = dir(S), dr = dir(R), last = V.at(-1).c;
+    const sNow = S ? at(S, n - 1) : null, rNow = R ? at(R, n - 1) : null;
+    const kind = ds > 0 && dr > 0 ? 'up' : ds < 0 && dr < 0 ? 'down' : ds > 0 && dr < 0 ? 'squeeze' : ds < 0 && dr > 0 ? 'widen'
+      : ds > 0 || dr > 0 ? 'upish' : ds < 0 || dr < 0 ? 'downish' : 'flat';
+    const pos = rNow != null && last > rNow ? 'break-up' : sNow != null && last < sNow ? 'break-down' : 'inside';
+    const line = (E) => (E ? V.map((_, i) => (i >= E.a[0] ? at(E, i) : null)) : null);
+    return { kind, pos, last, sNow, rNow, sup: line(S), res: line(R) };
+  }
+  const TREND_TXT = {
+    up: ['상승 추세', 'Uptrend', 'up'], down: ['하락 추세', 'Downtrend', 'down'], squeeze: ['삼각 수렴', 'Narrowing (triangle)', 'flat'],
+    widen: ['변동성 확대', 'Widening swings', 'flat'], upish: ['완만한 상승', 'Mild uptrend', 'up'], downish: ['완만한 하락', 'Mild downtrend', 'down'], flat: ['횡보(박스권)', 'Sideways (range)', 'flat'],
+  };
+  const TREND_RES = '#3fbf7f', TREND_SUP = '#ff6b6b';
+  function trendLegend(T, fmt) {
+    const [ko, en, c] = TREND_TXT[T.kind], d = (v) => (v ? ` (${v >= T.last ? '+' : ''}${((v / T.last - 1) * 100).toFixed(1)}%)` : '');
+    const pos = T.pos === 'break-up' ? (EN ? ' · broke above resistance' : ' · 저항선 돌파') : T.pos === 'break-down' ? (EN ? ' · fell below support' : ' · 지지선 이탈') : '';
+    return `<span class="ct-trend ${T.pos === 'break-up' ? 'up' : T.pos === 'break-down' ? 'down' : c}" data-noi18n>${EN ? en : ko}${pos}</span>`
+      + (T.sNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_SUP}"></i>${EN ? 'Support' : '지지'} ${fmt(T.sNow)}${d(T.sNow)}</span>` : '')
+      + (T.rNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_RES}"></i>${EN ? 'Resistance' : '저항'} ${fmt(T.rNow)}${d(T.rNow)}</span>` : '');
+  }
   function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, ind = false, fmt = price } = {}) { // fmt: 가격 표시(한국 종목은 원)
     if (!pts?.length) return;
     const pre = (pts.pre || []).map(ohlc), V = pts.map(ohlc), all = [...pre, ...V];
@@ -722,6 +775,9 @@
         maOut.push([n, col, shown.at(-1)]);
       }
     }
+    // 자동 추세선(점선): 저항선 초록 · 지지선 빨강
+    const T = ind && state.chartTrend ? trendLines(V) : null;
+    if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
     const hasVol = ind && state.chartVol && V.some((k) => k.v > 0);
     if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
     const maxVol = hasVol ? Math.max(...V.map((k) => k.v || 0)) : 0;
@@ -743,7 +799,7 @@
                 const k = charts[id]?.$V?.[it.dataIndex] || V[it.dataIndex];
                 const out = [` 시가 ${fmt(k.o)} · 고가 ${fmt(k.h)}`, ` 저가 ${fmt(k.l)} · 종가 ${fmt(k.c)}`];
                 if (k.v) out.push(` 거래량 ${unit(k.v)}`);
-                const mas = it.chart.data.datasets.filter((d) => /^MA/.test(d.label) && d.data[it.dataIndex] != null).map((d) => `${d.label} ${fmt(d.data[it.dataIndex])}`);
+                const mas = it.chart.data.datasets.filter((d) => (/^MA/.test(d.label) || d.tl) && d.data[it.dataIndex] != null).map((d) => `${d.label} ${fmt(d.data[it.dataIndex])}`);
                 if (mas.length) out.push(' ' + mas.join(' · '));
                 return out;
               },
@@ -760,7 +816,7 @@
       },
     });
     if (charts[id]) { charts[id].$V = V; charts[id].$line = line; } else if (pendingCharts[id]) pendingCharts[id].after = (c) => { c.$V = V; c.$line = line; };
-    if (ind) setHtml('ctl-' + id, maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
+    if (ind) setHtml('ctl-' + id, (T ? trendLegend(T, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
@@ -788,6 +844,7 @@
     const last = points.at(-1)[0];
     let from;
     if (r === '1d') { const d = etDate(last); from = points.findIndex((p) => etDate(p[0]) === d); }
+    else if (r === 'all') from = 0;
     else { const days = { '1w': 7, '1m': 31, '3m': 92, '1y': 366 }[r] || 31; from = points.findIndex((p) => p[0] >= last - days * 86400000); }
     return splitView(points, points.length - Math.max(0, from));
   }
@@ -1330,13 +1387,15 @@
     '1m': { label: '1개월', interval: '8h', limit: 90 },
     '3m': { label: '3개월', interval: '1d', limit: 90 },
     '1y': { label: '1년', interval: '1w', limit: 53, yahoo: true }, // 바이낸스 선물은 1년이 안 돼 실제 주가(Yahoo 주봉)로
+    all: { label: '전체', interval: '1mo', yahoo: true }, // 상장 이후 전부(월봉, 상장 3년이 안 되면 주봉)
   };
-  const yahooYear = async (sym) => { const j = await getJ(`${NEWS_API}/chart?s=${sym}&r=1y`, 15000); if (j.error) throw new Error(j.error); return yahooView(j.points, '1y'); };
+  const yahooRange = async (sym, r) => { const j = await getJ(`${NEWS_API}/chart?s=${sym}&r=${r}`, 15000); if (j.error) throw new Error(j.error); const v = yahooView(j.points, r); v.iv = j.iv; return v; };
   const px = state.px;
   const price = (v) => (v == null || !isFinite(v) ? '–' : '$' + nf(2).format(v));
   const HM_FMT = new Intl.DateTimeFormat(LOC, { hour: '2-digit', minute: '2-digit', hour12: false });
   const hm = (ms) => HM_FMT.format(new Date(ms));
   const mdLocal = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  const ymLocal = (ms) => { const d = new Date(ms); return `${String(d.getFullYear()).slice(2)}.${d.getMonth() + 1}`; }; // 전체 기간 가로축: 25.6
   const setHtml = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
   // 등락률 기준(2026-11-13 바꿈): 바이낸스의 '24시간 전 가격'이 아니라 전날 종가(Nasdaq 시세의 기준가) — 보유 현황·증권사 앱과 같은 숫자가 나오게.
@@ -1372,7 +1431,7 @@
   }
   async function loadKlines(range) {
     const r = RANGES[range];
-    if (r.yahoo) { px.klines[range] = await yahooYear('CRCL'); return; }
+    if (r.yahoo) { px.klines[range] = await yahooRange('CRCL', range); return; }
     const k = await bnGet(`klines?symbol=${BN.sym}&interval=${r.interval}&limit=${r.limit + 120}`);
     px.klines[range] = splitView(k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3], +x[5]]), r.limit); // [시작 시각(ms), 종가, 시가, 고가, 저가, 거래량]
   }
@@ -1480,9 +1539,9 @@
     if (!k?.length) return;
     const tip = (it) => {
       const d = new Date(k[it.dataIndex][0]);
-      return /^1[dw]$/.test(RANGES[range].interval) ? d.toLocaleDateString(LOC) : d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+      return /^1(d|w|mo)$/.test(RANGES[range].interval) ? d.toLocaleDateString(LOC) : d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
     };
-    drawCandles(id, k, { compact, xf: range === '1d' ? hm : mdLocal, tip, last: px.t?.last, ind: !compact });
+    drawCandles(id, k, { compact, xf: range === '1d' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last: px.t?.last, ind: !compact });
   }
 
   function renderPriceCard() {
@@ -1513,14 +1572,14 @@
     let note = '';
     if (k?.length) {
       const vals = k.map((p) => p[1]);
-      note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? vals[0])} · ${RANGES[r].yahoo ? (EN ? 'weekly · actual stock price (regular session, Yahoo)' : '주봉 · 실제 주가(정규장, Yahoo)') : RANGES[r].interval + ' 캔들'}`;
+      note = `${RANGES[r].label} 최고 ${price(Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${price(Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${price(k[0][2] ?? vals[0])} · ${RANGES[r].yahoo ? (EN ? `${k.iv === '1mo' ? 'monthly' : 'weekly'} · actual stock price (regular session, Yahoo)` : `${k.iv === '1mo' ? '월봉' : '주봉'} · 실제 주가(정규장, Yahoo)`) : RANGES[r].interval + ' 캔들'}`;
     }
     card('pricechart', {
       title: 'CRCL 가격 추이',
       sub: 'Binance CRCLUSDT 무기한 선물',
       info: INFO.pricechart,
       body: `
-        <div class="seg range" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-range="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
+        <div class="seg range r6" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-range="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
         ${chartTools('pricechart')}
         <div class="px-main sm"><span class="px-last" id="pc-last">${price(px.t?.last)}</span><span class="px-chg" id="pc-chg"></span></div>
         <div class="chart tall"><canvas id="cv-pricechart" role="img" aria-label="CRCL 가격 추이"></canvas></div>
@@ -6482,7 +6541,7 @@ ${what.join(' · ')}
   function pulseTabGroup() { const g = document.querySelector('.tabbar .tb-now'); if (!g) return; g.classList.remove('tb-pulse'); void g.offsetWidth; g.classList.add('tb-pulse'); }
 
   // ---------------------------------------------------------------- 종목: 시세 · 차트
-  const SRANGES = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '1y': '1년' };
+  const SRANGES = { '1d': '1일', '1w': '1주', '1m': '1개월', '3m': '3개월', '1y': '1년', all: '전체' };
   async function loadSChart(sym, r) {
     const j = await getJ(`${NEWS_API}/chart?s=${sym}&r=${r}`, 15000);
     if (j.error) throw new Error(j.error);
@@ -6554,7 +6613,7 @@ ${what.join(' · ')}
     const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString(LOC); };
     // 바이낸스는 24시간 이어지므로 어느 기간이든 마지막 캔들에 현재가 반영, Yahoo는 오늘(1일) 캔들만
     const last = BN24[sym] || range === '1d' || range === 'bn' ? q?.price : null;
-    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : mdLocal, tip, last, ind: !compact, fmt: (v) => pxS(sym, v) });
+    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last, ind: !compact, fmt: (v) => pxS(sym, v) });
   }
 
   const bxRange = () => (RANGES[state.srange] ? state.srange : '1d'); // 바이낸스 캔들은 1일~3개월
@@ -6608,11 +6667,11 @@ ${what.join(' · ')}
     if (BN24[sym]) {
       const X = bxOf(sym), r = bxRange(), k = X.klines[r];
       let note = '';
-      if (k?.length) note = `${RANGES[r].label} 최고 ${pxS(sym, Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${pxS(sym, Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${pxS(sym, k[0][2] ?? k[0][1])} · ${RANGES[r].yahoo ? (EN ? 'weekly · actual stock price (regular session, Yahoo)' : '주봉 · 실제 주가(정규장, Yahoo)') : RANGES[r].interval + ' 캔들'}`;
+      if (k?.length) note = `${RANGES[r].label} 최고 ${pxS(sym, Math.max(...k.map((p) => p[3] ?? p[1])))} · 최저 ${pxS(sym, Math.min(...k.map((p) => p[4] ?? p[1])))} · 시작 ${pxS(sym, k[0][2] ?? k[0][1])} · ${RANGES[r].yahoo ? (EN ? `${k.iv === '1mo' ? 'monthly' : 'weekly'} · actual stock price (regular session, Yahoo)` : `${k.iv === '1mo' ? '월봉' : '주봉'} · 실제 주가(정규장, Yahoo)`) : RANGES[r].interval + ' 캔들'}`;
       card('spricechart', {
         title: `${sym} 가격 추이`, sub: `Binance ${BN24[sym]} 무기한 선물`, info: INFO.pricechart,
         body: `
-          <div class="seg range" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-srange="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
+          <div class="seg range r6" role="group" aria-label="기간 선택">${Object.entries(RANGES).map(([key, v]) => `<button type="button" data-srange="${key}" aria-pressed="${key === r}">${v.label}</button>`).join('')}</div>
           ${chartTools('spricechart')}
           <div class="px-main sm"><span class="px-last" id="spc-last">${pxS(sym, X.t?.last)}</span><span class="px-chg" id="spc-chg"></span></div>
           <div class="chart tall"><canvas id="cv-spricechart" role="img" aria-label="${sym} 가격 추이"></canvas></div>
@@ -9092,7 +9151,7 @@ ${what.join(' · ')}
   }
   async function bxKlines(sym, range) {
     const r = RANGES[range];
-    if (r.yahoo) { bxOf(sym).klines[range] = await yahooYear(sym); return; }
+    if (r.yahoo) { bxOf(sym).klines[range] = await yahooRange(sym, range); return; }
     const k = await bnGet(`klines?symbol=${BN24[sym]}&interval=${r.interval}&limit=${r.limit + 120}`);
     bxOf(sym).klines[range] = splitView(k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3], +x[5]]), r.limit);
   }
@@ -9690,7 +9749,7 @@ ${what.join(' · ')}
     if (ctp) { state.chartType = ctp.dataset.ctype; savePref('chartType', state.chartType); renderPriceChart(); if (isOther()) renderSPriceChart(); if (state.view === 'mkt') renderMkChart(); return; }
     const ctg = ev.target.closest('[data-ctoggle]');
     if (ctg) {
-      const k = ctg.dataset.ctoggle === 'ma' ? 'chartMA' : 'chartVol';
+      const k = { ma: 'chartMA', vol: 'chartVol', trend: 'chartTrend' }[ctg.dataset.ctoggle];
       state[k] = !state[k]; savePref(k, state[k] ? '1' : '0');
       renderPriceChart(); if (isOther()) renderSPriceChart(); if (state.view === 'mkt') renderMkChart();
       return;

@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 📈 가격 차트에 추세선이 자동으로 그려져요. 고점들을 잇는 저항선(초록 점선)과 저점들을 잇는 지지선(빨강 점선)을 그리고, 차트 위에 '상승 추세·하락 추세·횡보·삼각 수렴'과 '저항선 돌파·지지선 이탈', 지금 가격에서 지지선·저항선까지 몇 %인지 보여 줘요. '추세선' 버튼으로 켜고 끌 수 있어요.
+<!-- EN Price charts now draw trendlines automatically: resistance (green dashed) along the highs and support (red dashed) along the lows, with a label above the chart — uptrend, downtrend, sideways or narrowing, plus breakouts — and how far the price is from each line. Toggle them with the "Trendlines" button -->
+- 🗓️ 가격 차트에 '전체' 기간이 생겼어요. 상장 이후 모든 기간을 월봉으로(상장한 지 3년이 안 된 종목은 주봉으로) 볼 수 있어요.
+<!-- EN Price charts get an "All" range: the whole history since listing in monthly candles (weekly for stocks listed less than 3 years ago) -->
+- 추세선: 봉우리·골짜기(좌우 k봉, k=봉 수/18) + 최근 k봉의 최고·최저 후보 → 위·아래 볼록 껍질의 마지막 변, 기울기 ÷ 가격 범위 15% 기준으로 판단 · /api/chart r=all(Yahoo 1mo max, 40개 미만이면 1wk max) <!-- internal -->
+
 ## v2026.11.19-2 — 2026-11-19
 
 [이 버전 보기](https://7d78999e.my-fire-portfolio.pages.dev) · 커밋 `954f825`

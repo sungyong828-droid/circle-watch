@@ -1578,7 +1578,8 @@ export async function handleQuote(url, cache, cors, ctx) {
 const CHART_SYMBOLS = ['JOBY', 'ACHR', 'CRCL', 'CRCA', 'SPCX', 'RKLB', 'TEM', 'GH'];
 // 캔들 차트용 간격(휴대폰에서 알아볼 수 있는 개수): 1일 15분봉 · 1주 1시간봉 · 1개월·3개월 일봉 · 1년 주봉
 // 이동평균선 계산을 위해 보여줄 기간보다 앞쪽까지 받는다(화면은 앱이 원래 기간만 잘라 보여줌)
-const CHART_RANGES = { '1d': ['15m', '5d'], '1w': ['1h', '1mo'], '1m': ['1d', '6mo'], '3m': ['1d', '1y'], '1y': ['1wk', '5y'] };
+// 전체(all): 상장 이후 전부를 월봉으로 — 상장 3년이 안 돼 월봉이 40개도 안 되면 주봉으로 다시 받는다(CRCL·SPCX 등)
+const CHART_RANGES = { '1d': ['15m', '5d'], '1w': ['1h', '1mo'], '1m': ['1d', '6mo'], '3m': ['1d', '1y'], '1y': ['1wk', '5y'], all: ['1mo', 'max'] };
 // 홈 '시장 개요' 칸의 지수·환율·선물(앱에서 누르면 차트) — 종목 확인 없이 이 목록만 허용
 const MARKET_CHART = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX', 'DX-Y.NYB', 'BTC-USD', '^KS11', '^KQ11', 'KRW=X', 'ES=F', 'NQ=F'];
 export async function handleChart(url, cache, cors, ctx) {
@@ -1590,16 +1591,19 @@ export async function handleChart(url, cache, cors, ctx) {
   return swr(cache, ctx, `${url.origin}/chart?s=${encodeURIComponent(sym)}&r=${range}&v=ohlc3`, {
     freshSec: range === '1d' ? 60 : 900, keepSec: 86400, cors,
     build: async () => {
-      const [interval, rng] = CHART_RANGES[range];
-      const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${mkt ? encodeURIComponent(sym) : yahooSym(sym)}?interval=${interval}&range=${rng}&includePrePost=${!mkt && (range === '1d' || range === '1w') && !KR_RE.test(sym)}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
-      if (!r.ok) throw new Error('yahoo ' + r.status);
-      const j = (await r.json()).chart.result[0];
-      const Q = j.indicators?.quote?.[0] || {}, ts = j.timestamp || [];
-      const r2 = (v) => (v == null ? null : Math.round(v * 10000) / 10000);
-      // [시각(ms), 종가, 시가, 고가, 저가, 거래량]
-      const points = ts.map((t, i) => [t * 1000, r2(Q.close?.[i]), r2(Q.open?.[i]), r2(Q.high?.[i]), r2(Q.low?.[i]), Q.volume?.[i] ?? null]).filter((p) => p[1] != null);
-      const m = j.meta || {};
-      return JSON.stringify({ at: new Date().toISOString(), symbol: sym, range, points, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null });
+      const get = async (interval, rng) => {
+        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${mkt ? encodeURIComponent(sym) : yahooSym(sym)}?interval=${interval}&range=${rng}&includePrePost=${!mkt && (range === '1d' || range === '1w') && !KR_RE.test(sym)}`, { headers: { 'user-agent': BROWSER_UA }, signal: AbortSignal.timeout(8000) });
+        if (!r.ok) throw new Error('yahoo ' + r.status);
+        const j = (await r.json()).chart.result[0];
+        const Q = j.indicators?.quote?.[0] || {}, ts = j.timestamp || [];
+        const r2 = (v) => (v == null ? null : Math.round(v * 10000) / 10000);
+        // [시각(ms), 종가, 시가, 고가, 저가, 거래량]
+        return { m: j.meta || {}, iv: interval, points: ts.map((t, i) => [t * 1000, r2(Q.close?.[i]), r2(Q.open?.[i]), r2(Q.high?.[i]), r2(Q.low?.[i]), Q.volume?.[i] ?? null]).filter((p) => p[1] != null) };
+      };
+      let R = await get(...CHART_RANGES[range]);
+      if (range === 'all' && R.points.length < 40) R = await get('1wk', 'max');
+      const { m, points, iv } = R;
+      return JSON.stringify({ at: new Date().toISOString(), symbol: sym, range, iv, points, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null });
     },
   });
 }
