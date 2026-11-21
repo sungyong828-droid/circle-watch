@@ -16,6 +16,7 @@
 - 🗓️ 가격 차트에 '전체' 기간이 생겼어요. 상장 이후 모든 기간을 월봉으로(상장한 지 3년이 안 된 종목은 주봉으로) 볼 수 있어요.
 <!-- EN Price charts get an "All" range: the whole history since listing in monthly candles (weekly for stocks listed less than 3 years ago) -->
 - 추세선: 봉우리·골짜기(좌우 k봉, k=봉 수/18) + 최근 k봉의 최고·최저 → 가장 높은 고점(낮은 저점) 이후 점들의 위·아래 볼록 껍질 마지막 변, 기울기 ÷ 가격 범위 15% 기준으로 판단 · /api/chart r=all(Yahoo max를 받아 toBars로 묶음: 3년 이상 월봉·아니면 주봉 — Yahoo가 종목마다 월·주·일 간격을 섞어 줌), 차트 캐시 키 ohlc4 <!-- internal -->
+- 추세선이 이미 만난 경우(지지선 > 저항선) 꼭짓점까지만 긋고 꼭짓점 기준 돌파·이탈로 표시 · 한국 종목 '1일' 차트를 한국 날짜로 자름(미국 날짜로 잘라 오후 1시간만 보이던 문제) · 종목 확인(knownSym)에 Yahoo 시세 확인 추가(ETF가 SEC 목록에 없어 테스트에서 '알 수 없는 종목'), 캐시 키 symok v=3 <!-- internal -->
 
 ## v2026.11.19-2 — 2026-11-19
 

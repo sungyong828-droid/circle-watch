@@ -730,12 +730,21 @@
     // 기울기: 차트 전체 길이 동안 선이 움직이는 폭 ÷ 차트의 가격 범위(15% 넘게 기울면 오름·내림)
     const dir = (E) => (!E ? 0 : (E.m * (n - 1)) / span > 0.15 ? 1 : (E.m * (n - 1)) / span < -0.15 ? -1 : 0);
     const ds = dir(S), dr = dir(R), last = V.at(-1).c;
-    const sNow = S ? at(S, n - 1) : null, rNow = R ? at(R, n - 1) : null;
-    const kind = ds > 0 && dr > 0 ? 'up' : ds < 0 && dr < 0 ? 'down' : ds > 0 && dr < 0 ? 'squeeze' : ds < 0 && dr > 0 ? 'widen'
+    let sNow = S ? at(S, n - 1) : null, rNow = R ? at(R, n - 1) : null;
+    let kind = ds > 0 && dr > 0 ? 'up' : ds < 0 && dr < 0 ? 'down' : ds > 0 && dr < 0 ? 'squeeze' : ds < 0 && dr > 0 ? 'widen'
       : ds > 0 || dr > 0 ? 'upish' : ds < 0 || dr < 0 ? 'downish' : 'flat';
-    const pos = rNow != null && last > rNow ? 'break-up' : sNow != null && last < sNow ? 'break-down' : 'inside';
-    const line = (E) => (E ? V.map((_, i) => (i >= E.a[0] ? at(E, i) : null)) : null);
-    return { kind, pos, last, sNow, rNow, sup: line(S), res: line(R) };
+    let pos = rNow != null && last > rNow ? 'break-up' : sNow != null && last < sNow ? 'break-down' : 'inside';
+    // 두 선이 이미 만났으면(지지선이 저항선보다 위로 올라감) 삼각형이 끝난 것 → 꼭짓점까지만 긋고,
+    // 지금 가격이 꼭짓점보다 위면 위로 돌파·아래면 아래로 이탈(지지 > 저항으로 보이던 문제)
+    let end = n - 1, apex = null;
+    if (S && R && sNow >= rNow) {
+      const x = S.m !== R.m ? (R.a[1] - R.m * R.a[0] - S.a[1] + S.m * S.a[0]) / (S.m - R.m) : n - 1;
+      end = Math.min(n - 1, Math.max(S.a[0], R.a[0], Math.ceil(x)));
+      apex = at(S, Math.min(n - 1, Math.max(0, x)));
+      kind = 'squeeze'; pos = last >= apex ? 'break-up' : 'break-down'; sNow = rNow = null;
+    }
+    const line = (E) => (E ? V.map((_, i) => (i >= E.a[0] && i <= end ? at(E, i) : null)) : null);
+    return { kind, pos, last, sNow, rNow, apex, sup: line(S), res: line(R) };
   }
   const TREND_TXT = {
     up: ['상승 추세', 'Uptrend', 'up'], down: ['하락 추세', 'Downtrend', 'down'], squeeze: ['삼각 수렴', 'Narrowing (triangle)', 'flat'],
@@ -747,7 +756,8 @@
     const pos = T.pos === 'break-up' ? (EN ? ' · broke above resistance' : ' · 저항선 돌파') : T.pos === 'break-down' ? (EN ? ' · fell below support' : ' · 지지선 이탈') : '';
     return `<span class="ct-trend ${T.pos === 'break-up' ? 'up' : T.pos === 'break-down' ? 'down' : c}" data-noi18n>${EN ? en : ko}${pos}</span>`
       + (T.sNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_SUP}"></i>${EN ? 'Support' : '지지'} ${fmt(T.sNow)}${d(T.sNow)}</span>` : '')
-      + (T.rNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_RES}"></i>${EN ? 'Resistance' : '저항'} ${fmt(T.rNow)}${d(T.rNow)}</span>` : '');
+      + (T.rNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_RES}"></i>${EN ? 'Resistance' : '저항'} ${fmt(T.rNow)}${d(T.rNow)}</span>` : '')
+      + (T.apex != null ? `<span data-noi18n>${EN ? 'Apex' : '꼭짓점'} ${fmt(T.apex)}${d(T.apex)}</span>` : '');
   }
   function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, now = null, ind = false, fmt = price } = {}) { // fmt: 가격 표시(한국 종목은 원) · now: 지금 가격(추세선까지 거리 %)
     if (!pts?.length) return;
@@ -843,11 +853,13 @@
     return view;
   }
   // Yahoo 차트: 서버는 앞쪽 기간까지 보내므로 기간에 맞게 자른다(1일 = 마지막 거래일)
-  function yahooView(points, r) {
+  // 한국 종목은 장(09:00~15:30 KST)이 미국 동부 자정을 넘어가므로 '1일'을 한국 날짜로 자른다(미국 날짜로 자르면 오후 1시간만 남았음)
+  const KST_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' });
+  function yahooView(points, r, sym = '') {
     if (!points?.length) return points || [];
     const last = points.at(-1)[0];
     let from;
-    if (r === '1d') { const d = etDate(last); from = points.findIndex((p) => etDate(p[0]) === d); }
+    if (r === '1d') { const day = isKR(sym) ? (t) => KST_FMT.format(t) : etDate, d = day(last); from = points.findIndex((p) => day(p[0]) === d); }
     else if (r === 'all') from = 0;
     else { const days = { '1w': 7, '1m': 31, '3m': 92, '1y': 366 }[r] || 31; from = points.findIndex((p) => p[0] >= last - days * 86400000); }
     return splitView(points, points.length - Math.max(0, from));
@@ -6549,7 +6561,7 @@ ${what.join(' · ')}
   async function loadSChart(sym, r) {
     const j = await getJ(`${NEWS_API}/chart?s=${sym}&r=${r}`, 15000);
     if (j.error) throw new Error(j.error);
-    j.points = yahooView(j.points, r);
+    j.points = yahooView(j.points, r, sym);
     st(sym).chart[r] = j;
   }
   const ipoPx = () => state.spcx?.ipo?.price ?? null;
