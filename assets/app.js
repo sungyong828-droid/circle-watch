@@ -693,6 +693,7 @@
       <button type="button" data-ctype="candle" aria-pressed="${state.chartType !== 'line'}">캔들</button><button type="button" data-ctype="line" aria-pressed="${state.chartType === 'line'}">라인</button>
       <i class="ct-sep"></i>
       <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button><button type="button" data-ctoggle="trend" aria-pressed="${state.chartTrend}">추세선</button>
+      <i class="ct-sep"></i><span class="ct-zm" data-noi18n><button type="button" class="ct-zb" data-czoom="in:${id}" aria-label="${EN ? 'Zoom in' : '차트 확대'}" title="${EN ? 'Zoom in' : '확대'}">＋</button><button type="button" class="ct-zb" data-czoom="out:${id}" aria-label="${EN ? 'Zoom out' : '차트 축소'}" title="${EN ? 'Zoom out' : '축소'}" disabled>－</button></span>
     </div><div class="ct-legend" id="ctl-${id}"></div>`;
   // ---------------------------------------------------------------- 자동 추세선(지지선·저항선)
   // 화면에 보이는 캔들에서 '봉우리(주변 k개보다 높은 고가)'와 '골짜기(주변보다 낮은 저가)'를 찾고,
@@ -758,6 +759,69 @@
     widen: ['변동성 확대', 'Widening swings', 'flat'], upish: ['완만한 상승', 'Mild uptrend', 'up'], downish: ['완만한 하락', 'Mild downtrend', 'down'], flat: ['횡보(박스권)', 'Sideways (range)', 'flat'],
   };
   const TREND_RES = '#3fbf7f', TREND_SUP = '#ff6b6b';
+  // ---------------------------------------------------------------- 차트 확대·축소(모든 가격 차트 공통)
+  // 보이는 캔들 수(span)와 오른쪽 끝에서 비켜난 칸 수(off)를 차트마다 기억 → 기간을 바꾸면(첫 캔들이 달라지면) 처음 상태로
+  // ＋/－ 버튼, 두 손가락 벌리기·좁히기(트랙패드 핀치 포함), 확대 중 옆으로 밀기, 두 번 누르면 원래대로
+  // 추세선·이동평균 범례도 보이는 구간 기준으로 다시 계산한다
+  const CZ = {}, CZ_MIN = 15, czKey = (V) => `${V[0]?.t}|${V[0]?.o}`; // 첫 캔들의 시각·시가(다른 종목·기간이면 달라짐)
+  function czWin(id, V) {
+    const z = CZ[id], n = V.length;
+    if (!z) return null;
+    if (z.key !== czKey(V)) { delete CZ[id]; return null; }
+    z.n = n; z.span = Math.max(Math.min(CZ_MIN, n), Math.min(n, Math.round(z.span)));
+    if (z.span >= n) { delete CZ[id]; return null; }
+    z.off = Math.max(0, Math.min(n - z.span, Math.round(z.off)));
+    return { st: n - z.off - z.span, end: n - z.off, n };
+  }
+  // f < 1 확대 · f > 1 축소, at = 화면에서 고정할 위치(0 왼쪽 ~ 1 오른쪽 끝)
+  function czBy(id, f, at = 1) {
+    const M = charts[id]?.$cz, A = CZ[id] || (M && { key: M.key, n: M.n, span: M.n, off: 0 });
+    if (!A) return;
+    const n = A.n, st = n - A.off - A.span, span = Math.max(Math.min(CZ_MIN, n), Math.min(n, Math.round(A.span * f)));
+    if (span === A.span) return;
+    const nst = Math.round(st + at * A.span - at * span);
+    CZ[id] = { ...A, span, off: n - Math.min(n, Math.max(span, nst + span)) };
+    czRedraw(id);
+  }
+  const czBusy = {};
+  function czRedraw(id) {
+    const a = charts[id]?.$args;
+    if (!a || czBusy[id]) return;
+    czBusy[id] = true;
+    requestAnimationFrame(() => { czBusy[id] = false; drawCandles(id, a.pts, { ...a.opts, quick: true }); });
+  }
+  function czReset(id) { if (CZ[id]) { delete CZ[id]; czRedraw(id); } }
+  function czBind(id) {
+    const cv = document.getElementById('cv-' + id);
+    if (!cv || cv.dataset.cz) return;
+    cv.dataset.cz = '1';
+    const P = new Map();
+    let pinch = null, pan = null;
+    const area = () => charts[id]?.chartArea;
+    const frac = (x) => { const r = cv.getBoundingClientRect(), A = area(); return A ? Math.min(1, Math.max(0, (x - r.left - A.left) / (A.right - A.left))) : 1; };
+    cv.addEventListener('pointerdown', (e) => {
+      P.set(e.pointerId, e.clientX);
+      if (P.size === 2) { const [a, b] = [...P.values()]; pinch = { d: Math.abs(a - b) || 1, at: frac((a + b) / 2) }; pan = null; }
+      else if (P.size === 1 && CZ[id]) pan = { x: e.clientX, off: CZ[id].off };
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!P.has(e.pointerId)) return;
+      P.set(e.pointerId, e.clientX);
+      if (pinch && P.size === 2) {
+        const [a, b] = [...P.values()], d = Math.abs(a - b) || 1;
+        if (Math.abs(d / pinch.d - 1) > 0.08) { czBy(id, pinch.d / d, pinch.at); pinch.d = d; }
+      } else if (pan && CZ[id]) {
+        const A = area(); if (!A) return;
+        const per = (A.right - A.left) / CZ[id].span, moved = Math.round((e.clientX - pan.x) / per);
+        if (moved !== CZ[id].off - pan.off) { CZ[id].off = pan.off + moved; czRedraw(id); }
+      }
+    });
+    const up = (e) => { P.delete(e.pointerId); if (P.size < 2) pinch = null; if (!P.size) pan = null; };
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) cv.addEventListener(t, up);
+    // 트랙패드 핀치(=ctrl+휠)만 가로챈다 — 그냥 휠은 페이지 스크롤 그대로
+    cv.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); czBy(id, e.deltaY > 0 ? 1.15 : 1 / 1.15, frac(e.clientX)); }, { passive: false });
+    cv.addEventListener('dblclick', () => czReset(id));
+  }
   function trendLegend(T, fmt) {
     const [ko, en, c] = TREND_TXT[T.kind], d = (v) => (v ? ` (${v >= T.last ? '+' : ''}${((v / T.last - 1) * 100).toFixed(1)}%)` : '');
     const pos = T.pos === 'break-up' ? (EN ? ' · broke above resistance' : ' · 저항선 돌파') : T.pos === 'break-down' ? (EN ? ' · fell below support' : ' · 지지선 이탈') : '';
@@ -766,10 +830,15 @@
       + (T.rNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_RES}"></i>${EN ? 'Resistance' : '저항'} ${fmt(T.rNow)}${d(T.rNow)}</span>` : '')
       + (T.apex != null ? `<span data-noi18n>${EN ? 'Apex' : '꼭짓점'} ${fmt(T.apex)}${d(T.apex)}</span>` : '');
   }
-  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, now = null, ind = false, fmt = price } = {}) { // fmt: 가격 표시(한국 종목은 원) · now: 지금 가격(추세선까지 거리 %)
+  function drawCandles(id, pts, opts = {}) { // fmt: 가격 표시(한국 종목은 원) · now: 지금 가격(추세선까지 거리 %) · quick: 확대·이동 중 다시 그리기(애니메이션 없음)
+    const { compact = false, xf = hm, last = null, now = null, ind = false, fmt = price, quick = false } = opts;
+    let { tip = null } = opts;
     if (!pts?.length) return;
-    const pre = (pts.pre || []).map(ohlc), V = pts.map(ohlc), all = [...pre, ...V];
+    let pre = (pts.pre || []).map(ohlc), V = pts.map(ohlc);
     if (last != null && isFinite(last)) { const k = V.at(-1); k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last); }
+    const key = czKey(V), full = V.length, Z = ind ? czWin(id, V) : null;
+    if (Z) { pre = [...pre, ...V.slice(0, Z.st)]; V = V.slice(Z.st, Z.end); if (tip) { const t0 = tip; tip = (it) => t0({ ...it, dataIndex: it.dataIndex + Z.st }); } }
+    const all = [...pre, ...V];
     const labels = V.map((k) => k.t), D = candleParts(V);
     const line = ind && state.chartType === 'line';
     const title = tip || ((it) => new Date(labels[it.dataIndex]).toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }));
@@ -809,7 +878,7 @@
       type: 'bar',
       data: { labels, datasets: ds },
       options: {
-        interaction,
+        interaction, ...(quick ? { animation: false } : {}),
         plugins: {
           ...noLegend,
           tooltip: {
@@ -837,13 +906,23 @@
           },
       },
     });
-    if (charts[id]) { charts[id].$V = V; charts[id].$line = line; } else if (pendingCharts[id]) pendingCharts[id].after = (c) => { c.$V = V; c.$line = line; };
-    if (ind) setHtml('ctl-' + id, (T ? trendLegend(T, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
+    // $live: 오른쪽 끝(지금)이 보일 때만 실시간 가격으로 마지막 캔들을 고친다 · $args: 확대·축소 때 같은 자료로 다시 그리기
+    const meta = (c) => { c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
+    if (charts[id]) meta(charts[id]); else if (pendingCharts[id]) pendingCharts[id].after = meta;
+    if (ind) {
+      czBind(id);
+      const zi = document.querySelector(`[data-czoom="in:${id}"]`), zo = document.querySelector(`[data-czoom="out:${id}"]`);
+      if (zi) zi.disabled = V.length <= Math.min(CZ_MIN, full);
+      if (zo) zo.disabled = !Z;
+    }
+    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>🔍 ${EN ? `${V.length} of ${full} candles` : `${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
     const c = charts[id], V = c?.$V;
     if (!V?.length || last == null || !isFinite(last) || c.canvas?.closest('.view')?.hidden) return;
+    if (c.$args?.opts?.last != null) c.$args.opts.last = last;
+    if (c.$live === false) return;
     const i = V.length - 1, k = V[i];
     k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last);
     if (c.$line) { c.data.datasets[0].data[i] = last; c.update('none'); return; }
@@ -9771,6 +9850,8 @@ ${what.join(' · ')}
     if (kd) { delKw(kd.dataset.kwdel); return; }
     const ctp = ev.target.closest('[data-ctype]');
     if (ctp) { state.chartType = ctp.dataset.ctype; savePref('chartType', state.chartType); renderPriceChart(); if (isOther()) renderSPriceChart(); if (state.view === 'mkt') renderMkChart(); return; }
+    const czb = ev.target.closest('[data-czoom]');
+    if (czb) { const [a, id] = czb.dataset.czoom.split(':'); if (a === 'reset') czReset(id); else czBy(id, a === 'in' ? 0.6 : 1 / 0.6); return; }
     const ctg = ev.target.closest('[data-ctoggle]');
     if (ctg) {
       const k = { ma: 'chartMA', vol: 'chartVol', trend: 'chartTrend' }[ctg.dataset.ctoggle];

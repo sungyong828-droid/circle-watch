@@ -2571,3 +2571,10 @@ button > .ic, a > .ic { vertical-align: -0.22em; }
 .ct-legend .ct-trend.up { color: var(--up); background: color-mix(in srgb, var(--up) 14%, transparent); }
 .ct-legend .ct-trend.down { color: var(--down); background: color-mix(in srgb, var(--down) 14%, transparent); }
 .ct-legend i.dash { height: 0; border-top: 2px dashed var(--c); background: none; border-radius: 0; }
+/* 차트 확대·축소: ＋/－ 버튼 · 확대 중 표시 · 차트 위에서 두 손가락·옆으로 밀기를 받도록(세로 스크롤은 그대로) */
+.ct-zm { display: inline-flex; gap: 4px; }
+.ct-bar button.ct-zb { width: 32px; padding: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
+.ct-bar button.ct-zb:disabled { opacity: 0.35; cursor: default; }
+canvas[data-cz] { touch-action: pan-y; }
+.ct-legend .ct-zinfo { font-family: var(--sans); color: var(--ink); }
+.ct-legend .ct-zinfo button { margin-left: 4px; padding: 0 6px; height: 18px; border-radius: 5px; border: 1px solid var(--line); background: none; color: var(--c-blue); font: 600 11px var(--sans); cursor: pointer; }
