@@ -1578,8 +1578,22 @@ export async function handleQuote(url, cache, cors, ctx) {
 const CHART_SYMBOLS = ['JOBY', 'ACHR', 'CRCL', 'CRCA', 'SPCX', 'RKLB', 'TEM', 'GH'];
 // 캔들 차트용 간격(휴대폰에서 알아볼 수 있는 개수): 1일 15분봉 · 1주 1시간봉 · 1개월·3개월 일봉 · 1년 주봉
 // 이동평균선 계산을 위해 보여줄 기간보다 앞쪽까지 받는다(화면은 앱이 원래 기간만 잘라 보여줌)
-// 전체(all): 상장 이후 전부를 월봉으로 — 상장 3년이 안 돼 월봉이 40개도 안 되면 주봉으로 다시 받는다(CRCL·SPCX 등)
+// 전체(all): 상장 이후 전부(받은 뒤 toBars로 월봉·주봉으로 묶음)
 const CHART_RANGES = { '1d': ['15m', '5d'], '1w': ['1h', '1mo'], '1m': ['1d', '6mo'], '3m': ['1d', '1y'], '1y': ['1wk', '5y'], all: ['1mo', 'max'] };
+// 전체 기간: Yahoo는 range=max에 종목마다 월·주·일 간격을 섞어 준다(JOBY 주봉, CRCL 일봉) → 직접 묶는다
+// 3년 이상이면 월봉, 아니면 주봉(월요일 시작). [시각, 종가, 시가, 고가, 저가, 거래량]
+function toBars(P) {
+  if (!P.length) return { points: P, iv: '1mo' };
+  const monthly = P.at(-1)[0] - P[0][0] >= 3 * 365 * 864e5;
+  const key = (t) => { const d = new Date(t); if (monthly) return d.getUTCFullYear() * 12 + d.getUTCMonth(); return Math.floor((t / 864e5 + 3) / 7); }; // 1970-01-01은 목요일 → +3이면 월요일 기준
+  const out = [];
+  for (const p of P) {
+    const k = key(p[0]), o = out.at(-1);
+    if (o && o.k === k) { o.p[1] = p[1]; o.p[3] = Math.max(o.p[3] ?? p[3], p[3] ?? p[1]); o.p[4] = Math.min(o.p[4] ?? p[4], p[4] ?? p[1]); o.p[5] = (o.p[5] || 0) + (p[5] || 0); }
+    else out.push({ k, p: [p[0], p[1], p[2] ?? p[1], p[3] ?? p[1], p[4] ?? p[1], p[5] || 0] });
+  }
+  return { points: out.map((x) => x.p), iv: monthly ? '1mo' : '1wk' };
+}
 // 홈 '시장 개요' 칸의 지수·환율·선물(앱에서 누르면 차트) — 종목 확인 없이 이 목록만 허용
 const MARKET_CHART = ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', '^TNX', 'DX-Y.NYB', 'BTC-USD', '^KS11', '^KQ11', 'KRW=X', 'ES=F', 'NQ=F'];
 export async function handleChart(url, cache, cors, ctx) {
@@ -1588,7 +1602,7 @@ export async function handleChart(url, cache, cors, ctx) {
   const mkt = MARKET_CHART.includes(sym);
   if (!(mkt || CHART_SYMBOLS.includes(sym) || symOk(sym)) || !CHART_RANGES[range]) return json({ error: 'bad request' }, cors, 400);
   if (!mkt && !(await knownSym(sym, cache, url.origin))) return unknownSym(cors);
-  return swr(cache, ctx, `${url.origin}/chart?s=${encodeURIComponent(sym)}&r=${range}&v=ohlc3`, {
+  return swr(cache, ctx, `${url.origin}/chart?s=${encodeURIComponent(sym)}&r=${range}&v=ohlc4`, {
     freshSec: range === '1d' ? 60 : 900, keepSec: 86400, cors,
     build: async () => {
       const get = async (interval, rng) => {
@@ -1601,7 +1615,7 @@ export async function handleChart(url, cache, cors, ctx) {
         return { m: j.meta || {}, iv: interval, points: ts.map((t, i) => [t * 1000, r2(Q.close?.[i]), r2(Q.open?.[i]), r2(Q.high?.[i]), r2(Q.low?.[i]), Q.volume?.[i] ?? null]).filter((p) => p[1] != null) };
       };
       let R = await get(...CHART_RANGES[range]);
-      if (range === 'all' && R.points.length < 40) R = await get('1wk', 'max');
+      if (range === 'all') R = { ...R, ...toBars(R.points) };
       const { m, points, iv } = R;
       return JSON.stringify({ at: new Date().toISOString(), symbol: sym, range, iv, points, prevClose: m.chartPreviousClose ?? m.previousClose ?? null, high52: m.fiftyTwoWeekHigh ?? null, low52: m.fiftyTwoWeekLow ?? null });
     },
