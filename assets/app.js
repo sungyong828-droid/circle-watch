@@ -749,7 +749,7 @@
       + (T.sNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_SUP}"></i>${EN ? 'Support' : '지지'} ${fmt(T.sNow)}${d(T.sNow)}</span>` : '')
       + (T.rNow != null ? `<span data-noi18n><i class="dash" style="--c:${TREND_RES}"></i>${EN ? 'Resistance' : '저항'} ${fmt(T.rNow)}${d(T.rNow)}</span>` : '');
   }
-  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, ind = false, fmt = price } = {}) { // fmt: 가격 표시(한국 종목은 원)
+  function drawCandles(id, pts, { compact = false, xf = hm, tip = null, last = null, now = null, ind = false, fmt = price } = {}) { // fmt: 가격 표시(한국 종목은 원) · now: 지금 가격(추세선까지 거리 %)
     if (!pts?.length) return;
     const pre = (pts.pre || []).map(ohlc), V = pts.map(ohlc), all = [...pre, ...V];
     if (last != null && isFinite(last)) { const k = V.at(-1); k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last); }
@@ -780,6 +780,7 @@
     }
     // 자동 추세선(점선): 저항선 초록 · 지지선 빨강
     const T = ind && state.chartTrend ? trendLines(V) : null;
+    if (T && now != null && isFinite(now)) T.last = now; // 거리(%)는 카드 위에 보이는 지금 가격 기준
     if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
     const hasVol = ind && state.chartVol && V.some((k) => k.v > 0);
     if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
@@ -6616,7 +6617,7 @@ ${what.join(' · ')}
     const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString(LOC); };
     // 바이낸스는 24시간 이어지므로 어느 기간이든 마지막 캔들에 현재가 반영, Yahoo는 오늘(1일) 캔들만
     const last = BN24[sym] || range === '1d' || range === 'bn' ? q?.price : null;
-    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last, ind: !compact, fmt: (v) => pxS(sym, v) });
+    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last, now: q?.price, ind: !compact, fmt: (v) => pxS(sym, v) });
   }
 
   const bxRange = () => (RANGES[state.srange] ? state.srange : '1d'); // 바이낸스 캔들은 1일~3개월
