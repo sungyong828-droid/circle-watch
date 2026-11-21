@@ -693,7 +693,7 @@
       <button type="button" data-ctype="candle" aria-pressed="${state.chartType !== 'line'}">캔들</button><button type="button" data-ctype="line" aria-pressed="${state.chartType === 'line'}">라인</button>
       <i class="ct-sep"></i>
       <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button><button type="button" data-ctoggle="trend" aria-pressed="${state.chartTrend}">추세선</button>
-      <i class="ct-sep"></i><span class="ct-zm" data-noi18n><button type="button" class="ct-zb" data-czoom="in:${id}" aria-label="${EN ? 'Zoom in' : '차트 확대'}" title="${EN ? 'Zoom in' : '확대'}">＋</button><button type="button" class="ct-zb" data-czoom="out:${id}" aria-label="${EN ? 'Zoom out' : '차트 축소'}" title="${EN ? 'Zoom out' : '축소'}" disabled>－</button></span>
+      <span class="ct-zm" data-noi18n><button type="button" class="ct-zb" data-czoom="in:${id}" aria-label="${EN ? 'Zoom in' : '차트 확대'}" title="${EN ? 'Zoom in' : '확대'}">＋</button><button type="button" class="ct-zb" data-czoom="out:${id}" aria-label="${EN ? 'Zoom out' : '차트 축소'}" title="${EN ? 'Zoom out' : '축소'}" disabled>－</button></span>
     </div><div class="ct-legend" id="ctl-${id}"></div>`;
   // ---------------------------------------------------------------- 자동 추세선(지지선·저항선)
   // 화면에 보이는 캔들에서 '봉우리(주변 k개보다 높은 고가)'와 '골짜기(주변보다 낮은 저가)'를 찾고,
@@ -867,7 +867,7 @@
     // 자동 추세선(점선): 저항선 초록 · 지지선 빨강
     const T = ind && state.chartTrend ? trendLines(V) : null;
     // 거리(%)와 돌파·이탈 판단은 카드 위에 보이는 지금 가격 기준(한국 종목은 시간외 가격이 차트 마지막 봉과 다를 수 있음)
-    if (T && now != null && isFinite(now)) { T.last = now; T.pos = T.apex != null ? (now >= T.apex ? 'break-up' : 'break-down') : T.rNow != null && now > T.rNow ? 'break-up' : T.sNow != null && now < T.sNow ? 'break-down' : 'inside'; }
+    if (T && now != null && isFinite(now) && (!Z || Z.end === full)) { T.last = now; /* 지난 구간을 보고 있으면 그 구간 마지막 캔들 기준 */ T.pos = T.apex != null ? (now >= T.apex ? 'break-up' : 'break-down') : T.rNow != null && now > T.rNow ? 'break-up' : T.sNow != null && now < T.sNow ? 'break-down' : 'inside'; }
     if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
     const hasVol = ind && state.chartVol && V.some((k) => k.v > 0);
     if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
@@ -915,7 +915,7 @@
       if (zi) zi.disabled = V.length <= Math.min(CZ_MIN, full);
       if (zo) zo.disabled = !Z;
     }
-    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>🔍 ${EN ? `${V.length} of ${full} candles` : `${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
+    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>${EN ? `Zoomed · ${V.length} of ${full} candles` : `확대 중 · ${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
