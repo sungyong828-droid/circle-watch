@@ -797,7 +797,8 @@
     }
     // 자동 추세선(점선): 저항선 초록 · 지지선 빨강
     const T = ind && state.chartTrend ? trendLines(V) : null;
-    if (T && now != null && isFinite(now)) T.last = now; // 거리(%)는 카드 위에 보이는 지금 가격 기준
+    // 거리(%)와 돌파·이탈 판단은 카드 위에 보이는 지금 가격 기준(한국 종목은 시간외 가격이 차트 마지막 봉과 다를 수 있음)
+    if (T && now != null && isFinite(now)) { T.last = now; T.pos = T.apex != null ? (now >= T.apex ? 'break-up' : 'break-down') : T.rNow != null && now > T.rNow ? 'break-up' : T.sNow != null && now < T.sNow ? 'break-down' : 'inside'; }
     if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
     const hasVol = ind && state.chartVol && V.some((k) => k.v > 0);
     if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
