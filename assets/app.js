@@ -830,6 +830,7 @@
     const nb = (lo) => {
       if (near(lo)) return ` (${Y ? (EN ? (lo ? 'near 1-year low' : 'near 1-year high') : (lo ? '1년 최저 근처' : '1년 최고 근처')) : (EN ? (lo ? 'near this period’s low' : 'near this period’s high') : (lo ? '이 기간 최저 근처' : '이 기간 최고 근처'))})`;
       const x = lo ? Math.min(...V.map((k) => k.l)) : Math.max(...V.map((k) => k.h));
+      if (Math.abs(x / px - 1) < 0.015) return ` (${EN ? `near this period’s ${lo ? 'low' : 'high'}` : `이 기간 ${lo ? '최저' : '최고'} 근처`})`;
       return `</em></span><span>${EN ? `${pc(x)} to this period’s ${lo ? 'low' : 'high'} ${fmt(x)}` : `이 기간 ${lo ? '최저' : '최고'} ${fmt(x)}까지 ${pc(x)}`}<em>`;
     };
     if (LV) out.push(LV.ceil ? (EN ? `${pc(LV.ceil.p)} to ceiling ${fmt(LV.ceil.p)}` : `천장 ${fmt(LV.ceil.p)}까지 ${pc(LV.ceil.p)}`) : `<em>${EN ? `No resistance level above${nb(false)}` : `위로 막는 가격대 없음${nb(false)}`}</em>`);
