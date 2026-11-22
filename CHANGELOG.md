@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.22-3 — 2026-11-22
+
+[이 버전 보기](https://45351fd1.my-fire-portfolio.pages.dev) · 커밋 `1d40b66`
+
 - 차트의 천장·바닥 가격대, 내 평단, 목표가 선 오른쪽 끝에 가격표(예: 천장 $52.10)가 붙어 몇 달러인지 바로 보여요. <!-- EN Floor/ceiling levels, your average cost and target lines now carry a price tag at the right edge (e.g. Ceiling $52.10). -->
 
 ## v2026.11.22-2 — 2026-11-22
