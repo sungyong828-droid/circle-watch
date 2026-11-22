@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.22-4 — 2026-11-22
+
+[이 버전 보기](https://bcc1b99f.my-fire-portfolio.pages.dev) · 커밋 `1f1af73`
+
 - 차트 가격표(천장·바닥·평단·목표·지금 가격)가 차트를 가리지 않게 오른쪽 가격축 폭을 가장 긴 가격표에 맞춤(afterFit) <!-- internal -->
 
 - 직접 추가한 종목(NVDA·SOXL 등)이 내 종목 목록과 홈 위쪽에서 'N'·'S' 같은 글자로만 보이던 문제를 고쳤어요. 이제 검색할 때처럼 실제 로고로 보여요. <!-- EN Stocks you added (NVDA, SOXL and more) sometimes showed just a letter instead of their logo in My stocks and at the top of Home; they now show the real logo, as in search. -->
