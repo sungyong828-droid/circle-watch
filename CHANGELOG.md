@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.22-2 — 2026-11-22
+
+[이 버전 보기](https://d1de46ac.my-fire-portfolio.pages.dev) · 커밋 `73d04c3`
+
 - 차트에 내 평단(실선)과 목표가(보라 점선)를 함께 그려요. 범례에서 지금 수익률과 목표가까지 남은 %를 바로 볼 수 있어요. <!-- EN Charts now show your average cost (solid line) and target price (purple dashed line), with your P/L and distance to target in the legend. -->
 - 홈 종목 칸에 3개월 추세 화살표(↗ 오름 · ↘ 내림 · → 옆걸음)가 붙어요. <!-- EN Home stock tiles show a 3-month trend arrow (↗ up · ↘ down · → sideways). -->
 - 내 종목 알림에 52주 신고가·신저가, 거래량 급증(평소의 3배 이상)이 추가됐어요. <!-- EN Alerts for your stocks now include 52-week highs/lows and volume spikes (3× normal or more). -->
