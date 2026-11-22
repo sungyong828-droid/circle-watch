@@ -756,7 +756,8 @@
     let sNow = S ? at(S, n - 1) : null, rNow = R ? at(R, n - 1) : null;
     let kind = ds > 0 && dr > 0 ? 'up' : ds < 0 && dr < 0 ? 'down' : ds > 0 && dr < 0 ? 'squeeze' : ds < 0 && dr > 0 ? 'widen'
       : ds > 0 || dr > 0 ? 'upish' : ds < 0 || dr < 0 ? 'downish' : 'flat';
-    let pos = rNow != null && last > rNow ? 'break-up' : sNow != null && last < sNow ? 'break-down' : 'inside';
+    // 선에서 0.2% 넘게 벗어나야 돌파·이탈(선에 딱 붙은 +0.0%를 '이탈'이라 하지 않게)
+    let pos = rNow != null && last > rNow * 1.002 ? 'break-up' : sNow != null && last < sNow * 0.998 ? 'break-down' : 'inside';
     // 두 선이 이미 만났으면(지지선이 저항선보다 위로 올라감) 삼각형이 끝난 것 → 꼭짓점까지만 긋고,
     // 지금 가격이 꼭짓점보다 위면 위로 돌파·아래면 아래로 이탈(지지 > 저항으로 보이던 문제)
     let end = n - 1, apex = null, xHi = null, xLo = null;
@@ -1093,7 +1094,7 @@
     // 자동 추세선(점선): 저항선 초록 · 지지선 빨강
     const T = ind && state.chartTrend ? trendLines(V) : null;
     // 거리(%)와 돌파·이탈 판단은 카드 위에 보이는 지금 가격 기준(한국 종목은 시간외 가격이 차트 마지막 봉과 다를 수 있음)
-    if (T && now != null && isFinite(now) && (!Z || Z.end === full)) { T.last = now; /* 지난 구간을 보고 있으면 그 구간 마지막 캔들 기준 */ T.pos = T.apex != null ? (now > T.xHi ? 'break-up' : now < T.xLo ? 'break-down' : 'inside') : T.rNow != null && now > T.rNow ? 'break-up' : T.sNow != null && now < T.sNow ? 'break-down' : 'inside'; }
+    if (T && now != null && isFinite(now) && (!Z || Z.end === full)) { T.last = now; /* 지난 구간을 보고 있으면 그 구간 마지막 캔들 기준 */ T.pos = T.apex != null ? (now > T.xHi ? 'break-up' : now < T.xLo ? 'break-down' : 'inside') : T.rNow != null && now > T.rNow * 1.002 ? 'break-up' : T.sNow != null && now < T.sNow * 0.998 ? 'break-down' : 'inside'; }
     if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
     // 주요 가격대(가로 점선): 지금 가격(지난 구간을 보고 있으면 그 구간 마지막 가격) 바로 아래·위
     const LV = ind && state.chartLv ? priceLevels(V, now != null && isFinite(now) && (!Z || Z.end === full) ? now : V.at(-1).c) : null;
