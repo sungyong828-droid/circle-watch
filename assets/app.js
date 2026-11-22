@@ -6415,6 +6415,8 @@ ${what.join(' · ')}
   let LOGOS = null;
   const logoSet = () => LOGOS || (window.__LOGOS ? (LOGOS = new Set(String(window.__LOGOS).split(' ').filter(Boolean))) : null);
   const logoPath = (sym) => (logoSet()?.has(sym) ? `assets/logos/t/${sym}.png` : null);
+  // 내 종목 아이콘: 종목 정보에 적힌 로고, 없으면 로고 목록에서 바로 찾는다(검색 결과에선 보이던 로고가 추가 뒤 글자로 나오던 문제)
+  const stLogo = (sym) => STOCK_INFO[sym]?.logo || logoPath(sym);
   if (!window.__LOGOS) document.getElementById('logo-list')?.addEventListener('load', () => {
     // 목록이 오기 전에 만들어진 추가 종목(NVDA·SOXL 등)은 글자 아이콘으로 굳어 있었다 → 이제 로고를 채운다
     for (const [sym, S] of Object.entries(STOCK_INFO)) if (S?.custom && !S.logo) S.logo = logoPath(sym);
@@ -6822,7 +6824,7 @@ ${what.join(' · ')}
       <div class="sheet-h"><b>📁 ${F ? (EN ? 'Edit folder' : '폴더 편집') : (EN ? 'New folder' : '새 폴더')}</b><button type="button" class="ws-btn" data-fclose="1">${EN ? 'Close' : '닫기'}</button></div>
       <label class="fd-name"><span>${EN ? 'Folder name' : '폴더 이름'}</span><input id="fd-name" maxlength="12" value="${esc(F?.name || '')}" placeholder="${EN ? 'e.g. Watching, Dividend picks' : '예: 관심 종목, 눈여겨볼 종목, 배당주'}" autocomplete="off"></label>
       <div class="fd-sub"><b>${EN ? 'Stocks in this folder' : '넣을 종목'}</b><small>${EN ? 'from My stocks' : '내 종목 중에서 골라요 · 여러 폴더에 넣어도 돼요'}</small></div>
-      <ul class="fd-list">${WATCH.map((x) => { const S = STOCK_INFO[x]; return `<li><label><input type="checkbox" value="${esc(x)}" ${F?.syms.includes(x) ? 'checked' : ''}><span class="ws-logo" style="--sc:${S.color}">${S.logo ? `<img src="${S.logo}" alt="" width="20" height="20">` : esc((S.mark || symLabel(x))[0])}</span><span class="fd-nm"><b>${esc(symLabel(x))}</b><small>${esc(S.name || '')}</small></span></label></li>`; }).join('')}</ul>
+      <ul class="fd-list">${WATCH.map((x) => { const S = STOCK_INFO[x]; return `<li><label><input type="checkbox" value="${esc(x)}" ${F?.syms.includes(x) ? 'checked' : ''}><span class="ws-logo" style="--sc:${S.color}">${stLogo(x) ? `<img src="${stLogo(x)}" alt="" width="20" height="20">` : esc((S.mark || symLabel(x))[0])}</span><span class="fd-nm"><b>${esc(symLabel(x))}</b><small>${esc(S.name || '')}</small></span></label></li>`; }).join('')}</ul>
       <p class="note">${EN ? 'Not listed? Add it first with <b>＋ Add · Edit</b>.' : '목록에 없는 종목은 먼저 <b>＋ 추가·편집</b>으로 내 종목에 넣어 주세요.'}</p>
       <div class="fd-btns"><button type="button" class="btn-primary" data-fsave="1">${EN ? 'Save' : '저장'}</button>${F ? `<button type="button" class="btn-ghost" data-fdel="1">${EN ? 'Delete folder' : '폴더 삭제'}</button>` : ''}</div>
     </div>`;
@@ -6859,7 +6861,7 @@ ${what.join(' · ')}
     if (el.dataset.built !== key) {
       el.classList.toggle('ss-row', !ssExpanded());
       el.innerHTML = !syms.length ? `<p class="ss-empty">${EN ? 'No stocks in this folder yet — tap <b>✎ Edit</b> to add some.' : '이 폴더에 아직 종목이 없어요. <b>✎ 편집</b>에서 넣어 주세요.'}</p>` : syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
-        <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span></span>
+        <span class="ss-top">${stLogo(sym) ? `<img class="ss-logo" src="${stLogo(sym)}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span></span>
         <span class="ss-px">–</span><span class="ss-bot"><em class="ss-ch flat"></em><i class="ss-tr" hidden aria-hidden="true"></i><i class="ss-ed" hidden data-noi18n><b></b>${EN ? 'Earn' : '실적'}</i></span></button>`).join('');
       el.dataset.built = key;
       requestAnimationFrame(ssScrollToActive);
@@ -8162,7 +8164,7 @@ ${what.join(' · ')}
     const typing = document.activeElement?.id === 'watch-q'; // 다시 그린 뒤에도 입력칸에 커서를 둔다(글자를 다 지운 경우 포함)
     const rows = WATCH.map((sym, i) => {
       const S = STOCK_INFO[sym];
-      return `<li><span class="ws-logo" style="--sc:${S.color}">${S.logo ? `<img src="${S.logo}" alt="" width="22" height="22">` : esc(sym[0])}</span>
+      return `<li><span class="ws-logo" style="--sc:${S.color}">${stLogo(sym) ? `<img src="${stLogo(sym)}" alt="" width="22" height="22">` : esc(sym[0])}</span>
         <div class="ws-name">${S.kr ? `<b>${esc(S.name)}</b><small>${S.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${sym.slice(0, 6)}</small>` : `<b>${sym}</b><small>${esc(S.name)}${BUILTIN.includes(sym) ? ' · 기본' : ''}</small>`}</div>
         <button type="button" class="ws-btn" data-wmove="${i}:-1" aria-label="${sym} 위로" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button type="button" class="ws-btn" data-wmove="${i}:1" aria-label="${sym} 아래로" ${i === WATCH.length - 1 ? 'disabled' : ''}>▼</button>
