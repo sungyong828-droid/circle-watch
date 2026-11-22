@@ -613,8 +613,14 @@
     };
   }
   const pendingCharts = {};
-  function draw(id, cfg, after) {
+  function draw(id, cfg, after, reuse = false) {
     if (!window.Chart) return;
+    // reuse: 확대·이동처럼 같은 차트를 자주 다시 그릴 때 — 새로 만들지 않고 자료·설정만 바꿔 그린다(느린 폰에서 끊김 줄이기)
+    const cv0 = document.getElementById('cv-' + id), c0 = charts[id];
+    if (reuse && c0 && c0.canvas === cv0 && c0.config.type === cfg.type) {
+      if (EN) { const cb = cfg.options?.plugins?.tooltip?.callbacks; if (cb) for (const k of Object.keys(cb)) { const f = cb[k]; if (typeof f === 'function') cb[k] = (...a) => { const r = f(...a); return Array.isArray(r) ? r.map(T) : T(r); }; } for (const sc of Object.values(cfg.options?.scales || {})) { const f = sc?.ticks?.callback; if (f) sc.ticks.callback = (...a) => T(f(...a)); } }
+      c0.data = cfg.data; c0.options = cfg.options; c0.update('none'); after?.(c0); return;
+    }
     if (EN) { // 캔버스 안 글자는 화면 번역기가 못 보므로 여기서 바꾼다(데이터셋 이름은 코드가 쓰므로 그대로 둔다)
       const cb = cfg.options?.plugins?.tooltip?.callbacks;
       if (cb) for (const k of Object.keys(cb)) { const f = cb[k]; if (typeof f === 'function') cb[k] = (...a) => { const r = f(...a); return Array.isArray(r) ? r.map(T) : T(r); }; }
@@ -783,6 +789,21 @@
     const floor = Z.filter((z) => z.p <= now).at(-1) || null, ceil = Z.find((z) => z.p > now) || null;
     return floor || ceil ? { floor, ceil } : null;
   }
+  // 내 평단(보유 정보, 같은 종목 여러 줄이면 수량 가중)·목표가 — 이 기기 안의 값만 쓴다(서버로 보내지 않음)
+  const REF_AVG = '#a78bfa', REF_TGT = '#2ec4b6';
+  function refLines(sym) {
+    const out = [], P = (fireCfg?.positions || []).filter((x) => x.ticker === sym && x.shares > 0 && x.avg > 0);
+    if (P.length) { const sh = P.reduce((a, x) => a + x.shares, 0); out.push({ k: 'avg', p: P.reduce((a, x) => a + x.shares * x.avg, 0) / sh, col: REF_AVG, dash: [] }); }
+    const T = targets?.[sym];
+    if (T?.p > 0 && !T.hit) out.push({ k: 'tgt', p: T.p, col: REF_TGT, dash: [5, 3] });
+    return out;
+  }
+  const sgnPct = (v) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
+  const refLegend = (R, fmt, ref) => R.map((r) => {
+    const off = r.off ? (r.off > 0 ? ' ↑' : ' ↓') : '', tip = r.off ? ` title="${EN ? 'Outside the visible price range' : '지금 차트 범위 밖'}"` : '';
+    const txt = r.k === 'avg' ? `${EN ? 'My avg' : '내 평단'} ${fmt(r.p)} · ${EN ? 'P/L' : '수익률'} ${sgnPct(ref / r.p - 1)}` : `${EN ? 'Target' : '목표가'} ${fmt(r.p)} (${sgnPct(r.p / ref - 1)})`;
+    return `<span data-noi18n${tip}><i style="background:${r.col}"></i>${txt}${off}</span>`;
+  }).join('');
   const lvLegend = (LV, fmt) => [[LV.floor, '바닥 가격대', 'Floor'], [LV.ceil, '천장 가격대', 'Ceiling']].filter(([z]) => z)
     .map(([z, ko, en]) => `<span data-noi18n><i class="dot" style="--c:${LV_COL}"></i>${EN ? en : ko} ${fmt(z.p)} (${EN ? `${z.c} touches` : `${z.c}번 닿음`})</span>`).join('');
 
@@ -842,6 +863,17 @@
     }
     const C = V.slice(0, -1).map((x) => x.c), a0 = maAlign(C), a1 = maAlign([...C, px]);
     if (a0 && a1 && a1.al !== a0.al && a1.al !== 'mix') out.push({ k: a1.al === 'up' ? 'maup' : 'madown' });
+    // 52주 신고가·신저가: 어제까지 1년 최고(최저)를 오늘 넘어선 날 — 어제도 이미 신고가였으면 다시 알리지 않음(상장 10개월 미만은 제외)
+    const prev = V.slice(0, -1), L = V.at(-1);
+    if (prev.length >= 200) {
+      const y1 = prev.slice(-251), y0 = prev.slice(-252, -1), yb = prev.at(-1);
+      const hi = Math.max(...y1.map((x) => x.h)), lo = Math.min(...y1.map((x) => x.l)), hi0 = Math.max(...y0.map((x) => x.h)), lo0 = Math.min(...y0.map((x) => x.l));
+      if (Math.max(L.h, px) > hi && yb.h <= hi0) out.push({ k: 'hi52', v: hi });
+      if (Math.min(L.l, px) < lo && yb.l >= lo0) out.push({ k: 'lo52', v: lo });
+    }
+    // 거래량 급증: 오늘 거래량이 지난 20일 평균의 3배 이상
+    const vs = prev.slice(-20).map((x) => x.v).filter((v) => v > 0);
+    if (vs.length >= 15 && L.v > 0) { const av = vs.reduce((a, b) => a + b, 0) / vs.length; if (L.v >= av * 3) out.push({ k: 'vol', r: L.v / av }); }
     return out.map((x) => ({ ...x, id: `ts:${sym}:${x.k}:${day}`, t, px }));
   }
   function trendNoti(sym, x) {
@@ -851,6 +883,9 @@
       rup: ['📈', `${nm} 3개월 저항선 돌파`, `${nm} broke above its 3-month resistance`, `저항선 ${lv} 위로 · 지금 ${now}`, `Resistance ${lv} · now ${now}`],
       maup: ['📈', `${nm} 이동평균 정배열로 바뀜`, `${nm}: moving averages turned up`, '5일 > 20일 > 60일 · 오르는 흐름 신호', '5 > 20 > 60-day · rising signal'],
       madown: ['📉', `${nm} 이동평균 역배열로 바뀜`, `${nm}: moving averages turned down`, '5일 < 20일 < 60일 · 내리는 흐름 신호', '5 < 20 < 60-day · falling signal'],
+      hi52: ['🏔️', `${nm} 52주 신고가`, `${nm} hit a 52-week high`, `1년 최고 ${lv} 넘음 · 지금 ${now}`, `Above the 1-year high ${lv} · now ${now}`],
+      lo52: ['🕳️', `${nm} 52주 신저가`, `${nm} hit a 52-week low`, `1년 최저 ${lv} 아래 · 지금 ${now}`, `Below the 1-year low ${lv} · now ${now}`],
+      vol: ['📊', `${nm} 거래량 급증`, `${nm} volume spike`, `평소(20일 평균)의 ${(x.r || 0).toFixed(1)}배 · 지금 ${now}`, `${(x.r || 0).toFixed(1)}× the 20-day average · now ${now}`],
     }[x.k];
     return { id: x.id, t: x.t, ic: T[0], title: EN ? T[2] : T[1], sub: EN ? T[4] : T[3], go: { sym, v: 'chart' } };
   }
@@ -860,7 +895,7 @@
     const syms = WATCH.slice(0, 40);
     for (let i = 0; i < syms.length; i += 3) await Promise.all(syms.slice(i, i + 3).map((x) => tdLoad(x).catch(() => null)));
     for (const x of syms) { try { TSIG[x] = trendSig(x); } catch { TSIG[x] = []; } }
-    try { updateBell(); } catch {}
+    try { updateBell(); renderStockSwitch(); } catch {}
     const fresh = Object.entries(TSIG).filter(([x]) => WATCH.includes(x)).flatMap(([x, L]) => L.map((y) => trendNoti(x, y))).filter((y) => !notiSeen[y.id] && !tsToasted.has(y.id));
     if (!fresh.length) return;
     fresh.forEach((y) => tsToasted.add(y.id));
@@ -1008,7 +1043,17 @@
     if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
     const maxVol = hasVol ? Math.max(...V.map((k) => k.v || 0)) : 0;
     // 세로축을 실제 가격 범위(캔들·이동평균)에 맞춰 빈 공간 없이
-    const yLo = Math.min(...V.map((k) => k.l)), yHi = Math.max(...V.map((k) => k.h)), yPad = (yHi - yLo) * 0.08 || yHi * 0.01; // 캔들 기준(멀리 떨어진 이평선은 잘림)
+    let yLo = Math.min(...V.map((k) => k.l)), yHi = Math.max(...V.map((k) => k.h)); // 캔들 기준(멀리 떨어진 이평선은 잘림)
+    // 내 평단·목표가: 차트 범위에서 너무 멀지 않으면(가격 폭의 35% 안) 세로축을 넓혀 선을 긋고, 멀면 범례에만 ↑·↓로
+    const REF = ind && sym ? refLines(sym) : [], refPx = now != null && isFinite(now) && (!Z || Z.end === full) ? now : V.at(-1).c;
+    if (REF.length) {
+      const sp = yHi - yLo || yHi * 0.02, lo0 = yLo, hi0 = yHi;
+      for (const r of REF) {
+        if (r.p >= lo0 - sp * 0.35 && r.p <= hi0 + sp * 0.35) { yLo = Math.min(yLo, r.p); yHi = Math.max(yHi, r.p); ds.push({ type: 'line', label: r.k === 'avg' ? (EN ? 'My avg' : '내 평단') : (EN ? 'Target' : '목표가'), data: V.map(() => r.p), borderColor: r.col, backgroundColor: r.col, borderWidth: 1.4, borderDash: r.dash, pointRadius: 0, pointHoverRadius: 0, order: 0 }); }
+        else r.off = r.p > hi0 ? 1 : -1;
+      }
+    }
+    const yPad = (yHi - yLo) * 0.08 || yHi * 0.01;
     draw(id, {
       type: 'bar',
       data: { labels, datasets: ds },
@@ -1040,7 +1085,7 @@
             ...(hasVol ? { vol: { display: false, beginAtZero: true, max: maxVol * 4.5, grid: { display: false } } } : {}),
           },
       },
-    });
+    }, null, quick);
     // $live: 오른쪽 끝(지금)이 보일 때만 실시간 가격으로 마지막 캔들을 고친다 · $args: 확대·축소 때 같은 자료로 다시 그리기
     const meta = (c) => { c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
     if (charts[id]) meta(charts[id]); else if (pendingCharts[id]) pendingCharts[id].after = meta;
@@ -1050,7 +1095,7 @@
       if (zi) zi.disabled = V.length <= Math.min(CZ_MIN, full);
       if (zo) zo.disabled = !Z;
     }
-    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>${EN ? `Zoomed · ${V.length} of ${full} candles` : `확대 중 · ${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + (LV ? lvLegend(LV, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
+    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>${EN ? `Zoomed · ${V.length} of ${full} candles` : `확대 중 · ${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + (REF.length ? refLegend(REF, fmt, refPx) : '') + (LV ? lvLegend(LV, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
@@ -4229,7 +4274,7 @@
       <div class="sheet-h"><b>🔔 ${EN ? 'Notifications' : '알림'}</b><button type="button" class="ws-btn" data-ntclose="1">${EN ? 'Close' : '닫기'}</button></div>
       <div class="nt-push" id="nt-push" hidden></div>
       ${L.length ? `<ul class="nt-list">${L.map((x, i) => `<li><button type="button" class="nt-row${notiSeen[x.id] ? '' : ' new'}" data-ntgo="${i}"><span class="nt-ic" aria-hidden="true">${x.ic}</span><span class="nt-tx"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></span><em>${ago(x.t)}</em></button></li>`).join('')}</ul>`
-        : `<p class="nt-empty">${EN ? 'Nothing new this week. Targets you hit, earnings, dividends, new filings and trend signals for your stocks show up here.' : '최근 7일 동안 새 소식이 없어요. 목표가 도달·실적 발표·배당 입금·새 공시·추세 신호가 생기면 여기에 모여요.'}</p>`}
+        : `<p class="nt-empty">${EN ? 'Nothing new this week. Targets you hit, earnings, dividends, new filings, trend signals, 52-week highs/lows and volume spikes for your stocks show up here.' : '최근 7일 동안 새 소식이 없어요. 목표가 도달·실적 발표·배당 입금·새 공시·추세 신호·52주 신고가/신저가·거래량 급증이 생기면 여기에 모여요.'}</p>`}
     </div>`;
     el._items = L;
     el.hidden = false; document.body.classList.add('sheet-open');
@@ -6716,7 +6761,7 @@ ${what.join(' · ')}
       el.classList.toggle('ss-row', !ssExpanded());
       el.innerHTML = !syms.length ? `<p class="ss-empty">${EN ? 'No stocks in this folder yet — tap <b>✎ Edit</b> to add some.' : '이 폴더에 아직 종목이 없어요. <b>✎ 편집</b>에서 넣어 주세요.'}</p>` : syms.map((sym) => `<button type="button" role="tab" class="ss" data-stock="${sym}" style="--sc:${STOCK_INFO[sym].color}" title="${esc(STOCK_INFO[sym].name)}">
         <span class="ss-top">${STOCK_INFO[sym].logo ? `<img class="ss-logo" src="${STOCK_INFO[sym].logo}" alt="" width="20" height="20" decoding="async">` : `<i class="ss-logo ss-letter">${esc(STOCK_INFO[sym].mark || sym[0])}</i>`}<span class="ss-tk">${esc(symLabel(sym))}</span></span>
-        <span class="ss-px">–</span><span class="ss-bot"><em class="ss-ch flat"></em><i class="ss-ed" hidden data-noi18n><b></b>${EN ? 'Earn' : '실적'}</i></span></button>`).join('');
+        <span class="ss-px">–</span><span class="ss-bot"><em class="ss-ch flat"></em><i class="ss-tr" hidden aria-hidden="true"></i><i class="ss-ed" hidden data-noi18n><b></b>${EN ? 'Earn' : '실적'}</i></span></button>`).join('');
       el.dataset.built = key;
       requestAnimationFrame(ssScrollToActive);
     }
@@ -6737,6 +6782,13 @@ ${what.join(' · ')}
       const ch = btn.querySelector('.ss-ch');
       ch.className = `ss-ch ${cls(p?.pct)}`;
       ch.textContent = p?.pct != null ? pct(p.pct, 1) : '';
+      // 3개월 추세 화살표(↗ 오름 · ↘ 내림 · → 옆걸음) — 추세 신호를 확인할 때 받은 1년 일봉으로
+      const tr = btn.querySelector('.ss-tr'), k = TD[sym]?.V ? trendSum(sym)?.m : null;
+      if (tr) {
+        const c = k ? TS_TXT[k][2] : null;
+        tr.hidden = !k;
+        if (k) { tr.className = `ss-tr ${c}`; tr.textContent = c === 'up' ? '↗' : c === 'down' ? '↘' : '→'; btn.title = `${STOCK_INFO[sym].name} · ${EN ? '3-month trend' : '3개월 추세'}: ${EN ? TS_TXT[k][1] : TS_TXT[k][0]}`; }
+      }
     }
   }
   function setStock(sym) {
@@ -8171,21 +8223,29 @@ ${what.join(' · ')}
       syncNow(stockParts(added), { sym: added, quiet: true }).then(() => { renderStockSwitch(); if (state.stock === added) renderStock(); }).catch(() => {});
     }
   }
-  // 바이낸스에 24시간 주식 선물이 있으면 CRCL처럼 바이낸스 가격으로
+  // 바이낸스에 24시간 주식 선물(TradFi)이 있으면 CRCL처럼 바이낸스 가격으로 — 등록한 미국 종목 전부(기본 종목 포함, CRCL은 따로, 한국 종목 제외)
+  // 목록은 하루 한 번 exchangeInfo(압축 약 50KB)를 받아 {티커: [심볼, 상장일]}로 줄여 이 기기에 저장 · BRK.B = BRKBUSDT
   let bnEquities = null;
-  async function checkBinance(sym) {
-    if (BN24[sym] || !STOCK_INFO[sym]?.custom) return;
+  const bnTicker = (base) => (base === 'BRKB' ? 'BRK.B' : base);
+  function bnList() {
+    return (bnEquities ||= (async () => {
+      const c = readJSON('cw.bnEq2', null);
+      if (c?.m && Date.now() - c.at < 86400000) return c.m;
+      const j = await bnGet('exchangeInfo'), m = {};
+      for (const x of j.symbols || []) if (x.status === 'TRADING' && /TRADIFI/i.test(x.contractType || '') && x.underlyingType === 'EQUITY' && x.quoteAsset === 'USDT') m[bnTicker(x.baseAsset)] ||= [x.symbol, x.onboardDate || 0];
+      if (Object.keys(m).length > 10) writeJSON('cw.bnEq2', { at: Date.now(), m });
+      return m;
+    })().catch((e) => { bnEquities = null; throw e; }));
+  }
+  async function checkBinance(syms) {
     try {
-      bnEquities ||= (async () => {
-        const c = readJSON('cw.bnEq', null);
-        if (c && Date.now() - c.at < 86400000) return new Set(c.list);
-        const j = await bnGet('exchangeInfo');
-        const list = j.symbols.filter((x) => x.status === 'TRADING' && /TRADIFI/i.test(x.contractType || '') && x.symbol.endsWith('USDT')).map((x) => x.symbol);
-        writeJSON('cw.bnEq', { at: Date.now(), list });
-        return new Set(list);
-      })();
-      const set = await bnEquities;
-      if (set.has(sym + 'USDT')) { BN24[sym] = sym + 'USDT'; bDisconnect(); bConnect(); bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) renderStock(); }).catch(() => {}); }
+      const m = await bnList();
+      for (const x of Object.keys(BN24)) if (m[x]) BN_ON[x] = m[x][1];
+      const add = [].concat(syms).filter((x) => x !== 'CRCL' && !isKR(x) && !BN24[x] && m[x]);
+      if (!add.length) return;
+      for (const x of add) { BN24[x] = m[x][0]; BN_ON[x] = m[x][1]; }
+      bDisconnect(); bConnect(); // 한 번에 다시 연결(종목마다 끊었다 붙이지 않게)
+      for (const x of add) bxSnapshot(x).then(() => { renderStockSwitch(); if (state.stock === x) renderStock(); }).catch(() => {});
     } catch {}
   }
   function liveSubscribe(sym) {
@@ -9377,7 +9437,7 @@ ${what.join(' · ')}
   function yDisconnect() { clearTimeout(ywsTimer); if (yws) { yws.onclose = null; try { yws.close(); } catch {} yws = null; } }
 
   // 바이낸스 TradFi 주식 선물이 있는 종목(SPCX·TEM): CRCL과 같은 구조로 바이낸스 값만 쓴다(24시간 거래)
-  const BN24 = { SPCX: 'SPCXUSDT', TEM: 'TEMUSDT' };
+  const BN24 = { SPCX: 'SPCXUSDT', TEM: 'TEMUSDT' }, BN_ON = {}; // BN_ON: 바이낸스 상장일(그보다 긴 기간 차트는 Yahoo로)
   const bx = {}; // 티커 → { t, mark, oi, klines, via, at, err }
   const bxOf = (sym) => (bx[sym] ||= { t: null, mark: null, oi: null, klines: {}, via: null, at: 0, err: null });
   async function bxSnapshot(sym) {
@@ -9392,8 +9452,9 @@ ${what.join(' · ')}
     } catch (e) { X.err = e.message; throw e; }
   }
   async function bxKlines(sym, range) {
-    const r = RANGES[range];
-    if (r.yahoo) { bxOf(sym).klines[range] = await yahooRange(sym, range); return; }
+    const r = RANGES[range], need = { '1d': 2, '1w': 8, '1m': 32, '3m': 93 }[range] || 0;
+    // 바이낸스에 상장한 지 그 기간이 안 됐으면(앞부분이 비어 보임) 그 기간만 Yahoo 차트로
+    if (r.yahoo || (BN_ON[sym] && Date.now() - BN_ON[sym] < need * 864e5)) { bxOf(sym).klines[range] = await yahooRange(sym, range); return; }
     const k = await bnGet(`klines?symbol=${BN24[sym]}&interval=${r.interval}&limit=${r.limit + 120}`);
     bxOf(sym).klines[range] = splitView(k.map((x) => [x[0], +x[4], +x[1], +x[2], +x[3], +x[5]]), r.limit);
   }
@@ -10364,7 +10425,7 @@ ${what.join(' · ')}
   // 시세를 다른 데이터보다 먼저 받아 종목 카드·주가가 바로 보이게
   loadQuote().then(() => { renderStockSwitch(); if (isOther()) { renderSPriceCard(); renderSKpis(); } updateFireChip(); renderHomeFire(); }).catch(() => {});
   yConnect();
-  for (const sym of WATCH) if (STOCK_INFO[sym]?.custom) checkBinance(sym);
+  checkBinance(WATCH);
   bConnect();
   for (const sym of Object.keys(BN24)) bxSnapshot(sym).then(() => { renderStockSwitch(); if (state.stock === sym) { renderSPriceCard(); renderSKpis(); } }).catch(() => bStartPoll());
   refresh('boot');

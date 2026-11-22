@@ -733,6 +733,10 @@ tr.sub-h th { border-top: 2px solid var(--ink-2); border-bottom: 1px solid var(-
   border-radius: 999px; padding: 2px 6px 2px 5px; margin: 0;
 }
 .ss-ed[hidden] { display: none; }
+/* 3개월 추세 화살표(↗·↘·→) — 등락률 옆 작은 글자 */
+.ss-tr { flex: none; font-style: normal; font-size: 12px; font-weight: 700; line-height: 1; color: var(--muted); }
+.ss-tr.up { color: var(--up); } .ss-tr.down { color: var(--down); }
+.ss-tr[hidden] { display: none; }
 .ss-ed b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .ss-ed.live b { animation: ssEdPulse 1.6s ease-in-out infinite; }
 .ss-ed.done { color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, transparent); border-color: color-mix(in srgb, var(--muted) 28%, transparent); }

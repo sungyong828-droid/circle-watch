@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 차트에 내 평단(보라색 선)과 목표가(청록 점선)를 함께 그려요. 범례에서 지금 수익률과 목표가까지 남은 %를 바로 볼 수 있어요. <!-- EN Charts now show your average cost (purple line) and target price (teal dashed line), with your P/L and distance to target in the legend. -->
+- 홈 종목 칸에 3개월 추세 화살표(↗ 오름 · ↘ 내림 · → 옆걸음)가 붙어요. <!-- EN Home stock tiles show a 3-month trend arrow (↗ up · ↘ down · → sideways). -->
+- 내 종목 알림에 52주 신고가·신저가, 거래량 급증(평소의 3배 이상)이 추가됐어요. <!-- EN Alerts for your stocks now include 52-week highs/lows and volume spikes (3× normal or more). -->
+- 바이낸스에 24시간 선물이 있는 미국 종목은 모두 바이낸스 가격으로 밤낮·주말 없이 움직여요(NVDA·TSLA·SOXL 등). <!-- EN US stocks with a 24-hour Binance contract (NVDA, TSLA, SOXL and more) now update around the clock, weekends included. -->
+- 두 손가락 확대·이동이 더 부드러워졌어요. <!-- EN Pinch zoom and panning are smoother. -->
+
 ## v2026.11.22-1 — 2026-11-22
 
 [이 버전 보기](https://2a01f830.my-fire-portfolio.pages.dev) · 커밋 `40027de`
