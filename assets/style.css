@@ -2595,3 +2595,10 @@ canvas[data-cz] { touch-action: pan-y; }
 .ts-ma.up { color: var(--up); }
 .ts-ma.down { color: var(--down); }
 .ct-legend i.dot { height: 0; border-top: 2px dotted var(--c); background: none; border-radius: 0; }
+
+/* 차트 위 한 줄 요약(천장까지 · 평단 회복까지 · 바닥까지 · 목표가까지) */
+.ct-legend .ct-sum { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 2px 0; margin-bottom: 2px; font: 600 12.5px var(--sans); color: var(--ink-2); }
+.ct-legend .ct-sum span { white-space: nowrap; }
+.ct-legend .ct-sum span + span::before { content: '·'; margin: 0 6px; color: var(--faint); }
+.ct-legend .ct-sum b { color: var(--ink); font-weight: 700; }
+.ct-legend .ct-sum em { font-style: normal; color: var(--c-orange); }

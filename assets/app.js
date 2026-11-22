@@ -738,12 +738,20 @@
       const rest = []; for (let i = g[0] + 1; i < n; i++) rest.push([i, top ? V[i].h : V[i].l]);
       return rest.length ? [g, ...rest] : P;
     };
-    const R = hi.length ? edge(hull(from(hi, true), true)) : null, S = lo.length ? edge(hull(from(lo, false), false)) : null;
+    // 가장 높은 고점(낮은 저점)이 최근(전체의 25% 안)이고 그 뒤로 이은 선이 아주 짧으면(6% 미만) 몇 봉의 출렁임으로 기울기를 정하지 않고 그 가격에 수평선
+    // (새 저점 뒤 1~3봉 반등을 '오르는 지지선'으로 읽어, 떨어지는 종목 대부분이 '삼각 수렴'으로 나오던 문제 — TEM -16%인데 '삼각 수렴 · 저항선 돌파')
+    const pick = (P, top) => {
+      const g = P.reduce((b, p) => (top ? p[1] > b[1] : p[1] < b[1]) ? p : b, P[0]), E = edge(hull(from(P, top), top));
+      if (n - 1 - g[0] < Math.max(4, Math.round(n * 0.25)) && (!E || E.b[0] - E.a[0] < Math.max(4, n * 0.06))) return { a: g, b: [n - 1, g[1]], m: 0, flat: true };
+      return E;
+    };
+    const R = hi.length ? pick(hi, true) : null, S = lo.length ? pick(lo, false) : null;
     if (!R && !S) return null;
     const at = (E, i) => E.a[1] + E.m * (i - E.a[0]);
     const span = Math.max(...V.map((x) => x.h)) - Math.min(...V.map((x) => x.l)) || 1;
     // 기울기: 차트 전체 길이 동안 선이 움직이는 폭 ÷ 차트의 가격 범위(15% 넘게 기울면 오름·내림)
-    const dir = (E) => (!E ? 0 : (E.m * (n - 1)) / span > 0.15 ? 1 : (E.m * (n - 1)) / span < -0.15 ? -1 : 0);
+    // 최근 새 고점·저점에 그은 수평선은 그 방향으로 본다(새 저점 = 내림, 새 고점 = 오름)
+    const dir = (E) => (!E ? 0 : E.flat ? (E === S ? -1 : 1) : (E.m * (n - 1)) / span > 0.15 ? 1 : (E.m * (n - 1)) / span < -0.15 ? -1 : 0);
     const ds = dir(S), dr = dir(R), last = V.at(-1).c;
     let sNow = S ? at(S, n - 1) : null, rNow = R ? at(R, n - 1) : null;
     let kind = ds > 0 && dr > 0 ? 'up' : ds < 0 && dr < 0 ? 'down' : ds > 0 && dr < 0 ? 'squeeze' : ds < 0 && dr > 0 ? 'widen'
@@ -751,15 +759,18 @@
     let pos = rNow != null && last > rNow ? 'break-up' : sNow != null && last < sNow ? 'break-down' : 'inside';
     // 두 선이 이미 만났으면(지지선이 저항선보다 위로 올라감) 삼각형이 끝난 것 → 꼭짓점까지만 긋고,
     // 지금 가격이 꼭짓점보다 위면 위로 돌파·아래면 아래로 이탈(지지 > 저항으로 보이던 문제)
-    let end = n - 1, apex = null;
+    let end = n - 1, apex = null, xHi = null, xLo = null;
     if (S && R && sNow >= rNow) {
       const x = S.m !== R.m ? (R.a[1] - R.m * R.a[0] - S.a[1] + S.m * S.a[0]) / (S.m - R.m) : n - 1;
       end = Math.min(n - 1, Math.max(S.a[0], R.a[0], Math.ceil(x)));
       apex = at(S, Math.min(n - 1, Math.max(0, x)));
-      kind = 'squeeze'; pos = last >= apex ? 'break-up' : 'break-down'; sNow = rNow = null;
+      // 꼭짓점을 지나 두 선을 지금까지 늘이면 벌어진다 — 둘 다 위면 돌파, 둘 다 아래면 이탈, 그 사이면 아직 방향을 안 정한 것
+      // (예전엔 꼭짓점보다 조금만 위여도 '저항선 돌파'라고 해서 내리는 중인 종목에도 돌파가 떴음)
+      const a1 = at(S, n - 1), a2 = at(R, n - 1); xHi = Math.max(a1, a2, apex); xLo = Math.min(a1, a2, apex);
+      kind = 'squeeze'; pos = last > xHi ? 'break-up' : last < xLo ? 'break-down' : 'inside'; sNow = rNow = null;
     }
     const line = (E) => (E ? V.map((_, i) => (i >= E.a[0] && i <= end ? at(E, i) : null)) : null);
-    return { kind, pos, last, sNow, rNow, apex, sm: S ? S.m : null, rm: R ? R.m : null, sup: line(S), res: line(R) };
+    return { kind, pos, last, sNow, rNow, apex, xHi, xLo, sm: S ? S.m : null, rm: R ? R.m : null, sup: line(S), res: line(R) };
   }
   const TREND_TXT = {
     up: ['상승 추세', 'Uptrend', 'up'], down: ['하락 추세', 'Downtrend', 'down'], squeeze: ['삼각 수렴', 'Narrowing (triangle)', 'flat'],
@@ -787,7 +798,7 @@
     for (const x of P) { const g = G.at(-1); if (g && x - g.lo <= tol * 2) { g.s += x; g.c++; } else G.push({ lo: x, s: x, c: 1 }); }
     const Z = G.filter((g) => g.c >= 2).map((g) => ({ p: g.s / g.c, c: g.c }));
     const floor = Z.filter((z) => z.p <= now).at(-1) || null, ceil = Z.find((z) => z.p > now) || null;
-    return floor || ceil ? { floor, ceil } : null;
+    return { floor, ceil }; // 둘 다 없을 수도 있음 — 한 줄 요약에서 '받쳐 줄 가격대 없음'으로 알려 줌
   }
   // 내 평단(보유 정보, 같은 종목 여러 줄이면 수량 가중)·목표가 — 이 기기 안의 값만 쓴다(서버로 보내지 않음)
   const REF_TGT = '#d946ef'; // 목표가: 보라 점선 · 내 평단: 글자색 실선(어두운 화면 흰색, 밝은 화면 검정 — 이평선 색과 안 겹치게)
@@ -808,14 +819,32 @@
   const lvLegend = (LV, fmt) => [[LV.floor, '바닥 가격대', 'Floor'], [LV.ceil, '천장 가격대', 'Ceiling']].filter(([z]) => z)
     .map(([z, ko, en]) => `<span data-noi18n><i class="dot" style="--c:${LV_COL}"></i>${EN ? en : ko} ${fmt(z.p)} (${EN ? `${z.c} touches` : `${z.c}번 닿음`})</span>`).join('');
 
+  // 차트 위 한 줄 요약 — 범례를 하나씩 읽지 않아도 '지금 어디쯤인지': 천장까지 · 평단 회복까지 · 바닥까지(없으면 없다고) · 목표가까지
+  function chartSum(LV, REF, px, V, sym, fmt) {
+    if (!(px > 0)) return '';
+    const pc = (v) => `<b>${sgnPct(v / px - 1)}</b>`, out = [];
+    // 1년 최저·최고 근처인지(1년 일봉이 있으면 그걸로, 없으면 지금 차트 구간으로)
+    const Y = TD[sym]?.V?.length >= 200 ? TD[sym].V.slice(-251) : null, W = Y || V;
+    const near = (lo) => { const x = lo ? Math.min(...W.map((k) => k.l)) : Math.max(...W.map((k) => k.h)); return lo ? px <= x * 1.03 : px >= x * 0.97; };
+    const nb = (lo) => near(lo) ? ` (${Y ? (EN ? (lo ? 'near 1-year low' : 'near 1-year high') : (lo ? '1년 최저 근처' : '1년 최고 근처')) : (EN ? (lo ? 'near this period’s low' : 'near this period’s high') : (lo ? '이 기간 최저 근처' : '이 기간 최고 근처'))})` : '';
+    if (LV) out.push(LV.ceil ? (EN ? `${pc(LV.ceil.p)} to ceiling ${fmt(LV.ceil.p)}` : `천장 ${fmt(LV.ceil.p)}까지 ${pc(LV.ceil.p)}`) : (EN ? `No resistance level above${nb(false)}` : `위로 막는 가격대 없음${nb(false)}`));
+    const A = REF.find((r) => r.k === 'avg');
+    if (A) out.push(px >= A.p ? (EN ? `${pc(px * px / A.p)} above your avg` : `평단보다 ${pc(px * px / A.p)}`) : (EN ? `${pc(A.p)} to break even` : `평단 회복까지 ${pc(A.p)}`));
+    if (LV) out.push(LV.floor ? (EN ? `${pc(LV.floor.p)} to floor ${fmt(LV.floor.p)}` : `바닥 ${fmt(LV.floor.p)}까지 ${pc(LV.floor.p)}`) : `<em>${EN ? `No support level below${nb(true)}` : `아래 받쳐 줄 가격대 없음${nb(true)}`}</em>`);
+    const G = REF.find((r) => r.k === 'tgt');
+    if (G) out.push(EN ? `${pc(G.p)} to target` : `목표가까지 ${pc(G.p)}`);
+    return out.length ? `<div class="ct-sum" data-noi18n>${out.map((x) => `<span>${x}</span>`).join('')}</div>` : '';
+  }
   // 가로선(바닥·천장 가격대, 내 평단, 목표가) 오른쪽 끝 가격축 위에 작은 가격표 — 선이 몇 달러인지 바로 보이게
   // 데이터셋의 tag(글자)·borderColor로 그린다. 가격표끼리 겹치면 위아래로 조금씩 밀어 낸다
   const lineTagPlugin = {
     id: 'lineTags',
     afterDatasetsDraw(ch) {
       const y = ch.scales.y, A = ch.chartArea; if (!y || !A) return;
-      const L = ch.data.datasets.map((d, i) => d.tag && ch.isDatasetVisible(i) ? { t: d.tag, col: d.borderColor, py: y.getPixelForValue(d.data.find((v) => v != null)) } : null)
-        .filter((o) => o && o.py >= A.top - 2 && o.py <= A.bottom + 2).sort((a, b) => a.py - b.py);
+      const L = ch.data.datasets.map((d, i) => d.tag && ch.isDatasetVisible(i) ? { t: d.tag, col: d.borderColor, py: y.getPixelForValue(d.data.find((v) => v != null)) } : null);
+      // 지금 가격(오른쪽 끝이 지금일 때만) — 마지막 캔들 색(오름·내림)
+      const N = ch.$now; if (N?.p > 0) L.push({ t: N.fmt(N.p), col: N.col, py: y.getPixelForValue(N.p) });
+      L.splice(0, L.length, ...L.filter((o) => o && o.py >= A.top - 2 && o.py <= A.bottom + 2).sort((a, b) => a.py - b.py));
       if (!L.length) return;
       const { ctx } = ch, H = 15, R = ch.width - 1;
       for (let i = 1; i < L.length; i++) L[i].py = Math.max(L[i].py, L[i - 1].py + H + 1);
@@ -1058,7 +1087,7 @@
     // 자동 추세선(점선): 저항선 초록 · 지지선 빨강
     const T = ind && state.chartTrend ? trendLines(V) : null;
     // 거리(%)와 돌파·이탈 판단은 카드 위에 보이는 지금 가격 기준(한국 종목은 시간외 가격이 차트 마지막 봉과 다를 수 있음)
-    if (T && now != null && isFinite(now) && (!Z || Z.end === full)) { T.last = now; /* 지난 구간을 보고 있으면 그 구간 마지막 캔들 기준 */ T.pos = T.apex != null ? (now >= T.apex ? 'break-up' : 'break-down') : T.rNow != null && now > T.rNow ? 'break-up' : T.sNow != null && now < T.sNow ? 'break-down' : 'inside'; }
+    if (T && now != null && isFinite(now) && (!Z || Z.end === full)) { T.last = now; /* 지난 구간을 보고 있으면 그 구간 마지막 캔들 기준 */ T.pos = T.apex != null ? (now > T.xHi ? 'break-up' : now < T.xLo ? 'break-down' : 'inside') : T.rNow != null && now > T.rNow ? 'break-up' : T.sNow != null && now < T.sNow ? 'break-down' : 'inside'; }
     if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
     // 주요 가격대(가로 점선): 지금 가격(지난 구간을 보고 있으면 그 구간 마지막 가격) 바로 아래·위
     const LV = ind && state.chartLv ? priceLevels(V, now != null && isFinite(now) && (!Z || Z.end === full) ? now : V.at(-1).c) : null;
@@ -1112,7 +1141,8 @@
       },
     }, null, quick);
     // $live: 오른쪽 끝(지금)이 보일 때만 실시간 가격으로 마지막 캔들을 고친다 · $args: 확대·축소 때 같은 자료로 다시 그리기
-    const meta = (c) => { c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
+    const nowK = V.at(-1), nowTag = !compact && ind && (!Z || Z.end === full) ? { p: nowK.c, col: nowK.c >= nowK.o ? C.up : C.down, fmt } : null;
+    const meta = (c) => { c.$now = nowTag; c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
     if (charts[id]) meta(charts[id]); else if (pendingCharts[id]) pendingCharts[id].after = meta;
     if (ind) {
       czBind(id);
@@ -1120,7 +1150,8 @@
       if (zi) zi.disabled = V.length <= Math.min(CZ_MIN, full);
       if (zo) zo.disabled = !Z;
     }
-    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>${EN ? `Zoomed · ${V.length} of ${full} candles` : `확대 중 · ${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + (REF.length ? refLegend(REF, fmt, refPx) : '') + (LV ? lvLegend(LV, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
+    const SUM = ind && sym && (!Z || Z.end === full) ? chartSum(LV, REF, refPx, V, sym, fmt) : '';
+    if (ind) setHtml('ctl-' + id, SUM + (Z ? `<span class="ct-zinfo" data-noi18n>${EN ? `Zoomed · ${V.length} of ${full} candles` : `확대 중 · ${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + (REF.length ? refLegend(REF, fmt, refPx) : '') + (LV ? lvLegend(LV, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
@@ -1130,6 +1161,7 @@
     if (c.$live === false) return;
     const i = V.length - 1, k = V[i];
     k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last);
+    if (c.$now) { c.$now.p = last; c.$now.col = k.c >= k.o ? C.up : C.down; }
     if (c.$line) { c.data.datasets[0].data[i] = last; c.update('none'); return; }
     const D = candleParts([k]), [w, b] = c.data.datasets;
     w.data[i] = D.wick[0]; b.data[i] = D.body[0];

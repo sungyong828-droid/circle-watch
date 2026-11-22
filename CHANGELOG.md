@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 차트 위에 한 줄 요약이 생겼어요: 천장까지 몇 %, 평단 회복까지 몇 %, 바닥까지 몇 %를 한눈에 볼 수 있어요. 아래에 받쳐 줄 가격대가 없으면 '1년 최저 근처'처럼 알려 줘요. <!-- EN A one-line summary now sits above the chart: how far to the ceiling, to break even and to the floor. If there is no support level below, it tells you (e.g. near 1-year low). -->
+- 차트 오른쪽 끝에 지금 가격 가격표가 붙어요(오르면 빨강, 내리면 파랑). <!-- EN The current price now has its own tag at the right edge of the chart. -->
+- 떨어지는 종목이 '삼각 수렴'이나 '저항선 돌파'로 잘못 나오던 추세 판단을 고쳤어요. 이제 하락 추세로 바르게 보여요. <!-- EN Fixed falling stocks sometimes being labelled as a triangle or a breakout; they now show as a downtrend. -->
+
 ## v2026.11.22-3 — 2026-11-22
 
 [이 버전 보기](https://45351fd1.my-fire-portfolio.pages.dev) · 커밋 `1d40b66`
