@@ -11,6 +11,10 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+## v2026.11.22-1 — 2026-11-22
+
+[이 버전 보기](https://2a01f830.my-fire-portfolio.pages.dev) · 커밋 `40027de`
+
 - 🧭 가격 차트 위에 '추세 한눈에'가 생겼어요. 1개월·3개월·1년 추세(상승·하락·횡보 등)와 이동평균 정배열·역배열을 한 줄로 바로 보여 줘요.
 <!-- EN Price charts now open with "Trend at a glance": the 1-month, 3-month and 1-year trend plus whether the moving averages are stacked up or down -->
 - 〰️ 차트에 주요 가격대(노란 점선)가 생겼어요. 여러 번 닿고 돌아선 가격 중 지금 가격 바로 아래(바닥)와 바로 위(천장)를 보여 주고, '가격대' 버튼으로 켜고 끌 수 있어요.
