@@ -855,7 +855,11 @@
     const on = c.$hov != null, i = on ? Math.min(c.$hov, V.length - 1) : V.length - 1, k = V[i], f = c.$fmt;
     const pc = i > 0 ? V[i - 1].c : c.$prevC, chg = pc ? k.c / pc - 1 : null;
     el.classList.toggle('on', on);
-    el.innerHTML = `<b class="cth-d">${on ? '' : (EN ? 'Latest · ' : '최근 · ')}${c.$title({ dataIndex: i })}</b>`
+    // 날짜: 하루보다 짧은 캔들은 '11/22 14:30', 일봉은 '11/22(일)', 1년 넘게 걸친 차트(주봉·월봉)는 '25.11.22'
+    const d = new Date(k.t), iv = V.length > 1 ? (V.at(-1).t - V[0].t) / (V.length - 1) : 864e5, p2 = (x) => String(x).padStart(2, '0');
+    const md = `${d.getMonth() + 1}/${d.getDate()}`, wd = (EN ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : '일월화수목금토')[d.getDay()];
+    const dt = iv < 20 * 3600e3 ? `${md} ${p2(d.getHours())}:${p2(d.getMinutes())}` : V.at(-1).t - V[0].t > 300 * 864e5 ? `${String(d.getFullYear()).slice(2)}.${p2(d.getMonth() + 1)}.${p2(d.getDate())}` : `${md}(${wd})`;
+    el.innerHTML = `<b class="cth-d">${on ? '' : (EN ? 'Latest · ' : '최근 · ')}${dt}</b>`
       + `<span>${EN ? 'Open' : '시가'} ${f(k.o)}</span><span>${EN ? 'High' : '고가'} ${f(k.h)}</span><span>${EN ? 'Low' : '저가'} ${f(k.l)}</span>`
       + `<span>${EN ? 'Close' : '종가'} <b>${f(k.c)}</b>${chg != null && isFinite(chg) ? ` <em class="${chg >= 0 ? 'up' : 'down'}">${sgnPct(chg)}</em>` : ''}</span>`
       + (k.v ? `<span>${EN ? 'Vol' : '거래량'} ${unit(k.v)}</span>` : '');
@@ -1175,7 +1179,7 @@
     }, null, quick);
     // $live: 오른쪽 끝(지금)이 보일 때만 실시간 가격으로 마지막 캔들을 고친다 · $args: 확대·축소 때 같은 자료로 다시 그리기
     const nowK = V.at(-1), nowTag = !compact && ind && (!Z || Z.end === full) ? { p: nowK.c, col: nowK.c >= nowK.o ? C.up : C.down, fmt } : null;
-    const meta = (c) => { c.$now = nowTag; c.$fmt = fmt; c.$title = title; c.$prevC = pre.at(-1)?.c; c.$hov = null; setTimeout(() => paintHover(id, c)); c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
+    const meta = (c) => { c.$now = nowTag; c.$fmt = fmt; c.$prevC = pre.at(-1)?.c; c.$hov = null; setTimeout(() => paintHover(id, c)); c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
     if (charts[id]) meta(charts[id]); else if (pendingCharts[id]) pendingCharts[id].after = meta;
     if (ind) {
       czBind(id);
