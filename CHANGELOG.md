@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🧭 가격 차트 위에 '추세 한눈에'가 생겼어요. 1개월·3개월·1년 추세(상승·하락·횡보 등)와 이동평균 정배열·역배열을 한 줄로 바로 보여 줘요.
+<!-- EN Price charts now open with "Trend at a glance": the 1-month, 3-month and 1-year trend plus whether the moving averages are stacked up or down -->
+- 〰️ 차트에 주요 가격대(노란 점선)가 생겼어요. 여러 번 닿고 돌아선 가격 중 지금 가격 바로 아래(바닥)와 바로 위(천장)를 보여 주고, '가격대' 버튼으로 켜고 끌 수 있어요.
+<!-- EN Charts show key price levels (yellow dotted): the floor just below and the ceiling just above the current price, where the price turned several times. Toggle with "Levels" -->
+- 🔔 내 종목에 추세 신호가 생기면 사이트에 들어왔을 때 알려 줘요. 3개월 지지선 이탈·저항선 돌파, 이동평균 정배열·역배열 전환이 생긴 날 알림함과 안내 메시지로 보여 줘요.
+<!-- EN Trend alerts for your stocks: when one falls below its 3-month support, breaks above resistance, or its moving averages flip, you'll see it in 🔔 when you open the site -->
 - 🤏 두 손가락으로 차트를 벌리고 좁히는 확대·축소가 훨씬 부드러워졌어요. 천천히 벌려도 손가락을 따라 커지고, 손가락 사이에 있던 캔들이 그대로 그 자리에 머물러요.
 <!-- EN Pinch-to-zoom on charts is much smoother: it follows your fingers even when you pinch slowly, and the candles between your fingers stay put -->
 - 🕒 밤·주말에 서클·스페이스X처럼 24시간 거래되는 종목의 등락률이 마지막 정규장 종가(주말이면 금요일 종가) 기준으로 맞게 나와요. 그동안은 그 전날(목요일) 종가와 비교해서 금요일 등락분까지 함께 들어가 있었어요.
