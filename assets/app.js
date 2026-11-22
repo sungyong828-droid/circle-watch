@@ -688,11 +688,12 @@
   state.chartMA = loadPref('chartMA', '1') === '1';
   state.chartVol = loadPref('chartVol', '1') === '1';
   state.chartTrend = loadPref('chartTrend', '1') === '1';
+  state.chartLv = loadPref('chartLv', '1') === '1';
   // 차트 위 도구: 캔들/라인 · 이동평균 · 거래량 (모든 종목 공통, 이 기기에 기억)
-  const chartTools = (id) => `<div class="ct-bar" role="group" aria-label="차트 보기 설정">
+  const chartTools = (id) => `<div class="tsum" id="tsum-${id}" data-noi18n></div><div class="ct-bar" role="group" aria-label="차트 보기 설정">
       <button type="button" data-ctype="candle" aria-pressed="${state.chartType !== 'line'}">캔들</button><button type="button" data-ctype="line" aria-pressed="${state.chartType === 'line'}">라인</button>
       <i class="ct-sep"></i>
-      <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button><button type="button" data-ctoggle="trend" aria-pressed="${state.chartTrend}">추세선</button>
+      <button type="button" data-ctoggle="ma" aria-pressed="${state.chartMA}">이동평균</button><button type="button" data-ctoggle="vol" aria-pressed="${state.chartVol}">거래량</button><button type="button" data-ctoggle="trend" aria-pressed="${state.chartTrend}">추세선</button><button type="button" data-ctoggle="lv" aria-pressed="${state.chartLv}">가격대</button>
       <span class="ct-zm" data-noi18n><button type="button" class="ct-zb" data-czoom="in:${id}" aria-label="${EN ? 'Zoom in' : '차트 확대'}" title="${EN ? 'Zoom in' : '확대'}">＋</button><button type="button" class="ct-zb" data-czoom="out:${id}" aria-label="${EN ? 'Zoom out' : '차트 축소'}" title="${EN ? 'Zoom out' : '축소'}" disabled>－</button></span>
     </div><div class="ct-legend" id="ctl-${id}"></div>`;
   // ---------------------------------------------------------------- 자동 추세선(지지선·저항선)
@@ -752,13 +753,120 @@
       kind = 'squeeze'; pos = last >= apex ? 'break-up' : 'break-down'; sNow = rNow = null;
     }
     const line = (E) => (E ? V.map((_, i) => (i >= E.a[0] && i <= end ? at(E, i) : null)) : null);
-    return { kind, pos, last, sNow, rNow, apex, sup: line(S), res: line(R) };
+    return { kind, pos, last, sNow, rNow, apex, sm: S ? S.m : null, rm: R ? R.m : null, sup: line(S), res: line(R) };
   }
   const TREND_TXT = {
     up: ['상승 추세', 'Uptrend', 'up'], down: ['하락 추세', 'Downtrend', 'down'], squeeze: ['삼각 수렴', 'Narrowing (triangle)', 'flat'],
     widen: ['변동성 확대', 'Widening swings', 'flat'], upish: ['완만한 상승', 'Mild uptrend', 'up'], downish: ['완만한 하락', 'Mild downtrend', 'down'], flat: ['횡보(박스권)', 'Sideways (range)', 'flat'],
   };
   const TREND_RES = '#3fbf7f', TREND_SUP = '#ff6b6b';
+  // ---------------------------------------------------------------- 주요 가격대(가로선): 여러 번 닿고 돌아선 가격
+  // 보이는 캔들의 봉우리·골짜기 가격을 가까운 것끼리 묶어(폭 = 캔들 길이 중간값의 1.2배, 가격의 0.8% 이상) 2번 넘게 닿은 곳만 남기고,
+  // 지금 가격 바로 아래 하나(바닥) · 바로 위 하나(천장)만 긋는다
+  const LV_COL = '#f0b24a';
+  function priceLevels(V, now) {
+    const n = V.length;
+    if (n < 15 || !(now > 0)) return null;
+    const k = Math.max(2, Math.min(8, Math.round(n / 18))), P = [];
+    for (let i = k; i < n - k; i++) {
+      let H = true, L = true;
+      for (let j = i - k; j <= i + k && (H || L); j++) { if (j === i) continue; if (V[j].h > V[i].h) H = false; if (V[j].l < V[i].l) L = false; }
+      if (H) P.push(V[i].h);
+      if (L) P.push(V[i].l);
+    }
+    if (P.length < 2) return null;
+    const R = V.map((x) => x.h - x.l).sort((a, b) => a - b), tol = Math.max(R[R.length >> 1] * 0.6, now * 0.004);
+    P.sort((a, b) => a - b);
+    const G = [];
+    for (const x of P) { const g = G.at(-1); if (g && x - g.lo <= tol * 2) { g.s += x; g.c++; } else G.push({ lo: x, s: x, c: 1 }); }
+    const Z = G.filter((g) => g.c >= 2).map((g) => ({ p: g.s / g.c, c: g.c }));
+    const floor = Z.filter((z) => z.p <= now).at(-1) || null, ceil = Z.find((z) => z.p > now) || null;
+    return floor || ceil ? { floor, ceil } : null;
+  }
+  const lvLegend = (LV, fmt) => [[LV.floor, '바닥 가격대', 'Floor'], [LV.ceil, '천장 가격대', 'Ceiling']].filter(([z]) => z)
+    .map(([z, ko, en]) => `<span data-noi18n><i class="dot" style="--c:${LV_COL}"></i>${EN ? en : ko} ${fmt(z.p)} (${EN ? `${z.c} touches` : `${z.c}번 닿음`})</span>`).join('');
+
+  // ---------------------------------------------------------------- 추세 한눈에(1개월·3개월·1년 + 이동평균 배열) · 🔔 추세 신호(내 종목만)
+  // 1년치 일봉 하나(/api/chart r=3m — 서버가 1년 일봉을 보냄)로 계산한다. 15분 동안 다시 받지 않음, 실패하면 5분 쉼
+  const TD = {}, TDP = {}, TDF = {};
+  function tdLoad(sym) {
+    const D = TD[sym];
+    if (D && Date.now() - D.at < 15 * 60e3) return Promise.resolve(D);
+    if (Date.now() - (TDF[sym] || 0) < 5 * 60e3) return Promise.resolve(D || null);
+    return (TDP[sym] ||= getJ(`${NEWS_API}/chart?s=${sym}&r=3m`, 15000)
+      .then((j) => { if (j.error || !j.points?.length) throw new Error(j.error || 'no data'); return (TD[sym] = { at: Date.now(), V: j.points.map(ohlc) }); })
+      .catch(() => { TDF[sym] = Date.now(); return D || null; })
+      .finally(() => { delete TDP[sym]; }));
+  }
+  // 이동평균 배열: 5일 > 20일 > 60일 = 정배열(오르는 흐름) · 반대 = 역배열 · 그 밖 = 엉킴
+  const maAlign = (C) => {
+    if (C.length < 60) return null;
+    const m = (n) => C.slice(-n).reduce((a, b) => a + b, 0) / n, a = m(5), b = m(20), c = m(60);
+    return { a, b, c, al: a > b && b > c ? 'up' : a < b && b < c ? 'down' : 'mix' };
+  };
+  function trendSum(sym) {
+    const D = TD[sym];
+    if (!D?.V?.length) return null;
+    const V = D.V, now = stockPx(sym)?.price, C = V.map((x) => x.c);
+    if (now > 0) C[C.length - 1] = now;
+    const kind = (m) => (V.length >= Math.min(m, 15) ? trendLines(V.slice(-m))?.kind || null : null);
+    return { s: kind(22), m: kind(65), l: V.length >= 120 ? kind(V.length) : null, ma: maAlign(C) };
+  }
+  const TS_TXT = { up: ['상승', 'Up', 'up'], down: ['하락', 'Down', 'down'], squeeze: ['수렴', 'Narrowing', 'flat'], widen: ['출렁임 커짐', 'Widening', 'flat'], upish: ['완만한 상승', 'Mild up', 'up'], downish: ['완만한 하락', 'Mild down', 'down'], flat: ['횡보', 'Sideways', 'flat'] };
+  function paintTsum(id, sym) {
+    const el = document.getElementById('tsum-' + id);
+    if (!el) return;
+    const D = TD[sym];
+    if (!D || Date.now() - D.at > 15 * 60e3) tdLoad(sym).then((x) => { if (x && x.at > (D?.at || 0)) paintTsum(id, sym); });
+    const S = trendSum(sym);
+    if (!S || !(S.s || S.m || S.l)) { if (el.innerHTML) el.innerHTML = ''; return; }
+    const chip = (lbl, k) => { if (!k) return ''; const [ko, en, c] = TS_TXT[k]; return `<span class="ts-c ${c}"><small>${lbl}</small>${EN ? en : ko}</span>`; };
+    const M = S.ma, ma = !M ? null : M.al === 'up' ? [EN ? 'Moving averages stacked up (5 > 20 > 60-day) · rising' : '이동평균 정배열(5일 > 20일 > 60일) · 오르는 흐름', 'up']
+      : M.al === 'down' ? [EN ? 'Moving averages stacked down (5 < 20 < 60-day) · falling' : '이동평균 역배열(5일 < 20일 < 60일) · 내리는 흐름', 'down']
+        : [EN ? 'Moving averages tangled · no clear direction' : '이동평균 엉킴 · 방향을 찾는 중', 'flat'];
+    const h = `<div class="ts-row"><b>${EN ? 'Trend' : '추세'}</b>${chip(EN ? '1M' : '1개월', S.s)}${chip(EN ? '3M' : '3개월', S.m)}${chip(EN ? '1Y' : '1년', S.l)}</div>${ma ? `<p class="ts-ma ${ma[1]}">${ma[0]}</p>` : ''}`;
+    if (el.dataset.h !== h) { el.innerHTML = h; el.dataset.h = h; }
+  }
+  // 추세 신호: 어제까지는 선 안쪽이었는데 지금 가격이 3개월 지지선 아래·저항선 위로 나간 날, 이동평균 배열이 정·역배열로 바뀐 날
+  // (계속 밖에 머물러 있으면 다음 날엔 다시 알리지 않음) — 내 종목(관심 종목)만, 사이트에 들어왔을 때 🔔 알림함과 안내 메시지로
+  const TSIG = {};
+  function trendSig(sym) {
+    const D = TD[sym];
+    if (!D?.V || D.V.length < 70) return [];
+    const V = D.V, Vy = V.slice(-66, -1), T = trendLines(Vy), px = stockPx(sym)?.price ?? V.at(-1).c, cy = Vy.at(-1).c, out = [];
+    const t = V.at(-1).t, day = new Date(t).toISOString().slice(0, 10);
+    if (T && T.apex == null) {
+      const sT = T.sNow != null && T.sm != null ? T.sNow + T.sm : null, rT = T.rNow != null && T.rm != null ? T.rNow + T.rm : null;
+      if (sT != null && cy >= T.sNow && px < sT) out.push({ k: 'sdown', v: sT });
+      if (rT != null && cy <= T.rNow && px > rT) out.push({ k: 'rup', v: rT });
+    }
+    const C = V.slice(0, -1).map((x) => x.c), a0 = maAlign(C), a1 = maAlign([...C, px]);
+    if (a0 && a1 && a1.al !== a0.al && a1.al !== 'mix') out.push({ k: a1.al === 'up' ? 'maup' : 'madown' });
+    return out.map((x) => ({ ...x, id: `ts:${sym}:${x.k}:${day}`, t, px }));
+  }
+  function trendNoti(sym, x) {
+    const nm = nameOfSym(sym), lv = x.v != null ? pxS(sym, x.v) : '', now = pxS(sym, x.px);
+    const T = {
+      sdown: ['📉', `${nm} 3개월 지지선 이탈`, `${nm} fell below its 3-month support`, `지지선 ${lv} 아래로 · 지금 ${now}`, `Support ${lv} · now ${now}`],
+      rup: ['📈', `${nm} 3개월 저항선 돌파`, `${nm} broke above its 3-month resistance`, `저항선 ${lv} 위로 · 지금 ${now}`, `Resistance ${lv} · now ${now}`],
+      maup: ['📈', `${nm} 이동평균 정배열로 바뀜`, `${nm}: moving averages turned up`, '5일 > 20일 > 60일 · 오르는 흐름 신호', '5 > 20 > 60-day · rising signal'],
+      madown: ['📉', `${nm} 이동평균 역배열로 바뀜`, `${nm}: moving averages turned down`, '5일 < 20일 < 60일 · 내리는 흐름 신호', '5 < 20 < 60-day · falling signal'],
+    }[x.k];
+    return { id: x.id, t: x.t, ic: T[0], title: EN ? T[2] : T[1], sub: EN ? T[4] : T[3], go: { sym, v: 'chart' } };
+  }
+  const tsToasted = new Set();
+  async function scanTrendSig() {
+    if (document.hidden) return;
+    const syms = WATCH.slice(0, 40);
+    for (let i = 0; i < syms.length; i += 3) await Promise.all(syms.slice(i, i + 3).map((x) => tdLoad(x).catch(() => null)));
+    for (const x of syms) { try { TSIG[x] = trendSig(x); } catch { TSIG[x] = []; } }
+    try { updateBell(); } catch {}
+    const fresh = Object.entries(TSIG).filter(([x]) => WATCH.includes(x)).flatMap(([x, L]) => L.map((y) => trendNoti(x, y))).filter((y) => !notiSeen[y.id] && !tsToasted.has(y.id));
+    if (!fresh.length) return;
+    fresh.forEach((y) => tsToasted.add(y.id));
+    toast(`${fresh[0].ic} ${esc(fresh[0].title)}${fresh.length > 1 ? (EN ? ` and ${fresh.length - 1} more` : ` 외 ${fresh.length - 1}개`) : ''} · ${EN ? 'see 🔔' : '🔔 알림에서 보기'}`, false, 6500);
+  }
+  setTimeout(() => { scanTrendSig(); setInterval(scanTrendSig, 30 * 60e3); }, 9000);
   // ---------------------------------------------------------------- 차트 확대·축소(모든 가격 차트 공통)
   // 보이는 캔들 수(span)와 오른쪽 끝에서 비켜난 칸 수(off)를 차트마다 기억 → 기간을 바꾸면(첫 캔들이 달라지면) 처음 상태로
   // ＋/－ 버튼, 두 손가락 벌리기·좁히기(트랙패드 핀치 포함), 확대 중 옆으로 밀기, 두 번 누르면 원래대로
@@ -854,7 +962,7 @@
       + (T.apex != null ? `<span data-noi18n>${EN ? 'Apex' : '꼭짓점'} ${fmt(T.apex)}${d(T.apex)}</span>` : '');
   }
   function drawCandles(id, pts, opts = {}) { // fmt: 가격 표시(한국 종목은 원) · now: 지금 가격(추세선까지 거리 %) · quick: 확대·이동 중 다시 그리기(애니메이션 없음)
-    const { compact = false, xf = hm, last = null, now = null, ind = false, fmt = price, quick = false } = opts;
+    const { compact = false, xf = hm, last = null, now = null, ind = false, fmt = price, quick = false, sym = null } = opts;
     let { tip = null } = opts;
     if (!pts?.length) return;
     let pre = (pts.pre || []).map(ohlc), V = pts.map(ohlc);
@@ -892,6 +1000,10 @@
     // 거리(%)와 돌파·이탈 판단은 카드 위에 보이는 지금 가격 기준(한국 종목은 시간외 가격이 차트 마지막 봉과 다를 수 있음)
     if (T && now != null && isFinite(now) && (!Z || Z.end === full)) { T.last = now; /* 지난 구간을 보고 있으면 그 구간 마지막 캔들 기준 */ T.pos = T.apex != null ? (now >= T.apex ? 'break-up' : 'break-down') : T.rNow != null && now > T.rNow ? 'break-up' : T.sNow != null && now < T.sNow ? 'break-down' : 'inside'; }
     if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
+    // 주요 가격대(가로 점선): 지금 가격(지난 구간을 보고 있으면 그 구간 마지막 가격) 바로 아래·위
+    const LV = ind && state.chartLv ? priceLevels(V, now != null && isFinite(now) && (!Z || Z.end === full) ? now : V.at(-1).c) : null;
+    if (LV) for (const [z, lbl] of [[LV.floor, EN ? 'Floor' : '바닥 가격대'], [LV.ceil, EN ? 'Ceiling' : '천장 가격대']]) if (z) ds.push({ type: 'line', label: lbl, data: V.map(() => z.p), borderColor: LV_COL, backgroundColor: LV_COL, borderWidth: 1.2, borderDash: [2, 4], pointRadius: 0, pointHoverRadius: 0, order: 0 });
+    if (ind && sym) paintTsum(id, sym);
     const hasVol = ind && state.chartVol && V.some((k) => k.v > 0);
     if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
     const maxVol = hasVol ? Math.max(...V.map((k) => k.v || 0)) : 0;
@@ -938,7 +1050,7 @@
       if (zi) zi.disabled = V.length <= Math.min(CZ_MIN, full);
       if (zo) zo.disabled = !Z;
     }
-    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>${EN ? `Zoomed · ${V.length} of ${full} candles` : `확대 중 · ${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
+    if (ind) setHtml('ctl-' + id, (Z ? `<span class="ct-zinfo" data-noi18n>${EN ? `Zoomed · ${V.length} of ${full} candles` : `확대 중 · ${full}개 중 ${V.length}개`} <button type="button" data-czoom="reset:${id}">${EN ? 'Reset' : '원래대로'}</button></span>` : '') + (T ? trendLegend(T, fmt) : '') + (LV ? lvLegend(LV, fmt) : '') + maOut.map(([n, col, v]) => `<span><i style="background:${col}"></i>MA${n} ${fmt(v)}</span>`).join('') + (hasVol ? `<span><i class="v"></i>거래량</span>` : ''));
   }
   // 실시간 체결가로 마지막 캔들(종가·고가·저가)만 고친다
   function liveCandle(id, last) {
@@ -1670,7 +1782,7 @@
       const d = new Date(k[it.dataIndex][0]);
       return /^1(d|w|mo)$/.test(RANGES[range].interval) ? d.toLocaleDateString(LOC) : d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
     };
-    drawCandles(id, k, { compact, xf: range === '1d' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last: px.t?.last, ind: !compact });
+    drawCandles(id, k, { compact, xf: range === '1d' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last: px.t?.last, now: px.t?.last, ind: !compact, sym: 'CRCL' });
   }
 
   function renderPriceCard() {
@@ -3995,6 +4107,7 @@
         if (form && now - t < 3 * 864e5) out.push({ id: `fl:${sym}:${f.form}:${f.d}`, t, ic: '📄', title: EN ? `${nameOfSym(sym)} filed a ${form}` : `${nameOfSym(sym)} 새 공시 · ${FORM_KO[form]}`, sub: `${f.form} · ${md(isoToTs(f.d.slice(0, 10)))}`, go: { sym, v: 'news' } });
       }
     }
+    for (const sym of WATCH) for (const x of TSIG[sym] || []) out.push(trendNoti(sym, x)); // 추세 신호(내 종목만)
     if (WATCH.includes('CRCL')) out.push(...usdcEvents());
     const seen = new Set();
     return out.filter((x) => now - x.t < wk && (seen.has(x.id) ? false : seen.add(x.id))).sort((a, b) => b.t - a.t).slice(0, 30); // 최근 7일만
@@ -4116,7 +4229,7 @@
       <div class="sheet-h"><b>🔔 ${EN ? 'Notifications' : '알림'}</b><button type="button" class="ws-btn" data-ntclose="1">${EN ? 'Close' : '닫기'}</button></div>
       <div class="nt-push" id="nt-push" hidden></div>
       ${L.length ? `<ul class="nt-list">${L.map((x, i) => `<li><button type="button" class="nt-row${notiSeen[x.id] ? '' : ' new'}" data-ntgo="${i}"><span class="nt-ic" aria-hidden="true">${x.ic}</span><span class="nt-tx"><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></span><em>${ago(x.t)}</em></button></li>`).join('')}</ul>`
-        : `<p class="nt-empty">${EN ? 'Nothing new this week. Targets you hit, earnings, dividends and new filings for your stocks show up here.' : '최근 7일 동안 새 소식이 없어요. 목표가 도달·실적 발표·배당 입금·새 공시가 생기면 여기에 모여요.'}</p>`}
+        : `<p class="nt-empty">${EN ? 'Nothing new this week. Targets you hit, earnings, dividends, new filings and trend signals for your stocks show up here.' : '최근 7일 동안 새 소식이 없어요. 목표가 도달·실적 발표·배당 입금·새 공시·추세 신호가 생기면 여기에 모여요.'}</p>`}
     </div>`;
     el._items = L;
     el.hidden = false; document.body.classList.add('sheet-open');
@@ -6742,7 +6855,7 @@ ${what.join(' · ')}
     const tip = (it) => { const d = new Date(pts[it.dataIndex][0]); return intraday ? d.toLocaleString(LOC, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : d.toLocaleDateString(LOC); };
     // 바이낸스는 24시간 이어지므로 어느 기간이든 마지막 캔들에 현재가 반영, Yahoo는 오늘(1일) 캔들만
     const last = BN24[sym] || range === '1d' || range === 'bn' ? q?.price : null;
-    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last, now: q?.price, ind: !compact, fmt: (v) => pxS(sym, v) });
+    drawCandles(id, pts, { compact, xf: range === '1d' || range === 'bn' ? hm : range === 'all' ? ymLocal : mdLocal, tip, last, now: q?.price, ind: !compact, fmt: (v) => pxS(sym, v), sym });
   }
 
   const bxRange = () => (RANGES[state.srange] ? state.srange : '1d'); // 바이낸스 캔들은 1일~3개월
@@ -9880,7 +9993,7 @@ ${what.join(' · ')}
     if (czb) { const [a, id] = czb.dataset.czoom.split(':'); if (a === 'reset') czReset(id); else czBy(id, a === 'in' ? 0.6 : 1 / 0.6); return; }
     const ctg = ev.target.closest('[data-ctoggle]');
     if (ctg) {
-      const k = { ma: 'chartMA', vol: 'chartVol', trend: 'chartTrend' }[ctg.dataset.ctoggle];
+      const k = { ma: 'chartMA', vol: 'chartVol', trend: 'chartTrend', lv: 'chartLv' }[ctg.dataset.ctoggle];
       state[k] = !state[k]; savePref(k, state[k] ? '1' : '0');
       renderPriceChart(); if (isOther()) renderSPriceChart(); if (state.view === 'mkt') renderMkChart();
       return;

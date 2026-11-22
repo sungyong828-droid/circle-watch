@@ -2156,7 +2156,8 @@ window.__I18N_EN = {
 "등락률": "Change",
 ": 전날 종가(미국 정규장) 대비 — 보유 현황·증권사 앱과 같은 기준이에요(": ": vs the previous close (US regular session) — the same basis as your holdings and brokerage apps (",
 "). 가격 범위·거래대금은 최근 24시간 기준이에요.": "). The price range and volume cover the last 24 hours.",
-"추세선": "Trendlines"
+"추세선": "Trendlines",
+"가격대": "Levels"
 };
 // 영어 보기: 화면에 나타나는 한국어 문구를 사전(window.__I18N_EN)으로 바꾼다.
 // 1) 문구 전체가 사전에 있으면 그대로 2) 날짜·시간·단위 규칙 3) 문구 안의 아는 조각을 바꾸고 남은 조사를 정리.
