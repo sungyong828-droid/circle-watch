@@ -1501,8 +1501,9 @@ async function nasdaqQuote(sym, cls) {
   const price = num(p.lastSalePrice);
   const change = num(p.netChange);
   const status = d?.marketStatus || '';
-  // 장전·장후에는 secondaryData가 정규장 종가, 정규장 중에는 전일 종가 = 현재가 − 변동
-  const regularClose = /pre|after|closed/i.test(status) ? num(s.lastSalePrice) ?? (price != null && change != null ? price - change : null) : null;
+  // 장전·장후에는 secondaryData가 정규장 종가. 장이 닫힌 밤·주말(Closed)에는 secondaryData가 없고 지금 가격이 곧 마지막 정규장 종가
+  // (예전엔 현재가 − 변동 = 그 전날 종가를 넣어서 주말에 24시간 종목 등락률이 목요일 종가 기준으로 계산됐음)
+  const regularClose = /pre|after/i.test(status) ? num(s.lastSalePrice) ?? (price != null && change != null ? price - change : null) : /closed/i.test(status) ? num(s.lastSalePrice) ?? price : null;
   const prevClose = price != null && change != null ? price - change : null;
   return {
     symbol: sym, name: d?.companyName || sym, asset: cls, price, change, pct: num(p.percentageChange) / 100,

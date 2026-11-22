@@ -11,6 +11,12 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 🤏 두 손가락으로 차트를 벌리고 좁히는 확대·축소가 훨씬 부드러워졌어요. 천천히 벌려도 손가락을 따라 커지고, 손가락 사이에 있던 캔들이 그대로 그 자리에 머물러요.
+<!-- EN Pinch-to-zoom on charts is much smoother: it follows your fingers even when you pinch slowly, and the candles between your fingers stay put -->
+- 🕒 밤·주말에 서클·스페이스X처럼 24시간 거래되는 종목의 등락률이 마지막 정규장 종가(주말이면 금요일 종가) 기준으로 맞게 나와요. 그동안은 그 전날(목요일) 종가와 비교해서 금요일 등락분까지 함께 들어가 있었어요.
+<!-- EN At night and on weekends, the daily change for 24-hour names like Circle and SpaceX now uses the latest regular-session close (Friday's close on weekends) instead of the close before it -->
+- 시세(Nasdaq) 장 마감(Closed) 때 secondaryData가 없으면 regularClose = 지금 가격(예전엔 현재가−변동 = 그 전날 종가) · bnDay 기준: 정규장 중 prevClose, 그 밖에는 regularClose · CRCA 추정도 같은 기준 · 두 손가락 확대를 touch 이벤트로(시작 구간 기준 절대 배율, preventDefault) <!-- internal -->
+
 ## v2026.11.21-1 — 2026-11-21
 
 [이 버전 보기](https://2caae9e5.my-fire-portfolio.pages.dev) · 커밋 `2fc11c9`

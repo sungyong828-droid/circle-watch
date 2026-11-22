@@ -795,29 +795,52 @@
     const cv = document.getElementById('cv-' + id);
     if (!cv || cv.dataset.cz) return;
     cv.dataset.cz = '1';
-    const P = new Map();
-    let pinch = null, pan = null;
     const area = () => charts[id]?.chartArea;
     const frac = (x) => { const r = cv.getBoundingClientRect(), A = area(); return A ? Math.min(1, Math.max(0, (x - r.left - A.left) / (A.right - A.left))) : 1; };
-    cv.addEventListener('pointerdown', (e) => {
-      P.set(e.pointerId, e.clientX);
-      if (P.size === 2) { const [a, b] = [...P.values()]; pinch = { d: Math.abs(a - b) || 1, at: frac((a + b) / 2) }; pan = null; }
-      else if (P.size === 1 && CZ[id]) pan = { x: e.clientX, off: CZ[id].off };
-    });
-    cv.addEventListener('pointermove', (e) => {
-      if (!P.has(e.pointerId)) return;
-      P.set(e.pointerId, e.clientX);
-      if (pinch && P.size === 2) {
-        const [a, b] = [...P.values()], d = Math.abs(a - b) || 1;
-        if (Math.abs(d / pinch.d - 1) > 0.08) { czBy(id, pinch.d / d, pinch.at); pinch.d = d; }
-      } else if (pan && CZ[id]) {
+    // 지금 보이는 구간(확대 전이면 전체)
+    const win = () => { const M = charts[id]?.$cz; if (!M) return null; const z = CZ[id]; return z ? { key: z.key, n: z.n, span: z.span, off: z.off } : { key: M.key, n: M.n, span: M.n, off: 0 }; };
+    const setWin = (W, span, st) => {
+      span = Math.max(Math.min(CZ_MIN, W.n), Math.min(W.n, Math.round(span)));
+      st = Math.max(0, Math.min(W.n - span, Math.round(st)));
+      if (span >= W.n) delete CZ[id]; else CZ[id] = { key: W.key, n: W.n, span, off: W.n - st - span };
+      czRedraw(id);
+    };
+    // 두 손가락: 손가락을 댄 순간의 구간을 기준으로 '처음보다 몇 배 벌렸나'를 한 번에 계산 → 천천히 벌려도 그대로 따라온다
+    // (예전엔 조금씩 나눠 계산하다 반올림으로 사라져 잘 안 커졌음) · 처음 두 손가락 사이에 있던 캔들이 계속 손가락 사이에 머문다
+    let pinch = null, pan = null;
+    const mid = (T) => (T[0].clientX + T[1].clientX) / 2, dist = (T) => Math.max(30, Math.hypot(T[0].clientX - T[1].clientX, T[0].clientY - T[1].clientY));
+    cv.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault(); // 페이지 확대·스크롤 대신 차트 확대
+        const W = win(); if (!W) return;
+        const f = frac(mid(e.touches));
+        pinch = { W, d0: dist(e.touches), at: W.n - W.off - W.span + f * W.span }; pan = null;
+      } else if (e.touches.length === 1 && CZ[id]) pan = { x: e.touches[0].clientX, W: win() };
+    }, { passive: false });
+    cv.addEventListener('touchmove', (e) => {
+      if (pinch && e.touches.length === 2) {
+        e.preventDefault();
+        const span = pinch.W.span * (pinch.d0 / dist(e.touches));
+        setWin(pinch.W, span, pinch.at - frac(mid(e.touches)) * Math.max(Math.min(CZ_MIN, pinch.W.n), Math.min(pinch.W.n, Math.round(span))));
+      } else if (pan && e.touches.length === 1) {
         const A = area(); if (!A) return;
-        const per = (A.right - A.left) / CZ[id].span, moved = Math.round((e.clientX - pan.x) / per);
-        if (moved !== CZ[id].off - pan.off) { CZ[id].off = pan.off + moved; czRedraw(id); }
+        const W = pan.W, moved = (e.touches[0].clientX - pan.x) / ((A.right - A.left) / W.span); // 오른쪽으로 밀면 지난 구간
+        setWin(W, W.span, W.n - W.off - W.span - moved);
       }
+    }, { passive: false });
+    cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; if (!e.touches.length) pan = null; });
+    cv.addEventListener('touchcancel', () => { pinch = pan = null; });
+    cv.addEventListener('gesturestart', (e) => e.preventDefault()); // 아이폰 사파리: 페이지 확대 막기
+    // 마우스: 확대 중 끌어서 옆으로 이동
+    let drag = null;
+    cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && CZ[id]) drag = { x: e.clientX, W: win() }; });
+    cv.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerType !== 'mouse') return;
+      const A = area(); if (!A) return;
+      const W = drag.W, moved = (e.clientX - drag.x) / ((A.right - A.left) / W.span);
+      setWin(W, W.span, W.n - W.off - W.span - moved);
     });
-    const up = (e) => { P.delete(e.pointerId); if (P.size < 2) pinch = null; if (!P.size) pan = null; };
-    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) cv.addEventListener(t, up);
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) cv.addEventListener(t, () => { drag = null; });
     // 트랙패드 핀치(=ctrl+휠)만 가로챈다 — 그냥 휠은 페이지 스크롤 그대로
     cv.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); czBy(id, e.deltaY > 0 ? 1.15 : 1 / 1.15, frac(e.clientX)); }, { passive: false });
     cv.addEventListener('dblclick', () => czReset(id));
@@ -1503,8 +1526,11 @@
 
   // 등락률 기준(2026-11-13 바꿈): 바이낸스의 '24시간 전 가격'이 아니라 전날 종가(Nasdaq 시세의 기준가) — 보유 현황·증권사 앱과 같은 숫자가 나오게.
   // 가격은 그대로 바이낸스 실시간 체결가. Nasdaq 시세를 아직 못 받았을 때만 24시간 전 대비로 보여 주고, 화면에도 그렇게 적는다
+  // 기준 = 마지막 정규장 종가: 정규장 중에는 전날 종가, 장 마감 뒤·밤·주말에는 그날(금요일) 종가
+  // (주말에 목요일 종가와 비교해서 '전날 대비'가 금요일 하락분까지 담고 있었음)
   function bnDay(sym, t) {
-    const ref = state.quote?.[sym]?.prevClose;
+    const q = state.quote?.[sym], open = /open/i.test(q?.status || '') && !/pre|after/i.test(q?.status || '');
+    const ref = open ? q?.prevClose : q?.regularClose ?? q?.prevClose;
     if (!t) return { pct: null, chg: null, ref: null, day: false };
     return ref > 0 ? { pct: t.last / ref - 1, chg: t.last - ref, ref, day: true } : { pct: t.pct, chg: t.last - t.open, ref: t.open, day: false };
   }
