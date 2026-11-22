@@ -6416,6 +6416,9 @@ ${what.join(' · ')}
   const logoSet = () => LOGOS || (window.__LOGOS ? (LOGOS = new Set(String(window.__LOGOS).split(' ').filter(Boolean))) : null);
   const logoPath = (sym) => (logoSet()?.has(sym) ? `assets/logos/t/${sym}.png` : null);
   if (!window.__LOGOS) document.getElementById('logo-list')?.addEventListener('load', () => {
+    // 목록이 오기 전에 만들어진 추가 종목(NVDA·SOXL 등)은 글자 아이콘으로 굳어 있었다 → 이제 로고를 채운다
+    for (const [sym, S] of Object.entries(STOCK_INFO)) if (S?.custom && !S.logo) S.logo = logoPath(sym);
+    try { renderWatchSheet(); } catch {}
     const sw = document.getElementById('stock-switch'); if (sw) sw.dataset.built = '';
     try { renderStockSwitch(); } catch {}
   }, { once: true });
