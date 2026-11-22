@@ -790,10 +790,11 @@
     return floor || ceil ? { floor, ceil } : null;
   }
   // 내 평단(보유 정보, 같은 종목 여러 줄이면 수량 가중)·목표가 — 이 기기 안의 값만 쓴다(서버로 보내지 않음)
-  const REF_AVG = '#a78bfa', REF_TGT = '#2ec4b6';
+  const REF_TGT = '#d946ef'; // 목표가: 보라 점선 · 내 평단: 글자색 실선(어두운 화면 흰색, 밝은 화면 검정 — 이평선 색과 안 겹치게)
+  const refAvgCol = () => getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#e7ebf1';
   function refLines(sym) {
     const out = [], P = (fireCfg?.positions || []).filter((x) => x.ticker === sym && x.shares > 0 && x.avg > 0);
-    if (P.length) { const sh = P.reduce((a, x) => a + x.shares, 0); out.push({ k: 'avg', p: P.reduce((a, x) => a + x.shares * x.avg, 0) / sh, col: REF_AVG, dash: [] }); }
+    if (P.length) { const sh = P.reduce((a, x) => a + x.shares, 0); out.push({ k: 'avg', p: P.reduce((a, x) => a + x.shares * x.avg, 0) / sh, col: refAvgCol(), dash: [] }); }
     const T = targets?.[sym];
     if (T?.p > 0 && !T.hit) out.push({ k: 'tgt', p: T.p, col: REF_TGT, dash: [5, 3] });
     return out;
