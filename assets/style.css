@@ -2601,3 +2601,15 @@ canvas[data-cz] { touch-action: pan-y; }
 .ct-legend .ct-sum span { white-space: nowrap; }
 .ct-legend .ct-sum b { color: var(--ink); font-weight: 700; }
 .ct-legend .ct-sum em { font-style: normal; color: var(--c-orange); }
+
+/* 차트 위 캔들 정보 줄(누른 캔들 · 안 누르면 최근 캔들) — 차트를 가리는 말풍선 대신 */
+.ct-hover { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 10px; min-height: 34px; margin: 6px 0 2px; padding: 3px 8px; border-radius: 8px; font: 500 11.5px var(--mono); color: var(--muted); background: color-mix(in srgb, var(--muted) 7%, transparent); }
+.ct-hover span, .ct-hover .cth-d { white-space: nowrap; }
+.ct-hover .cth-d { font: 700 11.5px var(--sans); color: var(--ink-2); }
+.ct-hover b { color: var(--ink); font-weight: 700; }
+.ct-hover em { font-style: normal; font-weight: 700; }
+.ct-hover em.up { color: var(--up); }
+.ct-hover em.down { color: var(--down); }
+.ct-hover.on { color: var(--ink-2); background: color-mix(in srgb, var(--c-blue) 12%, transparent); }
+.ct-hover.on .cth-d { color: var(--c-blue); }
+@media (min-width: 720px) { .ct-hover { min-height: 0; } }

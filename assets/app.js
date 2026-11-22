@@ -842,6 +842,24 @@
     if (G) out.push(EN ? `${pc(G.p)} to target` : `목표가까지 ${pc(G.p)}`);
     return out.length ? `<div class="ct-sum" data-noi18n>${out.map((x) => `<span>${x}</span>`).join('')}</div>` : '';
   }
+  // 차트를 누르거나 마우스를 올린 캔들의 시가·고가·저가·종가·거래량 — 차트를 가리는 말풍선 대신 차트 바로 위 한 줄에
+  // (누르지 않을 때는 가장 최근 캔들) · 차트에는 세로 점선과 그 캔들 종가 가격표만
+  function hoverInfo(id, ctx) {
+    const c = ctx.chart, tt = ctx.tooltip, i = tt.opacity > 0 && tt.dataPoints?.length ? tt.dataPoints[0].dataIndex : null;
+    if (c.$hov === i) return;
+    c.$hov = i; paintHover(id, c);
+  }
+  function paintHover(id, c) {
+    const el = document.getElementById('cth-' + id), V = c?.$V;
+    if (!el || !V?.length || !c.$fmt) return;
+    const on = c.$hov != null, i = on ? Math.min(c.$hov, V.length - 1) : V.length - 1, k = V[i], f = c.$fmt;
+    const pc = i > 0 ? V[i - 1].c : c.$prevC, chg = pc ? k.c / pc - 1 : null;
+    el.classList.toggle('on', on);
+    el.innerHTML = `<b class="cth-d">${on ? '' : (EN ? 'Latest · ' : '최근 · ')}${c.$title({ dataIndex: i })}</b>`
+      + `<span>${EN ? 'Open' : '시가'} ${f(k.o)}</span><span>${EN ? 'High' : '고가'} ${f(k.h)}</span><span>${EN ? 'Low' : '저가'} ${f(k.l)}</span>`
+      + `<span>${EN ? 'Close' : '종가'} <b>${f(k.c)}</b>${chg != null && isFinite(chg) ? ` <em class="${chg >= 0 ? 'up' : 'down'}">${sgnPct(chg)}</em>` : ''}</span>`
+      + (k.v ? `<span>${EN ? 'Vol' : '거래량'} ${unit(k.v)}</span>` : '');
+  }
   // 가로선(바닥·천장 가격대, 내 평단, 목표가) 오른쪽 끝 가격축 위에 작은 가격표 — 선이 몇 달러인지 바로 보이게
   // 데이터셋의 tag(글자)·borderColor로 그린다. 가격표끼리 겹치면 위아래로 조금씩 밀어 낸다
   const lineTagPlugin = {
@@ -851,6 +869,13 @@
       const L = ch.data.datasets.map((d, i) => d.tag && ch.isDatasetVisible(i) ? { t: d.tag, col: d.borderColor, py: y.getPixelForValue(d.data.find((v) => v != null)) } : null);
       // 지금 가격(오른쪽 끝이 지금일 때만) — 마지막 캔들 색(오름·내림)
       const N = ch.$now; if (N?.p > 0) L.push({ t: N.fmt(N.p), col: N.col, py: y.getPixelForValue(N.p) });
+      const hk = ch.$hov != null ? ch.$V?.[ch.$hov] : null;
+      if (hk && ch.$fmt) {
+        const hx = ch.scales.x.getPixelForValue(ch.$hov), { ctx: g } = ch;
+        g.save(); g.strokeStyle = C.muted; g.globalAlpha = 0.7; g.lineWidth = 1; g.setLineDash([3, 3]);
+        g.beginPath(); g.moveTo(hx, A.top); g.lineTo(hx, A.bottom); g.stroke(); g.restore();
+        L.push({ t: ch.$fmt(hk.c), col: '#6b7684', py: y.getPixelForValue(hk.c) });
+      }
       L.splice(0, L.length, ...L.filter((o) => o && o.py >= A.top - 2 && o.py <= A.bottom + 2).sort((a, b) => a.py - b.py));
       if (!L.length) return;
       const { ctx } = ch, H = 15, R = ch.width - 1;
@@ -1115,6 +1140,7 @@
       }
     }
     const yPad = (yHi - yLo) * 0.08 || yHi * 0.01;
+    if (ind && !compact) { const box = document.getElementById('cv-' + id)?.closest('.chart'); if (box && !document.getElementById('cth-' + id)) box.insertAdjacentHTML('beforebegin', `<div class="ct-hover" id="cth-${id}" data-noi18n></div>`); }
     draw(id, {
       type: 'bar', plugins: compact ? [] : [lineTagPlugin],
       data: { labels, datasets: ds },
@@ -1123,7 +1149,7 @@
         plugins: {
           ...noLegend,
           tooltip: {
-            ...tooltip(title, fmt), enabled: !compact,
+            ...tooltip(title, fmt), enabled: false, ...(compact ? {} : { external: (ctx) => hoverInfo(id, ctx) }),
             filter: (it) => it.dataset.label === (line ? '종가' : '시가~종가'),
             callbacks: {
               title: (items) => title(items[0]),
@@ -1149,7 +1175,7 @@
     }, null, quick);
     // $live: 오른쪽 끝(지금)이 보일 때만 실시간 가격으로 마지막 캔들을 고친다 · $args: 확대·축소 때 같은 자료로 다시 그리기
     const nowK = V.at(-1), nowTag = !compact && ind && (!Z || Z.end === full) ? { p: nowK.c, col: nowK.c >= nowK.o ? C.up : C.down, fmt } : null;
-    const meta = (c) => { c.$now = nowTag; c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
+    const meta = (c) => { c.$now = nowTag; c.$fmt = fmt; c.$title = title; c.$prevC = pre.at(-1)?.c; c.$hov = null; setTimeout(() => paintHover(id, c)); c.$V = V; c.$line = line; c.$live = !Z || Z.end === full; c.$cz = { key, n: full }; c.$args = { pts, opts }; };
     if (charts[id]) meta(charts[id]); else if (pendingCharts[id]) pendingCharts[id].after = meta;
     if (ind) {
       czBind(id);
@@ -1169,6 +1195,7 @@
     const i = V.length - 1, k = V[i];
     k.c = last; k.h = Math.max(k.h, last); k.l = Math.min(k.l, last);
     if (c.$now) { c.$now.p = last; c.$now.col = k.c >= k.o ? C.up : C.down; }
+    if (c.$hov == null || c.$hov === i) paintHover(id, c);
     if (c.$line) { c.data.datasets[0].data[i] = last; c.update('none'); return; }
     const D = candleParts([k]), [w, b] = c.data.datasets;
     w.data[i] = D.wick[0]; b.data[i] = D.body[0];
@@ -5551,7 +5578,7 @@
   function paintHomeEdit() {
     const el = document.getElementById('he-sheet');
     if (!el || el.hidden) return;
-    const L = homeLayout();
+    const L = homeLayout(), keep = sheetScroll(el);
     el.innerHTML = `<div class="sheet-bg" data-heclose="1"></div><div class="sheet-panel he-panel">
       <div class="sheet-h"><b>🧩 ${EN ? 'Customize Home' : '홈 화면 편집'}</b><button type="button" class="ws-btn" data-heclose="1">${EN ? 'Done' : '완료'}</button></div>
       <p class="note">${EN ? 'Reorder or hide sections. Saved on this device.' : '자주 보는 건 위로, 안 보는 건 숨겨요. 이 기기에 저장돼요.'}</p>
@@ -5560,6 +5587,7 @@
         <button type="button" class="ws-btn" data-hemove="${k}:-1" aria-label="${EN ? 'Move up' : '위로'}" ${i === 0 ? 'disabled' : ''}>▲</button><button type="button" class="ws-btn" data-hemove="${k}:1" aria-label="${EN ? 'Move down' : '아래로'}" ${i === L.order.length - 1 ? 'disabled' : ''}>▼</button></li>`; }).join('')}</ul>
       <button type="button" class="btn-ghost he-reset" data-hereset="1">↺ ${EN ? 'Reset to default' : '처음 상태로'}</button>
     </div>`;
+    keep();
   }
   function openHomeEdit() {
     let el = document.getElementById('he-sheet');
@@ -8093,6 +8121,10 @@ ${what.join(' · ')}
     return `<div class="memo-remind"><b>📝 ${EN ? 'Your memo — check it against the results' : '내가 적어 둔 메모 — 이번 실적과 맞는지 확인해 보세요'}</b>${M.why ? `<p><em>${EN ? 'Why I bought' : '산 이유'}</em> ${esc(M.why)}</p>` : ''}${M.exit ? `<p><em>${EN ? 'When I’d sell' : '팔 기준'}</em> ${esc(M.exit)}</p>` : ''}</div>`;
   }
 
+  // 시트를 다시 그려도 보던 위치 그대로(휴대폰에서 ▲▼를 누를 때마다 맨 위로 튀던 문제) — 다시 그리기 전 스크롤을 기억했다가 되돌린다
+  const sheetScroll = (el) => { const st = el.querySelector('.sheet-panel')?.scrollTop || 0; return () => { const p = el.querySelector('.sheet-panel'); if (p && st) p.scrollTop = st; }; };
+  // ▲▼로 옮긴 뒤 옮겨진 줄의 같은 화살표에 초점(연달아 누르기 쉽게, 화면은 움직이지 않게) — 끝에 닿아 못 누르면 반대 화살표
+  const focusMove = (sel, alt) => { const b = document.querySelector(sel); (b && !b.disabled ? b : document.querySelector(alt))?.focus({ preventScroll: true }); };
   // ---------------------------------------------------------------- 종목 추가·삭제·순서 (이 기기에 저장)
   let watchSearchTimer = null, watchResults = [];
   function saveWatch() { writeJSON(WATCH_KEY, { list: WATCH, custom: watchCfg.custom, folders: watchCfg.folders }); }
@@ -8132,6 +8164,7 @@ ${what.join(' · ')}
     const res = (watchResults || []).map((r) => `<li>${logoPath(r.symbol) ? `<span class="ws-logo"><img src="${logoPath(r.symbol)}" alt="" width="22" height="22" loading="lazy"></span>` : `<span class="ws-logo ws-letter">${esc(String((r.code ? r.name : r.symbol) || '?')[0])}</span>`}<div class="ws-name">${r.code ? `<b>${esc(r.name)}</b><small>${r.etf ? 'ETF' : r.exchange === 'KOSDAQ' ? '코스닥' : '코스피'} · ${esc(r.code)}</small>` : `<b>${esc(r.symbol)}</b><small>${esc([r.kr && r.kr !== r.name && !EN ? r.kr : '', r.name, r.exchange, r.asset === 'ETF' ? 'ETF' : ''].filter(Boolean).join(' · '))}</small>`}</div>
       ${WATCH.includes(r.symbol) ? '<span class="ws-added">추가됨</span>' : `<button type="button" class="ws-btn add" data-wadd="${esc(r.symbol)}" data-wname="${esc(r.name)}" data-wex="${esc(r.exchange)}" data-wasset="${esc(r.asset || '')}"${r.kr ? ' data-wkr="1"' : ''}>+ 추가</button>`}</li>`).join('');
     const removedBuiltin = BUILTIN.filter((s) => !WATCH.includes(s));
+    const keep = sheetScroll(el);
     el.innerHTML = `<div class="sheet-bg" data-wclose="1"></div><div class="sheet-panel">
       <div class="sheet-h"><b>종목 관리</b><button type="button" class="ws-btn" data-wclose="1">완료</button></div>
       <label class="ws-search"><input id="watch-q" type="search" placeholder="${EN ? 'Ticker, company or KRX code (e.g. AAPL, Tesla, 005930)' : '티커·회사명·종목코드 (예: AAPL, 테슬라, 삼성, 005930)'}" autocomplete="off" value="${esc(q)}"></label>
@@ -8142,6 +8175,7 @@ ${what.join(' · ')}
       <ul class="ws-list">${rows}</ul>
       <p class="note">🔒 종목 목록은 이 기기(브라우저)에 저장돼요. '많이 추가한 종목' 순위를 위해 새로 추가한 티커 이름만 익명으로 모으고, 수량·금액 같은 보유 정보는 보내지 않아요. 기본 4종목(CRCL·JOBY·SPCX·TEM)은 전용 화면(FAA 인증·보호예수 등)이 있고, 새로 추가한 종목은 공통 화면(주가·실적·뉴스·공시·공매도·기관·애널리스트·옵션)으로 보여요. 바이낸스에 24시간 주식 선물이 있는 종목은 CRCL처럼 바이낸스 가격으로 표시돼요.</p>
     </div>`;
+    keep();
     const inp = document.getElementById('watch-q');
     if (inp && (q || typing)) { inp.focus({ preventScroll: true }); inp.setSelectionRange(q.length, q.length); }
   }
@@ -8272,6 +8306,7 @@ ${what.join(' · ')}
     [WATCH[i], WATCH[j]] = [WATCH[j], WATCH[i]];
     saveWatch();
     afterWatchChange();
+    focusMove(`#watch-sheet [data-wmove="${j}:${d}"]`, `#watch-sheet [data-wmove="${j}:${-d}"]`);
   }
   function afterWatchChange(added) {
     const sw = document.getElementById('stock-switch');
@@ -10229,7 +10264,7 @@ ${what.join(' · ')}
     if (ev.target.closest('[data-homeedit]')) { openHomeEdit(); return; }
     if (ev.target.closest('[data-heclose]')) { closeHomeEdit(); return; }
     const hem = ev.target.closest('[data-hemove]');
-    if (hem) { const [k, d] = hem.dataset.hemove.split(':'), L = homeLayout(), i = L.order.indexOf(k), j = i + +d; if (j >= 0 && j < L.order.length) { [L.order[i], L.order[j]] = [L.order[j], L.order[i]]; saveHomeLayout(L); } return; }
+    if (hem) { const [k, d] = hem.dataset.hemove.split(':'), L = homeLayout(), i = L.order.indexOf(k), j = i + +d; if (j >= 0 && j < L.order.length) { [L.order[i], L.order[j]] = [L.order[j], L.order[i]]; saveHomeLayout(L); focusMove(`#he-sheet [data-hemove="${k}:${d}"]`, `#he-sheet [data-hemove="${k}:${-d}"]`); } return; }
     if (ev.target.closest('[data-hereset]')) { saveHomeLayout({}); return; }
     if (ev.target.closest('[data-weekclose]')) { savePref('weekClosed', weekKey()); document.getElementById('c-week').hidden = true; return; }
     const tg = ev.target.closest('[data-tgt]');
