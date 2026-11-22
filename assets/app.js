@@ -864,13 +864,12 @@
     }
     const C = V.slice(0, -1).map((x) => x.c), a0 = maAlign(C), a1 = maAlign([...C, px]);
     if (a0 && a1 && a1.al !== a0.al && a1.al !== 'mix') out.push({ k: a1.al === 'up' ? 'maup' : 'madown' });
-    // 52주 신고가·신저가: 어제까지 1년 최고(최저)를 오늘 넘어선 날 — 어제도 이미 신고가였으면 다시 알리지 않음(상장 10개월 미만은 제외)
+    // 52주 신고가·신저가: 어제까지 1년 최고(최저)를 오늘 넘어선 날(연속이면 날마다 1개씩 · 상장 10개월 미만은 제외)
     const prev = V.slice(0, -1), L = V.at(-1);
     if (prev.length >= 200) {
-      const y1 = prev.slice(-251), y0 = prev.slice(-252, -1), yb = prev.at(-1);
-      const hi = Math.max(...y1.map((x) => x.h)), lo = Math.min(...y1.map((x) => x.l)), hi0 = Math.max(...y0.map((x) => x.h)), lo0 = Math.min(...y0.map((x) => x.l));
-      if (Math.max(L.h, px) > hi && yb.h <= hi0) out.push({ k: 'hi52', v: hi });
-      if (Math.min(L.l, px) < lo && yb.l >= lo0) out.push({ k: 'lo52', v: lo });
+      const y1 = prev.slice(-251), hi = Math.max(...y1.map((x) => x.h)), lo = Math.min(...y1.map((x) => x.l));
+      if (Math.max(L.h, px) > hi) out.push({ k: 'hi52', v: hi });
+      if (Math.min(L.l, px) < lo) out.push({ k: 'lo52', v: lo });
     }
     // 거래량 급증: 오늘 거래량이 지난 20일 평균의 3배 이상
     const vs = prev.slice(-20).map((x) => x.v).filter((v) => v > 0);
