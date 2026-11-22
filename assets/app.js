@@ -866,6 +866,13 @@
   }
   // 가로선(바닥·천장 가격대, 내 평단, 목표가) 오른쪽 끝 가격축 위에 작은 가격표 — 선이 몇 달러인지 바로 보이게
   // 데이터셋의 tag(글자)·borderColor로 그린다. 가격표끼리 겹치면 위아래로 조금씩 밀어 낸다
+  let tagCtx = null;
+  const tagGutter = (T) => {
+    if (!T.length) return 0;
+    tagCtx ||= document.createElement('canvas').getContext('2d');
+    tagCtx.font = `700 10px ${Chart.defaults.font.family}`;
+    return Math.ceil(Math.max(...T.map((t) => tagCtx.measureText(t).width)) + 10 + 3);
+  };
   const lineTagPlugin = {
     id: 'lineTags',
     afterDatasetsDraw(ch) {
@@ -1144,6 +1151,8 @@
       }
     }
     const yPad = (yHi - yLo) * 0.08 || yHi * 0.01;
+    // 가격표(천장·평단·목표·지금 가격·누른 캔들 종가)가 차트를 가리지 않게 오른쪽 가격축 폭을 가장 긴 가격표만큼 넓힌다
+    const tagTxt = compact ? [] : [...ds.filter((d) => d.tag).map((d) => d.tag), fmt(yHi + yPad), fmt(V.at(-1).c)];
     if (ind && !compact) { const box = document.getElementById('cv-' + id)?.closest('.chart'); if (box && !document.getElementById('cth-' + id)) box.insertAdjacentHTML('beforebegin', `<div class="ct-hover" id="cth-${id}" data-noi18n></div>`); }
     draw(id, {
       type: 'bar', plugins: compact ? [] : [lineTagPlugin],
@@ -1172,7 +1181,7 @@
           ? { x: { display: false }, y: { display: false, beginAtZero: false, grace: '6%' } }
           : {
             x: axisX(labels, xf, 5),
-            y: { ...axisY(fmt), beginAtZero: false, min: yLo - yPad, max: yHi + yPad, ticks: { ...axisY(fmt).ticks, maxTicksLimit: 5 } },
+            y: { ...axisY(fmt), beginAtZero: false, min: yLo - yPad, max: yHi + yPad, ticks: { ...axisY(fmt).ticks, maxTicksLimit: 5 }, afterFit: (sc) => { const w = tagGutter(tagTxt); if (w > sc.width) sc.width = w; } },
             ...(hasVol ? { vol: { display: false, beginAtZero: true, max: maxVol * 4.5, grid: { display: false } } } : {}),
           },
       },
