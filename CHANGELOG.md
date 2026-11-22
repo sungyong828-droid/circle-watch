@@ -11,6 +11,8 @@
 
 <!-- 다음 실제 배포에 들어갈 변경을 여기에 적는다. 비워 두면 커밋 제목으로 채운다. -->
 
+- 차트 가격표(천장·바닥·평단·목표·지금 가격)가 차트를 가리지 않게 오른쪽 가격축 폭을 가장 긴 가격표에 맞춤(afterFit) <!-- internal -->
+
 - 직접 추가한 종목(NVDA·SOXL 등)이 내 종목 목록과 홈 위쪽에서 'N'·'S' 같은 글자로만 보이던 문제를 고쳤어요. 이제 검색할 때처럼 실제 로고로 보여요. <!-- EN Stocks you added (NVDA, SOXL and more) sometimes showed just a letter instead of their logo in My stocks and at the top of Home; they now show the real logo, as in search. -->
 
 - 차트를 누르면 뜨던 말풍선 대신, 차트 바로 위 한 줄에 그 날의 시가·고가·저가·종가·거래량이 나와요. 차트를 가리지 않고, 누른 곳에는 세로 점선과 가격표만 보여요. <!-- EN Tapping the chart no longer pops a box over it — the candle's open, high, low, close and volume show in a line just above the chart, with a crosshair and price tag on the chart. -->
