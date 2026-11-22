@@ -808,6 +808,31 @@
   const lvLegend = (LV, fmt) => [[LV.floor, '바닥 가격대', 'Floor'], [LV.ceil, '천장 가격대', 'Ceiling']].filter(([z]) => z)
     .map(([z, ko, en]) => `<span data-noi18n><i class="dot" style="--c:${LV_COL}"></i>${EN ? en : ko} ${fmt(z.p)} (${EN ? `${z.c} touches` : `${z.c}번 닿음`})</span>`).join('');
 
+  // 가로선(바닥·천장 가격대, 내 평단, 목표가) 오른쪽 끝 가격축 위에 작은 가격표 — 선이 몇 달러인지 바로 보이게
+  // 데이터셋의 tag(글자)·borderColor로 그린다. 가격표끼리 겹치면 위아래로 조금씩 밀어 낸다
+  const lineTagPlugin = {
+    id: 'lineTags',
+    afterDatasetsDraw(ch) {
+      const y = ch.scales.y, A = ch.chartArea; if (!y || !A) return;
+      const L = ch.data.datasets.map((d, i) => d.tag && ch.isDatasetVisible(i) ? { t: d.tag, col: d.borderColor, py: y.getPixelForValue(d.data.find((v) => v != null)) } : null)
+        .filter((o) => o && o.py >= A.top - 2 && o.py <= A.bottom + 2).sort((a, b) => a.py - b.py);
+      if (!L.length) return;
+      const { ctx } = ch, H = 15, R = ch.width - 1;
+      for (let i = 1; i < L.length; i++) L[i].py = Math.max(L[i].py, L[i - 1].py + H + 1);
+      const over = L.at(-1).py + H / 2 - A.bottom; if (over > 0) for (const o of L) o.py -= over;
+      for (let i = L.length - 2; i >= 0; i--) L[i].py = Math.min(L[i].py, L[i + 1].py - H - 1);
+      ctx.save(); ctx.font = `700 10px ${Chart.defaults.font.family}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+      for (const o of L) {
+        const w = ctx.measureText(o.t).width + 10, x = R - w, top = o.py - H / 2;
+        const m = /^#([0-9a-f]{6})$/i.exec(String(o.col).trim()), n = m ? parseInt(m[1], 16) : 0;
+        const lum = m ? (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 : 0.5;
+        ctx.fillStyle = o.col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, top, w, H, 4) : ctx.rect(x, top, w, H); ctx.fill();
+        ctx.fillStyle = lum > 0.6 ? '#141a22' : '#ffffff'; ctx.fillText(o.t, R - 5, o.py + 0.5);
+      }
+      ctx.restore();
+    },
+  };
+
   // ---------------------------------------------------------------- 추세 한눈에(1개월·3개월·1년 + 이동평균 배열) · 🔔 추세 신호(내 종목만)
   // 1년치 일봉 하나(/api/chart r=3m — 서버가 1년 일봉을 보냄)로 계산한다. 15분 동안 다시 받지 않음, 실패하면 5분 쉼
   const TD = {}, TDP = {}, TDF = {};
@@ -1037,7 +1062,7 @@
     if (T) for (const [lbl, data, col] of [[EN ? 'Resistance' : '저항선', T.res, TREND_RES], [EN ? 'Support' : '지지선', T.sup, TREND_SUP]]) if (data) ds.push({ type: 'line', label: lbl, tl: true, data, borderColor: col, backgroundColor: col, borderWidth: 1.6, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0, tension: 0, spanGaps: true, order: 0 });
     // 주요 가격대(가로 점선): 지금 가격(지난 구간을 보고 있으면 그 구간 마지막 가격) 바로 아래·위
     const LV = ind && state.chartLv ? priceLevels(V, now != null && isFinite(now) && (!Z || Z.end === full) ? now : V.at(-1).c) : null;
-    if (LV) for (const [z, lbl] of [[LV.floor, EN ? 'Floor' : '바닥 가격대'], [LV.ceil, EN ? 'Ceiling' : '천장 가격대']]) if (z) ds.push({ type: 'line', label: lbl, data: V.map(() => z.p), borderColor: LV_COL, backgroundColor: LV_COL, borderWidth: 1.2, borderDash: [2, 4], pointRadius: 0, pointHoverRadius: 0, order: 0 });
+    if (LV) for (const [z, lbl] of [[LV.floor, EN ? 'Floor' : '바닥 가격대'], [LV.ceil, EN ? 'Ceiling' : '천장 가격대']]) if (z) ds.push({ type: 'line', label: lbl, tag: `${lbl === 'Floor' || lbl === '바닥 가격대' ? (EN ? 'Floor' : '바닥') : (EN ? 'Ceiling' : '천장')} ${fmt(z.p)}`, data: V.map(() => z.p), borderColor: LV_COL, backgroundColor: LV_COL, borderWidth: 1.2, borderDash: [2, 4], pointRadius: 0, pointHoverRadius: 0, order: 0 });
     if (ind && sym) paintTsum(id, sym);
     const hasVol = ind && state.chartVol && V.some((k) => k.v > 0);
     if (hasVol) ds.push({ type: 'bar', label: '거래량', data: V.map((k) => k.v || 0), backgroundColor: V.map((k) => (k.c >= k.o ? C.up : C.down) + '55'), yAxisID: 'vol', barPercentage: 0.72, categoryPercentage: 1, maxBarThickness: 16, grouped: false, order: 3 });
@@ -1049,13 +1074,13 @@
     if (REF.length) {
       const sp = yHi - yLo || yHi * 0.02, lo0 = yLo, hi0 = yHi;
       for (const r of REF) {
-        if (r.p >= lo0 - sp * 0.35 && r.p <= hi0 + sp * 0.35) { yLo = Math.min(yLo, r.p); yHi = Math.max(yHi, r.p); ds.push({ type: 'line', label: r.k === 'avg' ? (EN ? 'My avg' : '내 평단') : (EN ? 'Target' : '목표가'), data: V.map(() => r.p), borderColor: r.col, backgroundColor: r.col, borderWidth: 1.4, borderDash: r.dash, pointRadius: 0, pointHoverRadius: 0, order: 0 }); }
+        if (r.p >= lo0 - sp * 0.35 && r.p <= hi0 + sp * 0.35) { yLo = Math.min(yLo, r.p); yHi = Math.max(yHi, r.p); ds.push({ type: 'line', label: r.k === 'avg' ? (EN ? 'My avg' : '내 평단') : (EN ? 'Target' : '목표가'), tag: `${r.k === 'avg' ? (EN ? 'Avg' : '평단') : (EN ? 'Target' : '목표')} ${fmt(r.p)}`, data: V.map(() => r.p), borderColor: r.col, backgroundColor: r.col, borderWidth: 1.4, borderDash: r.dash, pointRadius: 0, pointHoverRadius: 0, order: 0 }); }
         else r.off = r.p > hi0 ? 1 : -1;
       }
     }
     const yPad = (yHi - yLo) * 0.08 || yHi * 0.01;
     draw(id, {
-      type: 'bar',
+      type: 'bar', plugins: compact ? [] : [lineTagPlugin],
       data: { labels, datasets: ds },
       options: {
         interaction, ...(quick ? { animation: false } : {}),
