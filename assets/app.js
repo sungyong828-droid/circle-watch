@@ -871,7 +871,7 @@
     if (!T.length) return 0;
     tagCtx ||= document.createElement('canvas').getContext('2d');
     tagCtx.font = `700 10px ${Chart.defaults.font.family}`;
-    return Math.ceil(Math.max(...T.map((t) => tagCtx.measureText(t).width)) + 10 + 3);
+    return Math.ceil(Math.max(...T.map((t) => tagCtx.measureText(t).width)) + 10 + 4 + 6); // 글자 + 안쪽 여백 + 이름·가격 사이 + 꼭지
   };
   const lineTagPlugin = {
     id: 'lineTags',
@@ -893,13 +893,18 @@
       for (let i = 1; i < L.length; i++) L[i].py = Math.max(L[i].py, L[i - 1].py + H + 1);
       const over = L.at(-1).py + H / 2 - A.bottom; if (over > 0) for (const o of L) o.py -= over;
       for (let i = L.length - 2; i >= 0; i--) L[i].py = Math.min(L[i].py, L[i + 1].py - H - 1);
-      ctx.save(); ctx.font = `700 10px ${Chart.defaults.font.family}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+      // 모양: 가격축 칸 안에 같은 폭의 이름표 + 왼쪽에 선을 가리키는 작은 꼭지 · 글자는 왼쪽부터(이름은 얇게, 가격은 굵게)
+      const F = Chart.defaults.font.family, x = A.right + 5, w = R - x;
+      ctx.save(); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       for (const o of L) {
-        const w = Math.max(ctx.measureText(o.t).width + 10, R - A.right - 1), x = R - w, top = o.py - H / 2; // 세로축 글자를 덮을 만큼 넓게(옆으로 삐져나와 보이지 않게)
-        const m = /^#([0-9a-f]{6})$/i.exec(String(o.col).trim()), n = m ? parseInt(m[1], 16) : 0;
+        const top = o.py - H / 2, m = /^#([0-9a-f]{6})$/i.exec(String(o.col).trim()), n = m ? parseInt(m[1], 16) : 0;
         const lum = m ? (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 : 0.5;
-        ctx.fillStyle = o.col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, top, w, H, 4) : ctx.rect(x, top, w, H); ctx.fill();
-        ctx.fillStyle = lum > 0.6 ? '#141a22' : '#ffffff'; ctx.fillText(o.t, R - 5, o.py + 0.5);
+        ctx.fillStyle = o.col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, top, w, H, 4) : ctx.rect(x, top, w, H);
+        ctx.moveTo(x + 1, o.py - 4); ctx.lineTo(x - 4, o.py); ctx.lineTo(x + 1, o.py + 4); ctx.closePath(); ctx.fill();
+        const fg = lum > 0.6 ? '#141a22' : '#ffffff', sp = o.t.lastIndexOf(' '), lbl = sp > 0 ? o.t.slice(0, sp) : '', pr = sp > 0 ? o.t.slice(sp + 1) : o.t;
+        let tx = x + 5;
+        if (lbl) { ctx.font = `500 10px ${F}`; ctx.fillStyle = fg; ctx.globalAlpha = 0.82; ctx.fillText(lbl, tx, o.py + 0.5); tx += ctx.measureText(lbl).width + 4; ctx.globalAlpha = 1; }
+        ctx.font = `700 10px ${F}`; ctx.fillStyle = fg; ctx.fillText(pr, tx, o.py + 0.5);
       }
       ctx.restore();
     },
