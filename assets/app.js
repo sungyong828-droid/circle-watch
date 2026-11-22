@@ -826,8 +826,13 @@
     // 1년 최저·최고 근처인지(1년 일봉이 있으면 그걸로, 없으면 지금 차트 구간으로)
     const Y = TD[sym]?.V?.length >= 200 ? TD[sym].V.slice(-251) : null, W = Y || V;
     const near = (lo) => { const x = lo ? Math.min(...W.map((k) => k.l)) : Math.max(...W.map((k) => k.h)); return lo ? px <= x * 1.03 : px >= x * 0.97; };
-    const nb = (lo) => near(lo) ? ` (${Y ? (EN ? (lo ? 'near 1-year low' : 'near 1-year high') : (lo ? '1년 최저 근처' : '1년 최고 근처')) : (EN ? (lo ? 'near this period’s low' : 'near this period’s high') : (lo ? '이 기간 최저 근처' : '이 기간 최고 근처'))})` : '';
-    if (LV) out.push(LV.ceil ? (EN ? `${pc(LV.ceil.p)} to ceiling ${fmt(LV.ceil.p)}` : `천장 ${fmt(LV.ceil.p)}까지 ${pc(LV.ceil.p)}`) : (EN ? `No resistance level above${nb(false)}` : `위로 막는 가격대 없음${nb(false)}`));
+    // 가격대가 없을 때: 1년(또는 이 기간) 최저·최고 근처면 그렇다고, 아니면 이 기간 최저·최고까지 거리를 덧붙인다
+    const nb = (lo) => {
+      if (near(lo)) return ` (${Y ? (EN ? (lo ? 'near 1-year low' : 'near 1-year high') : (lo ? '1년 최저 근처' : '1년 최고 근처')) : (EN ? (lo ? 'near this period’s low' : 'near this period’s high') : (lo ? '이 기간 최저 근처' : '이 기간 최고 근처'))})`;
+      const x = lo ? Math.min(...V.map((k) => k.l)) : Math.max(...V.map((k) => k.h));
+      return `</em></span><span>${EN ? `${pc(x)} to this period’s ${lo ? 'low' : 'high'} ${fmt(x)}` : `이 기간 ${lo ? '최저' : '최고'} ${fmt(x)}까지 ${pc(x)}`}<em>`;
+    };
+    if (LV) out.push(LV.ceil ? (EN ? `${pc(LV.ceil.p)} to ceiling ${fmt(LV.ceil.p)}` : `천장 ${fmt(LV.ceil.p)}까지 ${pc(LV.ceil.p)}`) : `<em>${EN ? `No resistance level above${nb(false)}` : `위로 막는 가격대 없음${nb(false)}`}</em>`);
     const A = REF.find((r) => r.k === 'avg');
     if (A) out.push(px >= A.p ? (EN ? `${pc(px * px / A.p)} above your avg` : `평단보다 ${pc(px * px / A.p)}`) : (EN ? `${pc(A.p)} to break even` : `평단 회복까지 ${pc(A.p)}`));
     if (LV) out.push(LV.floor ? (EN ? `${pc(LV.floor.p)} to floor ${fmt(LV.floor.p)}` : `바닥 ${fmt(LV.floor.p)}까지 ${pc(LV.floor.p)}`) : `<em>${EN ? `No support level below${nb(true)}` : `아래 받쳐 줄 가격대 없음${nb(true)}`}</em>`);
@@ -852,7 +857,7 @@
       for (let i = L.length - 2; i >= 0; i--) L[i].py = Math.min(L[i].py, L[i + 1].py - H - 1);
       ctx.save(); ctx.font = `700 10px ${Chart.defaults.font.family}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
       for (const o of L) {
-        const w = ctx.measureText(o.t).width + 10, x = R - w, top = o.py - H / 2;
+        const w = Math.max(ctx.measureText(o.t).width + 10, R - A.right - 1), x = R - w, top = o.py - H / 2; // 세로축 글자를 덮을 만큼 넓게(옆으로 삐져나와 보이지 않게)
         const m = /^#([0-9a-f]{6})$/i.exec(String(o.col).trim()), n = m ? parseInt(m[1], 16) : 0;
         const lum = m ? (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 : 0.5;
         ctx.fillStyle = o.col; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, top, w, H, 4) : ctx.rect(x, top, w, H); ctx.fill();
